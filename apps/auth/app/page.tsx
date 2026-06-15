@@ -1,13 +1,76 @@
+"use client"
+
 import {
   ArrowForward,
   Visibility,
+  VisibilityOff,
   Lock,
-  AlternateEmail
+  AlternateEmail,
+  ArrowBack,
 } from "@mui/icons-material"
 
 import Image from 'next/image'
+import { useState, FormEvent } from "react"
+import Link from "next/link"
+
+import { checkEmail, login, ApiError } from "./lib/api"
+
+const WORKSPACE_DOMAIN = process.env.NEXT_PUBLIC_WORKSPACE_DOMAIN!;
 
 export default function Home() {
+  const [step, setStep] = useState<"email" | "password">("email");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleEmailSubmit(event: FormEvent) {
+    event.preventDefault();
+    setError(null);
+    setLoading(true);
+
+    try {
+      const { exists } = await checkEmail(email);
+
+      if (!exists) {
+        setError("Aucun compte n'est associé à cet email.");
+        return;
+      }
+
+      setStep("password");
+    } catch {
+      setError("Impossible de vérifier cet email. Veuillez réessayer.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handlePasswordSubmit(event: FormEvent) {
+    event.preventDefault();
+    setError(null);
+    setLoading(true);
+
+    try {
+      await login(email, password);
+      window.location.href = WORKSPACE_DOMAIN;
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        setError("Mot de passe incorrect.");
+      } else {
+        setError("Impossible de vous connecter. Veuillez réessayer.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function handleBack() {
+    setStep("email");
+    setPassword("");
+    setError(null);
+  }
+
   return (<div className="bg-primary">
     <main className="flex min-h-screen w-full">
       {/* <!-- Left Side: Brand Marketing --> */}
@@ -18,7 +81,6 @@ export default function Home() {
           <div className="flex items-center gap-sm">
             <div className="w-10 h-10 bg-transparent rounded-lg flex items-center justify-center shadow-lg">
               <Image src="/SaaSLogo.png" alt="Logo" width={100} height={100} />
-              {/* <span className="material-symbols-outlined text-primary text-[28px]" data-weight="fill">hub</span> */}
             </div>
             <span className="font-display text-headline-sm text-white font-bold tracking-tight">Workspace</span>
           </div>
@@ -82,75 +144,131 @@ export default function Home() {
           {/* <!-- Header --> */}
           <div className="space-y-sm">
             <h2 className="font-display text-headline-lg text-on-surface tracking-tight">Welcome back</h2>
-            <p className="font-body-md text-body-md text-on-surface-variant">Enter your credentials to access your workspace.</p>
+            <p className="font-body-md text-body-md text-on-surface-variant">
+              {step === "email"
+                ? "Enter your work email to access your workspace."
+                : "Enter your password to continue."}
+            </p>
           </div>
-          {/* <!-- Form --> */}
-          <form className="space-y-lg" id="loginForm">
-            {/* <!-- Email Field --> */}
-            <div className="space-y-xs">
-              <label className="font-label-md text-label-md text-on-surface-variant ml-1" htmlFor="email">Work Email</label>
-              <div className="relative group">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <AlternateEmail />
+
+          {/* <!-- Error Message --> */}
+          {error && (
+            <div className="px-4 py-3 rounded-lg bg-error-container text-on-error-container font-body-sm text-body-sm">
+              {error}
+              {step === "email" && error.includes("Aucun compte") && (
+                <>
+                  {" "}
+                  <Link className="font-semibold underline" href={`/register?email=${encodeURIComponent(email)}`}>
+                    Créer un compte
+                  </Link>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* <!-- Email Step --> */}
+          {step === "email" && (
+            <form className="space-y-lg" onSubmit={handleEmailSubmit}>
+              <div className="space-y-xs">
+                <label className="font-label-md text-label-md text-on-surface-variant ml-1" htmlFor="email">Work Email</label>
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <AlternateEmail />
+                  </div>
+                  <input
+                    className="w-full pl-10 pr-4 py-3 bg-surface border border-outline-variant rounded-lg font-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-outline-variant"
+                    id="email"
+                    name="email"
+                    placeholder="name@company.com"
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                  />
                 </div>
-                <input className="w-full pl-10 pr-4 py-3 bg-surface border border-outline-variant rounded-lg font-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-outline-variant" id="email" name="email" placeholder="name@company.com" type="email" />
               </div>
-            </div>
-            {/* <!-- Password Field --> 
-            <div className="space-y-xs">
-              <div className="flex justify-between items-center px-1">
-                <label className="font-label-md text-label-md text-on-surface-variant" htmlFor="password">Password</label>
-                <a className="font-label-md text-label-md text-primary hover:underline transition-all" href="#">Forgot Password?</a>
-              </div>
-              <div className="relative group">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock /> 
+
+              <button
+                className="w-full py-3.5 bg-primary text-white font-display text-body-lg font-semibold rounded-lg shadow-lg shadow-primary/20 hover:bg-primary-container hover:shadow-xl hover:shadow-primary/30 transform active:scale-[0.98] transition-all duration-100 flex items-center justify-center gap-2 disabled:opacity-60"
+                type="submit"
+                disabled={loading}
+              >
+                {loading ? "Vérification..." : "Continuer"}
+                <ArrowForward />
+              </button>
+            </form>
+          )}
+
+          {/* <!-- Password Step --> */}
+          {step === "password" && (
+            <form className="space-y-lg" onSubmit={handlePasswordSubmit}>
+              <div className="space-y-xs">
+                <div className="flex justify-between items-center px-1">
+                  <label className="font-label-md text-label-md text-on-surface-variant" htmlFor="email-display">Email</label>
+                  <button
+                    type="button"
+                    onClick={handleBack}
+                    className="flex items-center gap-1 font-label-md text-label-md text-primary hover:underline transition-all"
+                  >
+                    <ArrowBack fontSize="small" /> Changer
+                  </button>
                 </div>
-                <input className="w-full pl-10 pr-12 py-3 bg-surface border border-outline-variant rounded-lg font-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-outline-variant" id="password" name="password" placeholder="••••••••" type="password" />
-                <button className="absolute inset-y-0 right-0 pr-3 flex items-center text-outline hover:text-on-surface-variant transition-colors" type="button">
-                  <Visibility /> 
-                </button>
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <AlternateEmail />
+                  </div>
+                  <input
+                    className="w-full pl-10 pr-4 py-3 bg-surface-container border border-outline-variant rounded-lg font-body-md text-on-surface-variant"
+                    id="email-display"
+                    type="email"
+                    value={email}
+                    disabled
+                  />
+                </div>
               </div>
-            </div>
-            */}
-            {/* <!-- Remember Me --> 
-            <div className="flex items-center">
-              <input className="w-4 h-4 text-primary border-outline-variant rounded focus:ring-primary/20 transition-all cursor-pointer" id="remember" name="remember" type="checkbox" />
-              <label className="ml-2 font-label-md text-label-md text-on-surface-variant cursor-pointer select-none" htmlFor="remember">
-                Keep me logged in for 30 days
-              </label>
-            </div>
-            */}
-            {/* <!-- Submit Button --> */}
-            <button className="w-full py-3.5 bg-primary text-white font-display text-body-lg font-semibold rounded-lg shadow-lg shadow-primary/20 hover:bg-primary-container hover:shadow-xl hover:shadow-primary/30 transform active:scale-[0.98] transition-all duration-100 flex items-center justify-center gap-2" type="submit">
-              Sign In
-              <ArrowForward />
-            </button>
-          </form>
-          {/* <!-- Separator --> */}
-          <div className="relative">
-            <div aria-hidden="true" className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-outline-variant"></div>
-            </div>
-            <div className="relative flex justify-center text-label-sm">
-              <span className="px-3 bg-surface-container-lowest text-outline font-label-sm uppercase tracking-widest">Or continue with</span>
-            </div>
-          </div>
-          {/* <!-- SSO Buttons --> */}
-          <div className="grid grid-cols-2 gap-md">
-            <button className="flex items-center justify-center gap-2 px-4 py-2.5 bg-surface border border-outline-variant rounded-lg hover:bg-surface-container-low transition-colors duration-100">
-              <img alt="Google Logo" className="w-4 h-4" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDqDt9ryTYR0YwXJT7pRy6IKe0evueOSLZxzw3m97qgWXqTbAFUyTCgngqpBUlJylm5_ItF4PrhxVPONHIzLXwNs9Rsv4nVo9YCcwarLldDs4Ue_ttWFK9rV5BLj3FC3oqTAIL3Wx3KoCKw5_mjV6XJuZdCoiXqnVz0O-p5IzzEatEPibHPqK0OluymnMME3g0Qzm8cSMs4GFDeCcJOZPfgbdEcxMKEbfP6KuckgWF1_VVU0ONSxKEoNje2nRQFRhrM4DcS0DrZJIpk" />
-              <span className="font-label-md text-label-md text-on-surface">Google</span>
-            </button>
-            <button className="flex items-center justify-center gap-2 px-4 py-2.5 bg-surface border border-outline-variant rounded-lg hover:bg-surface-container-low transition-colors duration-100">
-              <span className="material-symbols-outlined text-[20px] text-on-surface">terminal</span>
-              <span className="font-label-md text-label-md text-on-surface">SSO</span>
-            </button>
-          </div>
+
+              <div className="space-y-xs">
+                <label className="font-label-md text-label-md text-on-surface-variant ml-1" htmlFor="password">Password</label>
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Lock />
+                  </div>
+                  <input
+                    className="w-full pl-10 pr-12 py-3 bg-surface border border-outline-variant rounded-lg font-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-outline-variant"
+                    id="password"
+                    name="password"
+                    placeholder="••••••••"
+                    type={showPassword ? "text" : "password"}
+                    required
+                    autoFocus
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                  />
+                  <button
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-outline hover:text-on-surface-variant transition-colors"
+                    type="button"
+                    onClick={() => setShowPassword((value) => !value)}
+                  >
+                    {showPassword ? <VisibilityOff /> : <Visibility />}
+                  </button>
+                </div>
+              </div>
+
+              <button
+                className="w-full py-3.5 bg-primary text-white font-display text-body-lg font-semibold rounded-lg shadow-lg shadow-primary/20 hover:bg-primary-container hover:shadow-xl hover:shadow-primary/30 transform active:scale-[0.98] transition-all duration-100 flex items-center justify-center gap-2 disabled:opacity-60"
+                type="submit"
+                disabled={loading}
+              >
+                {loading ? "Connexion..." : "Sign In"}
+                <ArrowForward />
+              </button>
+            </form>
+          )}
+
           {/* <!-- Footer Link --> */}
           <p className="text-center font-body-sm text-body-sm text-on-surface-variant">
-            Don't have an account?
-            <a className="text-primary font-semibold hover:underline" href="#">Request Access</a>
+            Don&apos;t have an account?{" "}
+            <Link className="text-primary font-semibold hover:underline" href="/register">Create account</Link>
           </p>
         </div>
         {/* <!-- Bottom Legal for Right Side (Mobile) --> */}
@@ -164,5 +282,3 @@ export default function Home() {
   </div>
   );
 }
-
-

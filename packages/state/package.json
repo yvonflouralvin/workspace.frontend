@@ -1,29 +1,23 @@
 {
-  "name": "@repo/ui",
+  "name": "@repo/state",
   "version": "0.0.0",
   "private": true,
   "exports": {
-    "./*": "./src/*.tsx"
+    "./*": "./src/*.ts"
   },
   "scripts": {
     "lint": "eslint . --max-warnings 0",
-    "generate:component": "turbo gen react-component",
     "check-types": "tsc --noEmit"
   },
   "devDependencies": {
     "@repo/eslint-config": "*",
-    "@repo/tailwind-config": "^0.0.0",
     "@repo/typescript-config": "*",
-    "@repo/ui": "^0.0.0",
-    "@tailwindcss/cli": "^4.3.0",
     "@types/node": "^22.15.3",
     "@types/react": "19.2.2",
     "@types/react-dom": "19.2.2",
-    "autoprefixer": "^10.5.0",
     "eslint": "^9.39.1",
     "postcss": "^8.4.31",
     "tailwind-config": "^0.1.2",
-    "tailwindcss": "^4.3.0",
     "typescript": "5.9.2"
   },
   "dependencies": {
@@ -33,6 +27,7 @@
     "@mui/material": "^9.1.1",
     "auth": "^0.1.0",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "react-dom": "^19.2.0",
+    "zustand": "^5.0.13"
   }
 }

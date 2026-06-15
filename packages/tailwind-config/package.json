@@ -1,14 +1,14 @@
 {
-  "name": "@repo/typescript-config",
+  "name": "@repo/tailwind-config",
   "version": "0.0.0",
   "private": true,
-  "license": "MIT",
-  "publishConfig": {
-    "access": "public"
+  "exports": {
+    ".": "./tailwind.config.ts"
   },
   "devDependencies": {
     "postcss": "^8.4.31",
-    "tailwind-config": "^0.1.2"
+    "tailwind-config": "^0.1.2",
+    "tailwindcss": "^4.3.0"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",

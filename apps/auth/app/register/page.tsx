@@ -2,10 +2,13 @@
 
 import {
   ArrowForward,
+  ArrowBack,
   Visibility,
   VisibilityOff,
   Lock,
   AlternateEmail,
+  Person,
+  Apartment,
 } from "@mui/icons-material"
 
 import Image from 'next/image'
@@ -13,49 +16,127 @@ import Link from "next/link"
 import { Suspense, useState, FormEvent } from "react"
 import { useSearchParams } from "next/navigation"
 
-import { register, login, ApiError } from "../lib/api"
+import { checkEmail, register, login, ApiError } from "../lib/api"
 
 const WORKSPACE_DOMAIN = process.env.NEXT_PUBLIC_WORKSPACE_DOMAIN!;
+
+type Step = "email" | "name" | "password" | "workspace";
+
+const STEPS: Step[] = ["email", "name", "password", "workspace"];
+
+const STEP_LABELS: Record<Step, string> = {
+  email: "Votre adresse email",
+  name: "Votre nom complet",
+  password: "Choisissez un mot de passe",
+  workspace: "Configurez votre workspace",
+};
+
+function slugifyName(value: string) {
+  return value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+}
 
 function RegisterForm() {
   const searchParams = useSearchParams();
 
+  const [step, setStep] = useState<Step>("email");
   const [email, setEmail] = useState(searchParams.get("email") ?? "");
+  const [fullName, setFullName] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [workspaceName, setWorkspaceName] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function handleSubmit(event: FormEvent) {
+  const stepIndex = STEPS.indexOf(step);
+
+  async function handleEmailSubmit(event: FormEvent) {
+    event.preventDefault();
+    setError(null);
+    setLoading(true);
+
+    try {
+      const { exists } = await checkEmail(email);
+
+      if (exists) {
+        setError("Un compte existe déjà avec cet email.");
+        return;
+      }
+
+      setStep("name");
+    } catch {
+      setError("Impossible de vérifier cet email. Veuillez réessayer.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function handleNameSubmit(event: FormEvent) {
     event.preventDefault();
     setError(null);
 
-    if (password !== confirmPassword) {
-      setError("Les mots de passe ne correspondent pas.");
+    if (!fullName.trim()) {
+      setError("Merci de renseigner votre nom complet.");
       return;
     }
+
+    setStep("password");
+  }
+
+  function handlePasswordSubmit(event: FormEvent) {
+    event.preventDefault();
+    setError(null);
 
     if (password.length < 8) {
       setError("Le mot de passe doit contenir au moins 8 caractères.");
       return;
     }
 
+    if (password !== confirmPassword) {
+      setError("Les mots de passe ne correspondent pas.");
+      return;
+    }
+
+    setWorkspaceName(slugifyName(email.split("@")[0] ?? ""));
+    setStep("workspace");
+  }
+
+  async function handleWorkspaceSubmit(event: FormEvent) {
+    event.preventDefault();
+    setError(null);
+
+    if (!workspaceName.trim()) {
+      setError("Merci de donner un nom à votre workspace.");
+      return;
+    }
+
     setLoading(true);
 
     try {
-      await register(email, password);
+      await register(email, password, fullName, workspaceName);
       await login(email, password);
       window.location.href = WORKSPACE_DOMAIN;
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
         setError("Un compte existe déjà avec cet email.");
+        setStep("email");
       } else {
         setError("Impossible de créer le compte. Veuillez réessayer.");
       }
     } finally {
       setLoading(false);
     }
+  }
+
+  function goBack() {
+    setError(null);
+    const previous = STEPS[stepIndex - 1];
+    if (previous) setStep(previous);
   }
 
   return (<div className="bg-primary">
@@ -122,93 +203,228 @@ function RegisterForm() {
           <span className="font-display text-headline-sm text-on-surface font-bold">Imani</span>
         </div>
         <div className="w-full max-w-[420px] space-y-xl animate-in fade-in slide-in-from-bottom-4 duration-700">
+          {/* <!-- Step Indicator --> */}
           <div className="space-y-sm">
-            <h2 className="font-display text-headline-lg text-on-surface tracking-tight">Create your account</h2>
-            <p className="font-body-md text-body-md text-on-surface-variant">Get started with your own workspace in seconds.</p>
+            <div className="flex items-center gap-2">
+              {STEPS.map((s, index) => (
+                <div
+                  key={s}
+                  className={`h-1.5 flex-1 rounded-full transition-all ${
+                    index <= stepIndex ? "bg-primary" : "bg-outline-variant"
+                  }`}
+                />
+              ))}
+            </div>
+            <h2 className="font-display text-headline-lg text-on-surface tracking-tight">{STEP_LABELS[step]}</h2>
+            <p className="font-body-md text-body-md text-on-surface-variant">
+              Étape {stepIndex + 1} sur {STEPS.length}
+            </p>
           </div>
 
           {error && (
             <div className="px-4 py-3 rounded-lg bg-error-container text-on-error-container font-body-sm text-body-sm">
               {error}
+              {step === "email" && (
+                <>
+                  {" "}
+                  <Link className="font-semibold underline" href="/">Se connecter</Link>
+                </>
+              )}
             </div>
           )}
 
-          <form className="space-y-lg" onSubmit={handleSubmit}>
-            <div className="space-y-xs">
-              <label className="font-label-md text-label-md text-on-surface-variant ml-1" htmlFor="email">Work Email</label>
-              <div className="relative group">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <AlternateEmail />
+          {/* <!-- Step 1: Email --> */}
+          {step === "email" && (
+            <form className="space-y-lg" onSubmit={handleEmailSubmit}>
+              <div className="space-y-xs">
+                <label className="font-label-md text-label-md text-on-surface-variant ml-1" htmlFor="email">Work Email</label>
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <AlternateEmail />
+                  </div>
+                  <input
+                    className="w-full pl-10 pr-4 py-3 bg-surface border border-outline-variant rounded-lg font-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-outline-variant"
+                    id="email"
+                    name="email"
+                    placeholder="name@company.com"
+                    type="email"
+                    required
+                    autoFocus
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                  />
                 </div>
-                <input
-                  className="w-full pl-10 pr-4 py-3 bg-surface border border-outline-variant rounded-lg font-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-outline-variant"
-                  id="email"
-                  name="email"
-                  placeholder="name@company.com"
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                />
               </div>
-            </div>
 
-            <div className="space-y-xs">
-              <label className="font-label-md text-label-md text-on-surface-variant ml-1" htmlFor="password">Password</label>
-              <div className="relative group">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock />
+              <button
+                className="w-full py-3.5 bg-primary text-white font-display text-body-lg font-semibold rounded-lg shadow-lg shadow-primary/20 hover:bg-primary-container hover:shadow-xl hover:shadow-primary/30 transform active:scale-[0.98] transition-all duration-100 flex items-center justify-center gap-2 disabled:opacity-60"
+                type="submit"
+                disabled={loading}
+              >
+                {loading ? "Vérification..." : "Continuer"}
+                <ArrowForward />
+              </button>
+            </form>
+          )}
+
+          {/* <!-- Step 2: Full Name --> */}
+          {step === "name" && (
+            <form className="space-y-lg" onSubmit={handleNameSubmit}>
+              <div className="space-y-xs">
+                <label className="font-label-md text-label-md text-on-surface-variant ml-1" htmlFor="fullName">Nom complet</label>
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Person />
+                  </div>
+                  <input
+                    className="w-full pl-10 pr-4 py-3 bg-surface border border-outline-variant rounded-lg font-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-outline-variant"
+                    id="fullName"
+                    name="fullName"
+                    placeholder="Jane Doe"
+                    type="text"
+                    required
+                    autoFocus
+                    value={fullName}
+                    onChange={(event) => setFullName(event.target.value)}
+                  />
                 </div>
-                <input
-                  className="w-full pl-10 pr-12 py-3 bg-surface border border-outline-variant rounded-lg font-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-outline-variant"
-                  id="password"
-                  name="password"
-                  placeholder="••••••••"
-                  type={showPassword ? "text" : "password"}
-                  required
-                  minLength={8}
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                />
+              </div>
+
+              <div className="flex gap-md">
                 <button
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-outline hover:text-on-surface-variant transition-colors"
+                  className="flex items-center justify-center gap-2 px-4 py-3.5 border border-outline-variant rounded-lg font-display text-body-lg font-semibold text-on-surface-variant hover:bg-surface-container-low transition-all"
                   type="button"
-                  onClick={() => setShowPassword((value) => !value)}
+                  onClick={goBack}
                 >
-                  {showPassword ? <VisibilityOff /> : <Visibility />}
+                  <ArrowBack />
+                </button>
+                <button
+                  className="flex-1 py-3.5 bg-primary text-white font-display text-body-lg font-semibold rounded-lg shadow-lg shadow-primary/20 hover:bg-primary-container hover:shadow-xl hover:shadow-primary/30 transform active:scale-[0.98] transition-all duration-100 flex items-center justify-center gap-2"
+                  type="submit"
+                >
+                  Continuer
+                  <ArrowForward />
                 </button>
               </div>
-            </div>
+            </form>
+          )}
 
-            <div className="space-y-xs">
-              <label className="font-label-md text-label-md text-on-surface-variant ml-1" htmlFor="confirm-password">Confirm Password</label>
-              <div className="relative group">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock />
+          {/* <!-- Step 3: Password --> */}
+          {step === "password" && (
+            <form className="space-y-lg" onSubmit={handlePasswordSubmit}>
+              <div className="space-y-xs">
+                <label className="font-label-md text-label-md text-on-surface-variant ml-1" htmlFor="password">Mot de passe</label>
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Lock />
+                  </div>
+                  <input
+                    className="w-full pl-10 pr-12 py-3 bg-surface border border-outline-variant rounded-lg font-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-outline-variant"
+                    id="password"
+                    name="password"
+                    placeholder="••••••••"
+                    type={showPassword ? "text" : "password"}
+                    required
+                    minLength={8}
+                    autoFocus
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                  />
+                  <button
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-outline hover:text-on-surface-variant transition-colors"
+                    type="button"
+                    onClick={() => setShowPassword((value) => !value)}
+                  >
+                    {showPassword ? <VisibilityOff /> : <Visibility />}
+                  </button>
                 </div>
-                <input
-                  className="w-full pl-10 pr-4 py-3 bg-surface border border-outline-variant rounded-lg font-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-outline-variant"
-                  id="confirm-password"
-                  name="confirm-password"
-                  placeholder="••••••••"
-                  type={showPassword ? "text" : "password"}
-                  required
-                  minLength={8}
-                  value={confirmPassword}
-                  onChange={(event) => setConfirmPassword(event.target.value)}
-                />
               </div>
-            </div>
 
-            <button
-              className="w-full py-3.5 bg-primary text-white font-display text-body-lg font-semibold rounded-lg shadow-lg shadow-primary/20 hover:bg-primary-container hover:shadow-xl hover:shadow-primary/30 transform active:scale-[0.98] transition-all duration-100 flex items-center justify-center gap-2 disabled:opacity-60"
-              type="submit"
-              disabled={loading}
-            >
-              {loading ? "Création..." : "Create account"}
-              <ArrowForward />
-            </button>
-          </form>
+              <div className="space-y-xs">
+                <label className="font-label-md text-label-md text-on-surface-variant ml-1" htmlFor="confirm-password">Confirmer le mot de passe</label>
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Lock />
+                  </div>
+                  <input
+                    className="w-full pl-10 pr-4 py-3 bg-surface border border-outline-variant rounded-lg font-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-outline-variant"
+                    id="confirm-password"
+                    name="confirm-password"
+                    placeholder="••••••••"
+                    type={showPassword ? "text" : "password"}
+                    required
+                    minLength={8}
+                    value={confirmPassword}
+                    onChange={(event) => setConfirmPassword(event.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-md">
+                <button
+                  className="flex items-center justify-center gap-2 px-4 py-3.5 border border-outline-variant rounded-lg font-display text-body-lg font-semibold text-on-surface-variant hover:bg-surface-container-low transition-all"
+                  type="button"
+                  onClick={goBack}
+                >
+                  <ArrowBack />
+                </button>
+                <button
+                  className="flex-1 py-3.5 bg-primary text-white font-display text-body-lg font-semibold rounded-lg shadow-lg shadow-primary/20 hover:bg-primary-container hover:shadow-xl hover:shadow-primary/30 transform active:scale-[0.98] transition-all duration-100 flex items-center justify-center gap-2"
+                  type="submit"
+                >
+                  Continuer
+                  <ArrowForward />
+                </button>
+              </div>
+            </form>
+          )}
+
+          {/* <!-- Step 4: Workspace --> */}
+          {step === "workspace" && (
+            <form className="space-y-lg" onSubmit={handleWorkspaceSubmit}>
+              <div className="space-y-xs">
+                <label className="font-label-md text-label-md text-on-surface-variant ml-1" htmlFor="workspaceName">Nom du workspace</label>
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Apartment />
+                  </div>
+                  <input
+                    className="w-full pl-10 pr-4 py-3 bg-surface border border-outline-variant rounded-lg font-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-outline-variant"
+                    id="workspaceName"
+                    name="workspaceName"
+                    placeholder="mon-workspace"
+                    type="text"
+                    required
+                    autoFocus
+                    value={workspaceName}
+                    onChange={(event) => setWorkspaceName(event.target.value)}
+                  />
+                </div>
+                <p className="font-body-sm text-body-sm text-on-surface-variant ml-1">
+                  Vous pourrez inviter votre équipe une fois le workspace créé.
+                </p>
+              </div>
+
+              <div className="flex gap-md">
+                <button
+                  className="flex items-center justify-center gap-2 px-4 py-3.5 border border-outline-variant rounded-lg font-display text-body-lg font-semibold text-on-surface-variant hover:bg-surface-container-low transition-all"
+                  type="button"
+                  onClick={goBack}
+                  disabled={loading}
+                >
+                  <ArrowBack />
+                </button>
+                <button
+                  className="flex-1 py-3.5 bg-primary text-white font-display text-body-lg font-semibold rounded-lg shadow-lg shadow-primary/20 hover:bg-primary-container hover:shadow-xl hover:shadow-primary/30 transform active:scale-[0.98] transition-all duration-100 flex items-center justify-center gap-2 disabled:opacity-60"
+                  type="submit"
+                  disabled={loading}
+                >
+                  {loading ? "Création..." : "Créer mon compte"}
+                  <ArrowForward />
+                </button>
+              </div>
+            </form>
+          )}
 
           <p className="text-center font-body-sm text-body-sm text-on-surface-variant">
             Already have an account?{" "}

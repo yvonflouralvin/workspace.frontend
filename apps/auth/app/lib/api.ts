@@ -37,11 +37,21 @@ export async function login(email: string, password: string) {
   return parseResponse(response);
 }
 
-export async function register(email: string, password: string) {
+export async function register(
+  email: string,
+  password: string,
+  fullName: string,
+  workspaceName: string
+) {
   const response = await fetch(`/api/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({
+      email,
+      password,
+      full_name: fullName,
+      workspace_name: workspaceName,
+    }),
   });
 
   return parseResponse(response);

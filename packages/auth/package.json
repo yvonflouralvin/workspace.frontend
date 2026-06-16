@@ -9,6 +9,14 @@
     "./SessionProvider": {
       "types": "./src/providers/SessionProvider.tsx",
       "default": "./dist/providers/SessionProvider.js"
+    },
+    "./store/session.store": {
+      "types": "./src/store/session.store.ts",
+      "default": "./dist/store/session.store.js"
+    },
+    "./hooks/useSession": {
+      "types": "./src/hooks/useSession.ts",
+      "default": "./dist/hooks/useSession.js"
     }
   },
   "devDependencies": {

@@ -14,11 +14,14 @@ interface SessionState {
   permissions: string[];
 
   loadSession: () => Promise<void>;
+  switchWorkspace: (workspaceId: number) => Promise<void>;
   logout: () => void;
 }
 
+const AUTH_API = process.env.NEXT_PUBLIC_AUTH_API;
+
 export const useSessionStore =
-  create<SessionState>((set) => ({
+  create<SessionState>((set, get) => ({
     loading: true,
     authenticated: false,
     user: null,
@@ -56,6 +59,16 @@ export const useSessionStore =
           authenticated: false,
         });
       }
+    },
+
+    async switchWorkspace(workspaceId: number) {
+      await fetch(`${AUTH_API}/auth/switch-workspace`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ workspace_id: workspaceId }),
+      });
+      window.location.reload();
     },
 
     logout() {

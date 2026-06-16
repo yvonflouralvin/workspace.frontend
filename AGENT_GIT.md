@@ -18,8 +18,10 @@ La branche de base de tout le travail de l'agent est **`claude`**.
 Avant toute modification, créer une branche dédiée à partir de `claude` :
 
 ```
-claude/<type>/<nom-du-changement>
+claude-<type>/<nom-du-changement>
 ```
+
+> **Pourquoi un tiret et non un slash ?** Git stocke les branches comme des fichiers dans `refs/heads/`. Une branche nommée `claude` (fichier) et une branche `claude/feature/x` (fichier dans un sous-dossier `claude/`) ne peuvent pas coexister. Le tiret (`claude-feature/x`) résout ce conflit tout en gardant le préfixe `claude` lisible.
 
 **Types disponibles :**
 
@@ -34,11 +36,11 @@ claude/<type>/<nom-du-changement>
 
 **Exemples :**
 ```
-claude/feature/dashboard-shell
-claude/fix/workspace-switcher-dropdown
-claude/docs/update-workspace-architecture
-claude/refactor/sidebar-props
-claude/chore/add-ui-package-exports
+claude-feature/dashboard-shell
+claude-fix/workspace-switcher-dropdown
+claude-docs/update-workspace-architecture
+claude-refactor/sidebar-props
+claude-chore/add-ui-package-exports
 ```
 
 **Règle de nommage :** kebab-case, court, descriptif. Pas de numéros de ticket, pas de dates.
@@ -53,7 +55,7 @@ claude/chore/add-ui-package-exports
    git pull origin claude
 
 2. Créer la branche de travail
-   git checkout -b claude/<type>/<nom>
+   git checkout -b claude-<type>/<nom>
 
 3. Effectuer les modifications
 
@@ -62,7 +64,7 @@ claude/chore/add-ui-package-exports
    git commit -m "<type>: <description courte>"
 
 5. Pousser la branche
-   git push -u origin claude/<type>/<nom>
+   git push -u origin claude-<type>/<nom>
 
 6. Créer la PR vers `claude`
    gh pr create --base claude --title "..." --body "..."

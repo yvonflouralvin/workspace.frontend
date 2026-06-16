@@ -226,9 +226,10 @@ Voir **`AGENT_GIT.md`** pour les règles complètes.
 
 Résumé :
 - Branche principale de l'agent : **`claude`**
-- Toute modification → branche `claude/<type>/<nom>` créée depuis `claude`
+- Toute modification → branche `claude-<type>/<nom>` créée depuis `claude`
 - Fin de modification → push + PR vers `claude` via `gh pr create --base claude`
 - Types : `feature`, `fix`, `refactor`, `docs`, `style`, `chore`
+- Note : tiret entre `claude` et le type (pas de slash) — contrainte git, voir `AGENT_GIT.md`
 
 ---
 

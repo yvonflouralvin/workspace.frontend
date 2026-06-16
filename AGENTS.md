@@ -1,0 +1,261 @@
+# Frontends Monorepo — Instructions Agent
+
+> Fichier maître. Lu en premier à chaque conversation. Les docs spécifiques sont dans `docs/`.
+
+**Avant toute modification de code → lire `AGENT_GIT.md` et créer la branche appropriée.**
+
+---
+
+## Monorepo
+
+**Gestionnaire de tâches :** Turborepo (`turbo.json`)
+**Package manager :** npm (workspaces)
+**TypeScript :** 5.9 — strict dans tous les packages
+**Node :** >= 18
+
+```
+frontends/
+  apps/
+    auth/         → port 3001  (connexion / inscription)
+    workspace/    → port 3005  (app principale SAAS)
+    hr/           → port 3003  (module RH)
+    web/                       (landing page)
+    docs/                      (documentation)
+  packages/
+    ui/                        (@repo/ui)
+    auth/                      (@repo/auth)
+    design-system/             (@repo/design-system)
+    tailwind-config/           (@repo/tailwind-config)
+    state/                     (@repo/state)
+    eslint-config/
+    typescript-config/
+```
+
+**Démarrer tout le monorepo :** `npm run dev` (à la racine)
+**Démarrer une app seule :** `cd apps/<name> && npm run dev`
+
+---
+
+## Apps — Responsabilités et ports
+
+| App         | Port | Rôle                                               | Doc détaillée                           |
+|-------------|------|----------------------------------------------------|-----------------------------------------|
+| `auth`      | 3001 | Login 2 étapes + inscription 4 étapes              | `docs/apps/auth/AUTH.md`               |
+| `workspace` | 3005 | App principale — dashboard, projets, membres       | `docs/apps/workspace/WORKSPACE.md`     |
+| `hr`        | 3003 | Module RH (en construction)                        | `docs/apps/hr/HR.md`                   |
+| `web`       | —    | Landing page publique                              | —                                      |
+| `docs`      | —    | Documentation produit                              | —                                      |
+
+---
+
+## Packages partagés
+
+### `@repo/auth`
+
+Session et permissions partagées entre toutes les apps.
+
+```ts
+import { useSessionStore } from '@repo/auth/store/session.store'
+import { SessionProvider } from '@repo/auth/SessionProvider'
+```
+
+**Store Zustand :** `loading`, `authenticated`, `user`, `activeWorkspace`, `workspaces[]`, `roles[]`, `permissions[]`
+**API :** `getSession()` → `GET /auth/session` (backend Flask, port 5000)
+**Gotcha session :** voir `docs/apps/auth/AUTH.md#cookie-gotcha`
+
+### `@repo/ui`
+
+Composants React partagés entre toutes les apps.
+
+```ts
+import { Button } from '@repo/ui/button'
+import { AppShell, Sidebar, TopBar } from '@repo/ui/shell/AppShell'  // à construire
+```
+
+Exports configurés via `"exports": { "./*": "./src/*.tsx" }` — importer directement le fichier.
+MUI Icons et MUI Material sont disponibles dans ce package et dans toutes les apps.
+
+### `@repo/design-system`
+
+Tokens de design (couleurs, espacements, typographie, border-radius) compilés depuis `src/` vers `dist/`.
+
+```ts
+// consommé via packages/tailwind-config
+import theme from '@repo/design-system/dist/tailwind/theme'
+```
+
+**Ne jamais importer depuis `dist/` dans le code applicatif** — passer par Tailwind CSS ou les classes utilitaires.
+
+### `@repo/tailwind-config`
+
+Config Tailwind partagée. Toutes les apps l'étendent :
+
+```ts
+// tailwind.config.ts d'une app
+import sharedConfig from "../../packages/tailwind-config/tailwind.config"
+export default { content: [...], presets: [sharedConfig] }
+```
+
+### `@repo/state`
+
+Package Zustand partagé (dépendance racine). Toujours préférer les stores de `@repo/auth` pour la session.
+
+---
+
+## Design System — Classes Tailwind disponibles
+
+Le design system expose ses tokens comme classes Tailwind. Les voici référencés :
+
+### Couleurs (usage : `bg-primary`, `text-on-surface`, etc.)
+
+| Token                      | Valeur hex  | Usage                              |
+|----------------------------|-------------|------------------------------------|
+| `primary`                  | `#3525cd`   | Actions principales, liens actifs  |
+| `primary-container`        | `#4f46e5`   | Hover sur primary                  |
+| `on-primary`               | `#ffffff`   | Texte sur fond primary             |
+| `background`               | `#f8f9ff`   | Fond global                        |
+| `surface`                  | `#f8f9ff`   | Fond des cartes                    |
+| `surface-container`        | `#e5eeff`   | Conteneurs                         |
+| `surface-container-low`    | `#eff4ff`   | Conteneurs légers                  |
+| `surface-container-lowest` | `#ffffff`   | Blanc pur                          |
+| `on-surface`               | `#0b1c30`   | Texte principal                    |
+| `on-surface-variant`       | `#464555`   | Texte secondaire                   |
+| `outline`                  | `#777587`   | Bordures, séparateurs              |
+| `outline-variant`          | `#c7c4d8`   | Bordures légères                   |
+| `secondary`                | `#006c49`   | Accents verts                      |
+| `tertiary`                 | `#004598`   | Accents bleus                      |
+| `error`                    | `#ba1a1a`   | États d'erreur                     |
+| `error-container`          | `#ffdad6`   | Fond d'erreur                      |
+
+### Espacements (usage : `p-md`, `gap-lg`, etc.)
+
+| Token    | Valeur |
+|----------|--------|
+| `xs`     | 4px    |
+| `sm`     | 8px    |
+| `md`     | 16px   |
+| `lg`     | 24px   |
+| `xl`     | 32px   |
+| `gutter` | 20px   |
+| `sidebar-width` | 260px |
+
+### Typographie (usage : `font-display`, `text-headline-lg`, etc.)
+
+Les classes `font-*` définissent la famille, les classes `text-*` définissent taille + line-height + weight.
+
+| Classe `text-*`    | Taille | Usage                    |
+|--------------------|--------|--------------------------|
+| `text-display`     | 40px   | Titres héros             |
+| `text-headline-lg` | 30px   | Titres de page           |
+| `text-headline-md` | 24px   | Titres de section        |
+| `text-headline-sm` | 20px   | Sous-titres              |
+| `text-body-lg`     | 16px   | Corps de texte large     |
+| `text-body-md`     | 14px   | Corps de texte standard  |
+| `text-body-sm`     | 13px   | Texte secondaire         |
+| `text-label-md`    | 12px   | Labels de formulaire     |
+| `text-label-sm`    | 11px   | Labels petits / badges   |
+
+Familles : `font-display` → Geist, `font-body-*` → Inter.
+
+### Border radius
+
+| Token           | Valeur    |
+|-----------------|-----------|
+| `rounded`       | 0.125rem  |
+| `rounded-lg`    | 0.25rem   |
+| `rounded-xl`    | 0.5rem    |
+| `rounded-full`  | 0.75rem   |
+
+---
+
+## Next.js 16 — Règles importantes
+
+- **App Router uniquement.** Pas de `pages/`.
+- **`"use client"`** obligatoire pour tout composant avec hooks React ou events browser.
+- **Server Components par défaut** — ne pas mettre `"use client"` inutilement.
+- **IMPORTANT :** Next.js 16 a des breaking changes. Avant d'écrire du code Next.js, lire le guide dans `node_modules/next/dist/docs/` de l'app concernée.
+- Route Groups : `(dashboard)` pour grouper sans affecter l'URL.
+
+---
+
+## Variables d'environnement
+
+Toutes les apps partagent le `.env` à la racine du monorepo :
+
+| Variable                          | Valeur dev             | Portée         |
+|-----------------------------------|------------------------|----------------|
+| `NEXT_PUBLIC_AUTH_API`            | `http://127.0.0.1:5000`| Browser        |
+| `NEXT_PUBLIC_AUTH_API_AUTH_DOMAIN`| `http://localhost:3001` | Browser        |
+| `NEXT_PUBLIC_AUTH_API_HR_DOMAIN`  | `http://localhost:3003` | Browser        |
+| `NEXT_PUBLIC_WORKSPACE_DOMAIN`    | `http://localhost:3005` | Browser (auth) |
+| `AUTH_API_URL`                    | `http://127.0.0.1:5000`| Server only    |
+
+---
+
+## Conventions de code
+
+- **Pas de commentaires** sauf si le WHY est non-évident (contrainte cachée, bug workaround).
+- **Composants `'use client'`** uniquement si nécessaire — Server Components par défaut.
+- **Imports cross-package** : toujours passer par le nom de package (`@repo/auth/...`), jamais par chemin relatif hors du package.
+- **MUI Icons** : disponibles dans toutes les apps via `@mui/icons-material`. Préférer aux SVG inline.
+- **Tailwind v4** dans toutes les apps : pas de `tailwind.config.js` dans `apps/workspace` (v4 via `@import "tailwindcss"` dans globals.css).
+- **Zustand** : ne jamais créer de store local si `@repo/auth` couvre le besoin.
+
+### Règle de composant partagé — OBLIGATOIRE
+
+Avant de créer un composant UI dans une app, se poser la question : **ce composant pourrait-il servir à une autre app du monorepo ?**
+
+Si oui (bouton, badge, carte, input, modal, avatar, popover, spinner, toast, etc.) → **le placer dans `packages/ui/src/` et l'importer via `@repo/ui/...`**, pas dans l'app elle-même.
+
+**Exemples concrets :**
+- Un bouton primaire → `packages/ui/src/Button.tsx`, importé `@repo/ui/Button`
+- Un champ de recherche → `packages/ui/src/SearchInput.tsx`
+- Une card de stats → `packages/ui/src/StatCard.tsx`
+- Un avatar utilisateur → `packages/ui/src/Avatar.tsx`
+- Un badge de notification → `packages/ui/src/Badge.tsx`
+
+**Exception :** un composant reste dans l'app uniquement s'il est **intrinsèquement couplé à la logique métier de cette app** (ex: `WorkspaceSwitcher` dans workspace — il lit `useSessionStore` et connaît le concept de workspace). La règle de bon sens : si on doit l'expliquer avec le nom de l'app pour le décrire, il reste dans l'app.
+
+En cas de doute → `packages/ui`.
+
+---
+
+## Git — Workflow de l'agent
+
+Voir **`AGENT_GIT.md`** pour les règles complètes.
+
+Résumé :
+- Branche principale de l'agent : **`claude`**
+- Toute modification → branche `claude/<type>/<nom>` créée depuis `claude`
+- Fin de modification → push + PR vers `claude` via `gh pr create --base claude`
+- Types : `feature`, `fix`, `refactor`, `docs`, `style`, `chore`
+
+---
+
+## Documentation détaillée
+
+- `docs/apps/auth/AUTH.md` — App auth : login, inscription, cookie trick, proxy API
+- `docs/apps/workspace/WORKSPACE.md` — Architecture dashboard workspace, shell partagé, composants
+- `docs/apps/hr/HR.md` — Module RH (état actuel et à venir)
+- `docs/packages/UI.md` — Guide des composants @repo/ui
+
+> Les apps n'ont plus leurs propres AGENTS.md / CLAUDE.md. Le root CLAUDE.md + ce fichier + `docs/` couvrent tout. Claude Code remonte la hiérarchie et charge ces fichiers quelle que soit l'app en cours de travail.
+
+---
+
+## Maintenance de la documentation — OBLIGATOIRE
+
+Après toute modification qui change la façon de travailler sur ce projet, **mettre à jour immédiatement** le fichier concerné :
+
+| Type de changement                                      | Fichier à mettre à jour                          |
+|---------------------------------------------------------|--------------------------------------------------|
+| Nouvelle app ou nouveau package                         | Ce fichier (`AGENTS.md`) — section Monorepo      |
+| Nouveau token Tailwind, couleur, espacement             | Ce fichier — section Design System               |
+| Nouvelle convention de code ou règle transversale       | Ce fichier — section Conventions                 |
+| Nouvelle variable d'environnement                       | Ce fichier + doc de l'app concernée              |
+| Architecture ou composants majeurs dans workspace       | `docs/apps/workspace/WORKSPACE.md`               |
+| Changement dans le flux auth / cookie / proxy           | `docs/apps/auth/AUTH.md`                         |
+| Nouveaux composants dans `@repo/ui`                     | `docs/packages/UI.md`                            |
+| Fonctionnalités RH ajoutées                             | `docs/apps/hr/HR.md`                             |
+
+**Règle :** si le changement est assez important pour qu'on ait besoin de s'en souvenir à la prochaine session de travail, il doit être documenté avant de clore la tâche.

@@ -233,12 +233,22 @@ Résumé :
 
 ---
 
+## Tests — Règle minimale
+
+Avant tout commit touchant une app : **`tsc --noEmit` doit passer à zéro**.
+Avant toute PR : **`next build` doit réussir** + smoke test de la route modifiée.
+
+Voir **`docs/TESTING.md`** pour la stratégie complète (niveaux 1→5, Vitest et Playwright à venir).
+
+---
+
 ## Documentation détaillée
 
 - `docs/apps/auth/AUTH.md` — App auth : login, inscription, cookie trick, proxy API
 - `docs/apps/workspace/WORKSPACE.md` — Architecture dashboard workspace, shell partagé, composants
 - `docs/apps/hr/HR.md` — Module RH (état actuel et à venir)
 - `docs/packages/UI.md` — Guide des composants @repo/ui
+- `docs/TESTING.md` — Stratégie de tests
 
 > Les apps n'ont plus leurs propres AGENTS.md / CLAUDE.md. Le root CLAUDE.md + ce fichier + `docs/` couvrent tout. Claude Code remonte la hiérarchie et charge ces fichiers quelle que soit l'app en cours de travail.
 

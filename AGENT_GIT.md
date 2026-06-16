@@ -139,13 +139,38 @@ Une PR par branche de travail. Ne pas empiler plusieurs features dans la même P
 
 ---
 
-## Vérification avant de commencer
-
-Avant toute session de modification, exécuter mentalement cette checklist :
+## Checklist avant de commencer
 
 ```
-[ ] Je suis sur la branche `claude` (ou je vais la créer si elle n'existe pas)
-[ ] J'ai créé une branche claude/<type>/<nom> pour ce travail
+[ ] Je suis sur `claude` et à jour (git pull)
+[ ] J'ai créé une branche claude-<type>/<nom> pour ce travail
 [ ] Je connais les fichiers que je vais modifier
-[ ] Je n'ai pas de modifications non committées en cours sur une autre branche
+[ ] Pas de modifications non committées sur une autre branche
 ```
+
+---
+
+## Checklist avant de committer — OBLIGATOIRE
+
+Pour chaque app modifiée, exécuter dans l'ordre :
+
+```
+[ ] 1. tsc --noEmit → 0 erreur
+        cd apps/<app> && npx tsc --noEmit
+
+[ ] 2. Smoke test de la route modifiée → pas de crash visible
+        cd apps/<app> && npm run dev → ouvrir dans le navigateur
+
+[ ] 3. next build → succès (avant d'ouvrir la PR, pas nécessairement avant chaque commit)
+        cd apps/<app> && npx next build
+```
+
+Si un de ces contrôles échoue → corriger avant de committer. Ne jamais pusher une app qui ne compile pas.
+
+Pour `packages/ui` ou `packages/auth` :
+```
+[ ] cd packages/ui && npx tsc --noEmit
+[ ] Vérifier que les apps qui importent le package compilent aussi
+```
+
+Référence complète : `docs/TESTING.md`

@@ -3,6 +3,8 @@
   "version": "0.0.0",
   "private": true,
   "exports": {
+    "./types/shell": "./src/types/shell.ts",
+    "./shell/*": "./src/shell/*.tsx",
     "./*": "./src/*.tsx"
   },
   "scripts": {

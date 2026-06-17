@@ -19,6 +19,33 @@ Wrapper léger autour de Material Icons.
 
 Injecte le lien Google Fonts pour Material Symbols Outlined dans le `<head>`. À inclure dans le layout racine des apps qui utilisent les icônes Material Symbols.
 
+### `Modal` (`src/Modal.tsx`)
+
+Dialog générique (overlay + panel centré, ferme sur `Escape`). Tailwind pur.
+
+```tsx
+<Modal title="Titre" onClose={() => ...} width="max-w-lg">
+  {children}
+</Modal>
+```
+
+### `Badge` (`src/Badge.tsx`)
+
+Pastille colorée (ex : chip de groupe sur la page Membres).
+
+```tsx
+<Badge>Owner</Badge>
+<Badge color="#006c49">Support</Badge>
+```
+
+### `Checkbox` (`src/Checkbox.tsx`)
+
+Case à cocher stylée avec label + description optionnelle (ex : liste de permissions).
+
+```tsx
+<Checkbox checked={checked} onChange={setChecked} label="members.view" description="..." />
+```
+
 ---
 
 ## Shell partagé (à implémenter — voir `docs/apps/workspace/WORKSPACE.md`)

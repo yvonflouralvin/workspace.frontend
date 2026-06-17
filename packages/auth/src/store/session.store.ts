@@ -2,7 +2,7 @@
 
 import { create } from "zustand";
 import { getSession } from "../api/session.js";
-import {User,Workspace,} from "../types/session.js";
+import {User,Workspace,SessionGroup,} from "../types/session.js";
 
 interface SessionState {
   loading: boolean;
@@ -10,7 +10,7 @@ interface SessionState {
   user: User | null;
   activeWorkspace: Workspace | null;
   workspaces: Workspace[];
-  roles: string[];
+  groups: SessionGroup[];
   permissions: string[];
 
   loadSession: () => Promise<void>;
@@ -27,7 +27,7 @@ export const useSessionStore =
     user: null,
     activeWorkspace: null,
     workspaces: [],
-    roles: [],
+    groups: [],
     permissions: [],
     async loadSession() {
       try {
@@ -49,7 +49,7 @@ export const useSessionStore =
           user: session.user,
           activeWorkspace: session.active_workspace,
           workspaces: session.workspaces,
-          roles: session.roles,
+          groups: session.groups,
           permissions: session.permissions,
         });
 
@@ -77,7 +77,7 @@ export const useSessionStore =
         user: null,
         activeWorkspace: null,
         workspaces: [],
-        roles: [],
+        groups: [],
         permissions: [],
       });
     },

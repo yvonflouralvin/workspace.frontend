@@ -17,6 +17,10 @@
     "./hooks/useSession": {
       "types": "./src/hooks/useSession.ts",
       "default": "./dist/hooks/useSession.js"
+    },
+    "./hooks/usePermissions": {
+      "types": "./src/hooks/usePermissions.ts",
+      "default": "./dist/hooks/usePermissions.js"
     }
   },
   "devDependencies": {

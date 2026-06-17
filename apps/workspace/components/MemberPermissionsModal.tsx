@@ -56,7 +56,7 @@ export function MemberPermissionsModal({
   }
 
   return (
-    <Modal title={`Gérer ${member.user.username}`} onClose={onClose} width="max-w-lg">
+    <Modal title={`Gérer ${member.user.username}`} onClose={onClose} width="max-w-[32rem]">
       <div className="space-y-5">
         {error && (
           <p className="text-sm text-error bg-error-container/40 rounded-lg px-3 py-2">

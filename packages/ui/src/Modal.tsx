@@ -7,7 +7,9 @@ export function Modal({
   title,
   onClose,
   children,
-  width = "max-w-md",
+  // Valeur arbitraire : les tokens nommés (sm/md/lg/xl) sont redéfinis par
+  // --spacing-* dans le thème et collisionnent avec l'échelle max-w-*.
+  width = "max-w-[28rem]",
 }: {
   title: string;
   onClose: () => void;

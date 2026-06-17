@@ -313,6 +313,26 @@ cookie + méthode + body vers `AUTH_API_URL`.
 **Composants partagés ajoutés à `packages/ui/src/`** (règle du monorepo — primitives
 réutilisables) : `Modal.tsx`, `Badge.tsx`, `Checkbox.tsx`.
 
+### Catalogue de permissions groupé par application
+
+`listPermissions()` retourne désormais `{ groups: AppPermissionGroup[] }` (catalogue
+groupé par app — voir `backends/docs/services/auth/AUTH.md`) au lieu d'une liste plate.
+`GroupEditorPanel` et `MemberPermissionsModal` rendent chaque entrée comme une section
+avec en-tête (`"GÉNÉRAL"`, `"WORKSPACE"`, `"RH"`...) au lieu d'une liste de checkboxes
+non structurée.
+
+### Gating d'accès à l'application
+
+`app/layout.tsx` (Server Component) vérifie après `getServerSession()` que
+`session.permissions.includes("workspace.access")` ; sinon affiche
+`<AccessDenied appName="Workspace" />` (`@repo/ui`) à la place de
+`<SessionProvider>{children}</SessionProvider>`. Un membre sans ce droit ne peut pas
+ouvrir l'app, même connecté (le owner du workspace garde son bypass total côté backend).
+
+`components/DashboardShell.tsx` filtre la liste `APPS` passée à `<TopBar>` avec
+`usePermissions().can(\`${app.id}.access\`)` — un membre sans `hr.access` ne voit plus
+"RH" dans le sélecteur d'apps.
+
 ---
 
 ## Ordre d'implémentation

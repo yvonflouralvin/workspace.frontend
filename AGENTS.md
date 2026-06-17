@@ -189,6 +189,7 @@ Toutes les apps partagent le `.env` à la racine du monorepo :
 | `NEXT_PUBLIC_AUTH_API_HR_DOMAIN`  | `http://localhost:3003` | Browser        |
 | `NEXT_PUBLIC_WORKSPACE_DOMAIN`    | `http://localhost:3005` | Browser (auth) |
 | `AUTH_API_URL`                    | `http://127.0.0.1:5000`| Server only    |
+| `HR_API_URL`                      | `http://127.0.0.1:5001`| Server only — app `hr`, proxy vers le backend FastAPI `hr` |
 
 ---
 

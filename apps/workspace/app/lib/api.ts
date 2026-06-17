@@ -1,4 +1,4 @@
-import type { Member, Group, PermissionDef } from "./types";
+import type { Member, Group, AppPermissionGroup } from "./types";
 
 export class ApiError extends Error {
   status: number;
@@ -123,7 +123,7 @@ export async function setGroupPermissions(
   return parseResponse(response);
 }
 
-export async function listPermissions(): Promise<{ permissions: PermissionDef[] }> {
+export async function listPermissions(): Promise<{ groups: AppPermissionGroup[] }> {
   const response = await fetch(`/api/permissions`);
   return parseResponse(response);
 }

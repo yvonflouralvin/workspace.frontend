@@ -13,7 +13,7 @@ import {
   removeMember,
   ApiError,
 } from "@/app/lib/api";
-import type { Member, Group, PermissionDef } from "@/app/lib/types";
+import type { Member, Group, AppPermissionGroup } from "@/app/lib/types";
 import { AddMemberModal } from "@/components/AddMemberModal";
 import { MemberPermissionsModal } from "@/components/MemberPermissionsModal";
 
@@ -23,7 +23,7 @@ export default function MembersPage() {
 
   const [members, setMembers] = useState<Member[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
-  const [permissionCatalog, setPermissionCatalog] = useState<PermissionDef[]>([]);
+  const [permissionCatalog, setPermissionCatalog] = useState<AppPermissionGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -46,7 +46,7 @@ export default function MembersPage() {
       .then(([membersRes, groupsRes, permissionsRes]) => {
         setMembers(membersRes.members);
         setGroups(groupsRes.groups);
-        setPermissionCatalog(permissionsRes.permissions);
+        setPermissionCatalog(permissionsRes.groups);
       })
       .catch((err) => {
         setError(err instanceof ApiError ? err.message : "Une erreur est survenue");

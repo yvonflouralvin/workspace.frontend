@@ -4,6 +4,13 @@ export interface PermissionDef {
   description: string | null;
 }
 
+export interface AppPermissionGroup {
+  id: number | null;
+  key: string | null;
+  name: string;
+  permissions: PermissionDef[];
+}
+
 export interface GroupRef {
   id: number;
   name: string;

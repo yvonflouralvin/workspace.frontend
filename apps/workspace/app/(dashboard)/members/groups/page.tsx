@@ -6,7 +6,7 @@ import { ArrowBackOutlined, AddOutlined } from "@mui/icons-material";
 import { useSessionStore } from "@repo/auth/store/session.store";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
 import { listGroups, listPermissions, ApiError } from "@/app/lib/api";
-import type { Group, PermissionDef } from "@/app/lib/types";
+import type { Group, AppPermissionGroup } from "@/app/lib/types";
 import { GroupTree } from "@/components/GroupTree";
 import { GroupEditorPanel } from "@/components/GroupEditorPanel";
 import { CreateGroupModal } from "@/components/CreateGroupModal";
@@ -16,7 +16,7 @@ export default function GroupsPage() {
   const { can } = usePermissions();
 
   const [groups, setGroups] = useState<Group[]>([]);
-  const [permissionCatalog, setPermissionCatalog] = useState<PermissionDef[]>([]);
+  const [permissionCatalog, setPermissionCatalog] = useState<AppPermissionGroup[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -34,7 +34,7 @@ export default function GroupsPage() {
     Promise.all([listGroups(workspaceId), listPermissions()])
       .then(([groupsRes, permissionsRes]) => {
         setGroups(groupsRes.groups);
-        setPermissionCatalog(permissionsRes.permissions);
+        setPermissionCatalog(permissionsRes.groups);
       })
       .catch((err) => {
         setError(err instanceof ApiError ? err.message : "Une erreur est survenue");

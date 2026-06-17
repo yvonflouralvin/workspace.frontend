@@ -11,7 +11,7 @@ interface UserFooterProps {
 export function UserFooter({ user, onLogout }: UserFooterProps) {
   if (!user) return null;
 
-  const initials = user.username.slice(0, 2).toUpperCase();
+  const initials = (user.username ?? user.email).slice(0, 2).toUpperCase();
 
   return (
     <div className="flex items-center gap-2.5">

@@ -136,6 +136,14 @@ Une PR par branche de travail. Ne pas empiler plusieurs features dans la même P
 - Committer directement sur `claude` (toujours passer par une branche)
 - Sauter la création de branche "pour aller vite"
 - Créer une PR vers `main` / `master` / `develop` sans instruction explicite de l'utilisateur
+- Utiliser des noms de branches qui ne suivent pas le format `claude-<type>/<nom>` (ex: `feature/xyz`, `fix-bug` sont **interdits** pour les branches de l'agent)
+- Créer des branches depuis `main`, `master` ou `develop` — toujours partir de `claude`
+
+## Branches de travail — suppression automatique
+
+Les branches de travail (`claude-<type>/<nom>`) sont **supprimées automatiquement** par GitHub après le merge de leur PR dans `claude`. C'est un paramètre activé sur le repo (`delete_branch_on_merge: true`).
+
+Ne pas recréer manuellement une branche supprimée. Créer une nouvelle branche pour le prochain changement.
 
 ---
 

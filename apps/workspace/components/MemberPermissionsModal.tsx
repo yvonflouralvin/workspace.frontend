@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Modal } from "@repo/ui/Modal";
 import { Checkbox } from "@repo/ui/Checkbox";
 import { setMemberGroups, setMemberPermissions, ApiError } from "@/app/lib/api";
-import type { Group, Member, PermissionDef } from "@/app/lib/types";
+import type { Group, Member, AppPermissionGroup } from "@/app/lib/types";
 
 export function MemberPermissionsModal({
   workspaceId,
@@ -17,7 +17,7 @@ export function MemberPermissionsModal({
   workspaceId: number;
   member: Member;
   groups: Group[];
-  permissionCatalog: PermissionDef[];
+  permissionCatalog: AppPermissionGroup[];
   onClose: () => void;
   onUpdated: (member: Member) => void;
 }) {
@@ -81,18 +81,27 @@ export function MemberPermissionsModal({
           </div>
         </div>
 
-        <div className="space-y-1">
+        <div className="space-y-3">
           <p className="text-sm font-medium text-on-surface">Permissions directes</p>
-          <div className="max-h-48 overflow-y-auto rounded-xl border border-outline-variant px-3">
-            {permissionCatalog.map((permission) => (
-              <Checkbox
-                key={permission.id}
-                checked={permissionIds.includes(permission.id)}
-                onChange={() => togglePermission(permission.id)}
-                label={permission.name}
-                description={permission.description ?? undefined}
-              />
-            ))}
+          <div className="max-h-64 overflow-y-auto rounded-xl border border-outline-variant px-3 divide-y divide-outline-variant">
+            {permissionCatalog
+              .filter((group) => group.permissions.length > 0)
+              .map((group) => (
+                <div key={group.key ?? "general"} className="py-2">
+                  <p className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide px-1 pb-1">
+                    {group.name}
+                  </p>
+                  {group.permissions.map((permission) => (
+                    <Checkbox
+                      key={permission.id}
+                      checked={permissionIds.includes(permission.id)}
+                      onChange={() => togglePermission(permission.id)}
+                      label={permission.name}
+                      description={permission.description ?? undefined}
+                    />
+                  ))}
+                </div>
+              ))}
           </div>
         </div>
 

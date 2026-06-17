@@ -2,46 +2,53 @@
 
 **Port :** 3003
 **Next.js 16, App Router**
-**Rôle :** Module Ressources Humaines du SAAS Workspace.
+**Rôle :** Module Ressources Humaines du SAAS Workspace — sert aussi de démonstration
+minimaliste du registre RBAC multi-application (voir `backends/docs/services/hr/HR.md`).
 
 ---
 
 ## État actuel
 
-L'app est initialisée mais vide — `app/page.tsx` et `app/layout.tsx` sont des stubs générés par `create-next-app`. Aucune fonctionnalité n'est encore implémentée.
+Câblage session/auth/RBAC complet, mirroring exact du pattern `apps/workspace` :
+
+- `app/layout.tsx` (Server Component, `async`) appelle `getServerSession()` et gate
+  l'accès sur la permission `hr.access` (sinon `<AccessDenied appName="RH" />` de
+  `@repo/ui`, même composant que `workspace`). Si autorisé, monte `<SessionProvider>`.
+- `proxy.ts` (middleware racine) redirige vers l'app `auth` si pas de cookie
+  `access_token` — copie exacte de `apps/workspace/proxy.ts`.
+- `app/api/auth/session/route.ts` — proxy cookie → `auth` (filet de sécurité client,
+  même pattern que `workspace`).
+- `app/api/departments/route.ts` — proxy cookie → le service backend `hr` (FastAPI,
+  port 5001, `GET /hr/departments`).
+- `app/api/logout/route.ts` — identique à `workspace`.
+- `components/DashboardShell.tsx` — shell minimal (`AppShell`/`Sidebar`/`TopBar` de
+  `@repo/ui`), un seul item de nav ("Accueil"). Le sélecteur d'app (`TopBar`) filtre la
+  liste avec `usePermissions().can(\`${app.id}.access\`)`, même logique que `workspace`.
+- `app/page.tsx` — Client Component : si `can("hr.departments.view")`, fetch
+  `/api/departments` et affiche la liste mock ; sinon "Accès restreint à cette section".
+
+Une seule page existe pour l'instant (`/`, départements). Pas de gestion réelle
+employés/congés/recrutement — hors périmètre de cette itération (focus = architecture RBAC,
+pas fonctionnalités RH).
 
 ---
 
-## Intégration dans le shell partagé
-
-Quand l'implémentation démarrera, cette app devra :
-
-1. Utiliser `<AppShell>` de `@repo/ui` avec ses propres `navItems` HR.
-2. Ne **pas** passer de `topSlot` à la Sidebar (pas de workspace switcher ici — l'utilisateur a déjà un workspace actif).
-3. Partager la `TopBar` avec les mêmes `apps[]` que le workspace pour permettre la navigation inter-apps.
-
-```tsx
-// apps/hr/app/(dashboard)/layout.tsx — à venir
-const NAV_ITEMS = [
-  { label: 'Tableau de bord', href: '/',         icon: <HomeIcon /> },
-  { label: 'Employés',        href: '/employees', icon: <PeopleIcon /> },
-  { label: 'Congés',          href: '/leaves',    icon: <CalendarIcon /> },
-  { label: 'Recrutement',     href: '/jobs',      icon: <WorkIcon /> },
-]
-```
-
----
-
-## Variables d'environnement
+## Variables d'environnement (`.env`)
 
 | Variable                          | Portée  | Valeur dev              |
-|-----------------------------------|---------|-------------------------|
-| `NEXT_PUBLIC_AUTH_API`            | Browser | `http://127.0.0.1:5000` |
-| `NEXT_PUBLIC_AUTH_API_AUTH_DOMAIN`| Browser | `http://localhost:3001`  |
+|-----------------------------------|---------|--------------------------|
+| `AUTH_API_URL`                     | Server  | `http://127.0.0.1:5000` |
+| `NEXT_PUBLIC_AUTH_API`             | Browser | `http://127.0.0.1:5000` |
+| `NEXT_PUBLIC_AUTH_API_AUTH_DOMAIN` | Browser | `http://localhost:3001` |
+| `NEXT_PUBLIC_WORKSPACE_DOMAIN`     | Browser | `http://localhost:3005` |
+| `HR_API_URL`                       | Server  | `http://127.0.0.1:5001` (backend FastAPI `hr`) |
 
 ---
 
 ## Notes
 
-- Pas de `middleware.ts` pour l'instant — à ajouter (même logique que workspace : redirect vers auth si pas de cookie).
-- `@repo/auth` doit être ajouté aux dépendances quand l'implémentation démarre.
+- Dépend du service backend `hr` (FastAPI, `backends/hr/`, port 5001) — doit tourner pour
+  que `/api/departments` réponde. Voir `backends/docs/services/hr/HR.md`.
+- Dépend du registre `App`/`Permission` du service `auth` : `hr.access` et
+  `hr.departments.view` doivent exister (enregistrés automatiquement par le service `hr`
+  au démarrage via `POST /auth/apps/register`).

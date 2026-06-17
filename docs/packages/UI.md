@@ -46,6 +46,17 @@ Case à cocher stylée avec label + description optionnelle (ex : liste de permi
 <Checkbox checked={checked} onChange={setChecked} label="members.view" description="..." />
 ```
 
+### `AccessDenied` (`src/AccessDenied.tsx`)
+
+Server Component (pas de `"use client"`, aucune interactivité) — écran plein-page affiché
+quand un utilisateur authentifié n'a pas la permission `<app>.access` requise pour ouvrir
+une application. Utilisé dans le `RootLayout` de `workspace` et `hr`, à la place de
+`<SessionProvider>`, dès que `!session.permissions.includes("<key>.access")`.
+
+```tsx
+<AccessDenied appName="RH" />
+```
+
 ---
 
 ## Shell partagé (à implémenter — voir `docs/apps/workspace/WORKSPACE.md`)

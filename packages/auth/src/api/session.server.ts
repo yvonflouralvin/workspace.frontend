@@ -8,7 +8,7 @@ const EMPTY_SESSION: SessionResponse = {
   user: null,
   active_workspace: null,
   workspaces: [],
-  roles: [],
+  groups: [],
   permissions: [],
 };
 

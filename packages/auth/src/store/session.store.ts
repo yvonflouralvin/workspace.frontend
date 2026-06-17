@@ -3,7 +3,7 @@
 import { createStore, useStore, type StoreApi } from "zustand";
 import { createContext, useContext } from "react";
 import { getSession } from "../api/session.js";
-import {User,Workspace,SessionResponse,} from "../types/session.js";
+import {User,Workspace,SessionGroup,SessionResponse,} from "../types/session.js";
 
 export interface SessionState {
   loading: boolean;
@@ -11,13 +11,16 @@ export interface SessionState {
   user: User | null;
   activeWorkspace: Workspace | null;
   workspaces: Workspace[];
-  roles: string[];
+  groups: SessionGroup[];
   permissions: string[];
 
   hydrate: (session: SessionResponse) => void;
   loadSession: () => Promise<void>;
+  switchWorkspace: (workspaceId: number) => Promise<void>;
   logout: () => void;
 }
+
+const AUTH_API = process.env.NEXT_PUBLIC_AUTH_API;
 
 export function createSessionStore(initialSession?: SessionResponse) {
   return createStore<SessionState>((set) => ({
@@ -26,7 +29,7 @@ export function createSessionStore(initialSession?: SessionResponse) {
     user: initialSession?.user ?? null,
     activeWorkspace: initialSession?.active_workspace ?? null,
     workspaces: initialSession?.workspaces ?? [],
-    roles: initialSession?.roles ?? [],
+    groups: initialSession?.groups ?? [],
     permissions: initialSession?.permissions ?? [],
     hydrate(session: SessionResponse) {
       if (!session.authenticated) {
@@ -40,7 +43,7 @@ export function createSessionStore(initialSession?: SessionResponse) {
         user: session.user,
         activeWorkspace: session.active_workspace,
         workspaces: session.workspaces,
-        roles: session.roles,
+        groups: session.groups,
         permissions: session.permissions,
       });
     },
@@ -64,7 +67,7 @@ export function createSessionStore(initialSession?: SessionResponse) {
           user: session.user,
           activeWorkspace: session.active_workspace,
           workspaces: session.workspaces,
-          roles: session.roles,
+          groups: session.groups,
           permissions: session.permissions,
         });
 
@@ -76,13 +79,23 @@ export function createSessionStore(initialSession?: SessionResponse) {
       }
     },
 
+    async switchWorkspace(workspaceId: number) {
+      await fetch(`${AUTH_API}/auth/switch-workspace`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ workspace_id: workspaceId }),
+      });
+      window.location.reload();
+    },
+
     logout() {
       set({
         authenticated: false,
         user: null,
         activeWorkspace: null,
         workspaces: [],
-        roles: [],
+        groups: [],
         permissions: [],
       });
     },

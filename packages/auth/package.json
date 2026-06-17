@@ -21,6 +21,10 @@
     "./api/session.server": {
       "types": "./src/api/session.server.ts",
       "default": "./dist/api/session.server.js"
+    },
+    "./hooks/usePermissions": {
+      "types": "./src/hooks/usePermissions.ts",
+      "default": "./dist/hooks/usePermissions.js"
     }
   },
   "devDependencies": {

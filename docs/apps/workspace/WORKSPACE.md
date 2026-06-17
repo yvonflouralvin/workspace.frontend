@@ -275,6 +275,46 @@ Les `apps[]` passées à la TopBar sont déclarées statiquement dans le layout 
 
 ---
 
+## Membres & Groupes RBAC
+
+`/members` et `/members/groups` consomment l'API RBAC du backend `auth`
+(`backends/docs/services/auth/AUTH.md`) via des routes proxy Next.js qui forwardent
+le cookie `access_token` server-to-server (même pattern que `/api/auth/session`).
+
+```
+app/api/workspaces/[workspaceId]/
+  members/route.ts                              GET, POST
+  members/[membershipId]/route.ts                DELETE
+  members/[membershipId]/permissions/route.ts    PUT
+  members/[membershipId]/groups/route.ts         PUT
+  groups/route.ts                                GET, POST
+  groups/[groupId]/route.ts                      PATCH, DELETE
+  groups/[groupId]/permissions/route.ts          PUT
+app/api/permissions/route.ts                     GET (catalogue)
+```
+
+Toutes délèguent à `app/lib/server/proxy.ts` (`forwardToAuthApi`), qui forwarde
+cookie + méthode + body vers `AUTH_API_URL`.
+
+**Client (`app/lib/api.ts`)** : `listMembers`, `createMember`, `removeMember`,
+`setMemberPermissions`, `setMemberGroups`, `listGroups`, `createGroup`, `updateGroup`,
+`deleteGroup`, `setGroupPermissions`, `listPermissions`.
+
+**Pages :**
+- `/members` — tableau des membres (`Badge` par groupe), actions gardées par
+  `usePermissions().can(...)` (`members.invite`, `members.manage`, `members.remove`).
+  Modals : `AddMemberModal`, `MemberPermissionsModal` (toggle groupes + permissions
+  directes).
+- `/members/groups` — arbre des groupes (`GroupTree`, récursif sur `parent_id`,
+  pas d'héritage automatique des permissions) + panneau d'édition
+  (`GroupEditorPanel` : nom, description, permissions ; protégé si `is_system`)
+  + `CreateGroupModal`.
+
+**Composants partagés ajoutés à `packages/ui/src/`** (règle du monorepo — primitives
+réutilisables) : `Modal.tsx`, `Badge.tsx`, `Checkbox.tsx`.
+
+---
+
 ## Ordre d'implémentation
 
 1. `packages/ui/src/types/shell.ts` — types

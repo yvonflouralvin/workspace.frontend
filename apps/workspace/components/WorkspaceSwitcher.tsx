@@ -12,8 +12,9 @@ function workspaceColor(id: number): string {
 }
 
 export function WorkspaceSwitcher() {
-  const { activeWorkspace, workspaces } = useSessionStore();
+  const { activeWorkspace, workspaces, switchWorkspace } = useSessionStore();
   const [open, setOpen] = useState(false);
+  const [switching, setSwitching] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -23,6 +24,13 @@ export function WorkspaceSwitcher() {
     document.addEventListener("mousedown", onMouseDown);
     return () => document.removeEventListener("mousedown", onMouseDown);
   }, []);
+
+  const handleSwitch = async (workspaceId: number) => {
+    if (workspaceId === activeWorkspace?.id || switching) return;
+    setSwitching(true);
+    setOpen(false);
+    await switchWorkspace(workspaceId);
+  };
 
   if (!activeWorkspace) return null;
 
@@ -59,8 +67,9 @@ export function WorkspaceSwitcher() {
             {workspaces.map((ws) => (
               <button
                 key={ws.id}
-                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-surface-container transition-colors"
-                onClick={() => setOpen(false)}
+                disabled={switching}
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-surface-container transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={() => handleSwitch(ws.id)}
               >
                 <span
                   className="w-6 h-6 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0"

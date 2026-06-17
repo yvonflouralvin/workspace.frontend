@@ -12,6 +12,11 @@ export interface User {
   username: string;
 }
 
+export interface SessionGroup {
+  id: number;
+  name: string;
+}
+
 export interface SessionResponse {
   authenticated: boolean;
 
@@ -21,7 +26,7 @@ export interface SessionResponse {
 
   workspaces: Workspace[];
 
-  roles: string[];
+  groups: SessionGroup[];
 
   permissions: string[];
 }

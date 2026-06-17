@@ -1,10 +1,11 @@
 // packages/auth/store/session.store.ts
 
-import { create } from "zustand";
+import { createStore, useStore, type StoreApi } from "zustand";
+import { createContext, useContext } from "react";
 import { getSession } from "../api/session.js";
-import {User,Workspace,SessionGroup,} from "../types/session.js";
+import {User,Workspace,SessionGroup,SessionResponse,} from "../types/session.js";
 
-interface SessionState {
+export interface SessionState {
   loading: boolean;
   authenticated: boolean;
   user: User | null;
@@ -13,6 +14,7 @@ interface SessionState {
   groups: SessionGroup[];
   permissions: string[];
 
+  hydrate: (session: SessionResponse) => void;
   loadSession: () => Promise<void>;
   switchWorkspace: (workspaceId: number) => Promise<void>;
   logout: () => void;
@@ -20,15 +22,31 @@ interface SessionState {
 
 const AUTH_API = process.env.NEXT_PUBLIC_AUTH_API;
 
-export const useSessionStore =
-  create<SessionState>((set, get) => ({
-    loading: true,
-    authenticated: false,
-    user: null,
-    activeWorkspace: null,
-    workspaces: [],
-    groups: [],
-    permissions: [],
+export function createSessionStore(initialSession?: SessionResponse) {
+  return createStore<SessionState>((set) => ({
+    loading: !initialSession,
+    authenticated: initialSession?.authenticated ?? false,
+    user: initialSession?.user ?? null,
+    activeWorkspace: initialSession?.active_workspace ?? null,
+    workspaces: initialSession?.workspaces ?? [],
+    groups: initialSession?.groups ?? [],
+    permissions: initialSession?.permissions ?? [],
+    hydrate(session: SessionResponse) {
+      if (!session.authenticated) {
+        set({ loading: false, authenticated: false });
+        return;
+      }
+
+      set({
+        loading: false,
+        authenticated: true,
+        user: session.user,
+        activeWorkspace: session.active_workspace,
+        workspaces: session.workspaces,
+        groups: session.groups,
+        permissions: session.permissions,
+      });
+    },
     async loadSession() {
       try {
         const session =
@@ -82,3 +100,22 @@ export const useSessionStore =
       });
     },
   }));
+}
+
+export type SessionStoreApi = StoreApi<SessionState>;
+
+export const SessionStoreContext = createContext<SessionStoreApi | null>(null);
+
+function identity<T>(state: T): T {
+  return state;
+}
+
+export function useSessionStore<U = SessionState>(
+  selector: (state: SessionState) => U = identity as (state: SessionState) => U
+): U {
+  const store = useContext(SessionStoreContext);
+  if (!store) {
+    throw new Error("useSessionStore must be used within a SessionProvider");
+  }
+  return useStore(store, selector);
+}

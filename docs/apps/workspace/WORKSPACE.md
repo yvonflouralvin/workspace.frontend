@@ -243,15 +243,32 @@ C'est la destination du lien "Toutes les applications" dans l'AppSelector.
 
 ## Flux de données
 
+### Session — chargement server-side {#session-ssr}
+
+`app/layout.tsx` (Server Component) appelle `getServerSession()` (`@repo/auth/api/session.server`)
+qui forwarde les cookies de la requête entrante vers `AUTH_API_URL` (Flask, server-to-server,
+via `next/headers`). Le résultat est passé en prop `initialSession` à `<SessionProvider>`.
+
+`SessionProvider` crée un store Zustand **par requête/montage** (`createSessionStore(initialSession)`
+dans `packages/auth/src/store/session.store.ts`, via `useState` lazy init — jamais un singleton
+module global, pour éviter toute fuite de session entre requêtes concurrentes côté serveur) et
+l'expose via React Context. Le store est donc déjà rempli (`loading: false`, `user`, `activeWorkspace`,
+`workspaces`) dès le tout premier rendu, y compris le rendu SSR — aucun flash "Chargement…" au
+chargement de la page d'accueil.
+
+`useSessionStore(selector?)` lit ce contexte (lève une erreur si utilisé hors `SessionProvider`).
+Si `initialSession` n'est pas fourni (apps sans SSR de session), le provider retombe sur
+`loadSession()` (fetch client classique via le proxy `/api/auth/session`).
+
 ```
-Backend session API
-      │
+RootLayout (Server Component)
+      │  getServerSession() ── cookies forwardés ──▶ AUTH_API_URL (Flask)
       ▼
-useSessionStore (packages/auth)
+SessionProvider (Client) ── crée le store par montage, hydraté avec initialSession
       │
       ├── WorkspaceSwitcher  →  activeWorkspace, workspaces[]
       │
-      └── layout.tsx         →  user → Sidebar (user menu) + TopBar (avatar)
+      └── DashboardShell     →  user → Sidebar (user menu) + TopBar (avatar)
 ```
 
 Les `apps[]` passées à la TopBar sont déclarées statiquement dans le layout pour l'instant (liste des apps du monorepo). Elles pourront être chargées depuis l'API quand la liste sera dynamique.

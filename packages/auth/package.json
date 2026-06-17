@@ -18,6 +18,10 @@
       "types": "./src/hooks/useSession.ts",
       "default": "./dist/hooks/useSession.js"
     },
+    "./api/session.server": {
+      "types": "./src/api/session.server.ts",
+      "default": "./dist/api/session.server.js"
+    },
     "./hooks/usePermissions": {
       "types": "./src/hooks/usePermissions.ts",
       "default": "./dist/hooks/usePermissions.js"
@@ -28,6 +32,9 @@
     "postcss": "^8.4.31",
     "tailwind-config": "^0.1.2",
     "typescript": "latest"
+  },
+  "peerDependencies": {
+    "next": ">=15"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",

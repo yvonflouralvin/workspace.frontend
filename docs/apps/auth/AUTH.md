@@ -87,8 +87,13 @@ entre `localhost:3001` et `localhost:3005`.
 
 ## Relation avec les autres apps
 
-- `apps/workspace/middleware.ts` — redirige vers `NEXT_PUBLIC_AUTH_API_AUTH_DOMAIN`
+- `apps/workspace/proxy.ts` — redirige vers `NEXT_PUBLIC_AUTH_API_AUTH_DOMAIN`
   (cette app) quand le cookie `access_token` est absent.
-- `packages/auth` (`@repo/auth`) — `getSession()` appelle `NEXT_PUBLIC_AUTH_API`
-  **directement depuis le browser** (pas encore proxié). Acceptable pour l'instant car
-  la session est lue après redirect, quand les cookies sont déjà en place.
+- `packages/auth` (`@repo/auth`) — deux chemins de lecture de session :
+  - **Server-side** (`getServerSession()`, `api/session.server.ts`) : appelle
+    `AUTH_API_URL` directement depuis le serveur Next (cookies forwardés via
+    `next/headers`), utilisé dans le `RootLayout` de `workspace` pour hydrater la
+    session avant le premier rendu. Voir `docs/apps/workspace/WORKSPACE.md#session-ssr`.
+  - **Client-side** (`getSession()`, `api/session.ts`) : appelle le proxy local
+    `NEXT_PUBLIC_SESSION_API` (`/api/auth/session`), utilisé en fallback quand
+    aucune session n'a été pré-chargée côté serveur (apps sans SSR de session).

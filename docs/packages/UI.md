@@ -73,6 +73,16 @@ sélectionnées disparaissent de la liste déroulante (déjà visibles sous form
 />
 ```
 
+### `PasswordInput` (`src/PasswordInput.tsx`)
+
+Champ mot de passe avec icône afficher/masquer, et un bouton optionnel de génération
+aléatoire (`generatable`) qui remplit le champ et bascule en clair automatiquement (pour
+copier/partager le mot de passe généré).
+
+```tsx
+<PasswordInput value={password} onChange={setPassword} generatable placeholder="..." />
+```
+
 ### `AccessDenied` (`src/AccessDenied.tsx`)
 
 Server Component (pas de `"use client"`, aucune interactivité) — écran plein-page affiché

@@ -1,4 +1,4 @@
-import type { Member, Group, AppPermissionGroup } from "./types";
+import type { Member, Group, AppPermissionGroup, AppSettingGroup } from "./types";
 
 export class ApiError extends Error {
   status: number;
@@ -136,5 +136,23 @@ export async function setGroupPermissions(
 
 export async function listPermissions(): Promise<{ groups: AppPermissionGroup[] }> {
   const response = await fetch(`/api/permissions`);
+  return parseResponse(response);
+}
+
+export async function listWorkspaceSettings(
+  workspaceId: number
+): Promise<{ groups: AppSettingGroup[] }> {
+  const response = await fetch(`/api/workspaces/${workspaceId}/settings`);
+  return parseResponse(response);
+}
+
+export async function updateWorkspaceSettings(
+  workspaceId: number,
+  values: { app_setting_id: number; value: unknown }[]
+): Promise<{ groups: AppSettingGroup[] }> {
+  const response = await fetch(
+    `/api/workspaces/${workspaceId}/settings`,
+    jsonRequest("PUT", { values })
+  );
   return parseResponse(response);
 }

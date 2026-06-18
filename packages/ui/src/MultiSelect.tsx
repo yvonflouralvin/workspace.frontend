@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { CloseOutlined, SearchOutlined } from "@mui/icons-material";
 
 interface OptionLike {
-  id: number;
+  id: string | number;
   label: string;
 }
 
@@ -16,8 +16,8 @@ export function MultiSelect({
   emptyLabel = "Aucun résultat.",
 }: {
   options: OptionLike[];
-  selectedIds: number[];
-  onChange: (ids: number[]) => void;
+  selectedIds: (string | number)[];
+  onChange: (ids: (string | number)[]) => void;
   placeholder?: string;
   emptyLabel?: string;
 }) {
@@ -41,12 +41,12 @@ export function MultiSelect({
     .filter((option) => !selectedIds.includes(option.id))
     .filter((option) => option.label.toLowerCase().includes(normalizedQuery));
 
-  function addOption(id: number) {
+  function addOption(id: string | number) {
     onChange([...selectedIds, id]);
     setQuery("");
   }
 
-  function removeOption(id: number) {
+  function removeOption(id: string | number) {
     onChange(selectedIds.filter((existing) => existing !== id));
   }
 

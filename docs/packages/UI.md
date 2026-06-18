@@ -64,6 +64,11 @@ Sélecteur multiple générique avec recherche : tape pour filtrer une liste d'o
 pour ajouter, rendu en tag avec une croix pour retirer directement. Les options déjà
 sélectionnées disparaissent de la liste déroulante (déjà visibles sous forme de tags).
 
+`OptionLike.id`, `selectedIds` et `onChange` acceptent `string | number` (pas seulement
+`number`) — pour pouvoir représenter aussi bien des ids numériques (groupes, permissions)
+que des valeurs de paramètre `single_choice`/`multi_choice` (ex. `"fr"`, `"liste"`, voir
+`/settings` dans `WORKSPACE.md`).
+
 ```tsx
 <MultiSelect
   options={groups.map((g) => ({ id: g.id, label: g.name }))}

@@ -7,11 +7,14 @@ import { AppShell } from "@repo/ui/shell/AppShell";
 import { Sidebar } from "@repo/ui/shell/Sidebar";
 import { TopBar } from "@repo/ui/shell/TopBar";
 import { UserFooter } from "@repo/ui/shell/UserFooter";
+import { WorkspaceSwitcher } from "@repo/ui/WorkspaceSwitcher";
 import { HomeOutlined } from "@mui/icons-material";
 import type { NavItem, AppDefinition } from "@repo/ui/types/shell";
 
+const WORKSPACE_DOMAIN = process.env.NEXT_PUBLIC_WORKSPACE_DOMAIN ?? "http://localhost:3005";
+
 const NAV_ITEMS: NavItem[] = [
-  { label: "Accueil", href: "/", icon: <HomeOutlined style={{ fontSize: 20 }} />, exact: true },
+  { label: "Accueil", href: WORKSPACE_DOMAIN, icon: <HomeOutlined style={{ fontSize: 20 }} />, exact: true },
 ];
 
 const APPS: AppDefinition[] = [
@@ -19,7 +22,7 @@ const APPS: AppDefinition[] = [
     id: "workspace",
     name: "Workspace",
     icon: "W",
-    url: process.env.NEXT_PUBLIC_WORKSPACE_DOMAIN ?? "http://localhost:3005",
+    url: WORKSPACE_DOMAIN,
     color: "#3525cd",
     description: "Tableau de bord principal",
   },
@@ -54,6 +57,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     <AppShell
       sidebar={
         <Sidebar
+          topSlot={<WorkspaceSwitcher filterPermission="hr.access" />}
           navItems={NAV_ITEMS}
           bottomSlot={<UserFooter user={userSummary} onLogout={handleLogout} />}
         />

@@ -238,8 +238,23 @@ pour son propre écran `AccessDenied`).
 **Prop `filterPermission?: string`** — ne liste que les workspaces où
 `ws.permissions.includes(filterPermission)`. Utilisé par `AccessDenied` (ex.
 `filterPermission="hr.access"`) pour ne proposer que les workspaces où l'app courante est
-réellement accessible, plutôt que tous les workspaces de l'utilisateur. Sans cette prop
-(usage normal dans la Sidebar), tous les workspaces sont listés.
+réellement accessible, plutôt que tous les workspaces de l'utilisateur. Sans cette prop,
+tous les workspaces sont listés (cas de `workspace` — l'app "maison", accès garanti par
+définition pour tout membre).
+
+**Convention transversale — switcher toujours visible :** chaque `DashboardShell` (toutes
+les apps) passe `<WorkspaceSwitcher />` en `topSlot` du `Sidebar`, pour pouvoir changer de
+workspace sans devoir repasser par `workspace`. Dans une app où l'accès n'est pas garanti
+(`hr` et toute future app non-`workspace`), filtrer avec `filterPermission="<key>.access"`
+(même valeur que celle utilisée dans `AccessDenied` de cette app) pour éviter de proposer un
+workspace où l'utilisateur atterrirait immédiatement sur l'écran `AccessDenied`.
+
+**Convention transversale — "Accueil" renvoie toujours vers `workspace` :** dans
+`DashboardShell`, l'item de nav "Accueil" doit toujours pointer vers l'app `workspace`,
+quelle que soit l'app courante. Dans `apps/workspace` lui-même, `href="/"` suffit (c'est
+déjà son propre accueil). Dans toute autre app (`hr`...), `href` doit être l'URL **absolue**
+de `workspace` (`process.env.NEXT_PUBLIC_WORKSPACE_DOMAIN`) — `next/link` gère nativement
+les `href` absolus cross-origin (même technique que `AppSelector` pour changer d'app).
 
 ---
 

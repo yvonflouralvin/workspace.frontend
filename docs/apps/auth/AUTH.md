@@ -10,22 +10,36 @@
 
 ### `/` — Login (`app/page.tsx`)
 
-Boutons "Continuer avec Google"/"Continuer avec Microsoft" toujours visibles en haut
-(`intent=login`, liens directs vers `/api/oauth/<provider>/start` — pas besoin de fetch,
-navigation complète du navigateur). Puis formulaire :
+**Aucun bouton OAuth visible avant de connaître le compte** — la détection des modes
+d'authentification (`getLoginMethods`) pilote entièrement le routage, pour qu'un compte
+verrouillé par une politique d'organisation soit envoyé **directement** vers le bon mode
+sans jamais voir les autres options :
 1. **Email** → `checkEmail()` puis `getLoginMethods(email)`. Si le compte n'existe pas :
-   erreur inline + lien `/register`. Si un seul mode est disponible et que ce n'est pas
-   `password` : passe directement à ce mode (OTP envoyé automatiquement, ou message
-   invitant à utiliser le bouton OAuth correspondant si le compte est verrouillé sur
-   Google/Microsoft par une politique d'organisation).
-2. **Password** → `login()`. En cas de succès : redirect vers `NEXT_PUBLIC_WORKSPACE_DOMAIN`.
-   Si `email_otp` fait partie des méthodes disponibles, un lien "Recevoir un code par email
-   à la place" bascule vers l'étape OTP.
-3. **OTP** (si applicable) — champ à 6 chiffres, `verifyOtp()`. En mode dev
+   erreur inline + lien `/register`. Si aucune méthode n'est activée (cas anormal) : erreur.
+   Sinon, `routeToMethod(methods[0])` si une seule méthode est disponible (cas le plus
+   fréquent : compte personnel avec une seule méthode, ou compte **soumis à une politique
+   d'organisation** — `methods` ne contient alors que le provider imposé) :
+   - `google`/`microsoft` → redirection immédiate (`window.location.href =
+     /api/oauth/<provider>/start?intent=login`), aucune étape intermédiaire.
+   - `email_otp` → code envoyé automatiquement (`requestOtp`), passe à l'étape OTP.
+   - `password` → passe à l'étape Password.
+
+   Si **plusieurs** méthodes sont disponibles (ex. mot de passe + Google liés sur le même
+   compte), passe à l'étape **Choisir** : un bouton par méthode présente dans `methods`
+   uniquement (pas de méthode non activée affichée).
+2. **Choisir** (si applicable) — un bouton par méthode disponible : "Continuer avec mon mot
+   de passe" (→ étape Password), "Continuer avec Google/Microsoft" (redirection immédiate),
+   "Recevoir un code par email" (→ étape OTP). Lien "Changer d'email" pour revenir en arrière.
+3. **Password** → `login()`. En cas de succès : redirect vers `NEXT_PUBLIC_WORKSPACE_DOMAIN`.
+   Si `email_otp` fait aussi partie des méthodes disponibles, un lien "Recevoir un code par
+   email à la place" bascule vers l'étape OTP (raccourci, en plus du passage par "Choisir").
+4. **OTP** (si applicable) — champ à 6 chiffres, `verifyOtp()`. En mode dev
    (`MAIL_DEV_MODE`), le code est affiché directement sous le champ pour pouvoir tester sans
    vraie boîte mail. Lien "Renvoyer le code".
 
-Bouton "Changer" permet de revenir à l'étape email depuis n'importe quelle étape suivante.
+Bouton "Changer" permet de revenir à l'étape email depuis n'importe quelle étape suivante
+(redétecte les méthodes disponibles au prochain envoi, utile si la politique a changé entre
+deux tentatives).
 
 ### `/register` — Inscription (`app/register/page.tsx`)
 

@@ -22,8 +22,12 @@ const PROVIDER_LABELS: Record<string, string> = {
   google: "Google",
 };
 
+function startOAuth(provider: string) {
+  window.location.href = `/api/oauth/${provider}/start?intent=login`;
+}
+
 export default function Home() {
-  const [step, setStep] = useState<"email" | "password" | "otp">("email");
+  const [step, setStep] = useState<"email" | "choose" | "password" | "otp">("email");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [methods, setMethods] = useState<string[]>([]);
@@ -49,24 +53,34 @@ export default function Home() {
       const { methods: availableMethods } = await getLoginMethods(email);
       setMethods(availableMethods);
 
-      if (availableMethods.length === 1 && availableMethods[0] !== "password") {
-        const onlyMethod = availableMethods[0];
-        if (onlyMethod === "email_otp") {
-          await sendLoginOtp();
-        } else {
-          setError(
-            `Ce compte se connecte avec ${PROVIDER_LABELS[onlyMethod] ?? onlyMethod}. Utilisez le bouton ci-dessus.`
-          );
-        }
+      if (availableMethods.length === 0) {
+        setError("Aucune méthode de connexion n'est activée pour ce compte.");
         return;
       }
 
-      setStep("password");
+      if (availableMethods.length === 1) {
+        await routeToMethod(availableMethods[0]);
+        return;
+      }
+
+      setStep("choose");
     } catch {
       setError("Impossible de vérifier cet email. Veuillez réessayer.");
     } finally {
       setLoading(false);
     }
+  }
+
+  async function routeToMethod(provider: string) {
+    if (provider === "google" || provider === "microsoft") {
+      startOAuth(provider);
+      return;
+    }
+    if (provider === "email_otp") {
+      await sendLoginOtp();
+      return;
+    }
+    setStep("password");
   }
 
   async function handlePasswordSubmit(event: FormEvent) {
@@ -203,6 +217,7 @@ export default function Home() {
             <h2 className="font-display text-headline-lg text-on-surface tracking-tight">Welcome back</h2>
             <p className="font-body-md text-body-md text-on-surface-variant">
               {step === "email" && "Enter your work email to access your workspace."}
+              {step === "choose" && "Comment voulez-vous vous connecter ?"}
               {step === "password" && "Enter your password to continue."}
               {step === "otp" && "Entrez le code reçu par email."}
             </p>
@@ -225,57 +240,90 @@ export default function Home() {
 
           {/* <!-- Email Step --> */}
           {step === "email" && (
-            <div className="space-y-lg">
-              <div className="space-y-sm">
-                <a
-                  href="/api/oauth/google/start?intent=login"
-                  className="w-full py-3 border border-outline-variant rounded-lg font-body-md text-on-surface hover:bg-surface-container-low transition-all flex items-center justify-center gap-2"
-                >
-                  Continuer avec Google
-                </a>
-                <a
-                  href="/api/oauth/microsoft/start?intent=login"
-                  className="w-full py-3 border border-outline-variant rounded-lg font-body-md text-on-surface hover:bg-surface-container-low transition-all flex items-center justify-center gap-2"
-                >
-                  Continuer avec Microsoft
-                </a>
-              </div>
-
-              <div className="flex items-center gap-sm">
-                <div className="flex-1 h-px bg-outline-variant" />
-                <span className="font-label-sm text-label-sm text-on-surface-variant">ou</span>
-                <div className="flex-1 h-px bg-outline-variant" />
-              </div>
-
-              <form className="space-y-lg" onSubmit={handleEmailSubmit}>
-                <div className="space-y-xs">
-                  <label className="font-label-md text-label-md text-on-surface-variant ml-1" htmlFor="email">Work Email</label>
-                  <div className="relative group">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <AlternateEmail />
-                    </div>
-                    <input
-                      className="w-full pl-10 pr-4 py-3 bg-surface border border-outline-variant rounded-lg font-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-outline-variant"
-                      id="email"
-                      name="email"
-                      placeholder="name@company.com"
-                      type="email"
-                      required
-                      value={email}
-                      onChange={(event) => setEmail(event.target.value)}
-                    />
+            <form className="space-y-lg" onSubmit={handleEmailSubmit}>
+              <div className="space-y-xs">
+                <label className="font-label-md text-label-md text-on-surface-variant ml-1" htmlFor="email">Work Email</label>
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <AlternateEmail />
                   </div>
+                  <input
+                    className="w-full pl-10 pr-4 py-3 bg-surface border border-outline-variant rounded-lg font-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-outline-variant"
+                    id="email"
+                    name="email"
+                    placeholder="name@company.com"
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                  />
                 </div>
+              </div>
 
+              <button
+                className="w-full py-3.5 bg-primary text-white font-display text-body-lg font-semibold rounded-lg shadow-lg shadow-primary/20 hover:bg-primary-container hover:shadow-xl hover:shadow-primary/30 transform active:scale-[0.98] transition-all duration-100 flex items-center justify-center gap-2 disabled:opacity-60"
+                type="submit"
+                disabled={loading}
+              >
+                {loading ? "Vérification..." : "Continuer"}
+                <ArrowForward />
+              </button>
+            </form>
+          )}
+
+          {/* <!-- Choose Method Step --> */}
+          {step === "choose" && (
+            <div className="space-y-sm">
+              <div className="flex items-center gap-1 px-1 mb-2">
                 <button
-                  className="w-full py-3.5 bg-primary text-white font-display text-body-lg font-semibold rounded-lg shadow-lg shadow-primary/20 hover:bg-primary-container hover:shadow-xl hover:shadow-primary/30 transform active:scale-[0.98] transition-all duration-100 flex items-center justify-center gap-2 disabled:opacity-60"
-                  type="submit"
-                  disabled={loading}
+                  type="button"
+                  onClick={handleBack}
+                  className="flex items-center gap-1 font-label-md text-label-md text-primary hover:underline transition-all"
                 >
-                  {loading ? "Vérification..." : "Continuer"}
-                  <ArrowForward />
+                  <ArrowBack fontSize="small" /> Changer d&apos;email
                 </button>
-              </form>
+              </div>
+
+              {methods.includes("password") && (
+                <button
+                  type="button"
+                  onClick={() => setStep("password")}
+                  className="w-full py-3 border border-outline-variant rounded-lg font-body-md text-on-surface hover:bg-surface-container-low transition-all flex items-center justify-center gap-2"
+                >
+                  Continuer avec mon mot de passe
+                </button>
+              )}
+
+              {methods.includes("google") && (
+                <button
+                  type="button"
+                  onClick={() => startOAuth("google")}
+                  className="w-full py-3 border border-outline-variant rounded-lg font-body-md text-on-surface hover:bg-surface-container-low transition-all flex items-center justify-center gap-2"
+                >
+                  Continuer avec {PROVIDER_LABELS.google}
+                </button>
+              )}
+
+              {methods.includes("microsoft") && (
+                <button
+                  type="button"
+                  onClick={() => startOAuth("microsoft")}
+                  className="w-full py-3 border border-outline-variant rounded-lg font-body-md text-on-surface hover:bg-surface-container-low transition-all flex items-center justify-center gap-2"
+                >
+                  Continuer avec {PROVIDER_LABELS.microsoft}
+                </button>
+              )}
+
+              {methods.includes("email_otp") && (
+                <button
+                  type="button"
+                  onClick={sendLoginOtp}
+                  disabled={loading}
+                  className="w-full py-3 border border-outline-variant rounded-lg font-body-md text-on-surface hover:bg-surface-container-low transition-all flex items-center justify-center gap-2 disabled:opacity-60"
+                >
+                  Recevoir un code par email
+                </button>
+              )}
             </div>
           )}
 

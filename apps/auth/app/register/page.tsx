@@ -9,6 +9,8 @@ import {
   AlternateEmail,
   Person,
   Apartment,
+  PersonOutlined,
+  GroupsOutlined,
 } from "@mui/icons-material"
 
 import Image from 'next/image'
@@ -21,6 +23,7 @@ import { checkEmail, register, login, ApiError } from "../lib/api"
 const WORKSPACE_DOMAIN = process.env.NEXT_PUBLIC_WORKSPACE_DOMAIN!;
 
 type Step = "email" | "name" | "password" | "workspace";
+type WorkspaceType = "individual" | "organization";
 
 const STEPS: Step[] = ["email", "name", "password", "workspace"];
 
@@ -30,6 +33,26 @@ const STEP_LABELS: Record<Step, string> = {
   password: "Choisissez un mot de passe",
   workspace: "Configurez votre workspace",
 };
+
+const WORKSPACE_TYPE_OPTIONS: {
+  value: WorkspaceType;
+  label: string;
+  description: string;
+  icon: React.ReactNode;
+}[] = [
+  {
+    value: "individual",
+    label: "Individuel",
+    description: "Un espace personnel, pour vous seul.",
+    icon: <PersonOutlined />,
+  },
+  {
+    value: "organization",
+    label: "Organisation",
+    description: "Un espace pour collaborer avec votre équipe.",
+    icon: <GroupsOutlined />,
+  },
+];
 
 function slugifyName(value: string) {
   return value
@@ -49,6 +72,7 @@ function RegisterForm() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [workspaceName, setWorkspaceName] = useState("");
+  const [workspaceType, setWorkspaceType] = useState<WorkspaceType>("individual");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -118,7 +142,7 @@ function RegisterForm() {
     setLoading(true);
 
     try {
-      await register(email, password, fullName, workspaceName);
+      await register(email, password, fullName, workspaceName, workspaceType);
       await login(email, password);
       window.location.href = WORKSPACE_DOMAIN;
     } catch (err) {
@@ -403,6 +427,30 @@ function RegisterForm() {
                 <p className="font-body-sm text-body-sm text-on-surface-variant ml-1">
                   Vous pourrez inviter votre équipe une fois le workspace créé.
                 </p>
+              </div>
+
+              <div className="space-y-xs">
+                <label className="font-label-md text-label-md text-on-surface-variant ml-1">Type de workspace</label>
+                <div className="grid grid-cols-2 gap-sm">
+                  {WORKSPACE_TYPE_OPTIONS.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => setWorkspaceType(option.value)}
+                      className={`text-left p-3 rounded-lg border transition-all space-y-1 ${
+                        workspaceType === option.value
+                          ? "border-primary bg-primary/5"
+                          : "border-outline-variant hover:bg-surface-container-low"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 text-on-surface">
+                        {option.icon}
+                        <span className="font-body-md text-body-md font-semibold">{option.label}</span>
+                      </div>
+                      <p className="font-body-sm text-body-sm text-on-surface-variant">{option.description}</p>
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div className="flex gap-md">

@@ -91,13 +91,23 @@ copier/partager le mot de passe généré).
 ### `WorkspaceSwitcher` (`src/WorkspaceSwitcher.tsx`)
 
 Lit `useSessionStore` (`activeWorkspace`, `workspaces`, `switchWorkspace`). Affiche le
-workspace actif, popover avec la liste des autres + lien "Créer un workspace". Partagé
-entre toutes les apps (nécessite que l'app courante expose un proxy same-origin
-`POST /api/switch-workspace`, voir `docs/apps/workspace/WORKSPACE.md`).
+workspace actif, popover avec la liste des autres + lien "Créer un workspace" (URL absolue
+`${NEXT_PUBLIC_WORKSPACE_DOMAIN}/onboarding/new-workspace` — fonctionne depuis n'importe
+quelle app, pas seulement `workspace`). Partagé entre toutes les apps (nécessite que l'app
+courante expose un proxy same-origin `POST /api/switch-workspace`, voir
+`docs/apps/workspace/WORKSPACE.md`).
 
 **Prop `filterPermission?: string`** — restreint la liste aux workspaces où
 `ws.permissions.includes(filterPermission)`. Utilisé par `AccessDenied` ; omis dans l'usage
 normal (Sidebar) pour lister tous les workspaces.
+
+**Mode restreint :** si `activeWorkspace.restrict_members_to_workspace` est vrai et que
+l'utilisateur n'est pas owner de ce workspace (`!activeWorkspace.is_owner`), le composant
+rend une version statique (avatar + nom, sans interaction) au lieu du bouton/popover —
+aucune permission ne contrôle ça, c'est une politique de `Workspace` (organization
+uniquement), pas du RBAC. `switchWorkspace` lève désormais une erreur si la réponse du
+proxy n'est pas `ok` (au lieu de silencieusement recharger) ; `handleSwitch` l'attrape et
+affiche une alerte.
 
 ```tsx
 <WorkspaceSwitcher />

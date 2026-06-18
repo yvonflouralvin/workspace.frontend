@@ -23,6 +23,10 @@ Wizard 4 étapes avec barre de progression et navigation "Retour" :
 2. **Nom complet**
 3. **Mot de passe** + confirmation (min 8 caractères)
 4. **Nom du workspace** — pré-rempli avec la partie avant `@` de l'email (slugifiée), éditable.
+   Inclut aussi un sélecteur de **type** (deux cartes "Individuel"/"Organisation",
+   `Individuel` présélectionné) — `workspaceType` envoyé comme `workspace_type` à
+   `POST /auth/register`. Fixé à la création, pas modifiable depuis cette app (voir
+   `backends/docs/services/auth/AUTH.md`, modèle `Workspace`).
 
 À la soumission finale : `register()` → `login()` → redirect vers `NEXT_PUBLIC_WORKSPACE_DOMAIN`.
 
@@ -43,7 +47,7 @@ Browser → /api/register    → fetch(AUTH_API_URL/auth/register)
 ```ts
 checkEmail(email)                               // → { exists: boolean }
 login(email, password)                          // → void (cookies set via proxy)
-register(email, password, fullName, workspaceName) // → void
+register(email, password, fullName, workspaceName, workspaceType) // → void
 ```
 
 ---

@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useSessionStore } from "@repo/auth/store/session.store";
 
 const COLORS = ["#3525cd", "#006c49", "#004598", "#b91c1c", "#a16207", "#7c3aed"];
+const WORKSPACE_DOMAIN = process.env.NEXT_PUBLIC_WORKSPACE_DOMAIN ?? "http://localhost:3005";
 
 function workspaceColor(id: number): string {
   return COLORS[id % COLORS.length] ?? "#3525cd";
@@ -33,17 +34,40 @@ export function WorkspaceSwitcher({
     if (workspaceId === activeWorkspace?.id || switching) return;
     setSwitching(true);
     setOpen(false);
-    await switchWorkspace(workspaceId);
+    try {
+      await switchWorkspace(workspaceId);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Impossible de changer de workspace.");
+      setSwitching(false);
+    }
   };
 
   if (!activeWorkspace) return null;
 
+  const color = workspaceColor(activeWorkspace.id);
+  const initial = activeWorkspace.name[0]?.toUpperCase() ?? "W";
+
+  const restricted = !activeWorkspace.is_owner && activeWorkspace.restrict_members_to_workspace;
+
+  if (restricted) {
+    return (
+      <div className="w-full flex items-center gap-2.5 px-2 py-2 rounded-xl">
+        <span
+          className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+          style={{ backgroundColor: color }}
+        >
+          {initial}
+        </span>
+        <span className="flex-1 text-sm font-semibold text-on-surface text-left truncate">
+          {activeWorkspace.name}
+        </span>
+      </div>
+    );
+  }
+
   const visibleWorkspaces = filterPermission
     ? workspaces.filter((ws) => ws.permissions.includes(filterPermission))
     : workspaces;
-
-  const color = workspaceColor(activeWorkspace.id);
-  const initial = activeWorkspace.name[0]?.toUpperCase() ?? "W";
 
   return (
     <div ref={ref} className="relative">
@@ -96,7 +120,7 @@ export function WorkspaceSwitcher({
           </div>
           <div className="border-t border-outline-variant p-1.5">
             <Link
-              href="/onboarding/new-workspace"
+              href={`${WORKSPACE_DOMAIN}/onboarding/new-workspace`}
               onClick={() => setOpen(false)}
               className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm text-on-surface-variant hover:bg-surface-container transition-colors"
             >

@@ -41,7 +41,8 @@ export async function register(
   email: string,
   password: string,
   fullName: string,
-  workspaceName: string
+  workspaceName: string,
+  workspaceType: "individual" | "organization"
 ) {
   const response = await fetch(`/api/register`, {
     method: "POST",
@@ -51,6 +52,7 @@ export async function register(
       password,
       full_name: fullName,
       workspace_name: workspaceName,
+      workspace_type: workspaceType,
     }),
   });
 

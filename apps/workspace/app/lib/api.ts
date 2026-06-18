@@ -1,4 +1,11 @@
-import type { Member, Group, AppPermissionGroup, AppSettingGroup } from "./types";
+import type {
+  Member,
+  Group,
+  AppPermissionGroup,
+  AppSettingGroup,
+  WorkspaceDetail,
+  WorkspaceType,
+} from "./types";
 
 export class ApiError extends Error {
   status: number;
@@ -153,6 +160,30 @@ export async function updateWorkspaceSettings(
   const response = await fetch(
     `/api/workspaces/${workspaceId}/settings`,
     jsonRequest("PUT", { values })
+  );
+  return parseResponse(response);
+}
+
+export async function createWorkspace(
+  name: string,
+  type: WorkspaceType
+): Promise<{ id: number; name: string; slug: string; type: WorkspaceType }> {
+  const response = await fetch(`/api/workspaces`, jsonRequest("POST", { name, type }));
+  return parseResponse(response);
+}
+
+export async function getWorkspace(workspaceId: number): Promise<WorkspaceDetail> {
+  const response = await fetch(`/api/workspaces/${workspaceId}`);
+  return parseResponse(response);
+}
+
+export async function updateWorkspacePolicy(
+  workspaceId: number,
+  restrictMembersToWorkspace: boolean
+): Promise<WorkspaceDetail> {
+  const response = await fetch(
+    `/api/workspaces/${workspaceId}`,
+    jsonRequest("PATCH", { restrict_members_to_workspace: restrictMembersToWorkspace })
   );
   return parseResponse(response);
 }

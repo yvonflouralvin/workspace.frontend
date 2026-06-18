@@ -232,8 +232,14 @@ pour son propre écran `AccessDenied`).
 // Click → Popover :
 //   • Liste des workspaces (checkmark sur l'actif), filtrée par `filterPermission` si fourni
 //   • Divider
-//   • [+] Créer un workspace  → /onboarding/new-workspace
+//   • [+] Créer un workspace  → `${NEXT_PUBLIC_WORKSPACE_DOMAIN}/onboarding/new-workspace` (lien absolu)
 ```
+
+**Mode restreint :** si `!activeWorkspace.is_owner && activeWorkspace.restrict_members_to_workspace`,
+le composant rend une version statique (avatar + nom, pas de chevron, pas de popover, pas de
+lien de création) — implémente la politique "pas de switcher, pas de création de workspace"
+pour les membres non-owner d'un workspace `organization` qui l'a activée (voir
+`backends/docs/services/auth/AUTH.md`, section `Workspace`). L'owner n'est jamais concerné.
 
 **Prop `filterPermission?: string`** — ne liste que les workspaces où
 `ws.permissions.includes(filterPermission)`. Utilisé par `AccessDenied` (ex.
@@ -407,6 +413,38 @@ au concept de "groupe de paramètres" pour être généralisé maintenant) :
 pour pouvoir représenter les valeurs de `single_choice`/`multi_choice` (des chaînes,
 ex. `"fr"`, `"liste"`) en plus des ids numériques (groupes, permissions). Changement non
 cassant — voir `docs/packages/UI.md`.
+
+### Restriction des membres (organization uniquement)
+
+Dans le panneau "Général" de `/settings`, si `getWorkspace(workspaceId).type === "organization"`,
+un bloc dédié (`RestrictionToggle`, composant local à `settings/page.tsx`) affiche un
+interrupteur "Restreindre les membres à ce workspace" — **pas** un `SettingDef` du catalogue
+générique : c'est un champ dédié sur `Workspace` côté `auth` (`type`/
+`restrict_members_to_workspace`), pas un paramètre déclaré par une app. Sauvegarde
+**immédiate** au changement (`updateWorkspacePolicy`, `PATCH /api/workspaces/[workspaceId]`)
+— endpoint et état de chargement/erreur distincts du bouton "Enregistrer" des paramètres
+génériques. Voir `backends/docs/services/auth/AUTH.md` pour le détail des garde-fous serveur
+(`POST /auth/workspaces`, `POST /auth/switch-workspace`).
+
+---
+
+## Créer un workspace (`app/(dashboard)/onboarding/new-workspace/page.tsx`)
+
+Page liée depuis `WorkspaceSwitcher` ("+ Créer un workspace"). Formulaire : nom + sélecteur
+de type (deux cartes "Individuel"/"Organisation", `Individuel` présélectionné) →
+`createWorkspace(name, type)` (`app/lib/api.ts`) → `POST /api/workspaces` (nouveau proxy,
+`app/api/workspaces/route.ts`) → `window.location.href = "/"` (le nouveau workspace est déjà
+actif côté serveur après création, comme à l'inscription).
+
+Garde-fou frontend (defense-in-depth, l'enforcement réel est le `403` serveur) : si
+`!activeWorkspace.is_owner && activeWorkspace.restrict_members_to_workspace`, affiche "Accès
+restreint" au lieu du formulaire.
+
+**Proxy `app/api/workspaces/[workspaceId]/route.ts`** (`GET`/`PATCH`, nouveau) — détail et
+politique du workspace, consommé par `/settings` (section ci-dessus).
+
+**Types (`app/lib/types.ts`)** : `WorkspaceType`, `WorkspaceDetail`.
+**API (`app/lib/api.ts`)** : `createWorkspace`, `getWorkspace`, `updateWorkspacePolicy`.
 
 ---
 

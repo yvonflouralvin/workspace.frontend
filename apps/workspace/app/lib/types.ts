@@ -62,3 +62,13 @@ export interface AppSettingGroup {
   name: string;
   settings: SettingDef[];
 }
+
+export type WorkspaceType = "individual" | "organization";
+
+export interface WorkspaceDetail {
+  id: number;
+  name: string;
+  slug: string;
+  type: WorkspaceType;
+  restrict_members_to_workspace: boolean;
+}

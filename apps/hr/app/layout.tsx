@@ -4,6 +4,7 @@ import "./globals.css";
 import { SessionProvider } from '@repo/auth/SessionProvider'
 import { getServerSession } from '@repo/auth/api/session.server'
 import { AccessDenied } from '@repo/ui/AccessDenied'
+import { WorkspaceSwitcher } from '@repo/ui/WorkspaceSwitcher'
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -28,6 +29,9 @@ export default async function RootLayout({
   const session = await getServerSession();
   const accessDenied =
     session.authenticated && !session.permissions.includes("hr.access");
+  const canSwitchTo = session.workspaces.some(
+    (ws) => ws.id !== session.active_workspace?.id && ws.permissions.includes("hr.access")
+  );
 
   return (
     <html
@@ -37,7 +41,11 @@ export default async function RootLayout({
       <body className="min-h-full flex flex-col">
         <SessionProvider initialSession={session}>
           {accessDenied ? (
-            <AccessDenied appName="RH" workspaceName={session.active_workspace?.name} />
+            <AccessDenied
+              appName="RH"
+              workspaceName={session.active_workspace?.name}
+              switcher={canSwitchTo ? <WorkspaceSwitcher filterPermission="hr.access" /> : undefined}
+            />
           ) : (
             children
           )}

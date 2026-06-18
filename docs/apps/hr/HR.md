@@ -11,15 +11,21 @@ minimaliste du registre RBAC multi-application (voir `backends/docs/services/hr/
 
 Câblage session/auth/RBAC complet, mirroring exact du pattern `apps/workspace` :
 
-- `app/layout.tsx` (Server Component, `async`) appelle `getServerSession()` et gate
-  l'accès sur la permission `hr.access` (sinon `<AccessDenied appName="RH" />` de
-  `@repo/ui`, même composant que `workspace`). Si autorisé, monte `<SessionProvider>`.
+- `app/layout.tsx` (Server Component, `async`) appelle `getServerSession()`, monte
+  `<SessionProvider>` puis gate l'accès sur la permission `hr.access` : si absente, rend
+  `<AccessDenied appName="RH" workspaceName={...} switcher={...} />` (`@repo/ui`, même
+  composant que `workspace`) **à l'intérieur** du provider plutôt qu'à sa place. Le
+  `switcher` (`<WorkspaceSwitcher filterPermission="hr.access" />`) n'est passé que si
+  l'utilisateur a `hr.access` dans au moins un autre de ses workspaces.
 - `proxy.ts` (middleware racine) redirige vers l'app `auth` si pas de cookie
   `access_token` — copie exacte de `apps/workspace/proxy.ts`.
 - `app/api/auth/session/route.ts` — proxy cookie → `auth` (filet de sécurité client,
   même pattern que `workspace`).
 - `app/api/departments/route.ts` — proxy cookie → le service backend `hr` (FastAPI,
   port 5001, `GET /hr/departments`).
+- `app/api/switch-workspace/route.ts` — proxy cookie → `auth` (`POST /auth/switch-workspace`),
+  requis par `WorkspaceSwitcher` (appelle `useSessionStore().switchWorkspace`, qui passe
+  toujours par un proxy same-origin de l'app courante, jamais `AUTH_API` directement).
 - `app/api/logout/route.ts` — identique à `workspace`.
 - `components/DashboardShell.tsx` — shell minimal (`AppShell`/`Sidebar`/`TopBar` de
   `@repo/ui`), un seul item de nav ("Accueil"). Le sélecteur d'app (`TopBar`) filtre la

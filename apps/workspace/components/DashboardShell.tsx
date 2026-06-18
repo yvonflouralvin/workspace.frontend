@@ -7,7 +7,7 @@ import { AppShell } from "@repo/ui/shell/AppShell";
 import { Sidebar } from "@repo/ui/shell/Sidebar";
 import { TopBar } from "@repo/ui/shell/TopBar";
 import { UserFooter } from "@repo/ui/shell/UserFooter";
-import { WorkspaceSwitcher } from "./WorkspaceSwitcher";
+import { WorkspaceSwitcher } from "@repo/ui/WorkspaceSwitcher";
 import {
   HomeOutlined,
   FolderOpenOutlined,

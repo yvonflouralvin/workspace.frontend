@@ -85,13 +85,20 @@ copier/partager le mot de passe généré).
 
 ### `AccessDenied` (`src/AccessDenied.tsx`)
 
-Server Component (pas de `"use client"`, aucune interactivité) — écran plein-page affiché
-quand un utilisateur authentifié n'a pas la permission `<app>.access` requise pour ouvrir
-une application. Utilisé dans le `RootLayout` de `workspace` et `hr`, à la place de
-`<SessionProvider>`, dès que `!session.permissions.includes("<key>.access")`.
+Client Component — écran plein-page affiché quand un utilisateur authentifié n'a pas la
+permission `<app>.access` requise pour ouvrir une application. Rendu **à l'intérieur** du
+`<SessionProvider>` (pas à sa place) dans le `RootLayout` de `workspace` et `hr`, dès que
+`!session.permissions.includes("<key>.access")` — nécessaire pour que le `switcher` (slot
+optionnel, ex. `WorkspaceSwitcher` de `workspace`, lui-même `useSessionStore`) ait accès au
+contexte. Affiche aussi le nom du workspace ciblé (`workspaceName`) et un bouton de
+déconnexion intégré (`/api/logout` + redirection vers `NEXT_PUBLIC_AUTH_API_AUTH_DOMAIN`).
 
 ```tsx
-<AccessDenied appName="RH" />
+<AccessDenied
+  appName="Workspace"
+  workspaceName={session.active_workspace?.name}
+  switcher={session.workspaces.length > 1 ? <WorkspaceSwitcher /> : undefined}
+/>
 ```
 
 ---

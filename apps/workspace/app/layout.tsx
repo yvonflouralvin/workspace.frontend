@@ -4,6 +4,7 @@ import "./globals.css";
 import { SessionProvider } from '@repo/auth/SessionProvider'
 import { getServerSession } from '@repo/auth/api/session.server'
 import { AccessDenied } from '@repo/ui/AccessDenied'
+import { WorkspaceSwitcher } from '@/components/WorkspaceSwitcher'
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -35,11 +36,17 @@ export default async function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        {accessDenied ? (
-          <AccessDenied appName="Workspace" />
-        ) : (
-          <SessionProvider initialSession={session}>{children}</SessionProvider>
-        )}
+        <SessionProvider initialSession={session}>
+          {accessDenied ? (
+            <AccessDenied
+              appName="Workspace"
+              workspaceName={session.active_workspace?.name}
+              switcher={session.workspaces.length > 1 ? <WorkspaceSwitcher /> : undefined}
+            />
+          ) : (
+            children
+          )}
+        </SessionProvider>
       </body>
     </html>
   );

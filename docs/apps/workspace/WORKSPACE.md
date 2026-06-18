@@ -284,6 +284,7 @@ le cookie `access_token` server-to-server (même pattern que `/api/auth/session`
 ```
 app/api/workspaces/[workspaceId]/
   members/route.ts                              GET, POST
+  members/check-email/route.ts                   POST (gated members.invite)
   members/[membershipId]/route.ts                DELETE
   members/[membershipId]/permissions/route.ts    PUT
   members/[membershipId]/groups/route.ts         PUT
@@ -291,7 +292,15 @@ app/api/workspaces/[workspaceId]/
   groups/[groupId]/route.ts                      PATCH, DELETE
   groups/[groupId]/permissions/route.ts          PUT
 app/api/permissions/route.ts                     GET (catalogue)
+app/api/switch-workspace/route.ts                POST
 ```
+
+`app/api/switch-workspace/route.ts` est requis par `switchWorkspace` du store
+`@repo/auth` (`session.store.ts`) — appelle ce proxy same-origin, pas `AUTH_API`
+directement (un appel direct cross-origin échouait en 401 : le cookie `access_token`
+est scopé à l'hôte qui a servi la page, jamais envoyé vers `127.0.0.1:5000` depuis le
+navigateur). Toute app utilisant `useSessionStore().switchWorkspace` doit exposer ce
+même proxy.
 
 Toutes délèguent à `app/lib/server/proxy.ts` (`forwardToAuthApi`), qui forwarde
 cookie + méthode + body vers `AUTH_API_URL`.

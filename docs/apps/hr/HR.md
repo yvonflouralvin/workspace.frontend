@@ -28,8 +28,13 @@ Câblage session/auth/RBAC complet, mirroring exact du pattern `apps/workspace` 
   toujours par un proxy same-origin de l'app courante, jamais `AUTH_API` directement).
 - `app/api/logout/route.ts` — identique à `workspace`.
 - `components/DashboardShell.tsx` — shell minimal (`AppShell`/`Sidebar`/`TopBar` de
-  `@repo/ui`), un seul item de nav ("Accueil"). Le sélecteur d'app (`TopBar`) filtre la
-  liste avec `usePermissions().can(\`${app.id}.access\`)`, même logique que `workspace`.
+  `@repo/ui`), un seul item de nav ("Accueil", lien **absolu** vers `NEXT_PUBLIC_WORKSPACE_DOMAIN`
+  — "Accueil" doit toujours renvoyer vers l'app `workspace`, quelle que soit l'app
+  courante). `topSlot={<WorkspaceSwitcher filterPermission="hr.access" />}` rend le
+  switcher de workspace visible dans la sidebar comme dans `workspace` (filtré sur
+  `hr.access` pour éviter de basculer vers un workspace où l'utilisateur n'a pas accès à
+  RH). Le sélecteur d'app (`TopBar`) filtre la liste avec
+  `usePermissions().can(\`${app.id}.access\`)`, même logique que `workspace`.
 - `app/page.tsx` — Client Component : si `can("hr.departments.view")`, fetch
   `/api/departments` et affiche la liste mock ; sinon "Accès restreint à cette section".
 

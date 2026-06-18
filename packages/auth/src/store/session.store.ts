@@ -20,8 +20,6 @@ export interface SessionState {
   logout: () => void;
 }
 
-const AUTH_API = process.env.NEXT_PUBLIC_AUTH_API;
-
 export function createSessionStore(initialSession?: SessionResponse) {
   return createStore<SessionState>((set) => ({
     loading: !initialSession,
@@ -80,9 +78,8 @@ export function createSessionStore(initialSession?: SessionResponse) {
     },
 
     async switchWorkspace(workspaceId: number) {
-      await fetch(`${AUTH_API}/auth/switch-workspace`, {
+      await fetch(`/api/switch-workspace`, {
         method: "POST",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ workspace_id: workspaceId }),
       });

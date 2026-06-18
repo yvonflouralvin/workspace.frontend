@@ -35,11 +35,13 @@ export default async function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        {accessDenied ? (
-          <AccessDenied appName="RH" />
-        ) : (
-          <SessionProvider initialSession={session}>{children}</SessionProvider>
-        )}
+        <SessionProvider initialSession={session}>
+          {accessDenied ? (
+            <AccessDenied appName="RH" workspaceName={session.active_workspace?.name} />
+          ) : (
+            children
+          )}
+        </SessionProvider>
       </body>
     </html>
   );

@@ -32,6 +32,17 @@ export async function listMembers(workspaceId: number): Promise<{ members: Membe
   return parseResponse(response);
 }
 
+export async function checkMemberEmail(
+  workspaceId: number,
+  email: string
+): Promise<{ exists: boolean; full_name?: string | null; already_member?: boolean }> {
+  const response = await fetch(
+    `/api/workspaces/${workspaceId}/members/check-email`,
+    jsonRequest("POST", { email })
+  );
+  return parseResponse(response);
+}
+
 export async function createMember(
   workspaceId: number,
   data: { email: string; password?: string; full_name?: string; group_ids?: number[] }

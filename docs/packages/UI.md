@@ -46,6 +46,33 @@ Case à cocher stylée avec label + description optionnelle (ex : liste de permi
 <Checkbox checked={checked} onChange={setChecked} label="members.view" description="..." />
 ```
 
+### `PermissionPicker` (`src/PermissionPicker.tsx`)
+
+Sélecteur de permissions groupées par application (catalogue `GET /auth/permissions`).
+Chaque groupe (Général, Workspace, RH...) est une section accordéon — une seule ouverte à
+la fois — avec un champ de recherche qui filtre par nom de groupe ou par nom/description de
+droit (déplie automatiquement les sections correspondantes pendant la recherche). Affiche le
+nombre de droits cochés à côté du nom du groupe, même repliée.
+
+```tsx
+<PermissionPicker groups={permissionCatalog} selectedIds={permissionIds} onToggle={togglePermission} />
+```
+
+### `MultiSelect` (`src/MultiSelect.tsx`)
+
+Sélecteur multiple générique avec recherche : tape pour filtrer une liste d'options, clic
+pour ajouter, rendu en tag avec une croix pour retirer directement. Les options déjà
+sélectionnées disparaissent de la liste déroulante (déjà visibles sous forme de tags).
+
+```tsx
+<MultiSelect
+  options={groups.map((g) => ({ id: g.id, label: g.name }))}
+  selectedIds={groupIds}
+  onChange={setGroupIds}
+  placeholder="Rechercher un groupe…"
+/>
+```
+
 ### `AccessDenied` (`src/AccessDenied.tsx`)
 
 Server Component (pas de `"use client"`, aucune interactivité) — écran plein-page affiché

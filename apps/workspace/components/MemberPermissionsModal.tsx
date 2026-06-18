@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Modal } from "@repo/ui/Modal";
-import { Checkbox } from "@repo/ui/Checkbox";
+import { MultiSelect } from "@repo/ui/MultiSelect";
 import { PermissionPicker } from "@repo/ui/PermissionPicker";
 import { setMemberGroups, setMemberPermissions, ApiError } from "@/app/lib/api";
 import type { Group, Member, AppPermissionGroup } from "@/app/lib/types";
@@ -28,12 +28,6 @@ export function MemberPermissionsModal({
   );
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-
-  function toggleGroup(id: number) {
-    setGroupIds((prev) =>
-      prev.includes(id) ? prev.filter((g) => g !== id) : [...prev, id]
-    );
-  }
 
   function togglePermission(id: number) {
     setPermissionIds((prev) =>
@@ -67,19 +61,17 @@ export function MemberPermissionsModal({
 
         <div className="space-y-1">
           <p className="text-sm font-medium text-on-surface">Groupes</p>
-          <div className="max-h-40 overflow-y-auto rounded-xl border border-outline-variant px-3">
-            {groups.length === 0 && (
-              <p className="text-sm text-on-surface-variant py-2">Aucun groupe créé.</p>
-            )}
-            {groups.map((group) => (
-              <Checkbox
-                key={group.id}
-                checked={groupIds.includes(group.id)}
-                onChange={() => toggleGroup(group.id)}
-                label={group.name}
-              />
-            ))}
-          </div>
+          {groups.length === 0 ? (
+            <p className="text-sm text-on-surface-variant px-1">Aucun groupe créé.</p>
+          ) : (
+            <MultiSelect
+              options={groups.map((group) => ({ id: group.id, label: group.name }))}
+              selectedIds={groupIds}
+              onChange={setGroupIds}
+              placeholder="Rechercher un groupe…"
+              emptyLabel="Aucun groupe trouvé."
+            />
+          )}
         </div>
 
         <div className="space-y-1">

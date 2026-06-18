@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Checkbox } from "@repo/ui/Checkbox";
+import { PermissionPicker } from "@repo/ui/PermissionPicker";
 import { updateGroup, deleteGroup, setGroupPermissions, ApiError } from "@/app/lib/api";
 import type { Group, AppPermissionGroup } from "@/app/lib/types";
 
@@ -106,26 +106,11 @@ export function GroupEditorPanel({
 
       <div className="space-y-1">
         <p className="text-sm font-medium text-on-surface">Permissions</p>
-        <div className="rounded-xl border border-outline-variant px-3 divide-y divide-outline-variant">
-          {permissionCatalog
-            .filter((catalogGroup) => catalogGroup.permissions.length > 0)
-            .map((catalogGroup) => (
-              <div key={catalogGroup.key ?? "general"} className="py-2">
-                <p className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide px-1 pb-1">
-                  {catalogGroup.name}
-                </p>
-                {catalogGroup.permissions.map((permission) => (
-                  <Checkbox
-                    key={permission.id}
-                    checked={permissionIds.includes(permission.id)}
-                    onChange={() => togglePermission(permission.id)}
-                    label={permission.name}
-                    description={permission.description ?? undefined}
-                  />
-                ))}
-              </div>
-            ))}
-        </div>
+        <PermissionPicker
+          groups={permissionCatalog}
+          selectedIds={permissionIds}
+          onToggle={togglePermission}
+        />
       </div>
 
       {!readOnly && (

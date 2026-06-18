@@ -65,10 +65,23 @@ export interface AppSettingGroup {
 
 export type WorkspaceType = "individual" | "organization";
 
+export type AuthProvider = "microsoft_entra" | "google_workspace" | "email_otp";
+
 export interface WorkspaceDetail {
   id: number;
   name: string;
   slug: string;
   type: WorkspaceType;
   restrict_members_to_workspace: boolean;
+  auth_provider: AuthProvider | null;
+  auth_provider_config: Record<string, string> | null;
+}
+
+export type AuthMethodProvider = "password" | "google" | "microsoft" | "email_otp";
+
+export interface AuthMethod {
+  provider: AuthMethodProvider;
+  enabled: boolean;
+  linked: boolean;
+  provider_email: string | null;
 }

@@ -11,7 +11,11 @@ function workspaceColor(id: number): string {
   return COLORS[id % COLORS.length] ?? "#3525cd";
 }
 
-export function WorkspaceSwitcher() {
+export function WorkspaceSwitcher({
+  filterPermission,
+}: {
+  filterPermission?: string;
+}) {
   const { activeWorkspace, workspaces, switchWorkspace } = useSessionStore();
   const [open, setOpen] = useState(false);
   const [switching, setSwitching] = useState(false);
@@ -33,6 +37,10 @@ export function WorkspaceSwitcher() {
   };
 
   if (!activeWorkspace) return null;
+
+  const visibleWorkspaces = filterPermission
+    ? workspaces.filter((ws) => ws.permissions.includes(filterPermission))
+    : workspaces;
 
   const color = workspaceColor(activeWorkspace.id);
   const initial = activeWorkspace.name[0]?.toUpperCase() ?? "W";
@@ -64,7 +72,7 @@ export function WorkspaceSwitcher() {
             <p className="px-3 py-1.5 text-xs font-semibold text-on-surface-variant uppercase tracking-wider">
               Workspaces
             </p>
-            {workspaces.map((ws) => (
+            {visibleWorkspaces.map((ws) => (
               <button
                 key={ws.id}
                 disabled={switching}

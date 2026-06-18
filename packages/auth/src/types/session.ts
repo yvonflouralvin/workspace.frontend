@@ -1,9 +1,10 @@
 // packages/auth/types/session.ts
 
-export interface Workspace {    
+export interface Workspace {
   id: number;
   name: string;
   slug: string;
+  permissions: string[];
 }
 
 export interface User {

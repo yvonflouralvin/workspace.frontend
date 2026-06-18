@@ -83,21 +83,46 @@ copier/partager le mot de passe généré).
 <PasswordInput value={password} onChange={setPassword} generatable placeholder="..." />
 ```
 
+### `WorkspaceSwitcher` (`src/WorkspaceSwitcher.tsx`)
+
+Lit `useSessionStore` (`activeWorkspace`, `workspaces`, `switchWorkspace`). Affiche le
+workspace actif, popover avec la liste des autres + lien "Créer un workspace". Partagé
+entre toutes les apps (nécessite que l'app courante expose un proxy same-origin
+`POST /api/switch-workspace`, voir `docs/apps/workspace/WORKSPACE.md`).
+
+**Prop `filterPermission?: string`** — restreint la liste aux workspaces où
+`ws.permissions.includes(filterPermission)`. Utilisé par `AccessDenied` ; omis dans l'usage
+normal (Sidebar) pour lister tous les workspaces.
+
+```tsx
+<WorkspaceSwitcher />
+<WorkspaceSwitcher filterPermission="hr.access" />
+```
+
 ### `AccessDenied` (`src/AccessDenied.tsx`)
 
 Client Component — écran plein-page affiché quand un utilisateur authentifié n'a pas la
 permission `<app>.access` requise pour ouvrir une application. Rendu **à l'intérieur** du
 `<SessionProvider>` (pas à sa place) dans le `RootLayout` de `workspace` et `hr`, dès que
 `!session.permissions.includes("<key>.access")` — nécessaire pour que le `switcher` (slot
-optionnel, ex. `WorkspaceSwitcher` de `workspace`, lui-même `useSessionStore`) ait accès au
-contexte. Affiche aussi le nom du workspace ciblé (`workspaceName`) et un bouton de
-déconnexion intégré (`/api/logout` + redirection vers `NEXT_PUBLIC_AUTH_API_AUTH_DOMAIN`).
+optionnel, `WorkspaceSwitcher`, lui-même `useSessionStore`) ait accès au contexte. Affiche
+aussi le nom du workspace ciblé (`workspaceName`) et un bouton de déconnexion intégré
+(`/api/logout` + redirection vers `NEXT_PUBLIC_AUTH_API_AUTH_DOMAIN`).
+
+Le `switcher` n'est passé que si l'utilisateur a accès à l'app courante dans au moins un
+**autre** de ses workspaces (`ws.permissions` par workspace, exposé par `/auth/session` et
+`/auth/workspaces`) — sinon le bouton n'apparaît pas, pour ne jamais proposer une bascule
+qui mènerait au même écran.
 
 ```tsx
 <AccessDenied
   appName="Workspace"
   workspaceName={session.active_workspace?.name}
-  switcher={session.workspaces.length > 1 ? <WorkspaceSwitcher /> : undefined}
+  switcher={
+    session.workspaces.some(
+      (ws) => ws.id !== session.active_workspace?.id && ws.permissions.includes("workspace.access")
+    ) ? <WorkspaceSwitcher filterPermission="workspace.access" /> : undefined
+  }
 />
 ```
 

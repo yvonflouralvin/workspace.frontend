@@ -15,6 +15,8 @@ packages/ui/src/
     Sidebar.tsx           ← sidebar générique avec slot topSlot + navItems
     TopBar.tsx            ← barre du haut : recherche, app selector, profil
     AppSelector.tsx       ← popover : apps récentes, recherche, lien "toutes les apps"
+  WorkspaceSwitcher.tsx   ← lit useSessionStore, partagé entre toutes les apps
+  AccessDenied.tsx        ← écran d'accès refusé, partagé
   types/
     shell.ts              ← types partagés : NavItem, AppDefinition, UserSummary
 
@@ -27,8 +29,6 @@ apps/workspace/
         page.tsx          ← préférences utilisateur
       apps/
         page.tsx          ← toutes les applications disponibles
-  components/
-    WorkspaceSwitcher.tsx ← client component propre au workspace, lit useSessionStore
 ```
 
 ---
@@ -174,7 +174,7 @@ Le layout `(dashboard)/layout.tsx` assemble le shell avec les éléments spécif
 ```tsx
 // apps/workspace/app/(dashboard)/layout.tsx
 import { AppShell, Sidebar, TopBar } from '@repo/ui/shell/AppShell'
-import WorkspaceSwitcher from '@/components/WorkspaceSwitcher'
+import { WorkspaceSwitcher } from '@repo/ui/WorkspaceSwitcher'
 
 const NAV_ITEMS = [
   { label: 'Accueil',   href: '/home',    icon: <HomeIcon /> },
@@ -217,20 +217,29 @@ export default function DashboardLayout({ children }) {
 }
 ```
 
-`WorkspaceSwitcher` est le seul composant qui connaît `useSessionStore` — il est propre à l'app workspace et passé en slot à la Sidebar générique.
+`WorkspaceSwitcher` (`@repo/ui`) connaît `useSessionStore` — il est passé en slot à la Sidebar générique, partagé par toutes les apps (pas propre à `workspace`).
 
 ---
 
-## WorkspaceSwitcher (`apps/workspace/components/`)
+## WorkspaceSwitcher (`packages/ui/src/WorkspaceSwitcher.tsx`)
+
+Partagé entre toutes les apps (déplacé hors de `apps/workspace` quand `hr` en a eu besoin
+pour son propre écran `AccessDenied`).
 
 ```tsx
 // Lit useSessionStore pour activeWorkspace + workspaces[]
 // Affiche : [avatar couleur] [Nom du workspace] [ChevronDown]
 // Click → Popover :
-//   • Liste des workspaces (checkmark sur l'actif)
+//   • Liste des workspaces (checkmark sur l'actif), filtrée par `filterPermission` si fourni
 //   • Divider
 //   • [+] Créer un workspace  → /onboarding/new-workspace
 ```
+
+**Prop `filterPermission?: string`** — ne liste que les workspaces où
+`ws.permissions.includes(filterPermission)`. Utilisé par `AccessDenied` (ex.
+`filterPermission="hr.access"`) pour ne proposer que les workspaces où l'app courante est
+réellement accessible, plutôt que tous les workspaces de l'utilisateur. Sans cette prop
+(usage normal dans la Sidebar), tous les workspaces sont listés.
 
 ---
 
@@ -339,10 +348,13 @@ non structurée.
 ### Gating d'accès à l'application
 
 `app/layout.tsx` (Server Component) vérifie après `getServerSession()` que
-`session.permissions.includes("workspace.access")` ; sinon affiche
-`<AccessDenied appName="Workspace" />` (`@repo/ui`) à la place de
-`<SessionProvider>{children}</SessionProvider>`. Un membre sans ce droit ne peut pas
-ouvrir l'app, même connecté (le owner du workspace garde son bypass total côté backend).
+`session.permissions.includes("workspace.access")` ; sinon rend `<AccessDenied>` (`@repo/ui`)
+**à l'intérieur** de `<SessionProvider>` (pas à sa place — nécessaire pour que le
+`WorkspaceSwitcher` passé en slot ait accès au store de session). `AccessDenied` reçoit
+`workspaceName` (nom du workspace actif) et, si l'utilisateur a accès à `workspace.access`
+dans au moins un autre de ses workspaces, un `switcher={<WorkspaceSwitcher filterPermission="workspace.access" />}`
+qui ne liste que ces workspaces-là. Un membre sans ce droit ne peut pas ouvrir l'app, même
+connecté (le owner du workspace garde son bypass total côté backend).
 
 `components/DashboardShell.tsx` filtre la liste `APPS` passée à `<TopBar>` avec
 `usePermissions().can(\`${app.id}.access\`)` — un membre sans `hr.access` ne voit plus
@@ -356,7 +368,7 @@ ouvrir l'app, même connecté (le owner du workspace garde son bypass total côt
 2. `packages/ui/src/shell/Sidebar.tsx` — sidebar générique
 3. `packages/ui/src/shell/TopBar.tsx` + `AppSelector.tsx`
 4. `packages/ui/src/shell/AppShell.tsx` — assemblage
-5. `apps/workspace/components/WorkspaceSwitcher.tsx`
+5. `packages/ui/src/WorkspaceSwitcher.tsx`
 6. `apps/workspace/app/(dashboard)/layout.tsx` — intégration
 7. `apps/workspace/app/(dashboard)/page.tsx` — contenu home
 8. `apps/workspace/app/(dashboard)/apps/page.tsx` — toutes les apps

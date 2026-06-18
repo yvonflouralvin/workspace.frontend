@@ -38,3 +38,27 @@ export interface Group {
   permissions: GroupRef[];
   member_count: number;
 }
+
+export type SettingType = "text" | "date" | "single_choice" | "multi_choice";
+
+export interface SettingOption {
+  value: string;
+  label: string;
+}
+
+export interface SettingDef {
+  id: number;
+  key: string;
+  name: string;
+  description: string | null;
+  type: SettingType;
+  options: SettingOption[] | null;
+  value: unknown;
+}
+
+export interface AppSettingGroup {
+  id: number | null;
+  key: string | null;
+  name: string;
+  settings: SettingDef[];
+}

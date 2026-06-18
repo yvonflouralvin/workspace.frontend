@@ -362,6 +362,39 @@ connecté (le owner du workspace garde son bypass total côté backend).
 
 ---
 
+## Paramètres
+
+`/settings` (`app/(dashboard)/settings/page.tsx`) consomme
+`GET`/`PUT /auth/workspaces/<id>/settings` (catalogue de paramètres groupé par app,
+fusionné avec les valeurs du workspace — voir `backends/docs/services/auth/AUTH.md`),
+via le proxy `app/api/workspaces/[workspaceId]/settings/route.ts` (même pattern
+`forwardToAuthApi` que `members`/`groups`). Gardée par
+`usePermissions().can("workspace.settings.manage")`.
+
+**Client (`app/lib/api.ts`)** : `listWorkspaceSettings(workspaceId)`,
+`updateWorkspaceSettings(workspaceId, values)`.
+
+**Types (`app/lib/types.ts`)** : `SettingType` (`text`/`date`/`single_choice`/
+`multi_choice`), `SettingOption`, `SettingDef`, `AppSettingGroup`.
+
+**UI :** layout deux colonnes, pas de composant `@repo/ui` dédié (sélecteur trop couplé
+au concept de "groupe de paramètres" pour être généralisé maintenant) :
+- Gauche — recherche + liste des groupes ("Général", "Workspace", "RH"...), un seul
+  sélectionné à la fois (mirrors la recherche de `PermissionPicker`, sans l'accordéon —
+  ici on *sélectionne* un groupe au lieu de tous les afficher en même temps, pour rester
+  lisible même avec beaucoup d'apps enregistrées).
+- Droite — formulaire du groupe sélectionné, un champ par `SettingDef.type` :
+  `text`/`date` → `<input>` natif, `single_choice` → `<select>` natif, `multi_choice` →
+  `MultiSelect` (`@repo/ui`).
+
+`MultiSelect` (`packages/ui/src/MultiSelect.tsx`) a été généralisé : `OptionLike.id` et
+`selectedIds`/`onChange` acceptent désormais `string | number` (avant : `number` seul),
+pour pouvoir représenter les valeurs de `single_choice`/`multi_choice` (des chaînes,
+ex. `"fr"`, `"liste"`) en plus des ids numériques (groupes, permissions). Changement non
+cassant — voir `docs/packages/UI.md`.
+
+---
+
 ## Ordre d'implémentation
 
 1. `packages/ui/src/types/shell.ts` — types

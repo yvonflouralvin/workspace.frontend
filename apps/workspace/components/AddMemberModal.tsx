@@ -159,7 +159,7 @@ export function AddMemberModal({
               <MultiSelect
                 options={groups.map((group) => ({ id: group.id, label: group.name }))}
                 selectedIds={groupIds}
-                onChange={setGroupIds}
+                onChange={(ids) => setGroupIds(ids as number[])}
                 placeholder="Rechercher un groupe…"
               />
             </div>

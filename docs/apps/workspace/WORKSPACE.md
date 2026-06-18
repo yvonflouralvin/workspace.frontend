@@ -426,6 +426,53 @@ générique : c'est un champ dédié sur `Workspace` côté `auth` (`type`/
 génériques. Voir `backends/docs/services/auth/AUTH.md` pour le détail des garde-fous serveur
 (`POST /auth/workspaces`, `POST /auth/switch-workspace`).
 
+### Authentification de l'organisation (organization + restriction active uniquement)
+
+Toujours dans le panneau "Général", si `type === "organization" &&
+restrict_members_to_workspace === true` (les deux conditions, pas l'une ou l'autre), un
+second bloc dédié (`OrgAuthProviderSection`, local à `settings/page.tsx`) propose un
+sélecteur "Aucun / Microsoft Entra / Google Workspace / Code par email" + un champ
+conditionnel (`Tenant ID` pour Entra, `Domaine` pour Google Workspace, aucun champ pour le
+code par email) — sauvegardé via `updateWorkspaceAuthProvider(workspaceId, provider,
+config)`, qui réutilise `PATCH /api/workspaces/[workspaceId]` (mêmes champs
+`auth_provider`/`auth_provider_config` que `restrict_members_to_workspace`, validés
+serverside, voir `backends/docs/services/auth/AUTH.md`). Le bloc disparaît si la restriction
+est désactivée (le serveur rejetterait la sauvegarde de toute façon).
+
+---
+
+## Préférences (`app/(dashboard)/preferences/page.tsx`)
+
+Liste les 4 méthodes d'authentification (`Mot de passe`, `Google`, `Microsoft`, `Code par
+email`) via `getMyAuthMethods()` (`GET /api/me/auth-methods` → `GET /auth/me/auth-methods`) :
+- `password`/`email_otp` — interrupteur on/off (`updateMyAuthMethod`, `PUT
+  /api/me/auth-methods/<provider>`).
+- `google`/`microsoft` — si non lié : bouton "Lier" (`<a href="/api/oauth/<provider>/start?
+  intent=link">`, navigation directe, pas de fetch — voir le proxy ci-dessous) ; si lié :
+  email du compte externe affiché + interrupteur + bouton "Délier"
+  (`unlinkMyAuthMethod`, `DELETE /api/me/auth-methods/<provider>`).
+
+**Héritage d'une politique d'organisation :** si `enforced_provider` est renvoyé par
+`GET /auth/me/auth-methods` (l'utilisateur est membre non-owner d'un workspace restreint
+avec une politique active, voir section précédente), une bannière "Géré par votre
+organisation : ..." s'affiche et **tous les contrôles sont désactivés** (`disabled`) —
+implémente directement la demande "le membre ne peut pas modifier ses préférences tant que
+la politique s'applique".
+
+**Proxies dédiés** (`app/api/oauth/[provider]/start|callback/route.ts`, distincts de ceux
+de `apps/auth` — même rationale, voir `docs/apps/auth/AUTH.md`) : `start` ne sert ici que
+`intent=link` (l'utilisateur est déjà authentifié, le cookie est forwardé pour que Flask
+sache qui lie son compte) ; `callback` ne réémet pas de cookies de session (l'utilisateur
+en a déjà), redirige simplement vers `/preferences` (avec `?oauth_error=...` en cas
+d'échec).
+
+**Types (`app/lib/types.ts`)** : `AuthMethodProvider`, `AuthMethod`, `AuthProvider`.
+**API (`app/lib/api.ts`)** : `getMyAuthMethods`, `updateMyAuthMethod`, `unlinkMyAuthMethod`,
+`updateWorkspaceAuthProvider`.
+
+**Limite connue (0.5.0)** — OAuth non testé en live, voir `docs/apps/auth/AUTH.md` (même
+limite, même cause : pas d'identifiants Google/Microsoft réels dans cet environnement).
+
 ---
 
 ## Créer un workspace (`app/(dashboard)/onboarding/new-workspace/page.tsx`)

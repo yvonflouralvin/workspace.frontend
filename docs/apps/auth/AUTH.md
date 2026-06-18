@@ -10,25 +10,45 @@
 
 ### `/` — Login (`app/page.tsx`)
 
-Formulaire 2 étapes :
-1. **Email** → `checkEmail()`. Si le compte n'existe pas : erreur inline + lien `/register`.
+Boutons "Continuer avec Google"/"Continuer avec Microsoft" toujours visibles en haut
+(`intent=login`, liens directs vers `/api/oauth/<provider>/start` — pas besoin de fetch,
+navigation complète du navigateur). Puis formulaire :
+1. **Email** → `checkEmail()` puis `getLoginMethods(email)`. Si le compte n'existe pas :
+   erreur inline + lien `/register`. Si un seul mode est disponible et que ce n'est pas
+   `password` : passe directement à ce mode (OTP envoyé automatiquement, ou message
+   invitant à utiliser le bouton OAuth correspondant si le compte est verrouillé sur
+   Google/Microsoft par une politique d'organisation).
 2. **Password** → `login()`. En cas de succès : redirect vers `NEXT_PUBLIC_WORKSPACE_DOMAIN`.
+   Si `email_otp` fait partie des méthodes disponibles, un lien "Recevoir un code par email
+   à la place" bascule vers l'étape OTP.
+3. **OTP** (si applicable) — champ à 6 chiffres, `verifyOtp()`. En mode dev
+   (`MAIL_DEV_MODE`), le code est affiché directement sous le champ pour pouvoir tester sans
+   vraie boîte mail. Lien "Renvoyer le code".
 
-Bouton "Changer" sur l'étape password permet de revenir à l'étape email.
+Bouton "Changer" permet de revenir à l'étape email depuis n'importe quelle étape suivante.
 
 ### `/register` — Inscription (`app/register/page.tsx`)
 
-Wizard 4 étapes avec barre de progression et navigation "Retour" :
+Mêmes boutons OAuth en haut (`intent=register` — même route, le backend décide
+création/connexion selon que l'email existe déjà). Puis wizard avec barre de progression et
+navigation "Retour", dont le nombre d'étapes dépend de la méthode choisie :
 1. **Email** → `checkEmail()`. Si le compte existe déjà : erreur + lien `/`.
 2. **Nom complet**
-3. **Mot de passe** + confirmation (min 8 caractères)
+3. **Mot de passe** + confirmation (min 8 caractères) — **ou**, via le lien "Recevoir un
+   code par email à la place", bascule `signupMethod` sur `"otp"` et saute directement à
+   l'étape suivante (pas de mot de passe à saisir).
 4. **Nom du workspace** — pré-rempli avec la partie avant `@` de l'email (slugifiée), éditable.
    Inclut aussi un sélecteur de **type** (deux cartes "Individuel"/"Organisation",
    `Individuel` présélectionné) — `workspaceType` envoyé comme `workspace_type` à
    `POST /auth/register`. Fixé à la création, pas modifiable depuis cette app (voir
    `backends/docs/services/auth/AUTH.md`, modèle `Workspace`).
+5. **OTP** (uniquement si `signupMethod === "otp"`) — le code est envoyé en entrant sur
+   cette étape (`requestOtp(email, "signup")`), affiché en mode dev, vérifié par
+   `verifyOtp({..., purpose: "signup", fullName, workspaceName, workspaceType})` qui crée le
+   compte et connecte directement (pas d'étape `register()`+`login()` séparée dans ce cas).
 
-À la soumission finale : `register()` → `login()` → redirect vers `NEXT_PUBLIC_WORKSPACE_DOMAIN`.
+À la soumission finale (chemin mot de passe) : `register()` → `login()` → redirect vers
+`NEXT_PUBLIC_WORKSPACE_DOMAIN`. Chemin OTP : `verifyOtp(...)` fait les deux d'un coup.
 
 ---
 
@@ -37,10 +57,19 @@ Wizard 4 étapes avec barre de progression et navigation "Retour" :
 Le client appelle des **route handlers Next.js locaux** (sous `/api/*`), jamais le backend directement.
 
 ```
-Browser → /api/check-email → fetch(AUTH_API_URL/auth/check-email)
-Browser → /api/login       → fetch(AUTH_API_URL/auth/login) → set httpOnly cookies
-Browser → /api/register    → fetch(AUTH_API_URL/auth/register)
+Browser → /api/check-email      → fetch(AUTH_API_URL/auth/check-email)
+Browser → /api/login            → fetch(AUTH_API_URL/auth/login) → set httpOnly cookies
+Browser → /api/register         → fetch(AUTH_API_URL/auth/register)
+Browser → /api/login-methods    → fetch(AUTH_API_URL/auth/login-methods)
+Browser → /api/otp/request      → fetch(AUTH_API_URL/auth/otp/request)
+Browser → /api/otp/verify       → fetch(AUTH_API_URL/auth/otp/verify) → set httpOnly cookies
+Browser → /api/oauth/<p>/start    (navigation directe, pas de fetch) → forward cookie → 302 vers Flask /auth/oauth/<p>/start → 307 vers le provider
+Browser ← /api/oauth/<p>/callback (le provider redirige ici)         → fetch(AUTH_API_URL/auth/oauth/<p>/callback) → set httpOnly cookies → redirect WORKSPACE_DOMAIN
 ```
+
+`redirect_uri` enregistré auprès de Google/Microsoft = `AUTH_APP_URL` + `/api/oauth/<provider>/callback`
+(configuré côté backend, voir `backends/docs/services/auth/AUTH.md`) — **jamais** l'URL Flask
+directement, même piège de cookie host-only que pour `/api/login` (voir gotcha plus bas).
 
 ### Fonctions client (`app/lib/api.ts`)
 
@@ -48,6 +77,9 @@ Browser → /api/register    → fetch(AUTH_API_URL/auth/register)
 checkEmail(email)                               // → { exists: boolean }
 login(email, password)                          // → void (cookies set via proxy)
 register(email, password, fullName, workspaceName, workspaceType) // → void
+getLoginMethods(email)                          // → { exists, methods: string[], enforced_provider }
+requestOtp(email, purpose)                      // → { sent: true, dev_code? } — dev_code seulement si MAIL_DEV_MODE
+verifyOtp({ email, code, purpose, fullName?, workspaceName?, workspaceType? }) // → void (cookies set via proxy)
 ```
 
 ---
@@ -101,3 +133,13 @@ entre `localhost:3001` et `localhost:3005`.
   - **Client-side** (`getSession()`, `api/session.ts`) : appelle le proxy local
     `NEXT_PUBLIC_SESSION_API` (`/api/auth/session`), utilisé en fallback quand
     aucune session n'a été pré-chargée côté serveur (apps sans SSR de session).
+
+---
+
+## Limite connue (0.5.0) — OAuth non testé en live
+
+Les boutons Google/Microsoft et les routes `/api/oauth/*` sont fonctionnels de bout en bout
+(vérifié : redirection, structure de l'URL d'autorisation, gestion des erreurs de state),
+mais **aucun test avec un vrai compte Google/Microsoft n'a pu être fait** — pas de
+`GOOGLE_CLIENT_ID`/`MICROSOFT_CLIENT_ID` réels dans cet environnement de dev. À vérifier
+avant un premier usage en prod.

@@ -5,6 +5,9 @@ import type {
   AppSettingGroup,
   WorkspaceDetail,
   WorkspaceType,
+  AuthProvider,
+  AuthMethod,
+  AuthMethodProvider,
 } from "./types";
 
 export class ApiError extends Error {
@@ -185,5 +188,44 @@ export async function updateWorkspacePolicy(
     `/api/workspaces/${workspaceId}`,
     jsonRequest("PATCH", { restrict_members_to_workspace: restrictMembersToWorkspace })
   );
+  return parseResponse(response);
+}
+
+export async function updateWorkspaceAuthProvider(
+  workspaceId: number,
+  authProvider: AuthProvider | null,
+  authProviderConfig?: Record<string, string>
+): Promise<WorkspaceDetail> {
+  const response = await fetch(
+    `/api/workspaces/${workspaceId}`,
+    jsonRequest("PATCH", {
+      auth_provider: authProvider,
+      auth_provider_config: authProviderConfig,
+    })
+  );
+  return parseResponse(response);
+}
+
+export async function getMyAuthMethods(): Promise<{
+  methods: AuthMethod[];
+  enforced_provider: AuthProvider | null;
+}> {
+  const response = await fetch(`/api/me/auth-methods`);
+  return parseResponse(response);
+}
+
+export async function updateMyAuthMethod(
+  provider: AuthMethodProvider,
+  enabled: boolean
+): Promise<{ provider: string; enabled: boolean }> {
+  const response = await fetch(
+    `/api/me/auth-methods/${provider}`,
+    jsonRequest("PUT", { enabled })
+  );
+  return parseResponse(response);
+}
+
+export async function unlinkMyAuthMethod(provider: AuthMethodProvider) {
+  const response = await fetch(`/api/me/auth-methods/${provider}`, { method: "DELETE" });
   return parseResponse(response);
 }

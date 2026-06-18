@@ -5,8 +5,14 @@ import { SearchOutlined } from "@mui/icons-material";
 import { useSessionStore } from "@repo/auth/store/session.store";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
 import { MultiSelect } from "@repo/ui/MultiSelect";
-import { listWorkspaceSettings, updateWorkspaceSettings, ApiError } from "@/app/lib/api";
-import type { AppSettingGroup, SettingDef } from "@/app/lib/types";
+import {
+  listWorkspaceSettings,
+  updateWorkspaceSettings,
+  getWorkspace,
+  updateWorkspacePolicy,
+  ApiError,
+} from "@/app/lib/api";
+import type { AppSettingGroup, SettingDef, WorkspaceDetail } from "@/app/lib/types";
 
 export default function SettingsPage() {
   const activeWorkspace = useSessionStore((s) => s.activeWorkspace);
@@ -14,6 +20,7 @@ export default function SettingsPage() {
 
   const [groups, setGroups] = useState<AppSettingGroup[]>([]);
   const [values, setValues] = useState<Record<number, unknown>>({});
+  const [workspaceDetail, setWorkspaceDetail] = useState<WorkspaceDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -30,16 +37,17 @@ export default function SettingsPage() {
       return;
     }
 
-    listWorkspaceSettings(workspaceId)
-      .then((res) => {
-        setGroups(res.groups);
+    Promise.all([listWorkspaceSettings(workspaceId), getWorkspace(workspaceId)])
+      .then(([settingsRes, workspaceRes]) => {
+        setGroups(settingsRes.groups);
         const initialValues: Record<number, unknown> = {};
-        for (const group of res.groups) {
+        for (const group of settingsRes.groups) {
           for (const setting of group.settings) {
             initialValues[setting.id] = setting.value;
           }
         }
         setValues(initialValues);
+        setWorkspaceDetail(workspaceRes);
       })
       .catch((err) => {
         setError(err instanceof ApiError ? err.message : "Une erreur est survenue");
@@ -153,6 +161,14 @@ export default function SettingsPage() {
           </div>
 
           <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-5 space-y-5">
+            {selectedKey === "general" && workspaceDetail?.type === "organization" && (
+              <RestrictionToggle
+                workspaceId={workspaceId!}
+                workspaceDetail={workspaceDetail}
+                onUpdated={setWorkspaceDetail}
+              />
+            )}
+
             {!selectedGroup || selectedGroup.settings.length === 0 ? (
               <p className="text-sm text-on-surface-variant">
                 Aucun paramètre pour cette application.
@@ -252,6 +268,68 @@ function SettingField({
           onChange={onChange}
         />
       )}
+    </div>
+  );
+}
+
+function RestrictionToggle({
+  workspaceId,
+  workspaceDetail,
+  onUpdated,
+}: {
+  workspaceId: number;
+  workspaceDetail: WorkspaceDetail;
+  onUpdated: (detail: WorkspaceDetail) => void;
+}) {
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleToggle() {
+    setSaving(true);
+    setError(null);
+    try {
+      const updated = await updateWorkspacePolicy(
+        workspaceId,
+        !workspaceDetail.restrict_members_to_workspace
+      );
+      onUpdated(updated);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Une erreur est survenue");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="rounded-xl border border-outline-variant p-4 space-y-2">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-sm font-medium text-on-surface">
+            Restreindre les membres à ce workspace
+          </p>
+          <p className="text-xs text-on-surface-variant mt-0.5">
+            Les membres ne pourront plus changer de workspace ni en créer un autre.
+            L&apos;owner n&apos;est pas concerné.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={handleToggle}
+          disabled={saving}
+          role="switch"
+          aria-checked={workspaceDetail.restrict_members_to_workspace}
+          className={`relative flex-shrink-0 w-10 h-6 rounded-full transition-colors disabled:opacity-50 ${
+            workspaceDetail.restrict_members_to_workspace ? "bg-primary" : "bg-outline-variant"
+          }`}
+        >
+          <span
+            className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${
+              workspaceDetail.restrict_members_to_workspace ? "translate-x-4" : ""
+            }`}
+          />
+        </button>
+      </div>
+      {error && <p className="text-xs text-error">{error}</p>}
     </div>
   );
 }

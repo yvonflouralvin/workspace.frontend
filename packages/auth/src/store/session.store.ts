@@ -3,13 +3,13 @@
 import { createStore, useStore, type StoreApi } from "zustand";
 import { createContext, useContext } from "react";
 import { getSession } from "../api/session.js";
-import {User,Workspace,SessionGroup,SessionResponse,} from "../types/session.js";
+import {User,Workspace,ActiveWorkspace,SessionGroup,SessionResponse,} from "../types/session.js";
 
 export interface SessionState {
   loading: boolean;
   authenticated: boolean;
   user: User | null;
-  activeWorkspace: Workspace | null;
+  activeWorkspace: ActiveWorkspace | null;
   workspaces: Workspace[];
   groups: SessionGroup[];
   permissions: string[];
@@ -78,11 +78,17 @@ export function createSessionStore(initialSession?: SessionResponse) {
     },
 
     async switchWorkspace(workspaceId: number) {
-      await fetch(`/api/switch-workspace`, {
+      const response = await fetch(`/api/switch-workspace`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ workspace_id: workspaceId }),
       });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.message ?? "Impossible de changer de workspace.");
+      }
+
       window.location.reload();
     },
 

@@ -7,6 +7,15 @@ export interface Workspace {
   permissions: string[];
 }
 
+export interface ActiveWorkspace {
+  id: number;
+  name: string;
+  slug: string;
+  type: "individual" | "organization";
+  restrict_members_to_workspace: boolean;
+  is_owner: boolean;
+}
+
 export interface User {
   id: number;
   email: string;
@@ -23,7 +32,7 @@ export interface SessionResponse {
 
   user: User | null;
 
-  active_workspace: Workspace | null;
+  active_workspace: ActiveWorkspace | null;
 
   workspaces: Workspace[];
 

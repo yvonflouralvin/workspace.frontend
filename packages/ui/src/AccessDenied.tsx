@@ -1,6 +1,7 @@
 "use client";
 
 import { LockOutlined, LogoutOutlined } from "@mui/icons-material";
+import { apiFetch } from "@repo/network/client";
 
 export function AccessDenied({
   appName,
@@ -12,7 +13,7 @@ export function AccessDenied({
   switcher?: React.ReactNode;
 }) {
   async function handleLogout() {
-    await fetch("/api/logout", { method: "POST" });
+    await apiFetch("/api/logout", { method: "POST" });
     window.location.href = process.env.NEXT_PUBLIC_AUTH_API_AUTH_DOMAIN ?? "/";
   }
 

@@ -14,6 +14,7 @@
     "@mui/icons-material": "^9.1.1",
     "@mui/material": "^9.1.1",
     "@repo/auth": "*",
+    "@repo/network": "*",
     "@repo/ui": "*",
     "auth": "^0.1.0",
     "next": "16.2.6",

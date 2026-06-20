@@ -41,6 +41,7 @@
     "@emotion/styled": "^11.14.1",
     "@mui/icons-material": "^9.1.1",
     "@mui/material": "^9.1.1",
+    "@repo/network": "*",
     "auth": "^0.1.0",
     "zustand": "^5.0.14"
   }

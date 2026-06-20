@@ -2,6 +2,7 @@
 
 import { createStore, useStore, type StoreApi } from "zustand";
 import { createContext, useContext } from "react";
+import { apiFetch } from "@repo/network/client";
 import { getSession } from "../api/session.js";
 import {User,Workspace,ActiveWorkspace,SessionGroup,SessionResponse,} from "../types/session.js";
 
@@ -78,10 +79,9 @@ export function createSessionStore(initialSession?: SessionResponse) {
     },
 
     async switchWorkspace(workspaceId: number) {
-      const response = await fetch(`/api/switch-workspace`, {
+      const response = await apiFetch(`/api/switch-workspace`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ workspace_id: workspaceId }),
+        body: { workspace_id: workspaceId },
       });
 
       if (!response.ok) {

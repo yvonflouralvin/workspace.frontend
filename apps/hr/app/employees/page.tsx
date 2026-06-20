@@ -1,44 +1,61 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AddOutlined } from "@mui/icons-material";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
 import { DataList, type DataListColumn } from "@repo/ui/DataList";
+import { useGraphQLRecords } from "@repo/ui/hooks/useGraphQLRecords";
 import { DashboardShell } from "@/components/DashboardShell";
 import { CreateEmployeeModal } from "@/components/CreateEmployeeModal";
-import { listEmployees, ApiError, type Employee } from "@/app/lib/api";
+import { listGroupOptions, type GroupOption } from "@/app/lib/api";
 
-const COLUMNS: DataListColumn<Employee>[] = [
-  {
-    key: "name",
-    header: "Employé",
-    render: (employee) => `${employee.first_name} ${employee.last_name}`,
-  },
-  { key: "email", header: "Email", render: (employee) => employee.email },
-  { key: "group", header: "Groupe / Département", render: (employee) => employee.group_name },
-];
+interface EmployeeRecord {
+  id: number;
+  first_name: string;
+  last_name: string;
+  email: string;
+  group_id: number;
+}
 
 export default function EmployeesPage() {
   const { can } = usePermissions();
   const canView = can("hr.employees.view");
   const canManage = can("hr.employees.manage");
 
-  const [employees, setEmployees] = useState<Employee[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [groupOptions, setGroupOptions] = useState<GroupOption[]>([]);
   const [showCreate, setShowCreate] = useState(false);
 
-  useEffect(() => {
-    if (!canView) {
-      setLoading(false);
-      return;
-    }
+  const { items, total, loading, error, setQuery, setPage, refetch } =
+    useGraphQLRecords<EmployeeRecord>({
+      app: "hr",
+      model: "employees",
+      searchFields: ["first_name", "last_name", "email"],
+      enabled: canView,
+    });
 
-    listEmployees()
-      .then(setEmployees)
-      .catch((err) => setError(err instanceof ApiError ? err.message : "Une erreur est survenue"))
-      .finally(() => setLoading(false));
+  useEffect(() => {
+    if (!canView) return;
+    listGroupOptions().then(setGroupOptions).catch(() => {});
   }, [canView]);
+
+  const groupPathById = useMemo(
+    () => new Map(groupOptions.map((option) => [option.id, option.path])),
+    [groupOptions]
+  );
+
+  const columns: DataListColumn<EmployeeRecord>[] = [
+    {
+      key: "name",
+      header: "Employé",
+      render: (employee) => `${employee.first_name} ${employee.last_name}`,
+    },
+    { key: "email", header: "Email", render: (employee) => employee.email },
+    {
+      key: "group",
+      header: "Groupe / Département",
+      render: (employee) => groupPathById.get(employee.group_id) ?? "—",
+    },
+  ];
 
   return (
     <DashboardShell>
@@ -68,20 +85,20 @@ export default function EmployeesPage() {
           </p>
         )}
 
-        {error && (
+        {canView && error && (
           <p className="text-sm text-error bg-error-container/40 rounded-lg px-3 py-2">{error}</p>
         )}
 
-        {canView && loading && <p className="text-sm text-on-surface-variant">Chargement…</p>}
-
-        {canView && !loading && !error && (
+        {canView && !error && (
           <DataList
-            items={employees}
-            columns={COLUMNS}
+            serverMode
+            items={items}
+            totalCount={total}
+            loading={loading}
+            columns={columns}
             getRowKey={(employee) => employee.id}
-            searchText={(employee) =>
-              `${employee.first_name} ${employee.last_name} ${employee.email} ${employee.group_name}`
-            }
+            onSearchChange={setQuery}
+            onPageChange={setPage}
             searchPlaceholder="Rechercher un employé…"
             emptyMessage="Aucun employé pour le moment."
           />
@@ -89,10 +106,7 @@ export default function EmployeesPage() {
       </div>
 
       {showCreate && (
-        <CreateEmployeeModal
-          onClose={() => setShowCreate(false)}
-          onCreated={(employee) => setEmployees((prev) => [...prev, employee])}
-        />
+        <CreateEmployeeModal onClose={() => setShowCreate(false)} onCreated={refetch} />
       )}
     </DashboardShell>
   );

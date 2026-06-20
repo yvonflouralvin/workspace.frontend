@@ -9,6 +9,8 @@ interface UseGraphQLRecordsOptions {
   searchFields?: string[];
   pageSize?: number;
   debounceMs?: number;
+  // Désactive le fetch (ex: en attendant la résolution des permissions côté appelant).
+  enabled?: boolean;
 }
 
 interface UseGraphQLRecordsResult<T> {
@@ -39,6 +41,7 @@ export function useGraphQLRecords<T = Record<string, unknown>>({
   searchFields,
   pageSize = 10,
   debounceMs = 300,
+  enabled = true,
 }: UseGraphQLRecordsOptions): UseGraphQLRecordsResult<T> {
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
@@ -73,6 +76,11 @@ export function useGraphQLRecords<T = Record<string, unknown>>({
   const searchFieldsKey = JSON.stringify(searchFields ?? []);
 
   useEffect(() => {
+    if (!enabled) {
+      setLoading(false);
+      return;
+    }
+
     const currentRequest = ++requestId.current;
     setLoading(true);
     setError(null);
@@ -113,7 +121,7 @@ export function useGraphQLRecords<T = Record<string, unknown>>({
       .finally(() => {
         if (currentRequest === requestId.current) setLoading(false);
       });
-  }, [app, model, debouncedQuery, page, pageSize, searchFieldsKey, refetchToken]);
+  }, [app, model, debouncedQuery, page, pageSize, searchFieldsKey, refetchToken, enabled]);
 
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
 

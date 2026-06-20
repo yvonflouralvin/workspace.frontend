@@ -13,6 +13,8 @@
     "@emotion/styled": "^11.14.1",
     "@mui/icons-material": "^9.1.1",
     "@mui/material": "^9.1.1",
+    "@repo/auth": "*",
+    "@repo/network": "*",
     "@repo/tailwind-config": "^0.0.0",
     "@repo/ui": "^0.0.0",
     "auth": "^0.1.0",

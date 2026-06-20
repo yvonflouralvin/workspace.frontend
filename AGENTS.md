@@ -24,6 +24,7 @@ frontends/
   packages/
     ui/                        (@repo/ui)
     auth/                      (@repo/auth)
+    network/                   (@repo/network)
     design-system/             (@repo/design-system)
     tailwind-config/           (@repo/tailwind-config)
     state/                     (@repo/state)
@@ -60,8 +61,20 @@ import { SessionProvider } from '@repo/auth/SessionProvider'
 ```
 
 **Store Zustand :** `loading`, `authenticated`, `user`, `activeWorkspace`, `workspaces[]`, `roles[]`, `permissions[]`
-**API :** `getSession()` → `GET /auth/session` (backend Flask, port 5000)
+**API :** `getSession()` → `GET /api/auth/session` (proxy BFF de l'app courante, jamais Flask directement)
 **Gotcha session :** voir `docs/apps/auth/AUTH.md#cookie-gotcha`
+
+### `@repo/network`
+
+Chiffrement des appels API internes — voir section "Variables d'environnement"
+plus bas pour le détail. `apiFetch` (`./client`) remplace `fetch`/`axios` côté
+navigateur, `forwardToBackend`/`decryptRequestBody`/`encryptResponseBody`
+(`./server`) côté routes BFF.
+
+```ts
+import { apiFetch } from '@repo/network/client'
+import { forwardToBackend } from '@repo/network/server'
+```
 
 ### `@repo/ui`
 
@@ -180,7 +193,10 @@ Familles : `font-display` → Geist, `font-body-*` → Inter.
 
 ## Variables d'environnement
 
-Toutes les apps partagent le `.env` à la racine du monorepo :
+Chaque app a son propre `.env` (`apps/<app>/.env`) — Next.js charge l'env depuis le
+répertoire de l'app, pas depuis la racine du monorepo. Le `.env` à la racine de
+`frontends/` existe mais n'est **pas** chargé automatiquement par les apps ; garder
+les 3 `.env` par app synchronisés pour les variables communes.
 
 | Variable                          | Valeur dev             | Portée         |
 |-----------------------------------|------------------------|----------------|
@@ -190,6 +206,31 @@ Toutes les apps partagent le `.env` à la racine du monorepo :
 | `NEXT_PUBLIC_WORKSPACE_DOMAIN`    | `http://localhost:3005` | Browser (auth) |
 | `AUTH_API_URL`                    | `http://127.0.0.1:5000`| Server only    |
 | `HR_API_URL`                      | `http://127.0.0.1:5001`| Server only — app `hr`, proxy vers le backend FastAPI `hr` |
+| `NETWORK_ENCRYPTION`              | `clear` \| `encrypted` (défaut `encrypted` si absent) | Server only — désactive le chiffrement `@repo/network` pour troubleshooter avec curl/Bruno/Postman sans déchiffrer à la main |
+| `NETWORK_ENCRYPTION_KEY`          | clé AES-256 en base64, même valeur dans les 3 apps | Server only |
+| `NEXT_PUBLIC_NETWORK_ENCRYPTION`  | `clear` \| `encrypted` — **doit toujours valoir la même chose que `NETWORK_ENCRYPTION`** | Browser |
+| `NEXT_PUBLIC_NETWORK_ENCRYPTION_KEY` | même clé que `NETWORK_ENCRYPTION_KEY` | Browser |
+
+### `@repo/network` — chiffrement des appels API internes
+
+Toutes les apps utilisent `@repo/network/client` (`apiFetch`, remplace `fetch`/`axios`
+direct) côté navigateur et `@repo/network/server` (`forwardToBackend`,
+`decryptRequestBody`, `encryptResponseBody`) côté routes BFF (`app/api/**/route.ts`)
+pour chiffrer body + réponse (AES-256-GCM) de tout le trafic interne visible dans
+l'onglet Network du navigateur. Le déchiffrement se termine toujours au niveau du
+BFF Next.js — le trajet BFF→backend (Flask/FastAPI) reste en clair, déjà invisible
+côté navigateur. **Limite connue :** la clé est nécessairement présente dans le
+bundle JS navigateur — ce n'est pas une protection contre un attaquant qui lit le
+bundle, seulement contre l'inspection casuelle (Network tab, screen-share support).
+
+Routes explicitement exclues du wrapper (pas de body JSON à chiffrer) :
+`app/api/oauth/[provider]/start|callback/route.ts` dans `apps/auth` et
+`apps/workspace` — redirections pures vers/depuis le provider OAuth externe.
+
+**Troubleshooting :** mettre `NETWORK_ENCRYPTION=clear` et
+`NEXT_PUBLIC_NETWORK_ENCRYPTION=clear` dans le `.env` de l'app concernée pour
+revenir à du JSON en clair (comportement historique), sans rien déchiffrer à la
+main. Les deux variables doivent toujours être modifiées ensemble.
 
 ---
 

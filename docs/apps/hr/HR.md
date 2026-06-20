@@ -28,19 +28,44 @@ Câblage session/auth/RBAC complet, mirroring exact du pattern `apps/workspace` 
   toujours par un proxy same-origin de l'app courante, jamais `AUTH_API` directement).
 - `app/api/logout/route.ts` — identique à `workspace`.
 - `components/DashboardShell.tsx` — shell minimal (`AppShell`/`Sidebar`/`TopBar` de
-  `@repo/ui`), un seul item de nav ("Accueil", lien **absolu** vers `NEXT_PUBLIC_WORKSPACE_DOMAIN`
-  — "Accueil" doit toujours renvoyer vers l'app `workspace`, quelle que soit l'app
-  courante). `topSlot={<WorkspaceSwitcher filterPermission="hr.access" />}` rend le
+  `@repo/ui`). Nav : "Accueil" (lien **absolu** vers `NEXT_PUBLIC_WORKSPACE_DOMAIN` —
+  doit toujours renvoyer vers l'app `workspace`, quelle que soit l'app courante),
+  "Employés" (`/employees`), "Groupes/Départements" (`/groups`).
+  `topSlot={<WorkspaceSwitcher filterPermission="hr.access" />}` rend le
   switcher de workspace visible dans la sidebar comme dans `workspace` (filtré sur
   `hr.access` pour éviter de basculer vers un workspace où l'utilisateur n'a pas accès à
   RH). Le sélecteur d'app (`TopBar`) filtre la liste avec
   `usePermissions().can(\`${app.id}.access\`)`, même logique que `workspace`.
 - `app/page.tsx` — Client Component : si `can("hr.departments.view")`, fetch
   `/api/departments` et affiche la liste mock ; sinon "Accès restreint à cette section".
+  Page historique non reliée à la sidebar (mock statique côté backend, `GET
+  /hr/departments`) — distincte du module groupes/employés ci-dessous.
 
-Une seule page existe pour l'instant (`/`, départements). Pas de gestion réelle
-employés/congés/recrutement — hors périmètre de cette itération (focus = architecture RBAC,
-pas fonctionnalités RH).
+### Employés et groupes/départements (navigateur de dossiers)
+
+- **`/employees`** (`app/employees/page.tsx`, Client Component) — si
+  `can("hr.employees.view")`, liste les employés (`listEmployees()`, nom/email/groupe) ;
+  si `can("hr.employees.manage")`, bouton "Nouvel employé" ouvrant
+  `components/CreateEmployeeModal.tsx` (prénom, nom, email, sélection du groupe via
+  `listGroupOptions()` — liste plate `{id, path}` où `path` est le fil d'ariane complet,
+  ex. `"Employee / Ingénierie / Backend"`).
+- **`/groups`** (racine) et **`/groups/[id]`** — toutes deux montent
+  `components/GroupFolderView.tsx` (Client Component), respectivement sans `groupId`
+  (fetch `getRootGroup()` → `GET /api/groups/root`) et avec (`getGroup(id)` → `GET
+  /api/groups/{id}`). Affiche le fil d'ariane (`ancestors` + groupe courant, liens vers
+  `/groups` pour la racine ou `/groups/{id}` pour un ancêtre), les sous-groupes sous
+  forme de "dossiers" cliquables (grille de cartes `FolderOutlined`, `Link` vers
+  `/groups/{child.id}`), et les employés rattachés **directement** à ce groupe (pas ceux
+  des sous-groupes). Si `can("hr.departments.manage")`, bouton "Nouveau sous-groupe"
+  ouvrant `components/CreateSubgroupModal.tsx`.
+- **Routes BFF** (`app/api/groups/route.ts` — GET liste plate + POST création,
+  `app/api/groups/root/route.ts`, `app/api/groups/[id]/route.ts`,
+  `app/api/employees/route.ts` — GET liste + POST création) — toutes via
+  `forwardToBackend(request, HR_API_URL, "/hr/...")`, même pattern que
+  `app/api/departments/route.ts`.
+- **Backend** : voir `backends/docs/services/hr/HR.md#groupes-et-employés` — persistance
+  réelle (SQLAlchemy/Alembic), groupe racine `"Employee"` auto-créé par workspace, gated
+  par `hr.departments.{view,manage}` et `hr.employees.{view,manage}`.
 
 ---
 

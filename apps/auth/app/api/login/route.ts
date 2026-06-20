@@ -1,9 +1,14 @@
-import { NextResponse } from "next/server";
+import { decryptRequestBody, encryptResponseBody, toBadRequestResponse } from "@repo/network/server";
 
-const AUTH_API = process.env.AUTH_API_URL ?? process.env.NEXT_PUBLIC_AUTH_API;
+const AUTH_API = process.env.AUTH_API_URL ?? process.env.NEXT_PUBLIC_AUTH_API!;
 
 export async function POST(request: Request) {
-  const body = await request.json();
+  let body: unknown;
+  try {
+    body = await decryptRequestBody(request);
+  } catch (error) {
+    return toBadRequestResponse(error);
+  }
 
   const backendResponse = await fetch(`${AUTH_API}/auth/login`, {
     method: "POST",
@@ -14,10 +19,10 @@ export async function POST(request: Request) {
   const data = await backendResponse.json();
 
   if (!backendResponse.ok) {
-    return NextResponse.json(data, { status: backendResponse.status });
+    return encryptResponseBody(data, { status: backendResponse.status });
   }
 
-  const response = NextResponse.json({ user: { email: data.user.email } });
+  const response = await encryptResponseBody({ user: { email: data.user.email } });
 
   response.cookies.set("access_token", data.user.access_token, {
     httpOnly: true,

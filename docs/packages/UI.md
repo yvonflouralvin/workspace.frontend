@@ -32,14 +32,17 @@ Dialog générique (overlay + panel centré, ferme sur `Escape`). Tailwind pur.
 ### `RightDrawer` (`src/RightDrawer.tsx`)
 
 Même conventions que `Modal` (overlay, ferme sur `Escape`, header titre+close,
-`width` surchargable) mais ancré à droite, pleine hauteur, contenu en colonne flex
-(`flex-1 min-h-0` sur la zone de contenu — utile pour y placer un `DataList` avec
-`maxHeight="h-full"` sans double scrollbar). Pour les listes/formulaires qu'on veut
-consulter sans quitter le contexte visuel de la page.
+`width` surchargable) mais ancré à droite, pleine hauteur. `width` est une largeur
+**fixe** par défaut (`w-[600px] max-w-full`, pas un `max-w-*` sur `w-full` — un drawer
+doit garder une largeur stable, seulement rétrécir sur mobile). La zone de contenu
+(`flex-1 min-h-0 overflow-hidden`) a son propre padding via `contentClassName` (défaut
+`"px-6 py-5"`) — passer `contentClassName=""` pour un contenu qui gère déjà son espacement
+(typiquement un `DataList` en mode `bare` avec `maxHeight="h-full"`, pour éviter un cadre
+dans le cadre et une double marge).
 
 ```tsx
-<RightDrawer title="Titre" onClose={() => ...} width="max-w-xl">
-  {children}
+<RightDrawer title="Titre" onClose={() => ...} contentClassName="">
+  <DataList items={items} columns={columns} getRowKey={(i) => i.id} maxHeight="h-full" bare />
 </RightDrawer>
 ```
 
@@ -196,6 +199,8 @@ totalCount?: number;           // total réel (recherche/pagination côté serve
 loading?: boolean;             // affiche "Chargement…" à la place de emptyMessage
 onSearchChange?: (query: string) => void;  // appelé au lieu du filtre local
 onPageChange?: (page: number) => void;     // appelé au lieu du setPage local
+bare?: boolean;                // retire bordure/coins arrondis/fond — pour un conteneur
+                                // qui a déjà sa propre bordure (ex: RightDrawer)
 ```
 
 En mode serveur, `DataList` garde la propriété de son état UI (texte de recherche, page

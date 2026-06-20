@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useSessionStore } from "@repo/auth/store/session.store";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
 import { AppShell } from "@repo/ui/shell/AppShell";
@@ -10,6 +9,7 @@ import { UserFooter } from "@repo/ui/shell/UserFooter";
 import { WorkspaceSwitcher } from "@repo/ui/WorkspaceSwitcher";
 import { HomeOutlined } from "@mui/icons-material";
 import type { NavItem, AppDefinition } from "@repo/ui/types/shell";
+import { logout as logoutRequest } from "@/app/lib/api";
 
 const WORKSPACE_DOMAIN = process.env.NEXT_PUBLIC_WORKSPACE_DOMAIN ?? "http://localhost:3005";
 
@@ -37,7 +37,6 @@ const APPS: AppDefinition[] = [
 ];
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
   const { user, logout } = useSessionStore();
   const { can } = usePermissions();
 
@@ -49,8 +48,8 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
   async function handleLogout() {
     logout();
-    await fetch("/api/logout", { method: "POST" });
-    router.push(process.env.NEXT_PUBLIC_AUTH_API_AUTH_DOMAIN ?? "http://localhost:3001");
+    await logoutRequest();
+    window.location.href = process.env.NEXT_PUBLIC_AUTH_API_AUTH_DOMAIN ?? "http://localhost:3001";
   }
 
   return (

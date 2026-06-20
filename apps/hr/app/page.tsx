@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
 import { DashboardShell } from "@/components/DashboardShell";
+import { listDepartments } from "./lib/api";
 
 interface Department {
   id: number;
@@ -24,11 +25,7 @@ export default function HomePage() {
       return;
     }
 
-    fetch("/api/departments")
-      .then(async (res) => {
-        if (!res.ok) throw new Error("Erreur de chargement");
-        return res.json();
-      })
+    listDepartments()
       .then((data) => setDepartments(data.departments))
       .catch(() => setError("Une erreur est survenue"))
       .finally(() => setLoading(false));

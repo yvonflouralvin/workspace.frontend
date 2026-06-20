@@ -18,7 +18,7 @@ interface DataListProps<T> {
   items: T[];
   columns: DataListColumn<T>[];
   getRowKey: (item: T) => string | number;
-  searchText: (item: T) => string;
+  searchText?: (item: T) => string;
   searchPlaceholder?: string;
   pageSize?: number;
   emptyMessage?: string;
@@ -26,6 +26,13 @@ interface DataListProps<T> {
   // Hauteur max de tout le composant (header recherche + corps + pagination) — le
   // corps devient scrollable au-delà, le composant ne dépasse jamais l'écran visible.
   maxHeight?: string;
+  // Mode serveur : `items` est déjà la page courante (recherche/pagination faites
+  // ailleurs, ex: useGraphQLRecords) — pas de filtre/slice local.
+  serverMode?: boolean;
+  totalCount?: number;
+  loading?: boolean;
+  onSearchChange?: (query: string) => void;
+  onPageChange?: (page: number) => void;
 }
 
 export function DataList<T>({
@@ -38,6 +45,11 @@ export function DataList<T>({
   emptyMessage = "Aucun résultat.",
   onRowClick,
   maxHeight = "max-h-[70vh]",
+  serverMode = false,
+  totalCount,
+  loading = false,
+  onSearchChange,
+  onPageChange,
 }: DataListProps<T>) {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(0);
@@ -45,17 +57,27 @@ export function DataList<T>({
   const normalizedQuery = query.trim().toLowerCase();
 
   const filtered = useMemo(() => {
-    if (!normalizedQuery) return items;
-    return items.filter((item) => searchText(item).toLowerCase().includes(normalizedQuery));
-  }, [items, normalizedQuery, searchText]);
+    if (serverMode || !normalizedQuery) return items;
+    return items.filter((item) => searchText?.(item).toLowerCase().includes(normalizedQuery) ?? true);
+  }, [items, normalizedQuery, searchText, serverMode]);
 
-  const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const total = serverMode ? totalCount ?? items.length : filtered.length;
+  const pageCount = Math.max(1, Math.ceil(total / pageSize));
   const currentPage = Math.min(page, pageCount - 1);
-  const pageItems = filtered.slice(currentPage * pageSize, currentPage * pageSize + pageSize);
+  const pageItems = serverMode
+    ? items
+    : filtered.slice(currentPage * pageSize, currentPage * pageSize + pageSize);
 
   function handleSearchChange(value: string) {
     setQuery(value);
     setPage(0);
+    onSearchChange?.(value);
+    onPageChange?.(0);
+  }
+
+  function goToPage(nextPage: number) {
+    setPage(nextPage);
+    onPageChange?.(nextPage);
   }
 
   return (
@@ -111,7 +133,7 @@ export function DataList<T>({
             {pageItems.length === 0 && (
               <tr>
                 <td colSpan={columns.length} className="px-5 py-6 text-center text-on-surface-variant">
-                  {emptyMessage}
+                  {loading ? "Chargement…" : emptyMessage}
                 </td>
               </tr>
             )}
@@ -121,13 +143,13 @@ export function DataList<T>({
 
       <div className="shrink-0 flex items-center justify-between px-4 py-2.5 border-t border-outline-variant text-sm text-on-surface-variant">
         <span>
-          {filtered.length} résultat{filtered.length !== 1 ? "s" : ""}
+          {total} résultat{total !== 1 ? "s" : ""}
         </span>
         <div className="flex items-center gap-2">
           <button
             type="button"
             disabled={currentPage === 0}
-            onClick={() => setPage((p) => Math.max(0, p - 1))}
+            onClick={() => goToPage(Math.max(0, currentPage - 1))}
             className="p-1.5 rounded-lg hover:bg-surface-container disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
           >
             <ChevronLeftOutlined style={{ fontSize: 18 }} />
@@ -138,7 +160,7 @@ export function DataList<T>({
           <button
             type="button"
             disabled={currentPage >= pageCount - 1}
-            onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
+            onClick={() => goToPage(Math.min(pageCount - 1, currentPage + 1))}
             className="p-1.5 rounded-lg hover:bg-surface-container disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
           >
             <ChevronRightOutlined style={{ fontSize: 18 }} />

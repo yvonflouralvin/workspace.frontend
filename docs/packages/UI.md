@@ -49,6 +49,23 @@ dans le cadre et une double marge).
 Utilisé par `apps/hr` : `CreateEmployeeDrawer` (formulaire de création) et la liste des
 employés d'un groupe dans `GroupFolderView` (voir `docs/apps/hr/HR.md`).
 
+### `Tabs` (`src/Tabs.tsx`)
+
+Liste d'onglets + panneau de contenu, Tailwind pur, état actif géré en interne. Pas
+d'animation, pas de dépendance externe.
+
+```tsx
+<Tabs
+  tabs={[
+    { key: "general", label: "Général", content: <div>...</div> },
+    { key: "contrat", label: "Contrat", content: <div>...</div> },
+  ]}
+  defaultTab="general" // optionnel, défaut: tabs[0]
+/>
+```
+
+Utilisé par `apps/hr` : fiche employé (`EmployeeDetailView`, voir `docs/apps/hr/HR.md`).
+
 ### `Badge` (`src/Badge.tsx`)
 
 Pastille colorée (ex : chip de groupe sur la page Membres).

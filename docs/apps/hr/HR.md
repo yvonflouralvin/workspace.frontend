@@ -56,9 +56,19 @@ Câblage session/auth/RBAC complet, mirroring exact du pattern `apps/workspace` 
   `components/CreateEmployeeDrawer.tsx` (`@repo/ui/RightDrawer` — prénom, nom, email,
   sélection du groupe via `listGroupOptions()` — liste plate `{id, path}` où `path` est
   le fil d'ariane complet, ex. `"Employee / Ingénierie / Backend"`) — création toujours
-  via `POST /hr/employees` (REST, inchangé) ; `onCreated` appelle `refetch()` du hook
-  plutôt que de muter un state local, puisque le gateway est désormais la source de
-  vérité de la liste.
+  via `POST /hr/employees` (REST, inchangé, body étendu avec `job_title`/`address`/
+  `phone` optionnels) ; `onCreated` appelle `refetch()` du hook plutôt que de muter un
+  state local, puisque le gateway est désormais la source de vérité de la liste. Clic
+  sur une ligne (`onRowClick`) → `router.push("/employees/{id}")`.
+- **`/employees/{id}`** (`app/employees/[id]/page.tsx`, Server Component qui `await
+  params` puis rend `EmployeeDetailView`, Client Component) — fiche employé : en-tête
+  (nom complet, fonction, département, email — `"—"` si `null`) via `getEmployee(id)`
+  → `GET /api/employees/{id}` → `GET /hr/employees/{id}` (REST, pas GraphQL — réutilise
+  `_to_out` côté backend, donc `group_name` déjà résolu, pas besoin de `include`/
+  relations ici). En dessous, `@repo/ui/Tabs` : onglet **Général** (adresse, téléphone)
+  et onglet **Contrat** (placeholder statique, à enrichir plus tard — sert pour l'instant
+  à valider le mécanisme d'onglets). Accessible depuis `/employees` et depuis le drawer
+  employés d'un groupe (voir ci-dessous) — les deux `DataList` pointent vers la même URL.
 - **`/groups`** (racine) et **`/groups/[id]`** — toutes deux montent
   `components/GroupFolderView.tsx` (Client Component), respectivement sans `groupId`
   (fetch `getRootGroup()` → `GET /api/groups/root`) et avec (`getGroup(id)` → `GET
@@ -72,14 +82,17 @@ Câblage session/auth/RBAC complet, mirroring exact du pattern `apps/workspace` 
   `PersonOutlined`, 14px). Les employés rattachés **directement** à ce groupe (pas ceux
   des sous-groupes) ne sont plus affichés en permanence : un bouton icône
   (`PeopleOutlined`, à gauche de "Nouveau sous-groupe") ouvre un `@repo/ui/RightDrawer`
-  contenant ce `DataList` (`maxHeight="h-full"` — le drawer gère son propre scroll, pas
-  de double scrollbar). Si `can("hr.departments.manage")`, bouton "Nouveau sous-groupe"
+  contenant ce `DataList` (`maxHeight="h-full"`, `bare` — le drawer gère son propre
+  scroll et son padding via `contentClassName=""`, pas de cadre dans le cadre). Clic sur
+  une ligne employé → `/employees/{id}` (même fiche que depuis `/employees`). Si
+  `can("hr.departments.manage")`, bouton "Nouveau sous-groupe"
   ouvrant `components/CreateSubgroupModal.tsx` (reste un `@repo/ui/Modal` classique —
   seule la liste des employés et leur formulaire de création utilisent le drawer).
 - **Routes BFF** (`app/api/groups/route.ts` — GET liste plate + POST création,
   `app/api/groups/root/route.ts`, `app/api/groups/[id]/route.ts`,
   `app/api/employees/route.ts` — GET liste + POST création, **uniquement POST utilisée**
-  côté frontend désormais) — toutes via `forwardToBackend(request, HR_API_URL,
+  côté frontend désormais, `app/api/employees/[id]/route.ts` — GET, alimente la fiche
+  détail) — toutes via `forwardToBackend(request, HR_API_URL,
   "/hr/...")`, même pattern que `app/api/departments/route.ts`. Plus
   `app/api/graphql/route.ts` — `POST` uniquement, `forwardToBackend(request,
   GRAPHQL_API_URL, "/graphql")`, consommée par `useGraphQLRecords` (convention

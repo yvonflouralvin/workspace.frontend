@@ -165,9 +165,65 @@ reçoit un item et renvoie la chaîne à filtrer (concatène les champs pertinen
 />
 ```
 
-Utilisé par `apps/hr` pour la liste des employés et, dans le navigateur de dossiers
-(`GroupFolderView`), pour les sous-groupes et les employés directs d'un groupe (voir
-`docs/apps/hr/HR.md`).
+Utilisé par `apps/hr` dans le navigateur de dossiers (`GroupFolderView`), pour les
+sous-groupes et les employés directs d'un groupe (voir `docs/apps/hr/HR.md`) — filtrage
+et pagination 100% client (les données sont déjà toutes chargées par
+`GET /hr/groups/{id}`).
+
+**Mode serveur** (`serverMode`) — props additionnelles, toutes optionnelles et
+rétro-compatibles :
+
+```ts
+serverMode?: boolean;          // true => `items` est déjà la page courante, pas de filtre/slice local
+totalCount?: number;           // total réel (recherche/pagination côté serveur)
+loading?: boolean;             // affiche "Chargement…" à la place de emptyMessage
+onSearchChange?: (query: string) => void;  // appelé au lieu du filtre local
+onPageChange?: (page: number) => void;     // appelé au lieu du setPage local
+```
+
+En mode serveur, `DataList` garde la propriété de son état UI (texte de recherche, page
+courante affichée, boutons précédent/suivant) mais ne filtre/tronçonne plus `items`
+localement — il notifie le parent via les callbacks. Voir `useGraphQLRecords` ci-dessous
+pour le cas d'usage prévu (les deux sont conçus pour fonctionner ensemble, mais
+`DataList` n'a aucune dépendance dure à ce hook — n'importe quelle source de données
+externe paginée peut l'alimenter en mode serveur).
+
+### `useGraphQLRecords` (`src/hooks/useGraphQLRecords.tsx`)
+
+Hook découplé de tout rendu — centralise le fetch vers le gateway GraphQL générique
+(`POST /api/graphql`, convention same-origin que doit exposer chaque app consommatrice,
+voir `docs/apps/hr/HR.md` et `backends/docs/services/graphql/GRAPHQL.md`) : recherche
+debouncée (300ms par défaut), pagination `limit`/`offset`, état `loading`/`error`,
+`refetch()` manuel (utile après une mutation faite ailleurs, ex: REST). N'importe quel
+composant peut le consommer — `DataList` en mode serveur n'est qu'un choix de rendu
+parmi d'autres (grille de cartes, kanban...).
+
+```tsx
+const { items, total, loading, error, setQuery, setPage, refetch } =
+  useGraphQLRecords<Employee>({
+    app: "hr",
+    model: "employees",
+    searchFields: ["first_name", "last_name", "email"],
+    enabled: canView, // évite un fetch (et un 403 GraphQL) tant que la permission n'est pas confirmée
+  });
+
+<DataList
+  serverMode
+  items={items}
+  totalCount={total}
+  loading={loading}
+  columns={columns}
+  getRowKey={(e) => e.id}
+  onSearchChange={setQuery}
+  onPageChange={setPage}
+/>
+```
+
+Le hook ne connaît que `app`/`model`/`filter`/`limit`/`offset` — il ne renvoie que ce que
+le gateway expose en CRUD générique (pas de jointures). Si l'affichage a besoin d'un
+champ dérivé d'une autre table (ex: nom du groupe à partir de `group_id`), le résoudre
+côté composant à partir d'un autre appel déjà disponible plutôt que d'attendre que le
+gateway le fasse (voir `apps/hr/app/employees/page.tsx`).
 
 ---
 

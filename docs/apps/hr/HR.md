@@ -44,12 +44,20 @@ Câblage session/auth/RBAC complet, mirroring exact du pattern `apps/workspace` 
 ### Employés et groupes/départements (navigateur de dossiers)
 
 - **`/employees`** (`app/employees/page.tsx`, Client Component) — si
-  `can("hr.employees.view")`, liste les employés (`listEmployees()`) dans un
-  `@repo/ui/DataList` (nom/email/groupe, recherche + pagination intégrées — voir
-  `docs/packages/UI.md`) ; si `can("hr.employees.manage")`, bouton "Nouvel employé"
-  ouvrant `components/CreateEmployeeModal.tsx` (prénom, nom, email, sélection du groupe
-  via `listGroupOptions()` — liste plate `{id, path}` où `path` est le fil d'ariane
-  complet, ex. `"Employee / Ingénierie / Backend"`).
+  `can("hr.employees.view")`, charge la liste via `@repo/ui/hooks/useGraphQLRecords`
+  (`app: "hr", model: "employees"`, recherche/pagination **côté serveur** par le gateway
+  GraphQL générique — voir `docs/packages/UI.md` et
+  `backends/docs/services/graphql/GRAPHQL.md`), rendue dans `@repo/ui/DataList` en mode
+  `serverMode`. `enabled: canView` évite le fetch tant que la permission n'est pas
+  confirmée. Le gateway renvoie la ligne SQL brute (pas de jointure) — pas de
+  `group_name` ; résolu côté client via `listGroupOptions()` (déjà chargé pour le
+  formulaire de création, voir plus bas) mappé sur `group_id`. Si
+  `can("hr.employees.manage")`, bouton "Nouvel employé" ouvrant
+  `components/CreateEmployeeModal.tsx` (prénom, nom, email, sélection du groupe via
+  `listGroupOptions()` — liste plate `{id, path}` où `path` est le fil d'ariane complet,
+  ex. `"Employee / Ingénierie / Backend"`) — création toujours via `POST /hr/employees`
+  (REST, inchangé) ; `onCreated` appelle `refetch()` du hook plutôt que de muter un state
+  local, puisque le gateway est désormais la source de vérité de la liste.
 - **`/groups`** (racine) et **`/groups/[id]`** — toutes deux montent
   `components/GroupFolderView.tsx` (Client Component), respectivement sans `groupId`
   (fetch `getRootGroup()` → `GET /api/groups/root`) et avec (`getGroup(id)` → `GET
@@ -62,9 +70,12 @@ Câblage session/auth/RBAC complet, mirroring exact du pattern `apps/workspace` 
   `components/CreateSubgroupModal.tsx`.
 - **Routes BFF** (`app/api/groups/route.ts` — GET liste plate + POST création,
   `app/api/groups/root/route.ts`, `app/api/groups/[id]/route.ts`,
-  `app/api/employees/route.ts` — GET liste + POST création) — toutes via
-  `forwardToBackend(request, HR_API_URL, "/hr/...")`, même pattern que
-  `app/api/departments/route.ts`.
+  `app/api/employees/route.ts` — GET liste + POST création, **uniquement POST utilisée**
+  côté frontend désormais) — toutes via `forwardToBackend(request, HR_API_URL,
+  "/hr/...")`, même pattern que `app/api/departments/route.ts`. Plus
+  `app/api/graphql/route.ts` — `POST` uniquement, `forwardToBackend(request,
+  GRAPHQL_API_URL, "/graphql")`, consommée par `useGraphQLRecords` (convention
+  same-origin générique, pas spécifique à `hr`).
 - **Backend** : voir `backends/docs/services/hr/HR.md#groupes-et-employés` — persistance
   réelle (SQLAlchemy/Alembic), groupe racine `"Employee"` auto-créé par workspace, gated
   par `hr.departments.{view,manage}` et `hr.employees.{view,manage}`.
@@ -80,6 +91,7 @@ Câblage session/auth/RBAC complet, mirroring exact du pattern `apps/workspace` 
 | `NEXT_PUBLIC_AUTH_API_AUTH_DOMAIN` | Browser | `http://localhost:3001` |
 | `NEXT_PUBLIC_WORKSPACE_DOMAIN`     | Browser | `http://localhost:3005` |
 | `HR_API_URL`                       | Server  | `http://127.0.0.1:5001` (backend FastAPI `hr`) |
+| `GRAPHQL_API_URL`                  | Server  | `http://127.0.0.1:5002` (gateway GraphQL générique) |
 
 ---
 

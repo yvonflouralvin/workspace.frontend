@@ -3,9 +3,20 @@
 import { useEffect, useState } from "react";
 import { AddOutlined } from "@mui/icons-material";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
+import { DataList, type DataListColumn } from "@repo/ui/DataList";
 import { DashboardShell } from "@/components/DashboardShell";
 import { CreateEmployeeModal } from "@/components/CreateEmployeeModal";
 import { listEmployees, ApiError, type Employee } from "@/app/lib/api";
+
+const COLUMNS: DataListColumn<Employee>[] = [
+  {
+    key: "name",
+    header: "Employé",
+    render: (employee) => `${employee.first_name} ${employee.last_name}`,
+  },
+  { key: "email", header: "Email", render: (employee) => employee.email },
+  { key: "group", header: "Groupe / Département", render: (employee) => employee.group_name },
+];
 
 export default function EmployeesPage() {
   const { can } = usePermissions();
@@ -64,35 +75,16 @@ export default function EmployeesPage() {
         {canView && loading && <p className="text-sm text-on-surface-variant">Chargement…</p>}
 
         {canView && !loading && !error && (
-          <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest overflow-hidden">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-outline-variant text-left text-on-surface-variant">
-                  <th className="px-5 py-3 font-medium">Employé</th>
-                  <th className="px-5 py-3 font-medium">Email</th>
-                  <th className="px-5 py-3 font-medium">Groupe / Département</th>
-                </tr>
-              </thead>
-              <tbody>
-                {employees.map((employee) => (
-                  <tr key={employee.id} className="border-b border-outline-variant last:border-0">
-                    <td className="px-5 py-3 text-on-surface">
-                      {employee.first_name} {employee.last_name}
-                    </td>
-                    <td className="px-5 py-3 text-on-surface-variant">{employee.email}</td>
-                    <td className="px-5 py-3 text-on-surface-variant">{employee.group_name}</td>
-                  </tr>
-                ))}
-                {employees.length === 0 && (
-                  <tr>
-                    <td colSpan={3} className="px-5 py-6 text-center text-on-surface-variant">
-                      Aucun employé pour le moment.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+          <DataList
+            items={employees}
+            columns={COLUMNS}
+            getRowKey={(employee) => employee.id}
+            searchText={(employee) =>
+              `${employee.first_name} ${employee.last_name} ${employee.email} ${employee.group_name}`
+            }
+            searchPlaceholder="Rechercher un employé…"
+            emptyMessage="Aucun employé pour le moment."
+          />
         )}
       </div>
 

@@ -2,12 +2,49 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { FolderOutlined, PersonOutlined, AddOutlined } from "@mui/icons-material";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
-import { getGroup, getRootGroup, ApiError, type GroupDetail } from "@/app/lib/api";
+import { DataList, type DataListColumn } from "@repo/ui/DataList";
+import {
+  getGroup,
+  getRootGroup,
+  ApiError,
+  type GroupDetail,
+  type GroupSummary,
+  type EmployeeSummary,
+} from "@/app/lib/api";
 import { CreateSubgroupModal } from "@/components/CreateSubgroupModal";
 
+const SUBGROUP_COLUMNS: DataListColumn<GroupSummary>[] = [
+  {
+    key: "name",
+    header: "Sous-groupe",
+    render: (subgroup) => (
+      <span className="flex items-center gap-2">
+        <FolderOutlined style={{ fontSize: 18 }} className="text-secondary" />
+        {subgroup.name}
+      </span>
+    ),
+  },
+];
+
+const EMPLOYEE_COLUMNS: DataListColumn<EmployeeSummary>[] = [
+  {
+    key: "name",
+    header: "Employé",
+    render: (employee) => (
+      <span className="flex items-center gap-2">
+        <PersonOutlined style={{ fontSize: 18 }} className="text-on-surface-variant" />
+        {employee.first_name} {employee.last_name}
+      </span>
+    ),
+  },
+  { key: "email", header: "Email", render: (employee) => employee.email },
+];
+
 export function GroupFolderView({ groupId }: { groupId?: number }) {
+  const router = useRouter();
   const { can } = usePermissions();
   const canView = can("hr.departments.view");
   const canManage = can("hr.departments.manage");
@@ -83,50 +120,34 @@ export function GroupFolderView({ groupId }: { groupId?: number }) {
         )}
       </div>
 
-      {group.children.length === 0 && group.employees.length === 0 && (
-        <p className="text-sm text-on-surface-variant">Ce groupe est vide.</p>
-      )}
+      <div className="space-y-2">
+        <h2 className="text-sm font-semibold text-on-surface-variant">Sous-groupes</h2>
+        <DataList
+          items={group.children}
+          columns={SUBGROUP_COLUMNS}
+          getRowKey={(subgroup) => subgroup.id}
+          searchText={(subgroup) => subgroup.name}
+          searchPlaceholder="Rechercher un sous-groupe…"
+          emptyMessage="Aucun sous-groupe."
+          onRowClick={(subgroup) => router.push(`/groups/${subgroup.id}`)}
+          maxHeight="max-h-[40vh]"
+        />
+      </div>
 
-      {group.children.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-          {group.children.map((child) => (
-            <Link
-              key={child.id}
-              href={`/groups/${child.id}`}
-              className="flex flex-col items-center gap-2 p-4 rounded-2xl border border-outline-variant bg-surface-container-lowest hover:bg-surface-container transition-colors text-center"
-            >
-              <FolderOutlined style={{ fontSize: 32 }} className="text-secondary" />
-              <span className="text-sm font-medium text-on-surface truncate w-full">
-                {child.name}
-              </span>
-            </Link>
-          ))}
-        </div>
-      )}
-
-      {group.employees.length > 0 && (
-        <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-outline-variant text-left text-on-surface-variant">
-                <th className="px-5 py-3 font-medium">Employé</th>
-                <th className="px-5 py-3 font-medium">Email</th>
-              </tr>
-            </thead>
-            <tbody>
-              {group.employees.map((employee) => (
-                <tr key={employee.id} className="border-b border-outline-variant last:border-0">
-                  <td className="px-5 py-3 text-on-surface flex items-center gap-2">
-                    <PersonOutlined style={{ fontSize: 18 }} className="text-on-surface-variant" />
-                    {employee.first_name} {employee.last_name}
-                  </td>
-                  <td className="px-5 py-3 text-on-surface-variant">{employee.email}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <div className="space-y-2">
+        <h2 className="text-sm font-semibold text-on-surface-variant">
+          Employés de ce groupe
+        </h2>
+        <DataList
+          items={group.employees}
+          columns={EMPLOYEE_COLUMNS}
+          getRowKey={(employee) => employee.id}
+          searchText={(employee) => `${employee.first_name} ${employee.last_name} ${employee.email}`}
+          searchPlaceholder="Rechercher un employé…"
+          emptyMessage="Aucun employé directement dans ce groupe."
+          maxHeight="max-h-[40vh]"
+        />
+      </div>
 
       {showCreate && (
         <CreateSubgroupModal

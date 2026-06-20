@@ -44,20 +44,22 @@ Câblage session/auth/RBAC complet, mirroring exact du pattern `apps/workspace` 
 ### Employés et groupes/départements (navigateur de dossiers)
 
 - **`/employees`** (`app/employees/page.tsx`, Client Component) — si
-  `can("hr.employees.view")`, liste les employés (`listEmployees()`, nom/email/groupe) ;
-  si `can("hr.employees.manage")`, bouton "Nouvel employé" ouvrant
-  `components/CreateEmployeeModal.tsx` (prénom, nom, email, sélection du groupe via
-  `listGroupOptions()` — liste plate `{id, path}` où `path` est le fil d'ariane complet,
-  ex. `"Employee / Ingénierie / Backend"`).
+  `can("hr.employees.view")`, liste les employés (`listEmployees()`) dans un
+  `@repo/ui/DataList` (nom/email/groupe, recherche + pagination intégrées — voir
+  `docs/packages/UI.md`) ; si `can("hr.employees.manage")`, bouton "Nouvel employé"
+  ouvrant `components/CreateEmployeeModal.tsx` (prénom, nom, email, sélection du groupe
+  via `listGroupOptions()` — liste plate `{id, path}` où `path` est le fil d'ariane
+  complet, ex. `"Employee / Ingénierie / Backend"`).
 - **`/groups`** (racine) et **`/groups/[id]`** — toutes deux montent
   `components/GroupFolderView.tsx` (Client Component), respectivement sans `groupId`
   (fetch `getRootGroup()` → `GET /api/groups/root`) et avec (`getGroup(id)` → `GET
   /api/groups/{id}`). Affiche le fil d'ariane (`ancestors` + groupe courant, liens vers
-  `/groups` pour la racine ou `/groups/{id}` pour un ancêtre), les sous-groupes sous
-  forme de "dossiers" cliquables (grille de cartes `FolderOutlined`, `Link` vers
-  `/groups/{child.id}`), et les employés rattachés **directement** à ce groupe (pas ceux
-  des sous-groupes). Si `can("hr.departments.manage")`, bouton "Nouveau sous-groupe"
-  ouvrant `components/CreateSubgroupModal.tsx`.
+  `/groups` pour la racine ou `/groups/{id}` pour un ancêtre), puis deux `@repo/ui/DataList`
+  distincts : un pour les sous-groupes directs (ligne cliquable → `router.push("/groups/{id}")`,
+  pas de `Link` car `DataList` pilote la navigation via `onRowClick`), un pour les employés
+  rattachés **directement** à ce groupe (pas ceux des sous-groupes). Si
+  `can("hr.departments.manage")`, bouton "Nouveau sous-groupe" ouvrant
+  `components/CreateSubgroupModal.tsx`.
 - **Routes BFF** (`app/api/groups/route.ts` — GET liste plate + POST création,
   `app/api/groups/root/route.ts`, `app/api/groups/[id]/route.ts`,
   `app/api/employees/route.ts` — GET liste + POST création) — toutes via

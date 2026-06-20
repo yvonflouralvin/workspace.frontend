@@ -141,6 +141,34 @@ qui mènerait au même écran.
 />
 ```
 
+### `DataList` (`src/DataList.tsx`)
+
+Liste générique avec recherche intégrée et pagination — colonnes définies par l'app
+appelante (`render` par colonne), pas de couplage à un modèle de données précis. Hauteur
+plafonnée (`maxHeight`, défaut `max-h-[70vh]`) : header de recherche et pied de pagination
+fixes (`shrink-0`), seul le corps (`flex-1 min-h-0 overflow-y-auto`) scrolle — le composant
+ne dépasse donc jamais l'écran visible quel que soit le nombre d'éléments. `searchText`
+reçoit un item et renvoie la chaîne à filtrer (concatène les champs pertinents).
+
+```tsx
+<DataList
+  items={employees}
+  columns={[
+    { key: "name", header: "Employé", render: (e) => `${e.first_name} ${e.last_name}` },
+    { key: "email", header: "Email", render: (e) => e.email },
+  ]}
+  getRowKey={(e) => e.id}
+  searchText={(e) => `${e.first_name} ${e.last_name} ${e.email}`}
+  searchPlaceholder="Rechercher un employé…"
+  onRowClick={(e) => router.push(`/employees/${e.id}`)}
+  pageSize={10}
+/>
+```
+
+Utilisé par `apps/hr` pour la liste des employés et, dans le navigateur de dossiers
+(`GroupFolderView`), pour les sous-groupes et les employés directs d'un groupe (voir
+`docs/apps/hr/HR.md`).
+
 ---
 
 ## Shell partagé (à implémenter — voir `docs/apps/workspace/WORKSPACE.md`)

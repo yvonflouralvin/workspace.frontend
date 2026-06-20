@@ -6,7 +6,7 @@ import { usePermissions } from "@repo/auth/hooks/usePermissions";
 import { DataList, type DataListColumn } from "@repo/ui/DataList";
 import { useGraphQLRecords } from "@repo/ui/hooks/useGraphQLRecords";
 import { DashboardShell } from "@/components/DashboardShell";
-import { CreateEmployeeModal } from "@/components/CreateEmployeeModal";
+import { CreateEmployeeDrawer } from "@/components/CreateEmployeeDrawer";
 import { listGroupOptions, type GroupOption } from "@/app/lib/api";
 
 interface EmployeeRecord {
@@ -106,7 +106,7 @@ export default function EmployeesPage() {
       </div>
 
       {showCreate && (
-        <CreateEmployeeModal onClose={() => setShowCreate(false)} onCreated={refetch} />
+        <CreateEmployeeDrawer onClose={() => setShowCreate(false)} onCreated={refetch} />
       )}
     </DashboardShell>
   );

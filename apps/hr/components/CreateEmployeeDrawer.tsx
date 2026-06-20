@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Modal } from "@repo/ui/Modal";
+import { RightDrawer } from "@repo/ui/RightDrawer";
 import {
   createEmployee,
   listGroupOptions,
@@ -10,7 +10,7 @@ import {
   type GroupOption,
 } from "@/app/lib/api";
 
-export function CreateEmployeeModal({
+export function CreateEmployeeDrawer({
   onClose,
   onCreated,
 }: {
@@ -57,7 +57,7 @@ export function CreateEmployeeModal({
   }
 
   return (
-    <Modal title="Nouvel employé" onClose={onClose}>
+    <RightDrawer title="Nouvel employé" onClose={onClose}>
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && (
           <p className="text-sm text-error bg-error-container/40 rounded-lg px-3 py-2">
@@ -65,27 +65,25 @@ export function CreateEmployeeModal({
           </p>
         )}
 
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1">
-            <label className="text-sm font-medium text-on-surface">Prénom</label>
-            <input
-              type="text"
-              required
-              value={firstName}
-              onChange={(e) => setFirstName(e.target.value)}
-              className="w-full px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface"
-            />
-          </div>
-          <div className="space-y-1">
-            <label className="text-sm font-medium text-on-surface">Nom</label>
-            <input
-              type="text"
-              required
-              value={lastName}
-              onChange={(e) => setLastName(e.target.value)}
-              className="w-full px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface"
-            />
-          </div>
+        <div className="space-y-1">
+          <label className="text-sm font-medium text-on-surface">Prénom</label>
+          <input
+            type="text"
+            required
+            value={firstName}
+            onChange={(e) => setFirstName(e.target.value)}
+            className="w-full px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface"
+          />
+        </div>
+        <div className="space-y-1">
+          <label className="text-sm font-medium text-on-surface">Nom</label>
+          <input
+            type="text"
+            required
+            value={lastName}
+            onChange={(e) => setLastName(e.target.value)}
+            className="w-full px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface"
+          />
         </div>
 
         <div className="space-y-1">
@@ -132,6 +130,6 @@ export function CreateEmployeeModal({
           </button>
         </div>
       </form>
-    </Modal>
+    </RightDrawer>
   );
 }

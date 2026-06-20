@@ -70,6 +70,9 @@ export interface Employee {
   email: string;
   group_id: number;
   group_name: string;
+  job_title: string | null;
+  address: string | null;
+  phone: string | null;
 }
 
 export async function getRootGroup(): Promise<GroupDetail> {
@@ -102,11 +105,20 @@ export async function listEmployees(): Promise<Employee[]> {
   return parseResponse(response);
 }
 
+export async function getEmployee(id: number): Promise<Employee> {
+  const response = await apiFetch(`/api/employees/${id}`);
+
+  return parseResponse(response);
+}
+
 export async function createEmployee(data: {
   first_name: string;
   last_name: string;
   email: string;
   group_id: number;
+  job_title?: string;
+  address?: string;
+  phone?: string;
 }): Promise<Employee> {
   const response = await apiFetch("/api/employees", { method: "POST", body: data });
 

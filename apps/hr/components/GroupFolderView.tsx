@@ -200,6 +200,7 @@ export function GroupFolderView({ groupId }: { groupId?: number }) {
             items={group.employees}
             columns={EMPLOYEE_COLUMNS}
             getRowKey={(employee) => employee.id}
+            onRowClick={(employee) => router.push(`/employees/${employee.id}`)}
             searchText={(employee) => `${employee.first_name} ${employee.last_name} ${employee.email}`}
             searchPlaceholder="Rechercher un employé…"
             emptyMessage="Aucun employé directement dans ce groupe."

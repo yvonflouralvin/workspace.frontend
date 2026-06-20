@@ -29,6 +29,23 @@ Dialog générique (overlay + panel centré, ferme sur `Escape`). Tailwind pur.
 </Modal>
 ```
 
+### `RightDrawer` (`src/RightDrawer.tsx`)
+
+Même conventions que `Modal` (overlay, ferme sur `Escape`, header titre+close,
+`width` surchargable) mais ancré à droite, pleine hauteur, contenu en colonne flex
+(`flex-1 min-h-0` sur la zone de contenu — utile pour y placer un `DataList` avec
+`maxHeight="h-full"` sans double scrollbar). Pour les listes/formulaires qu'on veut
+consulter sans quitter le contexte visuel de la page.
+
+```tsx
+<RightDrawer title="Titre" onClose={() => ...} width="max-w-xl">
+  {children}
+</RightDrawer>
+```
+
+Utilisé par `apps/hr` : `CreateEmployeeDrawer` (formulaire de création) et la liste des
+employés d'un groupe dans `GroupFolderView` (voir `docs/apps/hr/HR.md`).
+
 ### `Badge` (`src/Badge.tsx`)
 
 Pastille colorée (ex : chip de groupe sur la page Membres).

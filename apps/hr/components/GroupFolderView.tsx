@@ -3,9 +3,15 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FolderOutlined, PersonOutlined, AddOutlined } from "@mui/icons-material";
+import {
+  FolderOutlined,
+  PersonOutlined,
+  PeopleOutlined,
+  AddOutlined,
+} from "@mui/icons-material";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
 import { DataList, type DataListColumn } from "@repo/ui/DataList";
+import { RightDrawer } from "@repo/ui/RightDrawer";
 import {
   getGroup,
   getRootGroup,
@@ -21,10 +27,22 @@ const SUBGROUP_COLUMNS: DataListColumn<GroupSummary>[] = [
     key: "name",
     header: "Sous-groupe",
     render: (subgroup) => (
-      <span className="flex items-center gap-2">
-        <FolderOutlined style={{ fontSize: 18 }} className="text-secondary" />
-        {subgroup.name}
-      </span>
+      <div className="flex items-center justify-between gap-3 w-full">
+        <span className="flex items-center gap-2">
+          <FolderOutlined style={{ fontSize: 18 }} className="text-secondary" />
+          {subgroup.name}
+        </span>
+        <span className="flex items-center gap-3 text-xs text-on-surface-variant shrink-0">
+          <span className="flex items-center gap-1" title="Sous-groupes (total)">
+            <FolderOutlined style={{ fontSize: 14 }} />
+            {subgroup.subgroup_count}
+          </span>
+          <span className="flex items-center gap-1" title="Employés (total)">
+            <PersonOutlined style={{ fontSize: 14 }} />
+            {subgroup.employee_count}
+          </span>
+        </span>
+      </div>
     ),
   },
 ];
@@ -53,6 +71,7 @@ export function GroupFolderView({ groupId }: { groupId?: number }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
+  const [showEmployees, setShowEmployees] = useState(false);
 
   useEffect(() => {
     if (!canView) {
@@ -109,15 +128,25 @@ export function GroupFolderView({ groupId }: { groupId?: number }) {
           ))}
         </nav>
 
-        {canManage && (
+        <div className="flex items-center gap-2">
           <button
-            onClick={() => setShowCreate(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-on-primary text-sm font-medium"
+            onClick={() => setShowEmployees(true)}
+            title="Voir les employés de ce groupe"
+            className="p-2 rounded-xl border border-outline-variant text-on-surface-variant hover:bg-surface-container transition-colors"
           >
-            <AddOutlined style={{ fontSize: 18 }} />
-            Nouveau sous-groupe
+            <PeopleOutlined style={{ fontSize: 18 }} />
           </button>
-        )}
+
+          {canManage && (
+            <button
+              onClick={() => setShowCreate(true)}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-on-primary text-sm font-medium"
+            >
+              <AddOutlined style={{ fontSize: 18 }} />
+              Nouveau sous-groupe
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="space-y-2">
@@ -134,21 +163,6 @@ export function GroupFolderView({ groupId }: { groupId?: number }) {
         />
       </div>
 
-      <div className="space-y-2">
-        <h2 className="text-sm font-semibold text-on-surface-variant">
-          Employés de ce groupe
-        </h2>
-        <DataList
-          items={group.employees}
-          columns={EMPLOYEE_COLUMNS}
-          getRowKey={(employee) => employee.id}
-          searchText={(employee) => `${employee.first_name} ${employee.last_name} ${employee.email}`}
-          searchPlaceholder="Rechercher un employé…"
-          emptyMessage="Aucun employé directement dans ce groupe."
-          maxHeight="max-h-[40vh]"
-        />
-      </div>
-
       {showCreate && (
         <CreateSubgroupModal
           parentId={group.id}
@@ -161,13 +175,38 @@ export function GroupFolderView({ groupId }: { groupId?: number }) {
                     ...prev,
                     children: [
                       ...prev.children,
-                      { id: created.id, name: created.name, is_root: created.is_root },
+                      {
+                        id: created.id,
+                        name: created.name,
+                        is_root: created.is_root,
+                        subgroup_count: 0,
+                        employee_count: 0,
+                      },
                     ],
                   }
                 : prev
             )
           }
         />
+      )}
+
+      {showEmployees && (
+        <RightDrawer
+          title="Employés de ce groupe"
+          onClose={() => setShowEmployees(false)}
+          contentClassName=""
+        >
+          <DataList
+            items={group.employees}
+            columns={EMPLOYEE_COLUMNS}
+            getRowKey={(employee) => employee.id}
+            searchText={(employee) => `${employee.first_name} ${employee.last_name} ${employee.email}`}
+            searchPlaceholder="Rechercher un employé…"
+            emptyMessage="Aucun employé directement dans ce groupe."
+            maxHeight="h-full"
+            bare
+          />
+        </RightDrawer>
       )}
     </div>
   );

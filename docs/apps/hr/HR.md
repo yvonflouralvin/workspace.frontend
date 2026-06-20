@@ -53,21 +53,29 @@ Câblage session/auth/RBAC complet, mirroring exact du pattern `apps/workspace` 
   `group_name` ; résolu côté client via `listGroupOptions()` (déjà chargé pour le
   formulaire de création, voir plus bas) mappé sur `group_id`. Si
   `can("hr.employees.manage")`, bouton "Nouvel employé" ouvrant
-  `components/CreateEmployeeModal.tsx` (prénom, nom, email, sélection du groupe via
-  `listGroupOptions()` — liste plate `{id, path}` où `path` est le fil d'ariane complet,
-  ex. `"Employee / Ingénierie / Backend"`) — création toujours via `POST /hr/employees`
-  (REST, inchangé) ; `onCreated` appelle `refetch()` du hook plutôt que de muter un state
-  local, puisque le gateway est désormais la source de vérité de la liste.
+  `components/CreateEmployeeDrawer.tsx` (`@repo/ui/RightDrawer` — prénom, nom, email,
+  sélection du groupe via `listGroupOptions()` — liste plate `{id, path}` où `path` est
+  le fil d'ariane complet, ex. `"Employee / Ingénierie / Backend"`) — création toujours
+  via `POST /hr/employees` (REST, inchangé) ; `onCreated` appelle `refetch()` du hook
+  plutôt que de muter un state local, puisque le gateway est désormais la source de
+  vérité de la liste.
 - **`/groups`** (racine) et **`/groups/[id]`** — toutes deux montent
   `components/GroupFolderView.tsx` (Client Component), respectivement sans `groupId`
   (fetch `getRootGroup()` → `GET /api/groups/root`) et avec (`getGroup(id)` → `GET
   /api/groups/{id}`). Affiche le fil d'ariane (`ancestors` + groupe courant, liens vers
-  `/groups` pour la racine ou `/groups/{id}` pour un ancêtre), puis deux `@repo/ui/DataList`
-  distincts : un pour les sous-groupes directs (ligne cliquable → `router.push("/groups/{id}")`,
-  pas de `Link` car `DataList` pilote la navigation via `onRowClick`), un pour les employés
-  rattachés **directement** à ce groupe (pas ceux des sous-groupes). Si
-  `can("hr.departments.manage")`, bouton "Nouveau sous-groupe" ouvrant
-  `components/CreateSubgroupModal.tsx`.
+  `/groups` pour la racine ou `/groups/{id}` pour un ancêtre), puis un seul
+  `@repo/ui/DataList` pour les sous-groupes directs (ligne cliquable →
+  `router.push("/groups/{id}")`, pas de `Link` car `DataList` pilote la navigation via
+  `onRowClick`). Chaque ligne affiche, à droite du nom, le nombre total de sous-groupes
+  et d'employés **récursif** (`subgroup_count`/`employee_count` de `GroupSummary`, voir
+  `backends/docs/services/hr/HR.md`) avec de petites icônes (`FolderOutlined`,
+  `PersonOutlined`, 14px). Les employés rattachés **directement** à ce groupe (pas ceux
+  des sous-groupes) ne sont plus affichés en permanence : un bouton icône
+  (`PeopleOutlined`, à gauche de "Nouveau sous-groupe") ouvre un `@repo/ui/RightDrawer`
+  contenant ce `DataList` (`maxHeight="h-full"` — le drawer gère son propre scroll, pas
+  de double scrollbar). Si `can("hr.departments.manage")`, bouton "Nouveau sous-groupe"
+  ouvrant `components/CreateSubgroupModal.tsx` (reste un `@repo/ui/Modal` classique —
+  seule la liste des employés et leur formulaire de création utilisent le drawer).
 - **Routes BFF** (`app/api/groups/route.ts` — GET liste plate + POST création,
   `app/api/groups/root/route.ts`, `app/api/groups/[id]/route.ts`,
   `app/api/employees/route.ts` — GET liste + POST création, **uniquement POST utilisée**

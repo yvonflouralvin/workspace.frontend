@@ -37,6 +37,8 @@ export interface GroupSummary {
   id: number;
   name: string;
   is_root: boolean;
+  subgroup_count: number;
+  employee_count: number;
 }
 
 export interface EmployeeSummary {

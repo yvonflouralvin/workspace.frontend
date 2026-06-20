@@ -33,6 +33,9 @@ interface DataListProps<T> {
   loading?: boolean;
   onSearchChange?: (query: string) => void;
   onPageChange?: (page: number) => void;
+  // Sans cadre (pas de bordure/coins arrondis/fond propre) — pour un conteneur qui a
+  // déjà sa propre bordure (ex: dans un RightDrawer, éviter le cadre dans le cadre).
+  bare?: boolean;
 }
 
 export function DataList<T>({
@@ -50,6 +53,7 @@ export function DataList<T>({
   loading = false,
   onSearchChange,
   onPageChange,
+  bare = false,
 }: DataListProps<T>) {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(0);
@@ -82,7 +86,9 @@ export function DataList<T>({
 
   return (
     <div
-      className={`flex flex-col rounded-2xl border border-outline-variant bg-surface-container-lowest overflow-hidden ${maxHeight}`}
+      className={`flex flex-col overflow-hidden ${
+        bare ? "" : "rounded-2xl border border-outline-variant bg-surface-container-lowest"
+      } ${maxHeight}`}
     >
       <div className="shrink-0 p-3 border-b border-outline-variant">
         <div className="relative">

@@ -7,14 +7,18 @@ export function RightDrawer({
   title,
   onClose,
   children,
-  // Valeur arbitraire, même raison que Modal.width : les tokens nommés
-  // (sm/md/lg/xl) collisionnent avec l'échelle max-w-*.
-  width = "max-w-md",
+  // Largeur fixe par défaut (pas un max-w-* sur w-full) : un drawer doit garder une
+  // largeur stable quel que soit le viewport, seulement rétrécir sur mobile.
+  width = "w-[600px] max-w-full",
+  // Surchargable pour un contenu qui gère déjà son propre espacement interne (ex:
+  // DataList en mode `bare`) — éviter une marge en double.
+  contentClassName = "px-6 py-5",
 }: {
   title: string;
   onClose: () => void;
   children: React.ReactNode;
   width?: string;
+  contentClassName?: string;
 }) {
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -27,7 +31,7 @@ export function RightDrawer({
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-black/40">
       <div
-        className={`w-full ${width} h-full flex flex-col bg-surface-container-lowest border-l border-outline-variant shadow-lg`}
+        className={`${width} h-full flex flex-col bg-surface-container-lowest border-l border-outline-variant shadow-lg`}
       >
         <div className="shrink-0 flex items-center justify-between px-6 py-4 border-b border-outline-variant">
           <h2 className="text-base font-semibold text-on-surface">{title}</h2>
@@ -38,7 +42,7 @@ export function RightDrawer({
             <CloseOutlined style={{ fontSize: 20 }} />
           </button>
         </div>
-        <div className="flex-1 min-h-0 flex flex-col px-6 py-5">{children}</div>
+        <div className={`flex-1 min-h-0 overflow-hidden ${contentClassName}`}>{children}</div>
       </div>
     </div>
   );

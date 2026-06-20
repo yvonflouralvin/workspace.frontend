@@ -194,7 +194,7 @@ export function GroupFolderView({ groupId }: { groupId?: number }) {
         <RightDrawer
           title="Employés de ce groupe"
           onClose={() => setShowEmployees(false)}
-          width="max-w-xl"
+          contentClassName=""
         >
           <DataList
             items={group.employees}
@@ -204,6 +204,7 @@ export function GroupFolderView({ groupId }: { groupId?: number }) {
             searchPlaceholder="Rechercher un employé…"
             emptyMessage="Aucun employé directement dans ce groupe."
             maxHeight="h-full"
+            bare
           />
         </RightDrawer>
       )}

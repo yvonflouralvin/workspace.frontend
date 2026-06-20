@@ -20,6 +20,9 @@ export function CreateEmployeeDrawer({
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
+  const [jobTitle, setJobTitle] = useState("");
+  const [address, setAddress] = useState("");
+  const [phone, setPhone] = useState("");
   const [groupId, setGroupId] = useState<number | null>(null);
   const [groupOptions, setGroupOptions] = useState<GroupOption[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -46,6 +49,9 @@ export function CreateEmployeeDrawer({
         last_name: lastName,
         email,
         group_id: groupId,
+        job_title: jobTitle || undefined,
+        address: address || undefined,
+        phone: phone || undefined,
       });
       onCreated(employee);
       onClose();
@@ -93,6 +99,36 @@ export function CreateEmployeeDrawer({
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            className="w-full px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface"
+          />
+        </div>
+
+        <div className="space-y-1">
+          <label className="text-sm font-medium text-on-surface">Fonction</label>
+          <input
+            type="text"
+            value={jobTitle}
+            onChange={(e) => setJobTitle(e.target.value)}
+            className="w-full px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface"
+          />
+        </div>
+
+        <div className="space-y-1">
+          <label className="text-sm font-medium text-on-surface">Adresse</label>
+          <input
+            type="text"
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+            className="w-full px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface"
+          />
+        </div>
+
+        <div className="space-y-1">
+          <label className="text-sm font-medium text-on-surface">Téléphone</label>
+          <input
+            type="tel"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
             className="w-full px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface"
           />
         </div>

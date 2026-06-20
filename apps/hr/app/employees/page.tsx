@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { AddOutlined } from "@mui/icons-material";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
 import { DataList, type DataListColumn } from "@repo/ui/DataList";
@@ -18,6 +19,7 @@ interface EmployeeRecord {
 }
 
 export default function EmployeesPage() {
+  const router = useRouter();
   const { can } = usePermissions();
   const canView = can("hr.employees.view");
   const canManage = can("hr.employees.manage");
@@ -97,6 +99,7 @@ export default function EmployeesPage() {
             loading={loading}
             columns={columns}
             getRowKey={(employee) => employee.id}
+            onRowClick={(employee) => router.push(`/employees/${employee.id}`)}
             onSearchChange={setQuery}
             onPageChange={setPage}
             searchPlaceholder="Rechercher un employé…"

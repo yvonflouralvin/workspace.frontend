@@ -226,6 +226,11 @@ bundle, seulement contre l'inspection casuelle (Network tab, screen-share suppor
 Routes explicitement exclues du wrapper (pas de body JSON à chiffrer) :
 `app/api/oauth/[provider]/start|callback/route.ts` dans `apps/auth` et
 `apps/workspace` — redirections pures vers/depuis le provider OAuth externe.
+`app/api/employees/[id]/documents/route.ts` (`POST`, upload multipart) et
+`app/api/employees/[id]/documents/[documentId]/content/route.ts` (`GET`, réponse
+binaire) dans `apps/hr` — premier upload/téléchargement de fichier du monorepo, body/
+réponse non-JSON, pass-through brut des octets + du cookie de session (voir
+`docs/apps/hr/HR.md`).
 
 **Troubleshooting :** mettre `NETWORK_ENCRYPTION=clear` et
 `NEXT_PUBLIC_NETWORK_ENCRYPTION=clear` dans le `.env` de l'app concernée pour

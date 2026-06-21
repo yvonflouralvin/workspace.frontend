@@ -335,21 +335,32 @@ même proxy.
 Toutes délèguent à `app/lib/server/proxy.ts` (`forwardToAuthApi`), qui forwarde
 cookie + méthode + body vers `AUTH_API_URL`.
 
-**Client (`app/lib/api.ts`)** : `listMembers`, `checkMemberEmail`, `createMember`,
-`removeMember`, `setMemberPermissions`, `setMemberGroups`, `listGroups`, `createGroup`,
-`updateGroup`, `deleteGroup`, `setGroupPermissions`, `listPermissions`.
+**Client (`app/lib/api.ts`)** : `listMembers(workspaceId, { search?, limit?, offset? })`
+→ `{ members, total }` (recherche/pagination **côté serveur**, voir plus bas),
+`checkMemberEmail`, `createMember`, `removeMember`, `setMemberPermissions`,
+`setMemberGroups`, `listGroups`, `createGroup`, `updateGroup`, `deleteGroup`,
+`setGroupPermissions`, `listPermissions`.
 
 **Pages :**
-- `/members` — tableau des membres (`Badge` par groupe), actions gardées par
-  `usePermissions().can(...)` (`members.invite`, `members.manage`, `members.remove`).
-  Modals :
+- `/members` — `@repo/ui/DataList` en mode `serverMode` (recherche/pagination par
+  `GET /auth/workspaces/<id>/members?q=&limit=&offset=` — voir
+  `backends/docs/services/auth/AUTH.md`, debounce 300ms géré localement dans la page,
+  pas via `useGraphQLRecords` qui est spécifique au gateway GraphQL ; `auth` reste un
+  service REST classique). Colonnes : membre (avatar + nom + email + badge owner),
+  groupes (`Badge`). Clic sur une ligne → `MemberDetailDrawer`
+  (`@repo/ui/RightDrawer` — profil résumé : avatar, groupes, permissions effectives,
+  boutons "Gérer les permissions"/"Retirer du workspace" gardés par
+  `usePermissions().can(...)`). Modals :
   - `AddMemberModal` — assistant en 2 étapes. Étape 1 : email seul, soumis à
     `checkMemberEmail` (gated `members.invite`, distinct du check-email public).
     Si `already_member` → erreur, pas d'étape suivante. Étape 2 : si le compte existe déjà,
     affiche juste son nom/email (lecture seule) + `MultiSelect` des groupes ; sinon,
     affiche aussi `Nom complet` + `PasswordInput` (`generatable`) avant les groupes.
+    `onCreated` déclenche un refetch de la liste plutôt que de muter un state local
+    (pagination serveur — le nouveau membre n'est pas forcément sur la page courante).
   - `MemberPermissionsModal` — `MultiSelect` pour les groupes, `PermissionPicker`
-    (accordéon + recherche par app) pour les permissions directes.
+    (accordéon + recherche par app) pour les permissions directes. Toujours ouvert
+    depuis le drawer (bouton "Gérer les permissions"), pas depuis la ligne de table.
 - `/members/groups` — arbre des groupes (`GroupTree`, récursif sur `parent_id`,
   pas d'héritage automatique des permissions) + panneau d'édition
   (`GroupEditorPanel` : nom, description, permissions ; protégé si `is_system`)

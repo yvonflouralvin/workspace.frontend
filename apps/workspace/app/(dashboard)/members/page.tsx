@@ -6,6 +6,7 @@ import { PersonAddOutlined, SettingsOutlined } from "@mui/icons-material";
 import { useSessionStore } from "@repo/auth/store/session.store";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
 import { Badge } from "@repo/ui/Badge";
+import { DataList, type DataListColumn } from "@repo/ui/DataList";
 import {
   listMembers,
   listGroups,
@@ -16,21 +17,81 @@ import {
 import type { Member, Group, AppPermissionGroup } from "@/app/lib/types";
 import { AddMemberModal } from "@/components/AddMemberModal";
 import { MemberPermissionsModal } from "@/components/MemberPermissionsModal";
+import { MemberDetailDrawer } from "@/components/MemberDetailDrawer";
+
+const PAGE_SIZE = 20;
+
+const MEMBER_COLUMNS: DataListColumn<Member>[] = [
+  {
+    key: "member",
+    header: "Membre",
+    render: (member) => (
+      <div className="flex items-center gap-3">
+        <span className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold flex-shrink-0">
+          {member.user.username[0]?.toUpperCase() ?? "?"}
+        </span>
+        <div>
+          <p className="text-on-surface font-medium">
+            {member.user.username}
+            {member.is_owner && (
+              <span className="ml-2 text-xs text-on-surface-variant">(owner)</span>
+            )}
+          </p>
+          <p className="text-on-surface-variant text-xs">{member.user.email}</p>
+        </div>
+      </div>
+    ),
+  },
+  {
+    key: "groups",
+    header: "Groupes",
+    render: (member) => (
+      <div className="flex flex-wrap gap-1.5">
+        {member.groups.map((g) => (
+          <Badge key={g.id}>{g.name}</Badge>
+        ))}
+      </div>
+    ),
+  },
+];
 
 export default function MembersPage() {
   const activeWorkspace = useSessionStore((s) => s.activeWorkspace);
   const { can } = usePermissions();
 
   const [members, setMembers] = useState<Member[]>([]);
+  const [total, setTotal] = useState(0);
   const [groups, setGroups] = useState<Group[]>([]);
   const [permissionCatalog, setPermissionCatalog] = useState<AppPermissionGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [selectedMember, setSelectedMember] = useState<Member | null>(null);
   const [managingMember, setManagingMember] = useState<Member | null>(null);
+
+  const [query, setQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [page, setPage] = useState(0);
+  const [refetchToken, setRefetchToken] = useState(0);
 
   const workspaceId = activeWorkspace?.id;
   const canView = can("members.view");
+
+  useEffect(() => {
+    const timeout = setTimeout(() => setDebouncedQuery(query), 300);
+    return () => clearTimeout(timeout);
+  }, [query]);
+
+  useEffect(() => {
+    if (!workspaceId || !canView) return;
+
+    listGroups(workspaceId)
+      .then((res) => setGroups(res.groups))
+      .catch(() => {});
+    listPermissions()
+      .then((res) => setPermissionCatalog(res.groups))
+      .catch(() => {});
+  }, [workspaceId, canView]);
 
   useEffect(() => {
     if (!workspaceId || !canView) {
@@ -38,21 +99,22 @@ export default function MembersPage() {
       return;
     }
 
-    Promise.all([
-      listMembers(workspaceId),
-      listGroups(workspaceId),
-      listPermissions(),
-    ])
-      .then(([membersRes, groupsRes, permissionsRes]) => {
-        setMembers(membersRes.members);
-        setGroups(groupsRes.groups);
-        setPermissionCatalog(permissionsRes.groups);
+    setLoading(true);
+    listMembers(workspaceId, {
+      search: debouncedQuery,
+      limit: PAGE_SIZE,
+      offset: page * PAGE_SIZE,
+    })
+      .then((res) => {
+        setMembers(res.members);
+        setTotal(res.total);
+        setError(null);
       })
       .catch((err) => {
         setError(err instanceof ApiError ? err.message : "Une erreur est survenue");
       })
       .finally(() => setLoading(false));
-  }, [workspaceId, canView]);
+  }, [workspaceId, canView, debouncedQuery, page, refetchToken]);
 
   async function handleRemove(member: Member) {
     if (!workspaceId) return;
@@ -60,7 +122,8 @@ export default function MembersPage() {
 
     try {
       await removeMember(workspaceId, member.id);
-      setMembers((prev) => prev.filter((m) => m.id !== member.id));
+      setSelectedMember(null);
+      setRefetchToken((t) => t + 1);
     } catch (err) {
       alert(err instanceof ApiError ? err.message : "Une erreur est survenue");
     }
@@ -83,7 +146,7 @@ export default function MembersPage() {
         <div>
           <h1 className="text-2xl font-bold text-on-surface">Membres</h1>
           <p className="text-sm text-on-surface-variant mt-1">
-            {members.length} membre{members.length > 1 ? "s" : ""}
+            {total} membre{total > 1 ? "s" : ""}
           </p>
         </div>
         <div className="flex gap-2">
@@ -114,77 +177,41 @@ export default function MembersPage() {
         </p>
       )}
 
-      {loading ? (
-        <p className="text-sm text-on-surface-variant">Chargement…</p>
-      ) : (
-        <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-outline-variant text-left text-on-surface-variant">
-                <th className="px-5 py-3 font-medium">Membre</th>
-                <th className="px-5 py-3 font-medium">Groupes</th>
-                <th className="px-5 py-3 font-medium w-32"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {members.map((member) => (
-                <tr key={member.id} className="border-b border-outline-variant last:border-0">
-                  <td className="px-5 py-3">
-                    <div className="flex items-center gap-3">
-                      <span className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold flex-shrink-0">
-                        {member.user.username[0]?.toUpperCase() ?? "?"}
-                      </span>
-                      <div>
-                        <p className="text-on-surface font-medium">
-                          {member.user.username}
-                          {member.is_owner && (
-                            <span className="ml-2 text-xs text-on-surface-variant">
-                              (owner)
-                            </span>
-                          )}
-                        </p>
-                        <p className="text-on-surface-variant text-xs">{member.user.email}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-5 py-3">
-                    <div className="flex flex-wrap gap-1.5">
-                      {member.groups.map((g) => (
-                        <Badge key={g.id}>{g.name}</Badge>
-                      ))}
-                    </div>
-                  </td>
-                  <td className="px-5 py-3 text-right space-x-3">
-                    {can("members.manage") && (
-                      <button
-                        onClick={() => setManagingMember(member)}
-                        className="text-primary text-xs font-medium hover:underline"
-                      >
-                        Gérer
-                      </button>
-                    )}
-                    {can("members.remove") && !member.is_owner && (
-                      <button
-                        onClick={() => handleRemove(member)}
-                        className="text-error text-xs font-medium hover:underline"
-                      >
-                        Retirer
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <DataList
+        serverMode
+        items={members}
+        totalCount={total}
+        loading={loading}
+        columns={MEMBER_COLUMNS}
+        getRowKey={(member) => member.id}
+        onRowClick={setSelectedMember}
+        onSearchChange={(q) => {
+          setQuery(q);
+          setPage(0);
+        }}
+        onPageChange={setPage}
+        pageSize={PAGE_SIZE}
+        searchPlaceholder="Rechercher un membre…"
+        emptyMessage="Aucun membre."
+      />
 
       {showAddModal && workspaceId && (
         <AddMemberModal
           workspaceId={workspaceId}
           groups={groups}
           onClose={() => setShowAddModal(false)}
-          onCreated={(member) => setMembers((prev) => [...prev, member])}
+          onCreated={() => setRefetchToken((t) => t + 1)}
+        />
+      )}
+
+      {selectedMember && workspaceId && (
+        <MemberDetailDrawer
+          member={selectedMember}
+          canManage={can("members.manage")}
+          canRemove={can("members.remove")}
+          onClose={() => setSelectedMember(null)}
+          onManage={() => setManagingMember(selectedMember)}
+          onRemove={() => handleRemove(selectedMember)}
         />
       )}
 
@@ -195,9 +222,10 @@ export default function MembersPage() {
           groups={groups}
           permissionCatalog={permissionCatalog}
           onClose={() => setManagingMember(null)}
-          onUpdated={(updated) =>
-            setMembers((prev) => prev.map((m) => (m.id === updated.id ? updated : m)))
-          }
+          onUpdated={(updated) => {
+            setSelectedMember(updated);
+            setRefetchToken((t) => t + 1);
+          }}
         />
       )}
     </div>

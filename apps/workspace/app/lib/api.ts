@@ -34,8 +34,15 @@ function jsonRequest(method: string, body?: unknown): ApiFetchInit {
   return { method, body };
 }
 
-export async function listMembers(workspaceId: number): Promise<{ members: Member[] }> {
-  const response = await apiFetch(`/api/workspaces/${workspaceId}/members`);
+export async function listMembers(
+  workspaceId: number,
+  params: { search?: string; limit?: number; offset?: number } = {}
+): Promise<{ members: Member[]; total: number }> {
+  const qs = new URLSearchParams();
+  if (params.search) qs.set("q", params.search);
+  qs.set("limit", String(params.limit ?? 20));
+  qs.set("offset", String(params.offset ?? 0));
+  const response = await apiFetch(`/api/workspaces/${workspaceId}/members?${qs}`);
   return parseResponse(response);
 }
 

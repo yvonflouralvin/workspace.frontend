@@ -54,7 +54,8 @@ export async function forwardToBackend(
     init.body = JSON.stringify(body);
   }
 
-  const res = await fetch(`${backendUrl}${path}`, init);
+  const search = new URL(request.url).search;
+  const res = await fetch(`${backendUrl}${path}${search}`, init);
   const contentType = res.headers.get("content-type") ?? "";
 
   if (!contentType.includes("application/json")) {

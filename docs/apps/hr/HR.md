@@ -87,12 +87,23 @@ Câblage session/auth/RBAC complet, mirroring exact du pattern `apps/workspace` 
   (`PeopleOutlined`, à gauche de "Nouveau sous-groupe") ouvre un `@repo/ui/RightDrawer`
   contenant ce `DataList` (`maxHeight="h-full"`, `bare` — le drawer gère son propre
   scroll et son padding via `contentClassName=""`, pas de cadre dans le cadre). Clic sur
-  une ligne employé → `/employees/{id}` (même fiche que depuis `/employees`). Si
-  `can("hr.departments.manage")`, bouton "Nouveau sous-groupe"
-  ouvrant `components/CreateSubgroupModal.tsx` (reste un `@repo/ui/Modal` classique —
-  seule la liste des employés et leur formulaire de création utilisent le drawer).
+  une ligne employé → `/employees/{id}` (même fiche que depuis `/employees`). Sous le
+  fil d'ariane, le responsable du groupe courant (`group.manager`, voir
+  `backends/docs/services/hr/HR.md#groupes-et-employés`) — `"Responsable : {nom}"` ou
+  `"aucun"`. Si `can("hr.departments.manage")` : bouton icône crayon (`EditOutlined`)
+  ouvrant `components/GroupFormDrawer.tsx` en mode `edit` sur le groupe affiché, et
+  bouton "Nouveau sous-groupe" ouvrant le même composant en mode `create` —
+  **`@repo/ui/RightDrawer` dans les deux cas**, plus de popup pour cette page (remplace
+  l'ancien `CreateSubgroupModal.tsx`, supprimé). Formulaire identique dans les deux
+  modes : nom + responsable via `@repo/ui/GraphQLSelect` (`app="hr" model="employees"`,
+  `searchFields: ["first_name", "last_name"]`) — même composant que le sélecteur de
+  groupe dans `CreateEmployeeDrawer`. En mode édition, le responsable déjà assigné est
+  pré-rempli via le nouveau prop `initialLabel` de `GraphQLSelect` (voir
+  `docs/packages/UI.md`) puisque seul son nom est connu côté `GroupDetail`, pas le
+  record complet attendu par le composant.
 - **Routes BFF** (`app/api/groups/route.ts` — GET liste plate + POST création,
-  `app/api/groups/root/route.ts`, `app/api/groups/[id]/route.ts`,
+  `app/api/groups/root/route.ts`, `app/api/groups/[id]/route.ts` — GET + PATCH
+  (nom/responsable),
   `app/api/employees/route.ts` — GET liste + POST création, **uniquement POST utilisée**
   côté frontend désormais, `app/api/employees/[id]/route.ts` — GET, alimente la fiche
   détail) — toutes via `forwardToBackend(request, HR_API_URL,

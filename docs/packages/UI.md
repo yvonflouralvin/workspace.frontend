@@ -100,6 +100,12 @@ nouveau mécanisme de fetch, juste une UI combobox par-dessus.
   le label affiché se réinitialise.
 - `pageSize` (défaut `20`) borne la liste déroulante — ce n'est pas une pagination, juste
   le nombre de résultats chargés pour la recherche en cours.
+- `initialLabel` (optionnel) : affiché tant qu'aucune sélection n'a été faite dans ce
+  composant alors que `value` est déjà non nul — cas d'un formulaire d'édition où seul
+  le nom de la valeur existante est connu côté appelant (ex: `GroupDetail.manager.
+  first_name/last_name` en hr, sans le record `employees` complet attendu par
+  `getOptionLabel`). Sans ça, le champ apparaîtrait vide au chargement malgré une valeur
+  déjà assignée. Voir `CreateEmployeeDrawer`/`GroupFormDrawer` dans `apps/hr`.
 
 Utilisé par `apps/hr` : sélecteur de groupe dans `CreateEmployeeDrawer` (voir
 `docs/apps/hr/HR.md`) — le chemin hiérarchique affiché (`"Employee / Ingénierie /

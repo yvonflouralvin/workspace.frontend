@@ -72,6 +72,12 @@ Câblage session/auth/RBAC complet, mirroring exact du pattern `apps/workspace` 
   et onglet **Contrat** (placeholder statique, à enrichir plus tard — sert pour l'instant
   à valider le mécanisme d'onglets). Accessible depuis `/employees` et depuis le drawer
   employés d'un groupe (voir ci-dessous) — les deux `DataList` pointent vers la même URL.
+  Bouton crayon dans l'onglet **Général** (gated `can("hr.employees.manage")`) ouvre
+  `components/EmployeeGeneralEditDrawer.tsx` (`@repo/ui/RightDrawer`, pas de popup) —
+  modifie adresse/téléphone via `updateEmployee(id, {address, phone})` → `PATCH
+  /api/employees/{id}` → `PATCH /hr/employees/{id}`. Volontairement limité aux champs
+  de cet onglet — nom/email/fonction/groupe (en-tête) restent en lecture seule sur
+  cette fiche.
 - **`/groups`** (racine) et **`/groups/[id]`** — toutes deux montent
   `components/GroupFolderView.tsx` (Client Component), respectivement sans `groupId`
   (fetch `getRootGroup()` → `GET /api/groups/root`) et avec (`getGroup(id)` → `GET
@@ -112,8 +118,8 @@ Câblage session/auth/RBAC complet, mirroring exact du pattern `apps/workspace` 
   `app/api/groups/root/route.ts`, `app/api/groups/[id]/route.ts` — GET + PATCH
   (nom/responsable),
   `app/api/employees/route.ts` — GET liste + POST création, **uniquement POST utilisée**
-  côté frontend désormais, `app/api/employees/[id]/route.ts` — GET, alimente la fiche
-  détail) — toutes via `forwardToBackend(request, HR_API_URL,
+  côté frontend désormais, `app/api/employees/[id]/route.ts` — GET + PATCH
+  (adresse/téléphone), alimente la fiche détail) — toutes via `forwardToBackend(request, HR_API_URL,
   "/hr/...")`, même pattern que `app/api/departments/route.ts`. Plus
   `app/api/graphql/route.ts` — `POST` uniquement, `forwardToBackend(request,
   GRAPHQL_API_URL, "/graphql")`, consommée par `useGraphQLRecords` (convention

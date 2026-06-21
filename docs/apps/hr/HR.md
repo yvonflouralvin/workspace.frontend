@@ -72,12 +72,18 @@ Câblage session/auth/RBAC complet, mirroring exact du pattern `apps/workspace` 
   et onglet **Contrat** (placeholder statique, à enrichir plus tard — sert pour l'instant
   à valider le mécanisme d'onglets). Accessible depuis `/employees` et depuis le drawer
   employés d'un groupe (voir ci-dessous) — les deux `DataList` pointent vers la même URL.
-  Bouton crayon dans l'onglet **Général** (gated `can("hr.employees.manage")`) ouvre
-  `components/EmployeeGeneralEditDrawer.tsx` (`@repo/ui/RightDrawer`, pas de popup) —
-  modifie adresse/téléphone via `updateEmployee(id, {address, phone})` → `PATCH
-  /api/employees/{id}` → `PATCH /hr/employees/{id}`. Volontairement limité aux champs
-  de cet onglet — nom/email/fonction/groupe (en-tête) restent en lecture seule sur
-  cette fiche.
+  Deux boutons crayon distincts (gated `can("hr.employees.manage")`), chacun ouvrant un
+  `@repo/ui/RightDrawer` ciblant uniquement la section qu'il modifie — pas de popup :
+  - Sur l'en-tête : `components/EmployeeBasicInfoEditDrawer.tsx` — prénom, nom, email,
+    fonction, groupe/département (`@repo/ui/GraphQLSelect`, même sélecteur hiérarchique
+    `include: ["parent"], depth: 3` que `CreateEmployeeDrawer`).
+  - Dans l'onglet **Général** : `components/EmployeeGeneralEditDrawer.tsx` — adresse,
+    téléphone.
+
+  Les deux appellent le même `updateEmployee(id, {...})` → `PATCH /api/employees/{id}`
+  → `PATCH /hr/employees/{id}`, chacun n'envoyant que son propre sous-ensemble de
+  champs (`exclude_unset` côté backend, voir `backends/docs/services/hr/HR.md`) — sans
+  ça, sauvegarder l'un écraserait les champs gérés par l'autre.
 - **`/groups`** (racine) et **`/groups/[id]`** — toutes deux montent
   `components/GroupFolderView.tsx` (Client Component), respectivement sans `groupId`
   (fetch `getRootGroup()` → `GET /api/groups/root`) et avec (`getGroup(id)` → `GET

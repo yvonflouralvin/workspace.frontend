@@ -11,6 +11,9 @@ interface UseGraphQLRecordsOptions {
   debounceMs?: number;
   // Désactive le fetch (ex: en attendant la résolution des permissions côté appelant).
   enabled?: boolean;
+  // Relations à embarquer (voir backends/docs/services/graphql/GRAPHQL.md#relations).
+  include?: string[];
+  depth?: number;
 }
 
 interface UseGraphQLRecordsResult<T> {
@@ -27,8 +30,24 @@ interface UseGraphQLRecordsResult<T> {
 }
 
 const RECORDS_QUERY = `
-  query Records($app: String!, $model: String!, $filter: JSON, $limit: Int!, $offset: Int!) {
-    records(app: $app, model: $model, filter: $filter, limit: $limit, offset: $offset) {
+  query Records(
+    $app: String!
+    $model: String!
+    $filter: JSON
+    $limit: Int!
+    $offset: Int!
+    $include: [String!]
+    $depth: Int
+  ) {
+    records(
+      app: $app
+      model: $model
+      filter: $filter
+      limit: $limit
+      offset: $offset
+      include: $include
+      depth: $depth
+    ) {
       items
       total
     }
@@ -42,6 +61,8 @@ export function useGraphQLRecords<T = Record<string, unknown>>({
   pageSize = 10,
   debounceMs = 300,
   enabled = true,
+  include,
+  depth,
 }: UseGraphQLRecordsOptions): UseGraphQLRecordsResult<T> {
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
@@ -74,6 +95,7 @@ export function useGraphQLRecords<T = Record<string, unknown>>({
   // Stabilise la dépendance d'effet : un tableau littéral passé inline par
   // l'appelant change de référence à chaque rendu sans changer de contenu.
   const searchFieldsKey = JSON.stringify(searchFields ?? []);
+  const includeKey = JSON.stringify(include ?? []);
 
   useEffect(() => {
     if (!enabled) {
@@ -95,6 +117,8 @@ export function useGraphQLRecords<T = Record<string, unknown>>({
           filter: debouncedQuery ? { search: debouncedQuery, fields: searchFields } : null,
           limit: pageSize,
           offset: page * pageSize,
+          include: include ?? null,
+          depth: depth ?? 1,
         },
       },
     })
@@ -121,7 +145,18 @@ export function useGraphQLRecords<T = Record<string, unknown>>({
       .finally(() => {
         if (currentRequest === requestId.current) setLoading(false);
       });
-  }, [app, model, debouncedQuery, page, pageSize, searchFieldsKey, refetchToken, enabled]);
+  }, [
+    app,
+    model,
+    debouncedQuery,
+    page,
+    pageSize,
+    searchFieldsKey,
+    includeKey,
+    depth,
+    refetchToken,
+    enabled,
+  ]);
 
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
 

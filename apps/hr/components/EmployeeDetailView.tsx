@@ -22,9 +22,11 @@ import {
   listEmployeeDocuments,
   deleteEmployeeDocument,
   employeeDocumentContentUrl,
+  listEmployeeContracts,
   ApiError,
   type Employee,
   type EmployeeDocument,
+  type Contract,
 } from "@/app/lib/api";
 import { EmployeeGeneralEditDrawer } from "@/components/EmployeeGeneralEditDrawer";
 import { EmployeeBasicInfoEditDrawer } from "@/components/EmployeeBasicInfoEditDrawer";
@@ -32,6 +34,12 @@ import {
   EmployeeDocumentUploadDrawer,
   DOCUMENT_CATEGORIES,
 } from "@/components/EmployeeDocumentUploadDrawer";
+import {
+  ContractFormDrawer,
+  CONTRACT_TYPES,
+  CURRENCIES,
+  SALARY_PERIODS,
+} from "@/components/ContractFormDrawer";
 
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} o`;
@@ -41,6 +49,33 @@ function formatFileSize(bytes: number): string {
 
 function categoryLabel(category: string | null): string {
   return DOCUMENT_CATEGORIES.find((c) => c.value === category)?.label ?? "Autre";
+}
+
+function contractTypeLabel(type: string): string {
+  return CONTRACT_TYPES.find((t) => t.value === type)?.label ?? type;
+}
+
+function currencyLabel(currency: string): string {
+  return CURRENCIES.find((c) => c.value === currency)?.label ?? currency;
+}
+
+function salaryPeriodLabel(period: string): string {
+  return SALARY_PERIODS.find((p) => p.value === period)?.label ?? "";
+}
+
+const CONTRACT_STATUS_STYLES: Record<Contract["status"], { label: string; className: string }> = {
+  upcoming: { label: "À venir", className: "bg-surface-container text-on-surface-variant" },
+  active: { label: "Actif", className: "bg-secondary/15 text-secondary" },
+  ended: { label: "Terminé", className: "bg-surface-container text-on-surface-variant" },
+};
+
+function formatDate(value: string | null): string {
+  // Découpage manuel plutôt que `new Date(value)` : une date "YYYY-MM-DD" sans
+  // heure est interprétée en UTC par `Date`, ce qui peut afficher le jour
+  // précédent dans un fuseau horaire en arrière de UTC.
+  if (!value) return "—";
+  const [year, month, day] = value.split("-");
+  return `${day}/${month}/${year}`;
 }
 
 function InfoRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: string | null }) {
@@ -59,6 +94,8 @@ export function EmployeeDetailView({ employeeId }: { employeeId: number }) {
   const canManage = can("hr.employees.manage");
   const canViewDocuments = can("hr.documents.view");
   const canManageDocuments = can("hr.documents.manage");
+  const canViewContracts = can("hr.contracts.view");
+  const canManageContracts = can("hr.contracts.manage");
 
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [loading, setLoading] = useState(true);
@@ -70,6 +107,13 @@ export function EmployeeDetailView({ employeeId }: { employeeId: number }) {
   const [documentsLoading, setDocumentsLoading] = useState(true);
   const [documentsError, setDocumentsError] = useState<string | null>(null);
   const [showDocumentUpload, setShowDocumentUpload] = useState(false);
+
+  const [contracts, setContracts] = useState<Contract[]>([]);
+  const [contractsLoading, setContractsLoading] = useState(true);
+  const [contractsError, setContractsError] = useState<string | null>(null);
+  const [contractFormMode, setContractFormMode] = useState<
+    { mode: "create" } | { mode: "edit"; contract: Contract } | null
+  >(null);
 
   useEffect(() => {
     if (!canView) {
@@ -96,6 +140,20 @@ export function EmployeeDetailView({ employeeId }: { employeeId: number }) {
       )
       .finally(() => setDocumentsLoading(false));
   }, [employeeId, canViewDocuments]);
+
+  useEffect(() => {
+    if (!canViewContracts) {
+      setContractsLoading(false);
+      return;
+    }
+
+    listEmployeeContracts(employeeId)
+      .then(setContracts)
+      .catch((err) =>
+        setContractsError(err instanceof ApiError ? err.message : "Une erreur est survenue")
+      )
+      .finally(() => setContractsLoading(false));
+  }, [employeeId, canViewContracts]);
 
   async function handleDeleteDocument(documentId: number) {
     if (!window.confirm("Supprimer ce document ?")) return;
@@ -276,11 +334,84 @@ export function EmployeeDetailView({ employeeId }: { employeeId: number }) {
             key: "contrat",
             label: "Contrat",
             content: (
-              <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-6">
-                <p className="text-sm text-on-surface-variant">
-                  Aucune information de contrat pour le moment — cet onglet sera enrichi
-                  prochainement.
-                </p>
+              <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-6 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-on-surface-variant">Contrats</h3>
+                  {canManageContracts && (
+                    <button
+                      onClick={() => setContractFormMode({ mode: "create" })}
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium text-primary hover:bg-surface-container transition-colors"
+                    >
+                      <AddOutlined style={{ fontSize: 16 }} />
+                      Nouveau contrat
+                    </button>
+                  )}
+                </div>
+
+                {!canViewContracts && (
+                  <p className="text-sm text-on-surface-variant">Accès restreint à cette section.</p>
+                )}
+
+                {contractsError && (
+                  <p className="text-sm text-error bg-error-container/40 rounded-lg px-3 py-2">
+                    {contractsError}
+                  </p>
+                )}
+
+                {canViewContracts && contractsLoading && (
+                  <p className="text-sm text-on-surface-variant">Chargement…</p>
+                )}
+
+                {canViewContracts && !contractsLoading && contracts.length === 0 && (
+                  <p className="text-sm text-on-surface-variant">Aucun contrat pour le moment.</p>
+                )}
+
+                {canViewContracts && contracts.length > 0 && (
+                  <ul className="divide-y divide-outline-variant">
+                    {contracts.map((contract) => (
+                      <li key={contract.id} className="flex items-center gap-3 py-3">
+                        <div className="flex-1 min-w-0 space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-on-surface">
+                              {contractTypeLabel(contract.contract_type)}
+                            </span>
+                            <span
+                              className={`text-xs px-2 py-0.5 rounded-full ${CONTRACT_STATUS_STYLES[contract.status].className}`}
+                            >
+                              {CONTRACT_STATUS_STYLES[contract.status].label}
+                            </span>
+                          </div>
+                          <p className="text-xs text-on-surface-variant">
+                            {formatDate(contract.start_date)} → {formatDate(contract.end_date)} ·{" "}
+                            {contract.working_time_percent}% ·{" "}
+                            {contract.base_salary.toLocaleString("fr-FR")} {currencyLabel(contract.currency)}
+                            {salaryPeriodLabel(contract.salary_period)}
+                          </p>
+                        </div>
+                        {contract.document_id !== null && (
+                          <a
+                            href={employeeDocumentContentUrl(employeeId, contract.document_id)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title="Voir le document associé"
+                            className="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors"
+                          >
+                            <DescriptionOutlined style={{ fontSize: 18 }} />
+                          </a>
+                        )}
+                        {canManageContracts && (
+                          <button
+                            onClick={() => setContractFormMode({ mode: "edit", contract })}
+                            title="Modifier le contrat"
+                            className="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors"
+                          >
+                            <EditOutlined style={{ fontSize: 18 }} />
+                          </button>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
             ),
           },
@@ -308,6 +439,27 @@ export function EmployeeDetailView({ employeeId }: { employeeId: number }) {
           employeeId={employeeId}
           onClose={() => setShowDocumentUpload(false)}
           onUploaded={(doc) => setDocuments((docs) => [doc, ...docs])}
+        />
+      )}
+
+      {contractFormMode?.mode === "create" && (
+        <ContractFormDrawer
+          mode="create"
+          employeeId={employeeId}
+          onClose={() => setContractFormMode(null)}
+          onSaved={(contract) => setContracts((list) => [contract, ...list])}
+        />
+      )}
+
+      {contractFormMode?.mode === "edit" && (
+        <ContractFormDrawer
+          mode="edit"
+          employeeId={employeeId}
+          contract={contractFormMode.contract}
+          onClose={() => setContractFormMode(null)}
+          onSaved={(updated) =>
+            setContracts((list) => list.map((c) => (c.id === updated.id ? updated : c)))
+          }
         />
       )}
     </div>

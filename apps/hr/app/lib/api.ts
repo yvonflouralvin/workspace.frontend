@@ -201,3 +201,59 @@ export async function deleteEmployeeDocument(employeeId: number, documentId: num
 export function employeeDocumentContentUrl(employeeId: number, documentId: number): string {
   return `/api/employees/${employeeId}/documents/${documentId}/content`;
 }
+
+export interface Contract {
+  id: number;
+  contract_type: string;
+  start_date: string;
+  end_date: string | null;
+  working_time_percent: number;
+  base_salary: number;
+  salary_period: string;
+  currency: string;
+  document_id: number | null;
+  status: "upcoming" | "active" | "ended";
+  created_at: string;
+}
+
+export interface ContractInput {
+  contract_type: string;
+  start_date: string;
+  end_date?: string | null;
+  working_time_percent?: number;
+  base_salary: number;
+  salary_period?: string;
+  currency?: string;
+  document_id?: number | null;
+}
+
+export async function listEmployeeContracts(employeeId: number): Promise<Contract[]> {
+  const response = await apiFetch(`/api/employees/${employeeId}/contracts`);
+
+  return parseResponse(response);
+}
+
+export async function createEmployeeContract(
+  employeeId: number,
+  data: ContractInput
+): Promise<Contract> {
+  const response = await apiFetch(`/api/employees/${employeeId}/contracts`, {
+    method: "POST",
+    body: data,
+  });
+
+  return parseResponse(response);
+}
+
+export async function updateEmployeeContract(
+  employeeId: number,
+  contractId: number,
+  data: Partial<ContractInput>
+): Promise<Contract> {
+  const response = await apiFetch(`/api/employees/${employeeId}/contracts/${contractId}`, {
+    method: "PATCH",
+    body: data,
+  });
+
+  return parseResponse(response);
+}

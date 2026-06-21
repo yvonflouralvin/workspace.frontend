@@ -104,6 +104,26 @@ Câblage session/auth/RBAC complet, mirroring exact du pattern `apps/workspace` 
   `frontends/AGENTS.md#repo-network`). La route de téléchargement est appelée par
   navigation directe du navigateur (`<a href>`), pas par `fetch` — les cookies sont
   donc déjà présents sur la requête entrante, same-origin.
+
+  Onglet **Contrat**, gated `can("hr.contracts.view")`/`can("hr.contracts.manage")` :
+  remplace l'ancien placeholder statique par l'historique des contrats de l'employé
+  (`listEmployeeContracts`, triés du plus récent au plus ancien), badge de statut
+  (`upcoming`/`active`/`ended`, calculé côté backend — voir
+  `backends/docs/services/hr/HR.md`), bouton "Nouveau contrat" et bouton modifier par
+  ligne ouvrant `components/ContractFormDrawer.tsx` (`@repo/ui/RightDrawer`, mode
+  `create`/`edit` comme `GroupFormDrawer.tsx`) : type de contrat, dates (case "CDI
+  sans date de fin" qui désactive le champ date de fin), temps de travail,
+  rémunération + devise + périodicité, et un sélecteur de **document déjà uploadé
+  pour cet employé** (`listEmployeeDocuments`, pas de nouvel upload dans ce drawer —
+  le contrat référence juste l'`id` d'un document existant). Si un document est
+  associé, une icône dans la liste pointe vers `employeeDocumentContentUrl(employeeId,
+  document_id)`, réutilisée telle quelle.
+
+  `formatDate` (dans `EmployeeDetailView.tsx`) découpe la chaîne `"YYYY-MM-DD"`
+  manuellement plutôt que `new Date(value).toLocaleDateString(...)` — une date sans
+  heure est interprétée en UTC par `Date`, ce qui peut afficher le jour précédent
+  dans un fuseau horaire en arrière de UTC (piège classique, pas rencontré ailleurs
+  dans `hr` puisque les autres dates affichées — `created_at` — portent une heure).
 - **`/groups`** (racine) et **`/groups/[id]`** — toutes deux montent
   `components/GroupFolderView.tsx` (Client Component), respectivement sans `groupId`
   (fetch `getRootGroup()` → `GET /api/groups/root`) et avec (`getGroup(id)` → `GET
@@ -151,7 +171,10 @@ Câblage session/auth/RBAC complet, mirroring exact du pattern `apps/workspace` 
   upload en pass-through multipart — voir note ci-dessus),
   `app/api/employees/[id]/documents/[documentId]/route.ts` (DELETE via
   `forwardToBackend`), `app/api/employees/[id]/documents/[documentId]/content/route.ts`
-  (GET, pass-through binaire). Plus
+  (GET, pass-through binaire). `app/api/employees/[id]/contracts/route.ts` (GET +
+  POST via `forwardToBackend` — pas de fichier impliqué, juste un `document_id`
+  entier qui référence un document déjà uploadé), `app/api/employees/[id]/contracts/[contractId]/route.ts`
+  (PATCH via `forwardToBackend`). Plus
   `app/api/graphql/route.ts` — `POST` uniquement, `forwardToBackend(request,
   GRAPHQL_API_URL, "/graphql")`, consommée par `useGraphQLRecords` (convention
   same-origin générique, pas spécifique à `hr`).

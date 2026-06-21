@@ -14,6 +14,8 @@ import {
   DownloadOutlined,
   DeleteOutlined,
   AddOutlined,
+  LinkOutlined,
+  LinkOffOutlined,
 } from "@mui/icons-material";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
 import { Tabs } from "@repo/ui/Tabs";
@@ -23,6 +25,7 @@ import {
   deleteEmployeeDocument,
   employeeDocumentContentUrl,
   listEmployeeContracts,
+  unlinkEmployeeAccount,
   ApiError,
   type Employee,
   type EmployeeDocument,
@@ -30,6 +33,7 @@ import {
 } from "@/app/lib/api";
 import { EmployeeGeneralEditDrawer } from "@/components/EmployeeGeneralEditDrawer";
 import { EmployeeBasicInfoEditDrawer } from "@/components/EmployeeBasicInfoEditDrawer";
+import { AccountLinkDrawer } from "@/components/AccountLinkDrawer";
 import {
   EmployeeDocumentUploadDrawer,
   DOCUMENT_CATEGORIES,
@@ -102,6 +106,8 @@ export function EmployeeDetailView({ employeeId }: { employeeId: number }) {
   const [error, setError] = useState<string | null>(null);
   const [showGeneralEdit, setShowGeneralEdit] = useState(false);
   const [showBasicEdit, setShowBasicEdit] = useState(false);
+  const [showAccountLink, setShowAccountLink] = useState(false);
+  const [accountError, setAccountError] = useState<string | null>(null);
 
   const [documents, setDocuments] = useState<EmployeeDocument[]>([]);
   const [documentsLoading, setDocumentsLoading] = useState(true);
@@ -165,6 +171,17 @@ export function EmployeeDetailView({ employeeId }: { employeeId: number }) {
     }
   }
 
+  async function handleUnlinkAccount() {
+    if (!window.confirm("Délier ce compte ? L'accès plateforme de la personne n'est pas retiré.")) return;
+    setAccountError(null);
+    try {
+      const updated = await unlinkEmployeeAccount(employeeId);
+      setEmployee(updated);
+    } catch (err) {
+      setAccountError(err instanceof ApiError ? err.message : "Une erreur est survenue");
+    }
+  }
+
   if (!canView) {
     return (
       <p className="text-sm text-on-surface-variant bg-surface-container rounded-lg px-3 py-2">
@@ -217,6 +234,44 @@ export function EmployeeDetailView({ employeeId }: { employeeId: number }) {
             value={employee.group_name}
           />
           <InfoRow icon={<EmailOutlined style={{ fontSize: 18 }} />} label="Email" value={employee.email} />
+        </div>
+
+        {accountError && (
+          <p className="text-sm text-error bg-error-container/40 rounded-lg px-3 py-2">
+            {accountError}
+          </p>
+        )}
+
+        <div className="flex items-center justify-between pt-3 border-t border-outline-variant">
+          <div className="flex items-center gap-3 text-sm">
+            <span className="text-on-surface-variant">
+              {employee.user_id ? (
+                <LinkOutlined style={{ fontSize: 18 }} />
+              ) : (
+                <LinkOffOutlined style={{ fontSize: 18 }} />
+              )}
+            </span>
+            <span className="text-on-surface-variant w-28 shrink-0">Compte</span>
+            <span className="text-on-surface">
+              {employee.linked_account_email ?? "Non lié à un compte plateforme"}
+            </span>
+          </div>
+          {canManage &&
+            (employee.user_id ? (
+              <button
+                onClick={handleUnlinkAccount}
+                className="px-3 py-1.5 rounded-lg text-sm font-medium text-on-surface-variant hover:bg-surface-container transition-colors"
+              >
+                Délier
+              </button>
+            ) : (
+              <button
+                onClick={() => setShowAccountLink(true)}
+                className="px-3 py-1.5 rounded-lg text-sm font-medium text-primary hover:bg-surface-container transition-colors"
+              >
+                Lier à un compte
+              </button>
+            ))}
         </div>
       </div>
 
@@ -460,6 +515,14 @@ export function EmployeeDetailView({ employeeId }: { employeeId: number }) {
           onSaved={(updated) =>
             setContracts((list) => list.map((c) => (c.id === updated.id ? updated : c)))
           }
+        />
+      )}
+
+      {showAccountLink && (
+        <AccountLinkDrawer
+          employee={employee}
+          onClose={() => setShowAccountLink(false)}
+          onLinked={setEmployee}
         />
       )}
     </div>

@@ -74,6 +74,8 @@ export interface Employee {
   job_title: string | null;
   address: string | null;
   phone: string | null;
+  user_id: number | null;
+  linked_account_email: string | null;
 }
 
 export async function getRootGroup(): Promise<GroupDetail> {
@@ -253,6 +255,45 @@ export async function updateEmployeeContract(
   const response = await apiFetch(`/api/employees/${employeeId}/contracts/${contractId}`, {
     method: "PATCH",
     body: data,
+  });
+
+  return parseResponse(response);
+}
+
+export interface AccountLinkCheckResult {
+  exists: boolean;
+  already_member?: boolean;
+  user_id?: number;
+  full_name?: string | null;
+}
+
+export async function checkEmployeeAccountLink(
+  employeeId: number,
+  email: string
+): Promise<AccountLinkCheckResult> {
+  const response = await apiFetch(`/api/employees/${employeeId}/account-link/check`, {
+    method: "POST",
+    body: { email },
+  });
+
+  return parseResponse(response);
+}
+
+export async function linkEmployeeAccount(
+  employeeId: number,
+  data: { email: string; password?: string; full_name?: string }
+): Promise<Employee> {
+  const response = await apiFetch(`/api/employees/${employeeId}/account-link`, {
+    method: "POST",
+    body: data,
+  });
+
+  return parseResponse(response);
+}
+
+export async function unlinkEmployeeAccount(employeeId: number): Promise<Employee> {
+  const response = await apiFetch(`/api/employees/${employeeId}/account-link`, {
+    method: "DELETE",
   });
 
   return parseResponse(response);

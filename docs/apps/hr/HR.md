@@ -84,6 +84,26 @@ Câblage session/auth/RBAC complet, mirroring exact du pattern `apps/workspace` 
   → `PATCH /hr/employees/{id}`, chacun n'envoyant que son propre sous-ensemble de
   champs (`exclude_unset` côté backend, voir `backends/docs/services/hr/HR.md`) — sans
   ça, sauvegarder l'un écraserait les champs gérés par l'autre.
+
+  Onglet **Documents** (entre Général et Contrat), gated `can("hr.documents.view")`/
+  `can("hr.documents.manage")` : liste les documents de l'employé
+  (`listEmployeeDocuments`), bouton "Ajouter un document" ouvrant
+  `components/EmployeeDocumentUploadDrawer.tsx` (`@repo/ui/RightDrawer`, catégorie +
+  fichier — catégories fermées `contract`/`id_card`/`diploma`/`other`, libellés FR
+  côté composant, libres côté backend), téléchargement (`<a href={employeeDocumentContentUrl(...)}
+  target="_blank">`) et suppression (confirmation `window.confirm`, pas de composant de
+  confirmation dédié dans `@repo/ui` aujourd'hui).
+
+  **Premier upload de fichier binaire du monorepo** — `@repo/network`
+  (`apiFetch`/`forwardToBackend`) encode tout en JSON, inadapté à un body
+  `multipart/form-data` ou une réponse binaire. Les deux routes concernées
+  (`app/api/employees/[id]/documents/route.ts` en `POST`,
+  `app/api/employees/[id]/documents/[documentId]/content/route.ts` en `GET`)
+  bypassent volontairement le wrapper et forwardent les octets bruts + le cookie de
+  session, même exception déjà documentée pour les routes OAuth (voir
+  `frontends/AGENTS.md#repo-network`). La route de téléchargement est appelée par
+  navigation directe du navigateur (`<a href>`), pas par `fetch` — les cookies sont
+  donc déjà présents sur la requête entrante, same-origin.
 - **`/groups`** (racine) et **`/groups/[id]`** — toutes deux montent
   `components/GroupFolderView.tsx` (Client Component), respectivement sans `groupId`
   (fetch `getRootGroup()` → `GET /api/groups/root`) et avec (`getGroup(id)` → `GET
@@ -126,7 +146,12 @@ Câblage session/auth/RBAC complet, mirroring exact du pattern `apps/workspace` 
   `app/api/employees/route.ts` — GET liste + POST création, **uniquement POST utilisée**
   côté frontend désormais, `app/api/employees/[id]/route.ts` — GET + PATCH
   (adresse/téléphone), alimente la fiche détail) — toutes via `forwardToBackend(request, HR_API_URL,
-  "/hr/...")`, même pattern que `app/api/departments/route.ts`. Plus
+  "/hr/...")`, même pattern que `app/api/departments/route.ts`.
+  `app/api/employees/[id]/documents/route.ts` (GET liste via `forwardToBackend`, POST
+  upload en pass-through multipart — voir note ci-dessus),
+  `app/api/employees/[id]/documents/[documentId]/route.ts` (DELETE via
+  `forwardToBackend`), `app/api/employees/[id]/documents/[documentId]/content/route.ts`
+  (GET, pass-through binaire). Plus
   `app/api/graphql/route.ts` — `POST` uniquement, `forwardToBackend(request,
   GRAPHQL_API_URL, "/graphql")`, consommée par `useGraphQLRecords` (convention
   same-origin générique, pas spécifique à `hr`).

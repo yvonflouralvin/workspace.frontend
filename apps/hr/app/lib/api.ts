@@ -155,3 +155,49 @@ export async function createEmployee(data: {
 
   return parseResponse(response);
 }
+
+export interface EmployeeDocument {
+  id: number;
+  category: string | null;
+  filename: string;
+  content_type: string;
+  size_bytes: number;
+  uploaded_by_user_id: number | null;
+  created_at: string;
+}
+
+export async function listEmployeeDocuments(employeeId: number): Promise<EmployeeDocument[]> {
+  const response = await apiFetch(`/api/employees/${employeeId}/documents`);
+
+  return parseResponse(response);
+}
+
+export async function uploadEmployeeDocument(
+  employeeId: number,
+  file: File,
+  category: string
+): Promise<EmployeeDocument> {
+  const form = new FormData();
+  form.append("file", file);
+  form.append("category", category);
+
+  // fetch brut (pas apiFetch) — body multipart, pas de JSON à chiffrer.
+  const response = await fetch(`/api/employees/${employeeId}/documents`, {
+    method: "POST",
+    body: form,
+  });
+
+  return parseResponse(response);
+}
+
+export async function deleteEmployeeDocument(employeeId: number, documentId: number): Promise<void> {
+  const response = await apiFetch(`/api/employees/${employeeId}/documents/${documentId}`, {
+    method: "DELETE",
+  });
+
+  await parseResponse(response);
+}
+
+export function employeeDocumentContentUrl(employeeId: number, documentId: number): string {
+  return `/api/employees/${employeeId}/documents/${documentId}/content`;
+}

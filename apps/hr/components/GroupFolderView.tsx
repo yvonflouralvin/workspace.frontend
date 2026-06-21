@@ -8,6 +8,7 @@ import {
   PersonOutlined,
   PeopleOutlined,
   AddOutlined,
+  EditOutlined,
 } from "@mui/icons-material";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
 import { DataList, type DataListColumn } from "@repo/ui/DataList";
@@ -20,7 +21,7 @@ import {
   type GroupSummary,
   type EmployeeSummary,
 } from "@/app/lib/api";
-import { CreateSubgroupModal } from "@/components/CreateSubgroupModal";
+import { GroupFormDrawer } from "@/components/GroupFormDrawer";
 
 const SUBGROUP_COLUMNS: DataListColumn<GroupSummary>[] = [
   {
@@ -70,7 +71,7 @@ export function GroupFolderView({ groupId }: { groupId?: number }) {
   const [group, setGroup] = useState<GroupDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showCreate, setShowCreate] = useState(false);
+  const [formMode, setFormMode] = useState<"create" | "edit" | null>(null);
   const [showEmployees, setShowEmployees] = useState(false);
 
   useEffect(() => {
@@ -110,23 +111,35 @@ export function GroupFolderView({ groupId }: { groupId?: number }) {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <nav className="flex items-center gap-1.5 text-sm text-on-surface-variant flex-wrap">
-          {breadcrumb.map((node, i) => (
-            <span key={node.id} className="flex items-center gap-1.5">
-              {i > 0 && <span>/</span>}
-              {node.id === group.id ? (
-                <span className="text-on-surface font-medium">{node.name}</span>
-              ) : (
-                <Link
-                  href={node.is_root ? "/groups" : `/groups/${node.id}`}
-                  className="hover:text-on-surface transition-colors"
-                >
-                  {node.name}
-                </Link>
-              )}
-            </span>
-          ))}
-        </nav>
+        <div className="space-y-1">
+          <nav className="flex items-center gap-1.5 text-sm text-on-surface-variant flex-wrap">
+            {breadcrumb.map((node, i) => (
+              <span key={node.id} className="flex items-center gap-1.5">
+                {i > 0 && <span>/</span>}
+                {node.id === group.id ? (
+                  <span className="text-on-surface font-medium">{node.name}</span>
+                ) : (
+                  <Link
+                    href={node.is_root ? "/groups" : `/groups/${node.id}`}
+                    className="hover:text-on-surface transition-colors"
+                  >
+                    {node.name}
+                  </Link>
+                )}
+              </span>
+            ))}
+          </nav>
+          <p className="text-xs text-on-surface-variant">
+            Responsable :{" "}
+            {group.manager ? (
+              <span className="text-on-surface font-medium">
+                {group.manager.first_name} {group.manager.last_name}
+              </span>
+            ) : (
+              "aucun"
+            )}
+          </p>
+        </div>
 
         <div className="flex items-center gap-2">
           <button
@@ -140,7 +153,17 @@ export function GroupFolderView({ groupId }: { groupId?: number }) {
 
           {canManage && (
             <button
-              onClick={() => setShowCreate(true)}
+              onClick={() => setFormMode("edit")}
+              title="Modifier ce groupe"
+              className="p-2 rounded-xl border border-outline-variant text-on-surface-variant hover:bg-surface-container transition-colors"
+            >
+              <EditOutlined style={{ fontSize: 18 }} />
+            </button>
+          )}
+
+          {canManage && (
+            <button
+              onClick={() => setFormMode("create")}
               className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-on-primary text-sm font-medium"
             >
               <AddOutlined style={{ fontSize: 18 }} />
@@ -164,12 +187,13 @@ export function GroupFolderView({ groupId }: { groupId?: number }) {
         />
       </div>
 
-      {showCreate && (
-        <CreateSubgroupModal
+      {formMode === "create" && (
+        <GroupFormDrawer
+          mode="create"
           parentId={group.id}
           parentName={group.name}
-          onClose={() => setShowCreate(false)}
-          onCreated={(created) =>
+          onClose={() => setFormMode(null)}
+          onSaved={(created) =>
             setGroup((prev) =>
               prev
                 ? {
@@ -188,6 +212,15 @@ export function GroupFolderView({ groupId }: { groupId?: number }) {
                 : prev
             )
           }
+        />
+      )}
+
+      {formMode === "edit" && (
+        <GroupFormDrawer
+          mode="edit"
+          group={group}
+          onClose={() => setFormMode(null)}
+          onSaved={setGroup}
         />
       )}
 

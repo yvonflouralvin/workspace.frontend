@@ -15,6 +15,10 @@ interface GraphQLSelectProps<T> {
   getOptionLabel: (record: T) => string;
   getOptionValue?: (record: T) => string | number;
   placeholder?: string;
+  // Affiché tant que `value` n'a pas été (ré)assigné via une sélection dans ce
+  // composant — pour pré-remplir un champ d'édition sans le record complet
+  // disponible côté appelant (le composant ne le récupère que par recherche).
+  initialLabel?: string;
   // Taille de la liste déroulante — pas une pagination, juste le nombre de
   // résultats chargés pour la recherche en cours.
   pageSize?: number;
@@ -36,6 +40,7 @@ export function GraphQLSelect<T = Record<string, unknown>>({
   getOptionLabel,
   getOptionValue = defaultGetOptionValue,
   placeholder = "Rechercher…",
+  initialLabel,
   pageSize = 20,
   disabled = false,
 }: GraphQLSelectProps<T>) {
@@ -85,7 +90,13 @@ export function GraphQLSelect<T = Record<string, unknown>>({
     }
   }
 
-  const displayValue = isOpen ? query : selectedRecord ? getOptionLabel(selectedRecord) : "";
+  const displayValue = isOpen
+    ? query
+    : selectedRecord
+      ? getOptionLabel(selectedRecord)
+      : value !== null && initialLabel
+        ? initialLabel
+        : "";
 
   return (
     <div className="relative">

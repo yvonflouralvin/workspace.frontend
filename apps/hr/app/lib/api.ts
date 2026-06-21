@@ -53,6 +53,7 @@ export interface GroupDetail {
   name: string;
   parent_id: number | null;
   is_root: boolean;
+  manager: EmployeeSummary | null;
   ancestors: GroupSummary[];
   children: GroupSummary[];
   employees: EmployeeSummary[];
@@ -93,8 +94,21 @@ export async function listGroupOptions(): Promise<GroupOption[]> {
   return parseResponse(response);
 }
 
-export async function createGroup(data: { name: string; parent_id: number }): Promise<GroupDetail> {
+export async function createGroup(data: {
+  name: string;
+  parent_id: number;
+  manager_id?: number | null;
+}): Promise<GroupDetail> {
   const response = await apiFetch("/api/groups", { method: "POST", body: data });
+
+  return parseResponse(response);
+}
+
+export async function updateGroup(
+  id: number,
+  data: { name: string; manager_id: number | null }
+): Promise<GroupDetail> {
+  const response = await apiFetch(`/api/groups/${id}`, { method: "PATCH", body: data });
 
   return parseResponse(response);
 }

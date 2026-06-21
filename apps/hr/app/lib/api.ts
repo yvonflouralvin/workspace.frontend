@@ -127,7 +127,15 @@ export async function getEmployee(id: number): Promise<Employee> {
 
 export async function updateEmployee(
   id: number,
-  data: { address: string | null; phone: string | null }
+  data: {
+    first_name?: string;
+    last_name?: string;
+    email?: string;
+    job_title?: string | null;
+    group_id?: number;
+    address?: string | null;
+    phone?: string | null;
+  }
 ): Promise<Employee> {
   const response = await apiFetch(`/api/employees/${id}`, { method: "PATCH", body: data });
 

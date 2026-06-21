@@ -15,6 +15,7 @@ import { usePermissions } from "@repo/auth/hooks/usePermissions";
 import { Tabs } from "@repo/ui/Tabs";
 import { getEmployee, ApiError, type Employee } from "@/app/lib/api";
 import { EmployeeGeneralEditDrawer } from "@/components/EmployeeGeneralEditDrawer";
+import { EmployeeBasicInfoEditDrawer } from "@/components/EmployeeBasicInfoEditDrawer";
 
 function InfoRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: string | null }) {
   return (
@@ -34,7 +35,8 @@ export function EmployeeDetailView({ employeeId }: { employeeId: number }) {
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showEdit, setShowEdit] = useState(false);
+  const [showGeneralEdit, setShowGeneralEdit] = useState(false);
+  const [showBasicEdit, setShowBasicEdit] = useState(false);
 
   useEffect(() => {
     if (!canView) {
@@ -77,9 +79,20 @@ export function EmployeeDetailView({ employeeId }: { employeeId: number }) {
       </Link>
 
       <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-6 space-y-4">
-        <h1 className="text-2xl font-bold text-on-surface">
-          {employee.first_name} {employee.last_name}
-        </h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold text-on-surface">
+            {employee.first_name} {employee.last_name}
+          </h1>
+          {canManage && (
+            <button
+              onClick={() => setShowBasicEdit(true)}
+              title="Modifier les informations de base"
+              className="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors"
+            >
+              <EditOutlined style={{ fontSize: 18 }} />
+            </button>
+          )}
+        </div>
 
         <div className="grid grid-cols-2 gap-3">
           <InfoRow icon={<WorkOutlined style={{ fontSize: 18 }} />} label="Fonction" value={employee.job_title} />
@@ -105,7 +118,7 @@ export function EmployeeDetailView({ employeeId }: { employeeId: number }) {
                   </h3>
                   {canManage && (
                     <button
-                      onClick={() => setShowEdit(true)}
+                      onClick={() => setShowGeneralEdit(true)}
                       title="Modifier les informations générales"
                       className="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors"
                     >
@@ -141,10 +154,18 @@ export function EmployeeDetailView({ employeeId }: { employeeId: number }) {
         ]}
       />
 
-      {showEdit && (
+      {showGeneralEdit && (
         <EmployeeGeneralEditDrawer
           employee={employee}
-          onClose={() => setShowEdit(false)}
+          onClose={() => setShowGeneralEdit(false)}
+          onSaved={setEmployee}
+        />
+      )}
+
+      {showBasicEdit && (
+        <EmployeeBasicInfoEditDrawer
+          employee={employee}
+          onClose={() => setShowBasicEdit(false)}
           onSaved={setEmployee}
         />
       )}

@@ -1,14 +1,25 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { RightDrawer } from "@repo/ui/RightDrawer";
-import {
-  createEmployee,
-  listGroupOptions,
-  ApiError,
-  type Employee,
-  type GroupOption,
-} from "@/app/lib/api";
+import { GraphQLSelect } from "@repo/ui/GraphQLSelect";
+import { createEmployee, ApiError, type Employee } from "@/app/lib/api";
+
+interface GroupRecord {
+  id: number;
+  name: string;
+  parent: GroupRecord | null;
+}
+
+function buildGroupPath(group: GroupRecord): string {
+  const names: string[] = [];
+  let node: GroupRecord | null = group;
+  while (node) {
+    names.unshift(node.name);
+    node = node.parent;
+  }
+  return names.join(" / ");
+}
 
 export function CreateEmployeeDrawer({
   onClose,
@@ -24,18 +35,8 @@ export function CreateEmployeeDrawer({
   const [address, setAddress] = useState("");
   const [phone, setPhone] = useState("");
   const [groupId, setGroupId] = useState<number | null>(null);
-  const [groupOptions, setGroupOptions] = useState<GroupOption[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-
-  useEffect(() => {
-    listGroupOptions()
-      .then((options) => {
-        setGroupOptions(options);
-        setGroupId((current) => current ?? options[0]?.id ?? null);
-      })
-      .catch(() => setError("Impossible de charger les groupes"));
-  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -135,18 +136,17 @@ export function CreateEmployeeDrawer({
 
         <div className="space-y-1">
           <label className="text-sm font-medium text-on-surface">Groupe / Département</label>
-          <select
-            required
-            value={groupId ?? ""}
-            onChange={(e) => setGroupId(Number(e.target.value))}
-            className="w-full px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface"
-          >
-            {groupOptions.map((option) => (
-              <option key={option.id} value={option.id}>
-                {option.path}
-              </option>
-            ))}
-          </select>
+          <GraphQLSelect<GroupRecord>
+            app="hr"
+            model="groups"
+            searchFields={["name"]}
+            include={["parent"]}
+            depth={3}
+            value={groupId}
+            onChange={(id) => setGroupId(id as number | null)}
+            getOptionLabel={buildGroupPath}
+            placeholder="Rechercher un groupe…"
+          />
         </div>
 
         <div className="flex justify-end gap-2 pt-2">

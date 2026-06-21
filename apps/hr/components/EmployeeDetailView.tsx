@@ -9,10 +9,12 @@ import {
   EmailOutlined,
   HomeOutlined,
   PhoneOutlined,
+  EditOutlined,
 } from "@mui/icons-material";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
 import { Tabs } from "@repo/ui/Tabs";
 import { getEmployee, ApiError, type Employee } from "@/app/lib/api";
+import { EmployeeGeneralEditDrawer } from "@/components/EmployeeGeneralEditDrawer";
 
 function InfoRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: string | null }) {
   return (
@@ -27,10 +29,12 @@ function InfoRow({ icon, label, value }: { icon: React.ReactNode; label: string;
 export function EmployeeDetailView({ employeeId }: { employeeId: number }) {
   const { can } = usePermissions();
   const canView = can("hr.employees.view");
+  const canManage = can("hr.employees.manage");
 
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showEdit, setShowEdit] = useState(false);
 
   useEffect(() => {
     if (!canView) {
@@ -95,6 +99,20 @@ export function EmployeeDetailView({ employeeId }: { employeeId: number }) {
             label: "Général",
             content: (
               <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-6 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-on-surface-variant">
+                    Informations générales
+                  </h3>
+                  {canManage && (
+                    <button
+                      onClick={() => setShowEdit(true)}
+                      title="Modifier les informations générales"
+                      className="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors"
+                    >
+                      <EditOutlined style={{ fontSize: 18 }} />
+                    </button>
+                  )}
+                </div>
                 <InfoRow
                   icon={<HomeOutlined style={{ fontSize: 18 }} />}
                   label="Adresse"
@@ -122,6 +140,14 @@ export function EmployeeDetailView({ employeeId }: { employeeId: number }) {
           },
         ]}
       />
+
+      {showEdit && (
+        <EmployeeGeneralEditDrawer
+          employee={employee}
+          onClose={() => setShowEdit(false)}
+          onSaved={setEmployee}
+        />
+      )}
     </div>
   );
 }

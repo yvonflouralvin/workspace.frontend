@@ -132,9 +132,10 @@ export function GroupFolderView({ groupId }: { groupId?: number }) {
           <button
             onClick={() => setShowEmployees(true)}
             title="Voir les employés de ce groupe"
-            className="p-2 rounded-xl border border-outline-variant text-on-surface-variant hover:bg-surface-container transition-colors"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-outline-variant text-on-surface-variant hover:bg-surface-container transition-colors"
           >
             <PeopleOutlined style={{ fontSize: 18 }} />
+            <span className="text-sm font-medium">{group.employees.length}</span>
           </button>
 
           {canManage && (

@@ -10,12 +10,38 @@ import {
   HomeOutlined,
   PhoneOutlined,
   EditOutlined,
+  DescriptionOutlined,
+  DownloadOutlined,
+  DeleteOutlined,
+  AddOutlined,
 } from "@mui/icons-material";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
 import { Tabs } from "@repo/ui/Tabs";
-import { getEmployee, ApiError, type Employee } from "@/app/lib/api";
+import {
+  getEmployee,
+  listEmployeeDocuments,
+  deleteEmployeeDocument,
+  employeeDocumentContentUrl,
+  ApiError,
+  type Employee,
+  type EmployeeDocument,
+} from "@/app/lib/api";
 import { EmployeeGeneralEditDrawer } from "@/components/EmployeeGeneralEditDrawer";
 import { EmployeeBasicInfoEditDrawer } from "@/components/EmployeeBasicInfoEditDrawer";
+import {
+  EmployeeDocumentUploadDrawer,
+  DOCUMENT_CATEGORIES,
+} from "@/components/EmployeeDocumentUploadDrawer";
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} o`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} Ko`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} Mo`;
+}
+
+function categoryLabel(category: string | null): string {
+  return DOCUMENT_CATEGORIES.find((c) => c.value === category)?.label ?? "Autre";
+}
 
 function InfoRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: string | null }) {
   return (
@@ -31,12 +57,19 @@ export function EmployeeDetailView({ employeeId }: { employeeId: number }) {
   const { can } = usePermissions();
   const canView = can("hr.employees.view");
   const canManage = can("hr.employees.manage");
+  const canViewDocuments = can("hr.documents.view");
+  const canManageDocuments = can("hr.documents.manage");
 
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showGeneralEdit, setShowGeneralEdit] = useState(false);
   const [showBasicEdit, setShowBasicEdit] = useState(false);
+
+  const [documents, setDocuments] = useState<EmployeeDocument[]>([]);
+  const [documentsLoading, setDocumentsLoading] = useState(true);
+  const [documentsError, setDocumentsError] = useState<string | null>(null);
+  const [showDocumentUpload, setShowDocumentUpload] = useState(false);
 
   useEffect(() => {
     if (!canView) {
@@ -49,6 +82,30 @@ export function EmployeeDetailView({ employeeId }: { employeeId: number }) {
       .catch((err) => setError(err instanceof ApiError ? err.message : "Une erreur est survenue"))
       .finally(() => setLoading(false));
   }, [employeeId, canView]);
+
+  useEffect(() => {
+    if (!canViewDocuments) {
+      setDocumentsLoading(false);
+      return;
+    }
+
+    listEmployeeDocuments(employeeId)
+      .then(setDocuments)
+      .catch((err) =>
+        setDocumentsError(err instanceof ApiError ? err.message : "Une erreur est survenue")
+      )
+      .finally(() => setDocumentsLoading(false));
+  }, [employeeId, canViewDocuments]);
+
+  async function handleDeleteDocument(documentId: number) {
+    if (!window.confirm("Supprimer ce document ?")) return;
+    try {
+      await deleteEmployeeDocument(employeeId, documentId);
+      setDocuments((docs) => docs.filter((d) => d.id !== documentId));
+    } catch (err) {
+      setDocumentsError(err instanceof ApiError ? err.message : "Une erreur est survenue");
+    }
+  }
 
   if (!canView) {
     return (
@@ -140,6 +197,82 @@ export function EmployeeDetailView({ employeeId }: { employeeId: number }) {
             ),
           },
           {
+            key: "documents",
+            label: "Documents",
+            content: (
+              <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-6 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-on-surface-variant">Documents</h3>
+                  {canManageDocuments && (
+                    <button
+                      onClick={() => setShowDocumentUpload(true)}
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium text-primary hover:bg-surface-container transition-colors"
+                    >
+                      <AddOutlined style={{ fontSize: 16 }} />
+                      Ajouter un document
+                    </button>
+                  )}
+                </div>
+
+                {!canViewDocuments && (
+                  <p className="text-sm text-on-surface-variant">Accès restreint à cette section.</p>
+                )}
+
+                {documentsError && (
+                  <p className="text-sm text-error bg-error-container/40 rounded-lg px-3 py-2">
+                    {documentsError}
+                  </p>
+                )}
+
+                {canViewDocuments && documentsLoading && (
+                  <p className="text-sm text-on-surface-variant">Chargement…</p>
+                )}
+
+                {canViewDocuments && !documentsLoading && documents.length === 0 && (
+                  <p className="text-sm text-on-surface-variant">Aucun document pour le moment.</p>
+                )}
+
+                {canViewDocuments && documents.length > 0 && (
+                  <ul className="divide-y divide-outline-variant">
+                    {documents.map((doc) => (
+                      <li key={doc.id} className="flex items-center gap-3 py-2.5">
+                        <DescriptionOutlined
+                          style={{ fontSize: 18 }}
+                          className="text-on-surface-variant shrink-0"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm text-on-surface truncate">{doc.filename}</p>
+                          <p className="text-xs text-on-surface-variant">
+                            {categoryLabel(doc.category)} · {formatFileSize(doc.size_bytes)} ·{" "}
+                            {new Date(doc.created_at).toLocaleDateString("fr-FR")}
+                          </p>
+                        </div>
+                        <a
+                          href={employeeDocumentContentUrl(employeeId, doc.id)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title="Télécharger"
+                          className="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors"
+                        >
+                          <DownloadOutlined style={{ fontSize: 18 }} />
+                        </a>
+                        {canManageDocuments && (
+                          <button
+                            onClick={() => handleDeleteDocument(doc.id)}
+                            title="Supprimer"
+                            className="p-1.5 rounded-lg text-on-surface-variant hover:bg-error-container hover:text-error transition-colors"
+                          >
+                            <DeleteOutlined style={{ fontSize: 18 }} />
+                          </button>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            ),
+          },
+          {
             key: "contrat",
             label: "Contrat",
             content: (
@@ -167,6 +300,14 @@ export function EmployeeDetailView({ employeeId }: { employeeId: number }) {
           employee={employee}
           onClose={() => setShowBasicEdit(false)}
           onSaved={setEmployee}
+        />
+      )}
+
+      {showDocumentUpload && (
+        <EmployeeDocumentUploadDrawer
+          employeeId={employeeId}
+          onClose={() => setShowDocumentUpload(false)}
+          onUploaded={(doc) => setDocuments((docs) => [doc, ...docs])}
         />
       )}
     </div>

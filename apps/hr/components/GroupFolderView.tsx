@@ -9,10 +9,12 @@ import {
   PeopleOutlined,
   AddOutlined,
   EditOutlined,
+  MoreHorizOutlined,
 } from "@mui/icons-material";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
 import { DataList, type DataListColumn } from "@repo/ui/DataList";
 import { RightDrawer } from "@repo/ui/RightDrawer";
+import { DropdownMenu, type DropdownMenuItem } from "@repo/ui/DropdownMenu";
 import {
   getGroup,
   getRootGroup,
@@ -108,6 +110,31 @@ export function GroupFolderView({ groupId }: { groupId?: number }) {
 
   const breadcrumb = [...group.ancestors, { id: group.id, name: group.name, is_root: group.is_root }];
 
+  const menuItems: DropdownMenuItem[] = [
+    {
+      key: "members",
+      label: `Membres (${group.employees.length})`,
+      icon: <PeopleOutlined style={{ fontSize: 18 }} />,
+      onClick: () => setShowEmployees(true),
+    },
+    ...(canManage
+      ? [
+          {
+            key: "edit",
+            label: "Modifier le groupe",
+            icon: <EditOutlined style={{ fontSize: 18 }} />,
+            onClick: () => setFormMode("edit"),
+          },
+          {
+            key: "create-subgroup",
+            label: "Nouveau sous-groupe",
+            icon: <AddOutlined style={{ fontSize: 18 }} />,
+            onClick: () => setFormMode("create"),
+          },
+        ]
+      : []),
+  ];
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -141,36 +168,11 @@ export function GroupFolderView({ groupId }: { groupId?: number }) {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setShowEmployees(true)}
-            title="Voir les employés de ce groupe"
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-outline-variant text-on-surface-variant hover:bg-surface-container transition-colors"
-          >
-            <PeopleOutlined style={{ fontSize: 18 }} />
-            <span className="text-sm font-medium">{group.employees.length}</span>
-          </button>
-
-          {canManage && (
-            <button
-              onClick={() => setFormMode("edit")}
-              title="Modifier ce groupe"
-              className="p-2 rounded-xl border border-outline-variant text-on-surface-variant hover:bg-surface-container transition-colors"
-            >
-              <EditOutlined style={{ fontSize: 18 }} />
-            </button>
-          )}
-
-          {canManage && (
-            <button
-              onClick={() => setFormMode("create")}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-on-primary text-sm font-medium"
-            >
-              <AddOutlined style={{ fontSize: 18 }} />
-              Nouveau sous-groupe
-            </button>
-          )}
-        </div>
+        <DropdownMenu
+          label="Options"
+          icon={<MoreHorizOutlined style={{ fontSize: 18 }} />}
+          items={menuItems}
+        />
       </div>
 
       <div className="space-y-2">

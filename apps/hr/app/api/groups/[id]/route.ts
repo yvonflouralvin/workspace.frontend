@@ -10,3 +10,11 @@ export async function GET(
   const { id } = await params;
   return forwardToBackend(request, HR_API_URL, `/hr/groups/${id}`);
 }
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  return forwardToBackend(request, HR_API_URL, `/hr/groups/${id}`);
+}

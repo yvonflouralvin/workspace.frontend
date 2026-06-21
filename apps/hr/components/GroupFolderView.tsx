@@ -8,10 +8,13 @@ import {
   PersonOutlined,
   PeopleOutlined,
   AddOutlined,
+  EditOutlined,
+  MoreHorizOutlined,
 } from "@mui/icons-material";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
 import { DataList, type DataListColumn } from "@repo/ui/DataList";
 import { RightDrawer } from "@repo/ui/RightDrawer";
+import { DropdownMenu, type DropdownMenuItem } from "@repo/ui/DropdownMenu";
 import {
   getGroup,
   getRootGroup,
@@ -20,7 +23,7 @@ import {
   type GroupSummary,
   type EmployeeSummary,
 } from "@/app/lib/api";
-import { CreateSubgroupModal } from "@/components/CreateSubgroupModal";
+import { GroupFormDrawer } from "@/components/GroupFormDrawer";
 
 const SUBGROUP_COLUMNS: DataListColumn<GroupSummary>[] = [
   {
@@ -70,7 +73,7 @@ export function GroupFolderView({ groupId }: { groupId?: number }) {
   const [group, setGroup] = useState<GroupDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showCreate, setShowCreate] = useState(false);
+  const [formMode, setFormMode] = useState<"create" | "edit" | null>(null);
   const [showEmployees, setShowEmployees] = useState(false);
 
   useEffect(() => {
@@ -107,47 +110,69 @@ export function GroupFolderView({ groupId }: { groupId?: number }) {
 
   const breadcrumb = [...group.ancestors, { id: group.id, name: group.name, is_root: group.is_root }];
 
+  const menuItems: DropdownMenuItem[] = [
+    {
+      key: "members",
+      label: `Membres (${group.employees.length})`,
+      icon: <PeopleOutlined style={{ fontSize: 18 }} />,
+      onClick: () => setShowEmployees(true),
+    },
+    ...(canManage
+      ? [
+          {
+            key: "edit",
+            label: "Modifier le groupe",
+            icon: <EditOutlined style={{ fontSize: 18 }} />,
+            onClick: () => setFormMode("edit"),
+          },
+          {
+            key: "create-subgroup",
+            label: "Nouveau sous-groupe",
+            icon: <AddOutlined style={{ fontSize: 18 }} />,
+            onClick: () => setFormMode("create"),
+          },
+        ]
+      : []),
+  ];
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <nav className="flex items-center gap-1.5 text-sm text-on-surface-variant flex-wrap">
-          {breadcrumb.map((node, i) => (
-            <span key={node.id} className="flex items-center gap-1.5">
-              {i > 0 && <span>/</span>}
-              {node.id === group.id ? (
-                <span className="text-on-surface font-medium">{node.name}</span>
-              ) : (
-                <Link
-                  href={node.is_root ? "/groups" : `/groups/${node.id}`}
-                  className="hover:text-on-surface transition-colors"
-                >
-                  {node.name}
-                </Link>
-              )}
-            </span>
-          ))}
-        </nav>
-
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setShowEmployees(true)}
-            title="Voir les employés de ce groupe"
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-outline-variant text-on-surface-variant hover:bg-surface-container transition-colors"
-          >
-            <PeopleOutlined style={{ fontSize: 18 }} />
-            <span className="text-sm font-medium">{group.employees.length}</span>
-          </button>
-
-          {canManage && (
-            <button
-              onClick={() => setShowCreate(true)}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-on-primary text-sm font-medium"
-            >
-              <AddOutlined style={{ fontSize: 18 }} />
-              Nouveau sous-groupe
-            </button>
-          )}
+        <div className="space-y-1">
+          <nav className="flex items-center gap-1.5 text-sm text-on-surface-variant flex-wrap">
+            {breadcrumb.map((node, i) => (
+              <span key={node.id} className="flex items-center gap-1.5">
+                {i > 0 && <span>/</span>}
+                {node.id === group.id ? (
+                  <span className="text-on-surface font-medium">{node.name}</span>
+                ) : (
+                  <Link
+                    href={node.is_root ? "/groups" : `/groups/${node.id}`}
+                    className="hover:text-on-surface transition-colors"
+                  >
+                    {node.name}
+                  </Link>
+                )}
+              </span>
+            ))}
+          </nav>
+          <p className="text-xs text-on-surface-variant">
+            Responsable :{" "}
+            {group.manager ? (
+              <span className="text-on-surface font-medium">
+                {group.manager.first_name} {group.manager.last_name}
+              </span>
+            ) : (
+              "aucun"
+            )}
+          </p>
         </div>
+
+        <DropdownMenu
+          label="Options"
+          icon={<MoreHorizOutlined style={{ fontSize: 18 }} />}
+          items={menuItems}
+        />
       </div>
 
       <div className="space-y-2">
@@ -164,12 +189,13 @@ export function GroupFolderView({ groupId }: { groupId?: number }) {
         />
       </div>
 
-      {showCreate && (
-        <CreateSubgroupModal
+      {formMode === "create" && (
+        <GroupFormDrawer
+          mode="create"
           parentId={group.id}
           parentName={group.name}
-          onClose={() => setShowCreate(false)}
-          onCreated={(created) =>
+          onClose={() => setFormMode(null)}
+          onSaved={(created) =>
             setGroup((prev) =>
               prev
                 ? {
@@ -188,6 +214,15 @@ export function GroupFolderView({ groupId }: { groupId?: number }) {
                 : prev
             )
           }
+        />
+      )}
+
+      {formMode === "edit" && (
+        <GroupFormDrawer
+          mode="edit"
+          group={group}
+          onClose={() => setFormMode(null)}
+          onSaved={setGroup}
         />
       )}
 

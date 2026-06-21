@@ -82,17 +82,35 @@ Câblage session/auth/RBAC complet, mirroring exact du pattern `apps/workspace` 
   `onRowClick`). Chaque ligne affiche, à droite du nom, le nombre total de sous-groupes
   et d'employés **récursif** (`subgroup_count`/`employee_count` de `GroupSummary`, voir
   `backends/docs/services/hr/HR.md`) avec de petites icônes (`FolderOutlined`,
-  `PersonOutlined`, 14px). Les employés rattachés **directement** à ce groupe (pas ceux
-  des sous-groupes) ne sont plus affichés en permanence : un bouton icône
-  (`PeopleOutlined`, à gauche de "Nouveau sous-groupe") ouvre un `@repo/ui/RightDrawer`
-  contenant ce `DataList` (`maxHeight="h-full"`, `bare` — le drawer gère son propre
-  scroll et son padding via `contentClassName=""`, pas de cadre dans le cadre). Clic sur
-  une ligne employé → `/employees/{id}` (même fiche que depuis `/employees`). Si
-  `can("hr.departments.manage")`, bouton "Nouveau sous-groupe"
-  ouvrant `components/CreateSubgroupModal.tsx` (reste un `@repo/ui/Modal` classique —
-  seule la liste des employés et leur formulaire de création utilisent le drawer).
+  `PersonOutlined`, 14px). Sous le fil d'ariane, le responsable du groupe courant
+  (`group.manager`, voir `backends/docs/services/hr/HR.md#groupes-et-employés`) —
+  `"Responsable : {nom}"` ou `"aucun"`.
+
+  Toutes les actions de la vue sont regroupées derrière un seul menu "Options"
+  (`@repo/ui/DropdownMenu`, voir `docs/packages/UI.md`) plutôt qu'empilées en boutons
+  côte à côte — pensé pour absorber de futures actions sans réencombrer l'en-tête :
+  - **Membres (N)** — `N` = `group.employees.length` (employés rattachés
+    **directement** à ce groupe, pas ceux des sous-groupes). Ouvre un
+    `@repo/ui/RightDrawer` contenant un `DataList` (`maxHeight="h-full"`, `bare` — le
+    drawer gère son propre scroll et son padding via `contentClassName=""`, pas de
+    cadre dans le cadre). Clic sur une ligne employé → `/employees/{id}` (même fiche
+    que depuis `/employees`). Toujours visible (pas de garde `can(...)` — lecture
+    seule).
+  - **Modifier le groupe** et **Nouveau sous-groupe** — gated
+    `can("hr.departments.manage")`, ouvrent `components/GroupFormDrawer.tsx`
+    respectivement en mode `edit` (sur le groupe affiché) et `create` —
+    **`@repo/ui/RightDrawer` dans les deux cas**, plus de popup pour cette page
+    (remplace l'ancien `CreateSubgroupModal.tsx`, supprimé). Formulaire identique dans
+    les deux modes : nom + responsable via `@repo/ui/GraphQLSelect` (`app="hr"
+    model="employees"`, `searchFields: ["first_name", "last_name"]`) — même composant
+    que le sélecteur de groupe dans `CreateEmployeeDrawer`. En mode édition, le
+    responsable déjà assigné est pré-rempli via le nouveau prop `initialLabel` de
+    `GraphQLSelect` (voir `docs/packages/UI.md`) puisque seul son nom est connu côté
+    `GroupDetail`, pas le
+  record complet attendu par le composant.
 - **Routes BFF** (`app/api/groups/route.ts` — GET liste plate + POST création,
-  `app/api/groups/root/route.ts`, `app/api/groups/[id]/route.ts`,
+  `app/api/groups/root/route.ts`, `app/api/groups/[id]/route.ts` — GET + PATCH
+  (nom/responsable),
   `app/api/employees/route.ts` — GET liste + POST création, **uniquement POST utilisée**
   côté frontend désormais, `app/api/employees/[id]/route.ts` — GET, alimente la fiche
   détail) — toutes via `forwardToBackend(request, HR_API_URL,

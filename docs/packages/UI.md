@@ -100,11 +100,48 @@ nouveau mécanisme de fetch, juste une UI combobox par-dessus.
   le label affiché se réinitialise.
 - `pageSize` (défaut `20`) borne la liste déroulante — ce n'est pas une pagination, juste
   le nombre de résultats chargés pour la recherche en cours.
+- `initialLabel` (optionnel) : affiché tant qu'aucune sélection n'a été faite dans ce
+  composant alors que `value` est déjà non nul — cas d'un formulaire d'édition où seul
+  le nom de la valeur existante est connu côté appelant (ex: `GroupDetail.manager.
+  first_name/last_name` en hr, sans le record `employees` complet attendu par
+  `getOptionLabel`). Sans ça, le champ apparaîtrait vide au chargement malgré une valeur
+  déjà assignée. Voir `CreateEmployeeDrawer`/`GroupFormDrawer` dans `apps/hr`.
 
 Utilisé par `apps/hr` : sélecteur de groupe dans `CreateEmployeeDrawer` (voir
 `docs/apps/hr/HR.md`) — le chemin hiérarchique affiché (`"Employee / Ingénierie /
 Backend"`) est reconstruit côté client en remontant la relation `parent` embarquée
 (`include`/`depth`, voir `backends/docs/services/graphql/GRAPHQL.md#relations`).
+
+### `DropdownMenu` (`src/DropdownMenu.tsx`)
+
+Menu déroulant générique pour regrouper plusieurs actions derrière un seul bouton —
+évite d'empiler des boutons côte à côte quand une vue accumule des actions au fil du
+temps (cas typique : une fiche détail avec de plus en plus d'actions secondaires).
+
+```tsx
+<DropdownMenu
+  label="Options"
+  icon={<MoreHorizOutlined style={{ fontSize: 18 }} />}
+  items={[
+    { key: "members", label: `Membres (${count})`, icon: <PeopleOutlined />, onClick: ... },
+    { key: "edit", label: "Modifier le groupe", icon: <EditOutlined />, onClick: ... },
+    { key: "delete", label: "Supprimer", icon: <DeleteOutlined />, onClick: ..., danger: true },
+  ]}
+/>
+```
+
+- `items` construit dynamiquement par l'appelant (ex: items gardés par
+  `usePermissions().can(...)` mélangés via spread conditionnel) — le composant ne sait
+  rien des permissions ou de la logique métier, juste une liste `{key, label, icon?,
+  onClick, danger?}`.
+- `danger` colore l'entrée en `text-error` (actions destructives).
+- Fermeture au clic extérieur ou `Escape`, même convention que `Modal`/`RightDrawer`.
+- Pas de `trigger` personnalisable — le bouton déclencheur est toujours rendu par le
+  composant lui-même (`label` + `icon?` + chevron `ExpandMoreOutlined`), pour rester
+  simple ; à généraliser si un futur usage a besoin d'un déclencheur sur-mesure.
+
+Utilisé par `apps/hr` : menu "Options" de `GroupFolderView` (Membres, Modifier le
+groupe, Nouveau sous-groupe — voir `docs/apps/hr/HR.md`).
 
 ### `Badge` (`src/Badge.tsx`)
 

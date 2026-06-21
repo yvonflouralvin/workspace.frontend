@@ -50,16 +50,19 @@ Câblage session/auth/RBAC complet, mirroring exact du pattern `apps/workspace` 
   `backends/docs/services/graphql/GRAPHQL.md`), rendue dans `@repo/ui/DataList` en mode
   `serverMode`. `enabled: canView` évite le fetch tant que la permission n'est pas
   confirmée. Le gateway renvoie la ligne SQL brute (pas de jointure) — pas de
-  `group_name` ; résolu côté client via `listGroupOptions()` (déjà chargé pour le
-  formulaire de création, voir plus bas) mappé sur `group_id`. Si
-  `can("hr.employees.manage")`, bouton "Nouvel employé" ouvrant
-  `components/CreateEmployeeDrawer.tsx` (`@repo/ui/RightDrawer` — prénom, nom, email,
-  sélection du groupe via `listGroupOptions()` — liste plate `{id, path}` où `path` est
-  le fil d'ariane complet, ex. `"Employee / Ingénierie / Backend"`) — création toujours
-  via `POST /hr/employees` (REST, inchangé, body étendu avec `job_title`/`address`/
-  `phone` optionnels) ; `onCreated` appelle `refetch()` du hook plutôt que de muter un
-  state local, puisque le gateway est désormais la source de vérité de la liste. Clic
-  sur une ligne (`onRowClick`) → `router.push("/employees/{id}")`.
+  `group_name` ; résolu côté client via `listGroupOptions()` (liste plate `{id, path}`,
+  `GET /hr/groups`, chargée une fois pour toute la page — distincte du sélecteur de
+  création ci-dessous) mappé sur `group_id`. Si `can("hr.employees.manage")`, bouton
+  "Nouvel employé" ouvrant `components/CreateEmployeeDrawer.tsx` (`@repo/ui/RightDrawer`
+  — prénom, nom, email, fonction/adresse/téléphone optionnels, sélection du groupe via
+  `@repo/ui/GraphQLSelect` — voir `docs/packages/UI.md` — au lieu d'un `<select>` chargeant
+  tous les groupes : recherche côté serveur, chemin hiérarchique reconstruit via
+  `include: ["parent"], depth: 3` — plus de pré-sélection automatique du premier groupe,
+  champ vide jusqu'à recherche/choix) — création toujours via `POST /hr/employees` (REST,
+  inchangé, body étendu avec `job_title`/`address`/`phone` optionnels) ; `onCreated`
+  appelle `refetch()` du hook plutôt que de muter un state local, puisque le gateway est
+  désormais la source de vérité de la liste. Clic sur une ligne (`onRowClick`) →
+  `router.push("/employees/{id}")`.
 - **`/employees/{id}`** (`app/employees/[id]/page.tsx`, Server Component qui `await
   params` puis rend `EmployeeDetailView`, Client Component) — fiche employé : en-tête
   (nom complet, fonction, département, email — `"—"` si `null`) via `getEmployee(id)`

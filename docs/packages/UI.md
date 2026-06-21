@@ -66,6 +66,46 @@ d'animation, pas de dépendance externe.
 
 Utilisé par `apps/hr` : fiche employé (`EmployeeDetailView`, voir `docs/apps/hr/HR.md`).
 
+### `GraphQLSelect` (`src/GraphQLSelect.tsx`)
+
+Select avec recherche intégrée pour choisir une valeur dans un modèle enregistré auprès
+du gateway GraphQL — alternative à un `<select>` natif quand la table peut contenir
+beaucoup de lignes (charger toutes les options d'un coup devient ingérable). Basé sur
+`useGraphQLRecords` (recherche debouncée 300ms, `app`/`model`/`searchFields`) — pas de
+nouveau mécanisme de fetch, juste une UI combobox par-dessus.
+
+```tsx
+<GraphQLSelect<GroupRecord>
+  app="hr"
+  model="groups"
+  searchFields={["name"]}
+  include={["parent"]}      // relations à embarquer, voir useGraphQLRecords ci-dessus
+  depth={3}
+  value={groupId}
+  onChange={(id, record) => setGroupId(id as number | null)}
+  getOptionLabel={(group) => group.name}   // l'appelant décide du rendu, comme DataList.columns[].render
+  placeholder="Rechercher un groupe…"
+/>
+```
+
+- `getOptionLabel` est **toujours** fourni par l'appelant — le composant ne sait rien de
+  la forme métier d'un modèle. `getOptionValue` (défaut : `record.id`) si la clé n'est
+  pas `id`.
+- Combobox minimal : input = affichage de la sélection courante + champ de recherche
+  (vidé au focus), liste déroulante en dessous, navigation clavier
+  (`ArrowUp`/`ArrowDown`/`Enter`/`Escape`), fermeture sur clic extérieur (`onBlur` +
+  `preventDefault` sur le `onMouseDown` des options pour que le clic s'enregistre avant
+  la fermeture). Pas de dépendance externe.
+- Composant contrôlé (`value`/`onChange`) ; si `value` redevient `null` depuis le parent,
+  le label affiché se réinitialise.
+- `pageSize` (défaut `20`) borne la liste déroulante — ce n'est pas une pagination, juste
+  le nombre de résultats chargés pour la recherche en cours.
+
+Utilisé par `apps/hr` : sélecteur de groupe dans `CreateEmployeeDrawer` (voir
+`docs/apps/hr/HR.md`) — le chemin hiérarchique affiché (`"Employee / Ingénierie /
+Backend"`) est reconstruit côté client en remontant la relation `parent` embarquée
+(`include`/`depth`, voir `backends/docs/services/graphql/GRAPHQL.md#relations`).
+
 ### `Badge` (`src/Badge.tsx`)
 
 Pastille colorée (ex : chip de groupe sur la page Membres).
@@ -234,8 +274,10 @@ Hook découplé de tout rendu — centralise le fetch vers le gateway GraphQL g�
 voir `docs/apps/hr/HR.md` et `backends/docs/services/graphql/GRAPHQL.md`) : recherche
 debouncée (300ms par défaut), pagination `limit`/`offset`, état `loading`/`error`,
 `refetch()` manuel (utile après une mutation faite ailleurs, ex: REST). N'importe quel
-composant peut le consommer — `DataList` en mode serveur n'est qu'un choix de rendu
-parmi d'autres (grille de cartes, kanban...).
+composant peut le consommer — `DataList` en mode serveur et `GraphQLSelect` (voir
+ci-dessous) ne sont que deux choix de rendu parmi d'autres (grille de cartes, kanban...).
+`include`/`depth` (optionnels) embarquent des relations — voir
+`backends/docs/services/graphql/GRAPHQL.md#relations`.
 
 ```tsx
 const { items, total, loading, error, setQuery, setPage, refetch } =

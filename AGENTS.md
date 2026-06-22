@@ -19,6 +19,7 @@ frontends/
     auth/         → port 3001  (connexion / inscription)
     workspace/    → port 3005  (app principale SAAS)
     hr/           → port 3003  (module RH)
+    approval-flows/ → port 3006  (création/gestion libre de workflows d'approbation)
     web/                       (landing page)
     docs/                      (documentation)
   packages/
@@ -44,6 +45,7 @@ frontends/
 | `auth`      | 3001 | Login 2 étapes + inscription 4 étapes              | `docs/apps/auth/AUTH.md`               |
 | `workspace` | 3005 | App principale — dashboard, projets, membres       | `docs/apps/workspace/WORKSPACE.md`     |
 | `hr`        | 3003 | Module RH (en construction)                        | `docs/apps/hr/HR.md`                   |
+| `approval-flows` | 3006 | Création/gestion libre de workflows d'approbation + console des tâches | `docs/apps/approval-flows/APPROVAL_FLOWS.md` |
 | `web`       | —    | Landing page publique                              | —                                      |
 | `docs`      | —    | Documentation produit                              | —                                      |
 
@@ -112,6 +114,26 @@ export default { content: [...], presets: [sharedConfig] }
 ### `@repo/state`
 
 Package Zustand partagé (dépendance racine). Toujours préférer les stores de `@repo/auth` pour la session.
+
+### `@repo/approval-flows`
+
+Composants/hooks/client API pour intégrer le service `approval_flows` (port 5005)
+dans n'importe quelle app — vraie logique (état, appels API), pas juste de l'UI, même
+modèle que `@repo/auth`.
+
+```ts
+import { ApprovalFlowWrapper } from '@repo/approval-flows/ApprovalFlowWrapper'
+import { ApprovalTaskList } from '@repo/approval-flows/ApprovalTaskList'
+```
+
+`ApprovalFlowWrapper` (`{ flowId, basePath?, externalRef?, callbackUrl?, onSubmitted? }`)
+rend un formulaire de soumission généré depuis `fields_schema` — c'est le composant à
+embarquer pour une intégration "mode 1" (template global, ex. `hr.leave_request`,
+voir `docs/apps/hr/HR.md`). `ApprovalTaskList` (`{ mode: "tasks" | "submissions",
+basePath? }`) liste les tâches d'approbation/soumissions de l'utilisateur. `basePath`
+(défaut `/api/approval-flows`) pointe vers le proxy BFF de l'app **consommatrice** —
+chaque app garde son propre BFF, jamais de coupling direct vers le BFF d'une autre
+app. Détail complet : `docs/apps/approval-flows/APPROVAL_FLOWS.md`.
 
 ---
 
@@ -294,6 +316,7 @@ Voir **`docs/TESTING.md`** pour la stratégie complète (niveaux 1→5, Vitest e
 - `docs/apps/auth/AUTH.md` — App auth : login, inscription, cookie trick, proxy API
 - `docs/apps/workspace/WORKSPACE.md` — Architecture dashboard workspace, shell partagé, composants
 - `docs/apps/hr/HR.md` — Module RH (état actuel et à venir)
+- `docs/apps/approval-flows/APPROVAL_FLOWS.md` — Création/gestion libre de workflows d'approbation
 - `docs/packages/UI.md` — Guide des composants @repo/ui
 - `docs/TESTING.md` — Stratégie de tests
 
@@ -315,5 +338,6 @@ Après toute modification qui change la façon de travailler sur ce projet, **me
 | Changement dans le flux auth / cookie / proxy           | `docs/apps/auth/AUTH.md`                         |
 | Nouveaux composants dans `@repo/ui`                     | `docs/packages/UI.md`                            |
 | Fonctionnalités RH ajoutées                             | `docs/apps/hr/HR.md`                             |
+| Fonctionnalités ApprovalFlow ajoutées                    | `docs/apps/approval-flows/APPROVAL_FLOWS.md`     |
 
 **Règle :** si le changement est assez important pour qu'on ait besoin de s'en souvenir à la prochaine session de travail, il doit être documenté avant de clore la tâche.

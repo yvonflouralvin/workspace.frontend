@@ -119,6 +119,24 @@ Câblage session/auth/RBAC complet, mirroring exact du pattern `apps/workspace` 
   associé, une icône dans la liste pointe vers `employeeDocumentContentUrl(employeeId,
   document_id)`, réutilisée telle quelle.
 
+  Dans l'en-tête, sous les infos de base : ligne "Compte" affichant
+  `linked_account_email` si l'employé est lié à un compte plateforme (icône
+  `LinkOutlined`), sinon "Non lié à un compte plateforme" (icône `LinkOffOutlined`).
+  Gated `canManage` : bouton "Lier à un compte" (si non lié) ouvrant
+  `components/AccountLinkDrawer.tsx`, ou "Délier" (si lié, confirmation
+  `window.confirm`, `unlinkEmployeeAccount`). Voir
+  `backends/docs/services/hr/HR.md#lien-employee--compte-plateforme` pour le contexte
+  backend (prérequis posé pour le futur self-service congés).
+
+  `components/AccountLinkDrawer.tsx` — même structure à 2 étapes que
+  `frontends/apps/workspace/components/AddMemberModal.tsx` (étape email → étape
+  détails, réutilise `@repo/ui/PasswordInput` avec `generatable`), avec une
+  différence clé : `AddMemberModal` traite "déjà membre" comme une erreur, ici c'est
+  au contraire le cas simple (carte de confirmation directe, pas de mot de passe à
+  saisir) — `checkEmployeeAccountLink` renvoie `{exists, already_member, user_id,
+  full_name}`, `linkEmployeeAccount({email, password?, full_name?})` laisse le
+  backend re-résoudre et choisir la bonne branche côté serveur.
+
   `formatDate` (dans `EmployeeDetailView.tsx`) découpe la chaîne `"YYYY-MM-DD"`
   manuellement plutôt que `new Date(value).toLocaleDateString(...)` — une date sans
   heure est interprétée en UTC par `Date`, ce qui peut afficher le jour précédent

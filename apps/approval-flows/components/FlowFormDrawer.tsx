@@ -1,0 +1,338 @@
+"use client";
+
+import { useState } from "react";
+import { AddOutlined, DeleteOutlineOutlined } from "@mui/icons-material";
+import { RightDrawer } from "@repo/ui/RightDrawer";
+import { Checkbox } from "@repo/ui/Checkbox";
+import type { FieldSchemaItem, FlowDetail, StepDef } from "@repo/approval-flows/types/flow";
+import { createFlow, updateFlow, ApiError } from "@/app/lib/api";
+
+type FieldDraft = FieldSchemaItem;
+type StepDraft = Omit<StepDef, "order">;
+
+function emptyField(): FieldDraft {
+  return { key: "", label: "", type: "text", required: false };
+}
+
+function emptyStep(): StepDraft {
+  return { step_key: "", name: "", approver_type: "specific_user", approver_config: {}, approval_mode: "" as "any" | "all" };
+}
+
+export function FlowFormDrawer({
+  flow,
+  onClose,
+  onSaved,
+}: {
+  flow?: FlowDetail;
+  onClose: () => void;
+  onSaved: (flow: FlowDetail) => void;
+}) {
+  const isEdit = !!flow;
+  const [id, setId] = useState(flow?.id ?? "");
+  const [title, setTitle] = useState(flow?.title ?? "");
+  const [description, setDescription] = useState(flow?.description ?? "");
+  const [fields, setFields] = useState<FieldDraft[]>(flow?.fields_schema ?? [emptyField()]);
+  const [steps, setSteps] = useState<StepDraft[]>(
+    flow?.steps.map((s) => ({ ...s })) ?? [emptyStep()]
+  );
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  function updateField(index: number, patch: Partial<FieldDraft>) {
+    setFields((prev) => prev.map((f, i) => (i === index ? { ...f, ...patch } : f)));
+  }
+
+  function updateStep(index: number, patch: Partial<StepDraft>) {
+    setSteps((prev) => prev.map((s, i) => (i === index ? { ...s, ...patch } : s)));
+  }
+
+  function updateStepConfig(index: number, config: Record<string, unknown>) {
+    setSteps((prev) => prev.map((s, i) => (i === index ? { ...s, approver_config: config } : s)));
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+
+    if (steps.some((s) => s.approval_mode !== "any" && s.approval_mode !== "all")) {
+      setError("Chaque étape doit avoir un mode d'approbation (any/all) explicitement choisi.");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const payload = { title, description: description || null, fields_schema: fields, steps };
+      const saved = isEdit
+        ? await updateFlow(flow!.id, payload)
+        : await createFlow({ id, ...payload });
+      onSaved(saved);
+      onClose();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Une erreur est survenue");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <RightDrawer title={isEdit ? `Modifier ${flow!.title}` : "Créer un flow"} onClose={onClose} width="w-[720px] max-w-full">
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {error && (
+          <p className="text-sm text-error bg-error-container/40 rounded-lg px-3 py-2">{error}</p>
+        )}
+
+        <div className="space-y-4">
+          {!isEdit && (
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-on-surface">Identifiant</label>
+              <input
+                type="text"
+                required
+                placeholder="ex: achat-materiel-bureau"
+                value={id}
+                onChange={(e) => setId(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface"
+              />
+              <p className="text-xs text-on-surface-variant">
+                Sera normalisé en slug à la création.
+              </p>
+            </div>
+          )}
+
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-on-surface">Titre</label>
+            <input
+              type="text"
+              required
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="w-full px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface"
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-on-surface">Description</label>
+            <textarea
+              value={description ?? ""}
+              onChange={(e) => setDescription(e.target.value)}
+              className="w-full px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface"
+              rows={2}
+            />
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-on-surface">Champs du formulaire de soumission</h3>
+            <button
+              type="button"
+              onClick={() => setFields((prev) => [...prev, emptyField()])}
+              className="flex items-center gap-1 text-xs font-medium text-primary"
+            >
+              <AddOutlined style={{ fontSize: 16 }} />
+              Ajouter un champ
+            </button>
+          </div>
+
+          {fields.map((field, index) => (
+            <div key={index} className="flex items-end gap-2 rounded-xl border border-outline-variant p-3">
+              <div className="flex-1 space-y-1">
+                <label className="text-xs text-on-surface-variant">Clé</label>
+                <input
+                  type="text"
+                  required
+                  value={field.key}
+                  onChange={(e) => updateField(index, { key: e.target.value })}
+                  className="w-full px-2 py-1.5 rounded-lg border border-outline-variant bg-surface text-sm"
+                />
+              </div>
+              <div className="flex-1 space-y-1">
+                <label className="text-xs text-on-surface-variant">Libellé</label>
+                <input
+                  type="text"
+                  required
+                  value={field.label}
+                  onChange={(e) => updateField(index, { label: e.target.value })}
+                  className="w-full px-2 py-1.5 rounded-lg border border-outline-variant bg-surface text-sm"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs text-on-surface-variant">Type</label>
+                <select
+                  value={field.type}
+                  onChange={(e) => updateField(index, { type: e.target.value as FieldDraft["type"] })}
+                  className="px-2 py-1.5 rounded-lg border border-outline-variant bg-surface text-sm"
+                >
+                  <option value="text">Texte</option>
+                  <option value="number">Nombre</option>
+                  <option value="date">Date</option>
+                  <option value="attachment">Pièce jointe</option>
+                </select>
+              </div>
+              <Checkbox
+                checked={field.required}
+                onChange={(checked) => updateField(index, { required: checked })}
+                label="Requis"
+              />
+              <button
+                type="button"
+                onClick={() => setFields((prev) => prev.filter((_, i) => i !== index))}
+                className="text-on-surface-variant hover:text-error"
+              >
+                <DeleteOutlineOutlined style={{ fontSize: 18 }} />
+              </button>
+            </div>
+          ))}
+        </div>
+
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-on-surface">Étapes d&apos;approbation (séquentielles)</h3>
+            <button
+              type="button"
+              onClick={() => setSteps((prev) => [...prev, emptyStep()])}
+              className="flex items-center gap-1 text-xs font-medium text-primary"
+            >
+              <AddOutlined style={{ fontSize: 16 }} />
+              Ajouter une étape
+            </button>
+          </div>
+
+          {steps.map((step, index) => (
+            <div key={index} className="space-y-2 rounded-xl border border-outline-variant p-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-medium text-on-surface-variant w-6">{index + 1}.</span>
+                <input
+                  type="text"
+                  required
+                  placeholder="Clé d'étape (ex: manager)"
+                  value={step.step_key}
+                  onChange={(e) => updateStep(index, { step_key: e.target.value })}
+                  className="flex-1 px-2 py-1.5 rounded-lg border border-outline-variant bg-surface text-sm"
+                />
+                <input
+                  type="text"
+                  required
+                  placeholder="Nom (ex: Approbation manager)"
+                  value={step.name}
+                  onChange={(e) => updateStep(index, { name: e.target.value })}
+                  className="flex-1 px-2 py-1.5 rounded-lg border border-outline-variant bg-surface text-sm"
+                />
+                <button
+                  type="button"
+                  onClick={() => setSteps((prev) => prev.filter((_, i) => i !== index))}
+                  className="text-on-surface-variant hover:text-error"
+                >
+                  <DeleteOutlineOutlined style={{ fontSize: 18 }} />
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2 pl-8">
+                <select
+                  value={step.approver_type}
+                  onChange={(e) => {
+                    const approver_type = e.target.value as StepDraft["approver_type"];
+                    updateStep(index, { approver_type });
+                    updateStepConfig(
+                      index,
+                      approver_type === "criteria" ? { criterion: "hierarchical_superior" } : {}
+                    );
+                  }}
+                  className="px-2 py-1.5 rounded-lg border border-outline-variant bg-surface text-sm"
+                >
+                  <option value="specific_user">Utilisateur précis</option>
+                  <option value="specific_group">Groupe précis</option>
+                  <option value="criteria">Critère</option>
+                </select>
+
+                {step.approver_type === "specific_user" && (
+                  <input
+                    type="number"
+                    required
+                    placeholder="ID utilisateur"
+                    value={(step.approver_config.user_id as number) ?? ""}
+                    onChange={(e) => updateStepConfig(index, { user_id: Number(e.target.value) })}
+                    className="px-2 py-1.5 rounded-lg border border-outline-variant bg-surface text-sm w-40"
+                  />
+                )}
+
+                {step.approver_type === "specific_group" && (
+                  <input
+                    type="number"
+                    required
+                    placeholder="ID groupe"
+                    value={(step.approver_config.group_id as number) ?? ""}
+                    onChange={(e) => updateStepConfig(index, { group_id: Number(e.target.value) })}
+                    className="px-2 py-1.5 rounded-lg border border-outline-variant bg-surface text-sm w-40"
+                  />
+                )}
+
+                {step.approver_type === "criteria" && (
+                  <>
+                    <select
+                      value={(step.approver_config.criterion as string) ?? "hierarchical_superior"}
+                      onChange={(e) =>
+                        updateStepConfig(
+                          index,
+                          e.target.value === "role_label"
+                            ? { criterion: "role_label", label: step.approver_config.label ?? "" }
+                            : { criterion: e.target.value }
+                        )
+                      }
+                      className="px-2 py-1.5 rounded-lg border border-outline-variant bg-surface text-sm"
+                    >
+                      <option value="hierarchical_superior">Supérieur hiérarchique direct</option>
+                      <option value="role_label">Étiquette de rôle (binding requis)</option>
+                    </select>
+                    {step.approver_config.criterion === "role_label" && (
+                      <input
+                        type="text"
+                        required
+                        placeholder="Étiquette (ex: Responsable RH)"
+                        value={(step.approver_config.label as string) ?? ""}
+                        onChange={(e) =>
+                          updateStepConfig(index, { criterion: "role_label", label: e.target.value })
+                        }
+                        className="px-2 py-1.5 rounded-lg border border-outline-variant bg-surface text-sm w-56"
+                      />
+                    )}
+                  </>
+                )}
+
+                <select
+                  required
+                  value={step.approval_mode}
+                  onChange={(e) => updateStep(index, { approval_mode: e.target.value as StepDraft["approval_mode"] })}
+                  className="px-2 py-1.5 rounded-lg border border-outline-variant bg-surface text-sm"
+                >
+                  <option value="" disabled>
+                    Mode d&apos;approbation…
+                  </option>
+                  <option value="any">N&apos;importe quel approbateur (any)</option>
+                  <option value="all">Tous les approbateurs (all)</option>
+                </select>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="flex justify-end gap-2 pt-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 rounded-xl text-sm font-medium text-on-surface-variant hover:bg-surface-container transition-colors"
+          >
+            Annuler
+          </button>
+          <button
+            type="submit"
+            disabled={submitting}
+            className="px-4 py-2 rounded-xl text-sm font-medium bg-primary text-on-primary disabled:opacity-50"
+          >
+            {submitting ? "Enregistrement…" : "Enregistrer"}
+          </button>
+        </div>
+      </form>
+    </RightDrawer>
+  );
+}

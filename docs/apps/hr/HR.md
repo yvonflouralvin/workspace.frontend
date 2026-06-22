@@ -182,6 +182,20 @@ Câblage session/auth/RBAC complet, mirroring exact du pattern `apps/workspace` 
   réelle (SQLAlchemy/Alembic), groupe racine `"Employee"` auto-créé par workspace, gated
   par `hr.departments.{view,manage}` et `hr.employees.{view,manage}`.
 
+### Démo ApprovalFlow — `/demo-approval`
+
+`app/demo-approval/page.tsx` — démonstration **mode 1** d'intégration du service
+`approval_flows` (template global enregistré au démarrage par une app, voir
+`backends/docs/services/approval_flows/APPROVAL_FLOWS.md` et
+`frontends/docs/apps/approval-flows/APPROVAL_FLOWS.md`) : la page entière se résume à
+`<ApprovalFlowWrapper flowId="hr.leave_request" />` (`@repo/approval-flows`) dans le
+`DashboardShell` habituel — pas de modèle `LeaveRequest` ni de logique métier propre à
+`hr`, juste le rendu du formulaire généré depuis `fields_schema` et sa soumission.
+Routes BFF dédiées (`app/api/approval-flows/flows/[id]/route.ts` en `GET`,
+`app/api/approval-flows/requests/route.ts` en `POST`) vers `APPROVAL_FLOWS_API_URL` —
+proxy local de cette app, le composant partagé ne pointe jamais directement vers le
+BFF d'une autre app.
+
 ---
 
 ## Variables d'environnement (`.env`)
@@ -194,6 +208,7 @@ Câblage session/auth/RBAC complet, mirroring exact du pattern `apps/workspace` 
 | `NEXT_PUBLIC_WORKSPACE_DOMAIN`     | Browser | `http://localhost:3005` |
 | `HR_API_URL`                       | Server  | `http://127.0.0.1:5001` (backend FastAPI `hr`) |
 | `GRAPHQL_API_URL`                  | Server  | `http://127.0.0.1:5002` (gateway GraphQL générique) |
+| `APPROVAL_FLOWS_API_URL`           | Server  | `http://127.0.0.1:5005` (service `approval_flows`, démo `/demo-approval`) |
 
 ---
 

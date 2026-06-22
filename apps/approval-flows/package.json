@@ -1,9 +1,9 @@
 {
-  "name": "hr",
+  "name": "approval-flows",
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev  --port 3003",
+    "dev": "next dev  --port 3006",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"

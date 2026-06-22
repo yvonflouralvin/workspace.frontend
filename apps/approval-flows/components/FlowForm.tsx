@@ -21,7 +21,7 @@ type FieldDraft = FieldSchemaItem;
 type StepDraft = Omit<StepDef, "order">;
 
 function emptyField(): FieldDraft {
-  return { key: "", label: "", type: "text", required: false };
+  return { key: crypto.randomUUID(), label: "", description: "", type: "text", required: false };
 }
 
 function emptyStep(): StepDraft {
@@ -30,8 +30,15 @@ function emptyStep(): StepDraft {
     name: "",
     approver_type: "specific_user",
     approver_config: {},
-    approval_mode: "" as "any" | "all",
+    approval_mode: "any",
   };
+}
+
+// Seul "Groupe précis" peut résoudre à plusieurs approbateurs — c'est le seul cas où
+// any/all est un choix réel. Les autres types résolvent à 0 ou 1 approbateur, le mode
+// est donc forcé à "any" et le select n'est pas affiché.
+function needsApprovalModeChoice(approverType: StepDraft["approver_type"]): boolean {
+  return approverType === "specific_group";
 }
 
 function memberLabel(member: MemberRecord): string {
@@ -58,7 +65,7 @@ export function FlowForm({
   const [id, setId] = useState(flow?.id ?? "");
   const [title, setTitle] = useState(flow?.title ?? "");
   const [description, setDescription] = useState(flow?.description ?? "");
-  const [fields, setFields] = useState<FieldDraft[]>(flow?.fields_schema ?? [emptyField()]);
+  const [fields, setFields] = useState<FieldDraft[]>(flow?.fields_schema ?? []);
   const [steps, setSteps] = useState<StepDraft[]>(
     flow?.steps.map((s) => ({ ...s })) ?? [emptyStep()]
   );
@@ -72,6 +79,7 @@ export function FlowForm({
   const [visibleGroupIds, setVisibleGroupIds] = useState<number[]>(flow?.visible_group_ids ?? []);
 
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [draggedFieldIndex, setDraggedFieldIndex] = useState<number | null>(null);
 
   useEffect(() => {
     if (workspaceId) {
@@ -104,6 +112,16 @@ export function FlowForm({
     });
   }
 
+  function moveField(from: number, to: number) {
+    if (from === to) return;
+    setFields((prev) => {
+      const next = [...prev];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      return next;
+    });
+  }
+
   function updateField(index: number, patch: Partial<FieldDraft>) {
     setFields((prev) => prev.map((f, i) => (i === index ? { ...f, ...patch } : f)));
   }
@@ -120,8 +138,16 @@ export function FlowForm({
     e.preventDefault();
     setError(null);
 
-    if (steps.some((s) => s.approval_mode !== "any" && s.approval_mode !== "all")) {
-      setError("Chaque étape doit avoir un mode d'approbation (any/all) explicitement choisi.");
+    if (steps.length === 0) {
+      setError("Un flow doit avoir au moins une étape d'approbation.");
+      return;
+    }
+    if (
+      steps.some(
+        (s) => needsApprovalModeChoice(s.approver_type) && s.approval_mode !== "any" && s.approval_mode !== "all"
+      )
+    ) {
+      setError("Chaque étape « Groupe précis » doit avoir un mode d'approbation (any/all) explicitement choisi.");
       return;
     }
     if (steps.some((s) => s.approver_type === "specific_user" && !s.approver_config.user_id)) {
@@ -139,11 +165,14 @@ export function FlowForm({
 
     setSubmitting(true);
     try {
+      const normalizedSteps = steps.map((s) =>
+        needsApprovalModeChoice(s.approver_type) ? s : { ...s, approval_mode: "any" as const }
+      );
       const payload = {
         title,
         description: description || null,
         fields_schema: fields,
-        steps,
+        steps: normalizedSteps,
         visible_group_ids: restrictVisibility ? visibleGroupIds : [],
       };
       const saved = isEdit ? await updateFlow(flow!.id, payload) : await createFlow({ id, ...payload });
@@ -215,52 +244,74 @@ export function FlowForm({
         </div>
 
         {fields.map((field, index) => (
-          <div key={index} className="flex items-end gap-2 rounded-xl border border-outline-variant p-3">
-            <div className="flex-1 space-y-1">
-              <label className="text-xs text-on-surface-variant">Clé</label>
-              <input
-                type="text"
-                required
-                value={field.key}
-                onChange={(e) => updateField(index, { key: e.target.value })}
-                className="w-full px-2 py-1.5 rounded-lg border border-outline-variant bg-surface text-sm"
-              />
-            </div>
-            <div className="flex-1 space-y-1">
-              <label className="text-xs text-on-surface-variant">Libellé</label>
-              <input
-                type="text"
-                required
-                value={field.label}
-                onChange={(e) => updateField(index, { label: e.target.value })}
-                className="w-full px-2 py-1.5 rounded-lg border border-outline-variant bg-surface text-sm"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs text-on-surface-variant">Type</label>
-              <select
-                value={field.type}
-                onChange={(e) => updateField(index, { type: e.target.value as FieldDraft["type"] })}
-                className="px-2 py-1.5 rounded-lg border border-outline-variant bg-surface text-sm"
+          <div
+            key={field.key}
+            draggable
+            onDragStart={() => setDraggedFieldIndex(index)}
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={(e) => {
+              e.preventDefault();
+              if (draggedFieldIndex !== null) moveField(draggedFieldIndex, index);
+              setDraggedFieldIndex(null);
+            }}
+            onDragEnd={() => setDraggedFieldIndex(null)}
+            className={`space-y-2 rounded-xl border border-outline-variant p-3 ${
+              draggedFieldIndex === index ? "opacity-50" : ""
+            }`}
+          >
+            <div className="flex items-end gap-2">
+              <span
+                className="text-on-surface-variant cursor-grab active:cursor-grabbing pb-2"
+                title="Glisser pour réordonner"
               >
-                <option value="text">Texte</option>
-                <option value="number">Nombre</option>
-                <option value="date">Date</option>
-                <option value="attachment">Pièce jointe</option>
-              </select>
+                <DragIndicatorOutlined style={{ fontSize: 18 }} />
+              </span>
+              <div className="flex-1 space-y-1">
+                <label className="text-xs text-on-surface-variant">Libellé</label>
+                <input
+                  type="text"
+                  required
+                  value={field.label}
+                  onChange={(e) => updateField(index, { label: e.target.value })}
+                  className="w-full px-2 py-1.5 rounded-lg border border-outline-variant bg-surface text-sm"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs text-on-surface-variant">Type</label>
+                <select
+                  value={field.type}
+                  onChange={(e) => updateField(index, { type: e.target.value as FieldDraft["type"] })}
+                  className="px-2 py-1.5 rounded-lg border border-outline-variant bg-surface text-sm"
+                >
+                  <option value="text">Texte</option>
+                  <option value="number">Nombre</option>
+                  <option value="date">Date</option>
+                  <option value="attachment">Pièce jointe</option>
+                </select>
+              </div>
+              <Checkbox
+                checked={field.required}
+                onChange={(checked) => updateField(index, { required: checked })}
+                label="Requis"
+              />
+              <button
+                type="button"
+                onClick={() => setFields((prev) => prev.filter((_, i) => i !== index))}
+                className="text-on-surface-variant hover:text-error pb-2"
+              >
+                <DeleteOutlineOutlined style={{ fontSize: 18 }} />
+              </button>
             </div>
-            <Checkbox
-              checked={field.required}
-              onChange={(checked) => updateField(index, { required: checked })}
-              label="Requis"
-            />
-            <button
-              type="button"
-              onClick={() => setFields((prev) => prev.filter((_, i) => i !== index))}
-              className="text-on-surface-variant hover:text-error"
-            >
-              <DeleteOutlineOutlined style={{ fontSize: 18 }} />
-            </button>
+            <div className="pl-8 space-y-1">
+              <label className="text-xs text-on-surface-variant">Description (optionnel)</label>
+              <input
+                type="text"
+                placeholder="Aide affichée sous le champ au moment de la soumission"
+                value={field.description ?? ""}
+                onChange={(e) => updateField(index, { description: e.target.value })}
+                className="w-full px-2 py-1.5 rounded-lg border border-outline-variant bg-surface text-sm"
+              />
+            </div>
           </div>
         ))}
       </div>
@@ -321,7 +372,10 @@ export function FlowForm({
                 value={step.approver_type}
                 onChange={(e) => {
                   const approver_type = e.target.value as StepDraft["approver_type"];
-                  updateStep(index, { approver_type });
+                  updateStep(index, {
+                    approver_type,
+                    approval_mode: needsApprovalModeChoice(approver_type) ? ("" as "any" | "all") : "any",
+                  });
                   updateStepConfig(
                     index,
                     approver_type === "criteria" ? { criterion: "hierarchical_superior" } : {}
@@ -401,18 +455,22 @@ export function FlowForm({
                 </>
               )}
 
-              <select
-                required
-                value={step.approval_mode}
-                onChange={(e) => updateStep(index, { approval_mode: e.target.value as StepDraft["approval_mode"] })}
-                className="px-2 py-1.5 rounded-lg border border-outline-variant bg-surface text-sm"
-              >
-                <option value="" disabled>
-                  Mode d&apos;approbation…
-                </option>
-                <option value="any">N&apos;importe quel approbateur (any)</option>
-                <option value="all">Tous les approbateurs (all)</option>
-              </select>
+              {needsApprovalModeChoice(step.approver_type) && (
+                <select
+                  required
+                  value={step.approval_mode}
+                  onChange={(e) =>
+                    updateStep(index, { approval_mode: e.target.value as StepDraft["approval_mode"] })
+                  }
+                  className="px-2 py-1.5 rounded-lg border border-outline-variant bg-surface text-sm"
+                >
+                  <option value="" disabled>
+                    Mode d&apos;approbation…
+                  </option>
+                  <option value="any">N&apos;importe quel approbateur (any)</option>
+                  <option value="all">Tous les approbateurs (all)</option>
+                </select>
+              )}
             </div>
           </div>
         ))}

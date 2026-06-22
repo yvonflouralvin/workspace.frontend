@@ -29,30 +29,44 @@ si un autre workspace y donne accès).
   récupère `getFlow(id)` côté client avant de monter le formulaire pré-rempli).
   `onSaved`/`onCancel` renvoient vers `/flows`.
 - **`components/FlowForm.tsx`** — formulaire partagé par les deux pages ci-dessus.
-  Champs du formulaire de soumission en lignes répétables (clé/libellé/type
-  text|number|date|attachment/requis). Étapes séquentielles en lignes répétables (nom,
-  type d'approbateur + config conditionnelle, mode d'approbation) :
+  Champs du formulaire de soumission en lignes répétables (libellé/description
+  optionnelle/type text|number|date|attachment/requis) — **optionnels**, un flow peut
+  n'avoir aucun champ. Étapes séquentielles en lignes répétables (nom, type
+  d'approbateur + config conditionnelle, mode d'approbation) — **au moins une étape
+  obligatoire**, contrairement aux champs :
   - `step_key` n'est **plus saisi manuellement** — généré via `crypto.randomUUID()` à la
     création de chaque étape (`emptyStep()`), stable ensuite tant que l'étape n'est pas
-    supprimée/recréée.
+    supprimée/recréée. Même chose pour la `key` d'un champ (`emptyField()`), purement
+    interne (sert de nom de propriété dans `field_values` à la soumission, jamais
+    affichée/éditée par l'auteur du flow).
   - `specific_user`/`specific_group` utilisent `@repo/ui/SearchSelect` (recherche
     intégrée) au lieu d'un `<input type="number">` brut — voir section dédiée plus bas.
-  - **`approval_mode` n'a jamais de valeur initiale** (`""`, pas `"any"`/`"all"`) — le
-    `<select>` porte un premier `<option value="" disabled>` non sélectionnable, et
-    `handleSubmit` bloque l'envoi avec un message d'erreur si une étape n'a pas de mode
-    explicite (même garde-fou pour `specific_user`/`specific_group` sans sélection).
-    Ce choix d'implémentation traduit directement la contrainte du service :
-    `approval_mode` est toujours choisi par l'auteur du flow, jamais par défaut — voir
-    `backends/docs/services/approval_flows/APPROVAL_FLOWS.md`.
-  - **Réorganisation par drag-and-drop** — chaque bloc d'étape est `draggable` (HTML5
-    DnD natif, pas de nouvelle dépendance ajoutée au monorepo pour ça : la liste est
-    toujours courte). `onDragStart` mémorise l'index source, `onDrop` appelle
-    `moveStep(from, to)` qui réordonne le state local `steps` par `splice` immutable —
-    l'ordre envoyé au service reste dérivé de la position dans le tableau
-    (`enumerate(payload.steps)` côté `create_flow`/`update_flow`, inchangé), donc aucun
-    changement backend n'était nécessaire pour cette partie. Poignée visuelle
-    `DragIndicatorOutlined` + `key={step.step_key}` (pas l'index) pour que React
-    réconcilie correctement les inputs contrôlés pendant le déplacement.
+  - **`approval_mode` n'est un choix utilisateur que pour `specific_group`** — c'est le
+    seul `approver_type` qui peut résoudre à plusieurs approbateurs, donc le seul où
+    any/all change réellement le comportement (`needsApprovalModeChoice()`). Le
+    `<select>` n'est rendu que dans ce cas, avec son premier `<option value=""
+    disabled>` non sélectionnable et le même garde-fou `handleSubmit` qu'avant pour
+    forcer un choix explicite. Pour `specific_user` et `criteria` (`hierarchical_superior`
+    *et* `role_label`), il n'y a jamais plus d'un approbateur résolu (0 ou 1) : le select
+    est masqué et `approval_mode` est forcé à `"any"`, à la fois au moment du changement
+    de `approver_type` et, par défense en profondeur, ré-appliqué juste avant l'envoi du
+    payload (`normalizedSteps` dans `handleSubmit`) — un step `criteria`+`role_label`
+    posera donc toujours `"any"` côté service, jamais `"all"`, même via une édition
+    directe préexistante. Le service continue de ne jamais poser de défaut lui-même
+    (`backends/docs/services/approval_flows/APPROVAL_FLOWS.md`) — c'est le frontend qui
+    restreint le choix selon le type, pas le backend.
+  - **Réorganisation par drag-and-drop** — chaque bloc d'étape *et* chaque bloc de champ
+    est `draggable` (HTML5 DnD natif, pas de nouvelle dépendance ajoutée au monorepo
+    pour ça : les listes restent toujours courtes), avec deux états de drag séparés
+    (`draggedIndex` pour `steps`, `draggedFieldIndex` pour `fields`) puisque les deux
+    listes peuvent être réordonnées indépendamment. `onDragStart` mémorise l'index
+    source, `onDrop` appelle `moveStep(from, to)`/`moveField(from, to)` qui réordonnent
+    le state local par `splice` immutable — l'ordre envoyé au service reste dérivé de la
+    position dans le tableau (`enumerate(payload.steps)` côté `create_flow`/
+    `update_flow`, inchangé), donc aucun changement backend n'était nécessaire pour
+    cette partie. Poignée visuelle `DragIndicatorOutlined` + `key={step.step_key}`/
+    `key={field.key}` (pas l'index) pour que React réconcilie correctement les inputs
+    contrôlés pendant le déplacement.
   - **Accessibilité (`visible_group_ids`)** — section "Accessibilité" en bas du
     formulaire : `Checkbox` "Visible par tout le workspace" (coché par défaut, reflète
     `visible_group_ids = []`) ; décoché, affiche `@repo/ui/MultiSelect` peuplé via

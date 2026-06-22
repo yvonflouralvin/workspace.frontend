@@ -3,6 +3,7 @@
 export interface FieldSchemaItem {
   key: string;
   label: string;
+  description?: string | null;
   type: "text" | "number" | "date" | "attachment";
   required: boolean;
 }

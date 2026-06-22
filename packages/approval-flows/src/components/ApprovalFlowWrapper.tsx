@@ -86,6 +86,9 @@ export function ApprovalFlowWrapper({
       {flow.fields_schema.map((field) => (
         <div key={field.key} className="space-y-1">
           <label className="text-sm font-medium text-on-surface">{field.label}</label>
+          {field.description && (
+            <p className="text-xs text-on-surface-variant">{field.description}</p>
+          )}
           <input
             type={field.type === "date" ? "date" : field.type === "number" ? "number" : "text"}
             required={field.required}

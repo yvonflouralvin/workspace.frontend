@@ -17,7 +17,9 @@ export default function NewFlowPage() {
           </p>
         </div>
 
-        <FlowForm onSaved={() => router.push("/flows")} onCancel={() => router.push("/flows")} />
+        <div className="rounded-xl border border-outline-variant bg-surface-container-lowest p-6">
+          <FlowForm onSaved={() => router.push("/flows")} onCancel={() => router.push("/flows")} />
+        </div>
       </div>
     </DashboardShell>
   );

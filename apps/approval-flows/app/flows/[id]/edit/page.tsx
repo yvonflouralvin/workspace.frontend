@@ -39,11 +39,13 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
         {loading && <p className="text-sm text-on-surface-variant">Chargement…</p>}
 
         {!loading && flow && (
-          <FlowForm
-            flow={flow}
-            onSaved={() => router.push("/flows")}
-            onCancel={() => router.push("/flows")}
-          />
+          <div className="rounded-xl border border-outline-variant bg-surface-container-lowest p-6">
+            <FlowForm
+              flow={flow}
+              onSaved={() => router.push("/flows")}
+              onCancel={() => router.push("/flows")}
+            />
+          </div>
         )}
       </div>
     </DashboardShell>

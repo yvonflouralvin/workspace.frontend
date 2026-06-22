@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useState } from "react";
-import { AddOutlined, DeleteOutlineOutlined } from "@mui/icons-material";
+import { useCallback, useEffect, useState } from "react";
+import { AddOutlined, DeleteOutlineOutlined, DragIndicatorOutlined } from "@mui/icons-material";
 import { Checkbox } from "@repo/ui/Checkbox";
 import { SearchSelect } from "@repo/ui/SearchSelect";
+import { MultiSelect } from "@repo/ui/MultiSelect";
 import { useSessionStore } from "@repo/auth/store/session.store";
 import type { FieldSchemaItem, FlowDetail, StepDef } from "@repo/approval-flows/types/flow";
 import {
@@ -64,6 +65,20 @@ export function FlowForm({
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  const [allGroups, setAllGroups] = useState<GroupRecord[]>([]);
+  const [restrictVisibility, setRestrictVisibility] = useState(
+    (flow?.visible_group_ids?.length ?? 0) > 0
+  );
+  const [visibleGroupIds, setVisibleGroupIds] = useState<number[]>(flow?.visible_group_ids ?? []);
+
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (workspaceId) {
+      listGroups(workspaceId).then(setAllGroups);
+    }
+  }, [workspaceId]);
+
   const fetchMembers = useCallback(
     (query: string) => (workspaceId ? searchMembers(workspaceId, query) : Promise.resolve([])),
     [workspaceId]
@@ -78,6 +93,16 @@ export function FlowForm({
         : Promise.resolve([]),
     [workspaceId]
   );
+
+  function moveStep(from: number, to: number) {
+    if (from === to) return;
+    setSteps((prev) => {
+      const next = [...prev];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      return next;
+    });
+  }
 
   function updateField(index: number, patch: Partial<FieldDraft>) {
     setFields((prev) => prev.map((f, i) => (i === index ? { ...f, ...patch } : f)));
@@ -107,10 +132,20 @@ export function FlowForm({
       setError("Chaque étape « Groupe précis » doit avoir un groupe sélectionné.");
       return;
     }
+    if (restrictVisibility && visibleGroupIds.length === 0) {
+      setError("Sélectionnez au moins un groupe autorisé, ou repassez en « visible par tout le workspace ».");
+      return;
+    }
 
     setSubmitting(true);
     try {
-      const payload = { title, description: description || null, fields_schema: fields, steps };
+      const payload = {
+        title,
+        description: description || null,
+        fields_schema: fields,
+        steps,
+        visible_group_ids: restrictVisibility ? visibleGroupIds : [],
+      };
       const saved = isEdit ? await updateFlow(flow!.id, payload) : await createFlow({ id, ...payload });
       onSaved(saved);
     } catch (err) {
@@ -244,8 +279,25 @@ export function FlowForm({
         </div>
 
         {steps.map((step, index) => (
-          <div key={index} className="space-y-2 rounded-xl border border-outline-variant p-3">
+          <div
+            key={step.step_key}
+            draggable
+            onDragStart={() => setDraggedIndex(index)}
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={(e) => {
+              e.preventDefault();
+              if (draggedIndex !== null) moveStep(draggedIndex, index);
+              setDraggedIndex(null);
+            }}
+            onDragEnd={() => setDraggedIndex(null)}
+            className={`space-y-2 rounded-xl border border-outline-variant p-3 ${
+              draggedIndex === index ? "opacity-50" : ""
+            }`}
+          >
             <div className="flex items-center gap-2">
+              <span className="text-on-surface-variant cursor-grab active:cursor-grabbing" title="Glisser pour réordonner">
+                <DragIndicatorOutlined style={{ fontSize: 18 }} />
+              </span>
               <span className="text-xs font-medium text-on-surface-variant w-6">{index + 1}.</span>
               <input
                 type="text"
@@ -364,6 +416,32 @@ export function FlowForm({
             </div>
           </div>
         ))}
+      </div>
+
+      <div className="space-y-3">
+        <h3 className="text-sm font-semibold text-on-surface">Accessibilité</h3>
+        <Checkbox
+          checked={!restrictVisibility}
+          onChange={(checked) => {
+            setRestrictVisibility(!checked);
+            if (checked) setVisibleGroupIds([]);
+          }}
+          label="Visible par tout le workspace"
+        />
+        {restrictVisibility && (
+          <div className="space-y-1">
+            <label className="text-xs text-on-surface-variant">
+              Groupes autorisés à voir et soumettre ce flow
+            </label>
+            <MultiSelect
+              options={allGroups.map((g) => ({ id: g.id, label: g.name }))}
+              selectedIds={visibleGroupIds}
+              onChange={(ids) => setVisibleGroupIds(ids as number[])}
+              placeholder="Rechercher un groupe…"
+              emptyLabel="Aucun groupe trouvé."
+            />
+          </div>
+        )}
       </div>
 
       <div className="flex justify-end gap-2 pt-2">

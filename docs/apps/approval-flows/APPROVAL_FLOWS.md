@@ -23,9 +23,11 @@ si un autre workspace y donne accès).
   Bouton "Créer un flow" gated `usePermissions().can("approval_flows.manage")`, navigue
   vers `/flows/new`.
 - **`/flows/new`** et **`/flows/[id]/edit`** — pages de création/édition d'un
-  `ApprovalFlow` (mode 2), toutes deux montent `components/FlowForm.tsx` (page complète,
-  pas un drawer — `/flows/[id]/edit` récupère `getFlow(id)` côté client avant de monter
-  le formulaire pré-rempli). `onSaved`/`onCancel` renvoient vers `/flows`.
+  `ApprovalFlow` (mode 2). Le formulaire (`components/FlowForm.tsx`) est enveloppé
+  dans une card blanche (`rounded-xl border border-outline-variant
+  bg-surface-container-lowest p-6`) au lieu d'être posé nu sur le fond de page (`/flows/[id]/edit`
+  récupère `getFlow(id)` côté client avant de monter le formulaire pré-rempli).
+  `onSaved`/`onCancel` renvoient vers `/flows`.
 - **`components/FlowForm.tsx`** — formulaire partagé par les deux pages ci-dessus.
   Champs du formulaire de soumission en lignes répétables (clé/libellé/type
   text|number|date|attachment/requis). Étapes séquentielles en lignes répétables (nom,
@@ -42,6 +44,25 @@ si un autre workspace y donne accès).
     Ce choix d'implémentation traduit directement la contrainte du service :
     `approval_mode` est toujours choisi par l'auteur du flow, jamais par défaut — voir
     `backends/docs/services/approval_flows/APPROVAL_FLOWS.md`.
+  - **Réorganisation par drag-and-drop** — chaque bloc d'étape est `draggable` (HTML5
+    DnD natif, pas de nouvelle dépendance ajoutée au monorepo pour ça : la liste est
+    toujours courte). `onDragStart` mémorise l'index source, `onDrop` appelle
+    `moveStep(from, to)` qui réordonne le state local `steps` par `splice` immutable —
+    l'ordre envoyé au service reste dérivé de la position dans le tableau
+    (`enumerate(payload.steps)` côté `create_flow`/`update_flow`, inchangé), donc aucun
+    changement backend n'était nécessaire pour cette partie. Poignée visuelle
+    `DragIndicatorOutlined` + `key={step.step_key}` (pas l'index) pour que React
+    réconcilie correctement les inputs contrôlés pendant le déplacement.
+  - **Accessibilité (`visible_group_ids`)** — section "Accessibilité" en bas du
+    formulaire : `Checkbox` "Visible par tout le workspace" (coché par défaut, reflète
+    `visible_group_ids = []`) ; décoché, affiche `@repo/ui/MultiSelect` peuplé via
+    `listGroups(workspaceId)` (déjà utilisé pour `specific_group`) pour choisir les
+    groupes `auth` autorisés à voir/soumettre ce flow. `handleSubmit` bloque l'envoi si
+    la case est décochée sans aucun groupe sélectionné (sinon le flow deviendrait
+    invisible pour tout le monde y compris ses créateurs). Le payload envoie toujours
+    `visible_group_ids: []` quand la case est cochée, peu importe l'état résiduel du
+    `MultiSelect` — voir `backends/docs/services/approval_flows/APPROVAL_FLOWS.md` pour
+    l'enforcement côté service (`_is_visible`).
 - **`/flows/[id]/bindings`** (`app/flows/[id]/bindings/page.tsx`) — pour un template
   global uniquement. `params` consommé via `use(params)` (pattern async params Next.js
   16). Récupère `getFlow(id)` + `listBindings(id)` (`Promise.all`), construit un

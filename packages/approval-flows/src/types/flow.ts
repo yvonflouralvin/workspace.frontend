@@ -23,6 +23,8 @@ export interface FlowSummary {
   app_key: string | null;
   workspace_id: number | null;
   status: string;
+  // ids de groupes `auth` autorisés à voir/soumettre ce flow ; [] = tout le workspace
+  visible_group_ids: number[];
 }
 
 export interface FlowDetail extends FlowSummary {
@@ -36,6 +38,7 @@ export interface FlowCreate {
   description?: string | null;
   fields_schema: FieldSchemaItem[];
   steps: Omit<StepDef, "order">[];
+  visible_group_ids: number[];
 }
 
 export type FlowUpdate = Omit<FlowCreate, "id">;

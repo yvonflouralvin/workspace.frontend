@@ -225,6 +225,7 @@ les 3 `.env` par app synchronisés pour les variables communes.
 | `NEXT_PUBLIC_AUTH_API`            | `http://127.0.0.1:5000`| Browser        |
 | `NEXT_PUBLIC_AUTH_API_AUTH_DOMAIN`| `http://localhost:3001` | Browser        |
 | `NEXT_PUBLIC_AUTH_API_HR_DOMAIN`  | `http://localhost:3003` | Browser        |
+| `NEXT_PUBLIC_AUTH_API_APPROVAL_FLOWS_DOMAIN` | `http://localhost:3006` | Browser — utilisé par le sélecteur d'apps (`workspace`, `hr`) pour pointer vers `approval-flows` |
 | `NEXT_PUBLIC_WORKSPACE_DOMAIN`    | `http://localhost:3005` | Browser (auth) |
 | `AUTH_API_URL`                    | `http://127.0.0.1:5000`| Server only    |
 | `HR_API_URL`                      | `http://127.0.0.1:5001`| Server only — app `hr`, proxy vers le backend FastAPI `hr` |

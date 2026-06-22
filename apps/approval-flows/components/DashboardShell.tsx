@@ -37,6 +37,14 @@ const APPS: AppDefinition[] = [
     color: "#004598",
     description: "Création et gestion de workflows d'approbation",
   },
+  {
+    id: "hr",
+    name: "RH",
+    icon: "H",
+    url: process.env.NEXT_PUBLIC_AUTH_API_HR_DOMAIN ?? "http://localhost:3003",
+    color: "#006c49",
+    description: "Ressources humaines",
+  },
 ];
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {

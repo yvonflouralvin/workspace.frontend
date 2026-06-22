@@ -9,6 +9,8 @@ import type {
   AuthProvider,
   AuthMethod,
   AuthMethodProvider,
+  NotificationChannel,
+  NotificationChannelConfig,
 } from "./types";
 
 export class ApiError extends Error {
@@ -167,6 +169,25 @@ export async function updateWorkspaceSettings(
   const response = await apiFetch(
     `/api/workspaces/${workspaceId}/settings`,
     jsonRequest("PUT", { values })
+  );
+  return parseResponse(response);
+}
+
+export async function listNotificationChannels(
+  workspaceId: number
+): Promise<{ channels: NotificationChannelConfig[] }> {
+  const response = await apiFetch(`/api/workspaces/${workspaceId}/notification-channels`);
+  return parseResponse(response);
+}
+
+export async function updateNotificationChannelConfig(
+  workspaceId: number,
+  channel: NotificationChannel,
+  config: Record<string, string>
+): Promise<NotificationChannelConfig> {
+  const response = await apiFetch(
+    `/api/workspaces/${workspaceId}/notification-channels/${channel}/config`,
+    jsonRequest("PUT", { config })
   );
   return parseResponse(response);
 }

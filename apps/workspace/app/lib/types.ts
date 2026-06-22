@@ -51,6 +51,7 @@ export interface SettingDef {
   key: string;
   name: string;
   description: string | null;
+  section: string | null;
   type: SettingType;
   options: SettingOption[] | null;
   value: unknown;
@@ -61,6 +62,13 @@ export interface AppSettingGroup {
   key: string | null;
   name: string;
   settings: SettingDef[];
+}
+
+export type NotificationChannel = "email" | "sms" | "whatsapp";
+
+export interface NotificationChannelConfig {
+  channel: NotificationChannel;
+  config: Record<string, string> | null;
 }
 
 export type WorkspaceType = "individual" | "organization";

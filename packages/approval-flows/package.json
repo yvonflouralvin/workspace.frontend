@@ -1,0 +1,49 @@
+{
+  "name": "@repo/approval-flows",
+  "type": "module",
+  "scripts": {
+    "dev": "tsc --watch",
+    "build": "tsc"
+  },
+  "exports": {
+    "./types/flow": {
+      "types": "./src/types/flow.ts",
+      "default": "./dist/types/flow.js"
+    },
+    "./types/request": {
+      "types": "./src/types/request.ts",
+      "default": "./dist/types/request.js"
+    },
+    "./api/client": {
+      "types": "./src/api/client.ts",
+      "default": "./dist/api/client.js"
+    },
+    "./hooks/useApprovalFlow": {
+      "types": "./src/hooks/useApprovalFlow.ts",
+      "default": "./dist/hooks/useApprovalFlow.js"
+    },
+    "./hooks/useApprovalTasks": {
+      "types": "./src/hooks/useApprovalTasks.ts",
+      "default": "./dist/hooks/useApprovalTasks.js"
+    },
+    "./ApprovalFlowWrapper": {
+      "types": "./src/components/ApprovalFlowWrapper.tsx",
+      "default": "./dist/components/ApprovalFlowWrapper.js"
+    },
+    "./ApprovalTaskList": {
+      "types": "./src/components/ApprovalTaskList.tsx",
+      "default": "./dist/components/ApprovalTaskList.js"
+    }
+  },
+  "devDependencies": {
+    "@repo/typescript-config": "*",
+    "typescript": "latest"
+  },
+  "peerDependencies": {
+    "next": ">=15",
+    "react": ">=19"
+  },
+  "dependencies": {
+    "@repo/network": "*"
+  }
+}

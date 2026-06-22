@@ -404,20 +404,32 @@ via le proxy `app/api/workspaces/[workspaceId]/settings/route.ts` (même pattern
 `usePermissions().can("workspace.settings.manage")`.
 
 **Client (`app/lib/api.ts`)** : `listWorkspaceSettings(workspaceId)`,
-`updateWorkspaceSettings(workspaceId, values)`.
+`updateWorkspaceSettings(workspaceId, values)` (utilisée avec un seul élément dans le
+tableau pour l'édition unitaire décrite ci-dessous).
 
 **Types (`app/lib/types.ts`)** : `SettingType` (`text`/`date`/`single_choice`/
-`multi_choice`), `SettingOption`, `SettingDef`, `AppSettingGroup`.
+`multi_choice`), `SettingOption`, `SettingDef` (inclut `section: string | null` — une app
+peut regrouper ses paramètres sous une section, voir `backends/docs/services/auth/AUTH.md`),
+`AppSettingGroup`.
 
-**UI :** layout deux colonnes, pas de composant `@repo/ui` dédié (sélecteur trop couplé
-au concept de "groupe de paramètres" pour être généralisé maintenant) :
+**UI :** layout deux colonnes.
 - Gauche — recherche + liste des groupes ("Général", "Workspace", "RH"...), un seul
   sélectionné à la fois (mirrors la recherche de `PermissionPicker`, sans l'accordéon —
   ici on *sélectionne* un groupe au lieu de tous les afficher en même temps, pour rester
-  lisible même avec beaucoup d'apps enregistrées).
-- Droite — formulaire du groupe sélectionné, un champ par `SettingDef.type` :
-  `text`/`date` → `<input>` natif, `single_choice` → `<select>` natif, `multi_choice` →
-  `MultiSelect` (`@repo/ui`).
+  lisible même avec beaucoup d'apps enregistrées). Pas affecté par la recherche de droite.
+- Droite — pour le groupe sélectionné : un champ de recherche (filtre par
+  nom/description, scope = le groupe sélectionné seulement, pas une recherche globale
+  cross-apps), puis les paramètres filtrés partitionnés par `section` :
+  - `section === null` → liste à plat, lecture seule.
+  - `section` renseignée → un `Accordion` (`@repo/ui/Accordion`, composant générique
+    réutilisable, voir `docs/packages/UI.md`) par section, titre = nom de la section,
+    badge = nombre de paramètres, forcé ouvert pendant une recherche active.
+  - Chaque paramètre s'affiche en **lecture seule** (nom, description, valeur formatée via
+    `formatSettingValue` : libellé de l'option pour `single_choice`, libellés joints pour
+    `multi_choice`, date localisée `fr-FR`, `"—"` si vide) + une icône crayon
+    (`EditOutlined`) qui ouvre `components/SettingValueDrawer.tsx` (`RightDrawer`
+    `@repo/ui`) pour éditer puis enregistrer ce paramètre seul — pas de formulaire inline
+    ni de bouton "Enregistrer" global sur la page.
 
 `MultiSelect` (`packages/ui/src/MultiSelect.tsx`) a été généralisé : `OptionLike.id` et
 `selectedIds`/`onChange` acceptent désormais `string | number` (avant : `number` seul),
@@ -449,6 +461,35 @@ config)`, qui réutilise `PATCH /api/workspaces/[workspaceId]` (mêmes champs
 `auth_provider`/`auth_provider_config` que `restrict_members_to_workspace`, validés
 serverside, voir `backends/docs/services/auth/AUTH.md`). Le bloc disparaît si la restriction
 est désactivée (le serveur rejetterait la sauvegarde de toute façon).
+
+### Notifications (config des canaux par workspace)
+
+Toujours dans le panneau "Général", **inconditionnel** (contrairement aux deux blocs
+précédents — `sender_mode="workspace"` s'applique à tout type de workspace, pas
+seulement `organization`) : un `Accordion` "Notifications" listant les 3 canaux
+(`email`/`sms`/`whatsapp`) avec un statut "Configuré"/"Non configuré" et un crayon
+(`EditOutlined`) par ligne. Consomme `GET /auth/workspaces/<id>/notification-channels`
+(`listNotificationChannels`) au chargement de la page (même `Promise.all` que
+`listWorkspaceSettings`/`getWorkspace`), via le proxy
+`app/api/workspaces/[workspaceId]/notification-channels/route.ts` (`forwardToAuthApi`,
+voir `backends/docs/services/auth/AUTH.md` pour `notification_channels_bp`).
+
+Le crayon ouvre `components/NotificationChannelDrawer.tsx` (`RightDrawer`, composant
+local à l'app — couplé à `NotificationChannel`, pas un composant `@repo/ui`) : champs
+contrôlés générés depuis une map figée *côté frontend uniquement* (le backend reste un
+dict JSON libre de bout en bout, sans schéma serveur) :
+- `email` : `host`, `port`, `username`, `password`, `from_email`.
+- `sms` : `provider`, `api_key`, `api_secret`, `sender_id`.
+- `whatsapp` : `provider`, `phone_number_id`, `access_token`, `business_account_id`.
+
+Valeurs initiales = `config` existant (chaîne vide si absent) — **aucun masquage** des
+champs secrets au rechargement (limite connue et acceptée, voir
+`backends/docs/services/notifications/NOTIFICATIONS.md` et
+`backends/docs/services/auth/AUTH.md`) ; `type="password"` sur les champs sensibles est
+cosmétique uniquement. Bouton "Enregistrer" → `updateNotificationChannelConfig(workspaceId,
+channel, config)` (`PUT
+/api/workspaces/[workspaceId]/notification-channels/[channel]/config`) → ferme le drawer
+et met à jour la ligne du canal dans l'état de la page.
 
 ---
 

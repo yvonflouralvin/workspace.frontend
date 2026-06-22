@@ -1,33 +1,69 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { SearchOutlined } from "@mui/icons-material";
+import { SearchOutlined, EditOutlined } from "@mui/icons-material";
 import { useSessionStore } from "@repo/auth/store/session.store";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
-import { MultiSelect } from "@repo/ui/MultiSelect";
+import { Accordion } from "@repo/ui/Accordion";
 import {
   listWorkspaceSettings,
-  updateWorkspaceSettings,
   getWorkspace,
   updateWorkspacePolicy,
   updateWorkspaceAuthProvider,
+  listNotificationChannels,
   ApiError,
 } from "@/app/lib/api";
-import type { AppSettingGroup, AuthProvider, SettingDef, WorkspaceDetail } from "@/app/lib/types";
+import type {
+  AppSettingGroup,
+  AuthProvider,
+  NotificationChannelConfig,
+  SettingDef,
+  WorkspaceDetail,
+} from "@/app/lib/types";
+import { SettingValueDrawer } from "@/components/SettingValueDrawer";
+import {
+  NotificationChannelDrawer,
+  NOTIFICATION_CHANNEL_LABELS,
+} from "@/components/NotificationChannelDrawer";
+
+function formatSettingValue(setting: SettingDef): string {
+  const value = setting.value;
+
+  if (value === null || value === undefined || value === "") return "—";
+
+  if (setting.type === "date" && typeof value === "string") {
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString("fr-FR");
+  }
+
+  if (setting.type === "single_choice") {
+    const option = (setting.options ?? []).find((o) => o.value === value);
+    return option?.label ?? String(value);
+  }
+
+  if (setting.type === "multi_choice" && Array.isArray(value)) {
+    if (value.length === 0) return "—";
+    const labelsByValue = new Map((setting.options ?? []).map((o) => [o.value, o.label]));
+    return value.map((v) => labelsByValue.get(v as string) ?? String(v)).join(", ");
+  }
+
+  return String(value);
+}
 
 export default function SettingsPage() {
   const activeWorkspace = useSessionStore((s) => s.activeWorkspace);
   const { can } = usePermissions();
 
   const [groups, setGroups] = useState<AppSettingGroup[]>([]);
-  const [values, setValues] = useState<Record<number, unknown>>({});
   const [workspaceDetail, setWorkspaceDetail] = useState<WorkspaceDetail | null>(null);
+  const [notificationChannels, setNotificationChannels] = useState<NotificationChannelConfig[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
-  const [query, setQuery] = useState("");
+  const [appQuery, setAppQuery] = useState("");
+  const [settingQuery, setSettingQuery] = useState("");
   const [selectedKey, setSelectedKey] = useState<string>("general");
+  const [editingSetting, setEditingSetting] = useState<SettingDef | null>(null);
+  const [editingChannel, setEditingChannel] = useState<NotificationChannelConfig | null>(null);
 
   const workspaceId = activeWorkspace?.id;
   const canManage = can("workspace.settings.manage");
@@ -38,17 +74,15 @@ export default function SettingsPage() {
       return;
     }
 
-    Promise.all([listWorkspaceSettings(workspaceId), getWorkspace(workspaceId)])
-      .then(([settingsRes, workspaceRes]) => {
+    Promise.all([
+      listWorkspaceSettings(workspaceId),
+      getWorkspace(workspaceId),
+      listNotificationChannels(workspaceId),
+    ])
+      .then(([settingsRes, workspaceRes, channelsRes]) => {
         setGroups(settingsRes.groups);
-        const initialValues: Record<number, unknown> = {};
-        for (const group of settingsRes.groups) {
-          for (const setting of group.settings) {
-            initialValues[setting.id] = setting.value;
-          }
-        }
-        setValues(initialValues);
         setWorkspaceDetail(workspaceRes);
+        setNotificationChannels(channelsRes.channels);
       })
       .catch((err) => {
         setError(err instanceof ApiError ? err.message : "Une erreur est survenue");
@@ -56,9 +90,9 @@ export default function SettingsPage() {
       .finally(() => setLoading(false));
   }, [workspaceId, canManage]);
 
-  const normalizedQuery = query.trim().toLowerCase();
-  const visibleGroups = normalizedQuery
-    ? groups.filter((g) => g.name.toLowerCase().includes(normalizedQuery))
+  const normalizedAppQuery = appQuery.trim().toLowerCase();
+  const visibleGroups = normalizedAppQuery
+    ? groups.filter((g) => g.name.toLowerCase().includes(normalizedAppQuery))
     : groups;
 
   const selectedGroup = useMemo(
@@ -66,27 +100,43 @@ export default function SettingsPage() {
     [groups, selectedKey]
   );
 
-  function setValue(settingId: number, value: unknown) {
-    setValues((prev) => ({ ...prev, [settingId]: value }));
+  const normalizedSettingQuery = settingQuery.trim().toLowerCase();
+  const isSearchingSettings = normalizedSettingQuery.length > 0;
+
+  const filteredSettings = useMemo(() => {
+    if (!selectedGroup) return [];
+    if (!isSearchingSettings) return selectedGroup.settings;
+    return selectedGroup.settings.filter(
+      (s) =>
+        s.name.toLowerCase().includes(normalizedSettingQuery) ||
+        (s.description ?? "").toLowerCase().includes(normalizedSettingQuery)
+    );
+  }, [selectedGroup, isSearchingSettings, normalizedSettingQuery]);
+
+  const flatSettings = filteredSettings.filter((s) => !s.section);
+
+  const sectionedSettings = useMemo(() => {
+    const sections: { name: string; settings: SettingDef[] }[] = [];
+    for (const setting of filteredSettings) {
+      if (!setting.section) continue;
+      const existing = sections.find((sec) => sec.name === setting.section);
+      if (existing) {
+        existing.settings.push(setting);
+      } else {
+        sections.push({ name: setting.section, settings: [setting] });
+      }
+    }
+    return sections;
+  }, [filteredSettings]);
+
+  function handleSettingsUpdated(updatedGroups: AppSettingGroup[]) {
+    setGroups(updatedGroups);
   }
 
-  async function handleSave() {
-    if (!workspaceId || !selectedGroup) return;
-    setSaving(true);
-    setSaveError(null);
-
-    try {
-      const payload = selectedGroup.settings.map((s) => ({
-        app_setting_id: s.id,
-        value: values[s.id] ?? null,
-      }));
-      const res = await updateWorkspaceSettings(workspaceId, payload);
-      setGroups(res.groups);
-    } catch (err) {
-      setSaveError(err instanceof ApiError ? err.message : "Une erreur est survenue");
-    } finally {
-      setSaving(false);
-    }
+  function handleChannelUpdated(updated: NotificationChannelConfig) {
+    setNotificationChannels((prev) =>
+      prev.map((c) => (c.channel === updated.channel ? updated : c))
+    );
   }
 
   if (!canManage) {
@@ -127,8 +177,8 @@ export default function SettingsPage() {
               />
               <input
                 type="text"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
+                value={appQuery}
+                onChange={(e) => setAppQuery(e.target.value)}
                 placeholder="Rechercher une application…"
                 className="w-full pl-9 pr-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface"
               />
@@ -144,7 +194,10 @@ export default function SettingsPage() {
                   <button
                     key={groupKey}
                     type="button"
-                    onClick={() => setSelectedKey(groupKey)}
+                    onClick={() => {
+                      setSelectedKey(groupKey);
+                      setSettingQuery("");
+                    }}
                     className={`w-full text-left px-3 py-2.5 text-sm transition-colors ${
                       isSelected
                         ? "bg-primary/10 text-primary font-medium"
@@ -180,105 +233,156 @@ export default function SettingsPage() {
                 />
               )}
 
+            {selectedKey === "general" && (
+              <Accordion title="Notifications" badge={`(${notificationChannels.length})`}>
+                <div className="divide-y divide-outline-variant">
+                  {notificationChannels.map((channelConfig) => (
+                    <NotificationChannelRow
+                      key={channelConfig.channel}
+                      channelConfig={channelConfig}
+                      onEdit={() => setEditingChannel(channelConfig)}
+                    />
+                  ))}
+                </div>
+              </Accordion>
+            )}
+
             {!selectedGroup || selectedGroup.settings.length === 0 ? (
               <p className="text-sm text-on-surface-variant">
                 Aucun paramètre pour cette application.
               </p>
             ) : (
               <>
-                <h2 className="text-sm font-semibold text-on-surface-variant uppercase tracking-wide">
-                  {selectedGroup.name}
-                </h2>
-
-                <div className="space-y-4">
-                  {selectedGroup.settings.map((setting) => (
-                    <SettingField
-                      key={setting.id}
-                      setting={setting}
-                      value={values[setting.id]}
-                      onChange={(v) => setValue(setting.id, v)}
-                    />
-                  ))}
+                <div className="flex items-center justify-between gap-4">
+                  <h2 className="text-sm font-semibold text-on-surface-variant uppercase tracking-wide">
+                    {selectedGroup.name}
+                  </h2>
                 </div>
 
-                {saveError && (
-                  <p className="text-sm text-error bg-error-container/40 rounded-lg px-3 py-2">
-                    {saveError}
-                  </p>
-                )}
+                <div className="relative">
+                  <SearchOutlined
+                    style={{ fontSize: 18 }}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant"
+                  />
+                  <input
+                    type="text"
+                    value={settingQuery}
+                    onChange={(e) => setSettingQuery(e.target.value)}
+                    placeholder="Rechercher un paramètre…"
+                    className="w-full pl-9 pr-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface"
+                  />
+                </div>
 
-                <button
-                  onClick={handleSave}
-                  disabled={saving}
-                  className="px-4 py-2 rounded-xl bg-primary text-on-primary text-sm font-medium disabled:opacity-50"
-                >
-                  {saving ? "Enregistrement…" : "Enregistrer"}
-                </button>
+                {filteredSettings.length === 0 ? (
+                  <p className="text-sm text-on-surface-variant">Aucun résultat.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {flatSettings.length > 0 && (
+                      <div className="rounded-xl border border-outline-variant divide-y divide-outline-variant">
+                        {flatSettings.map((setting) => (
+                          <SettingRow
+                            key={setting.id}
+                            setting={setting}
+                            onEdit={() => setEditingSetting(setting)}
+                          />
+                        ))}
+                      </div>
+                    )}
+
+                    {sectionedSettings.map((section) => (
+                      <Accordion
+                        key={`${section.name}-${isSearchingSettings}`}
+                        title={section.name}
+                        badge={`(${section.settings.length})`}
+                        defaultOpen={isSearchingSettings}
+                      >
+                        <div className="divide-y divide-outline-variant">
+                          {section.settings.map((setting) => (
+                            <SettingRow
+                              key={setting.id}
+                              setting={setting}
+                              onEdit={() => setEditingSetting(setting)}
+                            />
+                          ))}
+                        </div>
+                      </Accordion>
+                    ))}
+                  </div>
+                )}
               </>
             )}
           </div>
         </div>
       )}
+
+      {editingSetting && workspaceId && (
+        <SettingValueDrawer
+          workspaceId={workspaceId}
+          setting={editingSetting}
+          onClose={() => setEditingSetting(null)}
+          onSaved={handleSettingsUpdated}
+        />
+      )}
+
+      {editingChannel && workspaceId && (
+        <NotificationChannelDrawer
+          workspaceId={workspaceId}
+          channelConfig={editingChannel}
+          onClose={() => setEditingChannel(null)}
+          onSaved={handleChannelUpdated}
+        />
+      )}
     </div>
   );
 }
 
-function SettingField({
-  setting,
-  value,
-  onChange,
+function NotificationChannelRow({
+  channelConfig,
+  onEdit,
 }: {
-  setting: SettingDef;
-  value: unknown;
-  onChange: (value: unknown) => void;
+  channelConfig: NotificationChannelConfig;
+  onEdit: () => void;
 }) {
   return (
-    <div className="space-y-1">
-      <label className="text-sm font-medium text-on-surface">{setting.name}</label>
-      {setting.description && (
-        <p className="text-xs text-on-surface-variant">{setting.description}</p>
-      )}
+    <div className="flex items-center justify-between gap-4 px-4 py-3">
+      <div className="min-w-0">
+        <p className="text-sm font-medium text-on-surface">
+          {NOTIFICATION_CHANNEL_LABELS[channelConfig.channel]}
+        </p>
+        <p className="text-sm text-on-surface-variant mt-1">
+          {channelConfig.config ? "Configuré" : "Non configuré"}
+        </p>
+      </div>
+      <button
+        type="button"
+        onClick={onEdit}
+        title="Modifier"
+        className="flex-shrink-0 text-on-surface-variant hover:text-primary transition-colors"
+      >
+        <EditOutlined style={{ fontSize: 18 }} />
+      </button>
+    </div>
+  );
+}
 
-      {setting.type === "text" && (
-        <input
-          type="text"
-          value={typeof value === "string" ? value : ""}
-          onChange={(e) => onChange(e.target.value)}
-          className="w-full px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface"
-        />
-      )}
-
-      {setting.type === "date" && (
-        <input
-          type="date"
-          value={typeof value === "string" ? value : ""}
-          onChange={(e) => onChange(e.target.value)}
-          className="w-full px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface"
-        />
-      )}
-
-      {setting.type === "single_choice" && (
-        <select
-          value={typeof value === "string" ? value : ""}
-          onChange={(e) => onChange(e.target.value || null)}
-          className="w-full px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface"
-        >
-          <option value="">—</option>
-          {(setting.options ?? []).map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-      )}
-
-      {setting.type === "multi_choice" && (
-        <MultiSelect
-          options={(setting.options ?? []).map((o) => ({ id: o.value, label: o.label }))}
-          selectedIds={Array.isArray(value) ? (value as string[]) : []}
-          onChange={onChange}
-        />
-      )}
+function SettingRow({ setting, onEdit }: { setting: SettingDef; onEdit: () => void }) {
+  return (
+    <div className="flex items-center justify-between gap-4 px-4 py-3">
+      <div className="min-w-0">
+        <p className="text-sm font-medium text-on-surface">{setting.name}</p>
+        {setting.description && (
+          <p className="text-xs text-on-surface-variant mt-0.5">{setting.description}</p>
+        )}
+        <p className="text-sm text-on-surface-variant mt-1">{formatSettingValue(setting)}</p>
+      </div>
+      <button
+        type="button"
+        onClick={onEdit}
+        title="Modifier"
+        className="flex-shrink-0 text-on-surface-variant hover:text-primary transition-colors"
+      >
+        <EditOutlined style={{ fontSize: 18 }} />
+      </button>
     </div>
   );
 }

@@ -172,6 +172,22 @@ nombre de droits cochés à côté du nom du groupe, même repliée.
 <PermissionPicker groups={permissionCatalog} selectedIds={permissionIds} onToggle={togglePermission} />
 ```
 
+### `Accordion` (`src/Accordion.tsx`)
+
+Accordéon générique unitaire : header cliquable (titre + badge optionnel) avec
+`ExpandMoreOutlined` qui tourne à l'ouverture, contenu collapsible. Non contrôlé
+(`defaultOpen`) — pour forcer l'ouverture depuis le parent (ex. pendant une recherche),
+remonter le composant via `key`. Contrairement à `PermissionPicker`, ne gère pas
+lui-même un groupe de plusieurs sections ni de recherche — un seul accordéon, le parent
+orchestre la liste et le filtrage (voir `frontends/docs/apps/workspace/WORKSPACE.md#paramètres`
+pour un exemple : sections de paramètres groupées par app).
+
+```tsx
+<Accordion title="Affichage" badge={`(${settings.length})`} defaultOpen={isSearching}>
+  {settings.map((s) => <SettingRow key={s.id} setting={s} />)}
+</Accordion>
+```
+
 ### `MultiSelect` (`src/MultiSelect.tsx`)
 
 Sélecteur multiple générique avec recherche : tape pour filtrer une liste d'options, clic

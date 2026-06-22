@@ -7,7 +7,7 @@ import { Sidebar } from "@repo/ui/shell/Sidebar";
 import { TopBar } from "@repo/ui/shell/TopBar";
 import { UserFooter } from "@repo/ui/shell/UserFooter";
 import { WorkspaceSwitcher } from "@repo/ui/WorkspaceSwitcher";
-import { HomeOutlined, PeopleAltOutlined, FolderOutlined } from "@mui/icons-material";
+import { HomeOutlined, PeopleAltOutlined, FolderOutlined, FactCheckOutlined } from "@mui/icons-material";
 import type { NavItem, AppDefinition } from "@repo/ui/types/shell";
 import { logout as logoutRequest } from "@/app/lib/api";
 
@@ -17,6 +17,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Accueil", href: WORKSPACE_DOMAIN, icon: <HomeOutlined style={{ fontSize: 20 }} />, exact: true },
   { label: "Employés", href: "/employees", icon: <PeopleAltOutlined style={{ fontSize: 20 }} /> },
   { label: "Groupes/Départements", href: "/groups", icon: <FolderOutlined style={{ fontSize: 20 }} /> },
+  { label: "Démo approbation", href: "/demo-approval", icon: <FactCheckOutlined style={{ fontSize: 20 }} /> },
 ];
 
 const APPS: AppDefinition[] = [

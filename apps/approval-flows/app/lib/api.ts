@@ -1,6 +1,17 @@
 import { apiFetch } from "@repo/network/client";
 import type { Binding, FlowCreate, FlowDetail, FlowSummary, FlowUpdate } from "@repo/approval-flows/types/flow";
 
+export interface MemberRecord {
+  id: number;
+  user: { id: number; email: string; username: string };
+}
+
+export interface GroupRecord {
+  id: number;
+  name: string;
+  parent_id: number | null;
+}
+
 export class ApiError extends Error {
   status: number;
 
@@ -66,4 +77,18 @@ export async function setBinding(
     body: payload,
   });
   return parseResponse(response);
+}
+
+export async function searchMembers(workspaceId: number, q: string): Promise<MemberRecord[]> {
+  const response = await apiFetch(
+    `/api/workspaces/${workspaceId}/members?q=${encodeURIComponent(q)}&limit=20`
+  );
+  const data = await parseResponse(response);
+  return data.members;
+}
+
+export async function listGroups(workspaceId: number): Promise<GroupRecord[]> {
+  const response = await apiFetch(`/api/workspaces/${workspaceId}/groups`);
+  const data = await parseResponse(response);
+  return data.groups;
 }

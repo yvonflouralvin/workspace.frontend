@@ -6,7 +6,6 @@ import { AddOutlined } from "@mui/icons-material";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
 import { DataList, type DataListColumn } from "@repo/ui/DataList";
 import { DashboardShell } from "@/components/DashboardShell";
-import { FlowFormDrawer } from "@/components/FlowFormDrawer";
 import { listFlows, ApiError } from "@/app/lib/api";
 import type { FlowSummary } from "@repo/approval-flows/types/flow";
 
@@ -24,7 +23,6 @@ export default function FlowsPage() {
   const [items, setItems] = useState<FlowSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showCreate, setShowCreate] = useState(false);
 
   const refetch = useCallback(() => {
     setLoading(true);
@@ -52,6 +50,8 @@ export default function FlowsPage() {
   function handleRowClick(flow: FlowSummary) {
     if (flow.app_key) {
       router.push(`/flows/${flow.id}/bindings`);
+    } else {
+      router.push(`/flows/${flow.id}/edit`);
     }
   }
 
@@ -68,7 +68,7 @@ export default function FlowsPage() {
 
           {canManage && (
             <button
-              onClick={() => setShowCreate(true)}
+              onClick={() => router.push("/flows/new")}
               className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-on-primary text-sm font-medium"
             >
               <AddOutlined style={{ fontSize: 18 }} />
@@ -93,13 +93,6 @@ export default function FlowsPage() {
           />
         )}
       </div>
-
-      {showCreate && (
-        <FlowFormDrawer
-          onClose={() => setShowCreate(false)}
-          onSaved={() => refetch()}
-        />
-      )}
     </DashboardShell>
   );
 }

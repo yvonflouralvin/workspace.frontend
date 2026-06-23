@@ -24,14 +24,36 @@ type FieldDraft = FieldSchemaItem;
 type StepDraft = Omit<StepDef, "order">;
 
 const FIELD_TYPE_LABEL: Record<FieldDraft["type"], string> = {
-  text: "Texte",
+  text_short: "Texte court",
+  text_long: "Texte long",
   number: "Nombre",
   date: "Date",
   attachment: "Pièce jointe",
+  single_choice: "Liste (choix unique)",
+  multi_choice: "Choix multiple",
 };
 
+function needsOptions(type: FieldDraft["type"]): boolean {
+  return type === "single_choice" || type === "multi_choice";
+}
+
 function emptyField(): FieldDraft {
-  return { key: crypto.randomUUID(), label: "", description: "", type: "text", required: false };
+  return {
+    key: crypto.randomUUID(),
+    label: "",
+    description: "",
+    type: "text_short",
+    required: false,
+    options: [],
+  };
+}
+
+// Anciennes données ("text", avant le découpage texte court/long) — traitées comme
+// "text_short" plutôt que de forcer une migration de données dev.
+function normalizeField(field: FieldDraft): FieldDraft {
+  return (field.type as string) === "text"
+    ? { ...field, type: "text_short" }
+    : field;
 }
 
 function emptyStep(): StepDraft {
@@ -91,7 +113,7 @@ export function FlowForm({
     sourceVersion?.description ?? flow?.suggested_description ?? ""
   );
   const [fields, setFields] = useState<FieldDraft[]>(
-    sourceVersion?.fields_schema ?? flow?.suggested_fields_schema ?? []
+    (sourceVersion?.fields_schema ?? flow?.suggested_fields_schema ?? []).map(normalizeField)
   );
   const [steps, setSteps] = useState<StepDraft[]>(
     sourceVersion?.steps.map((s) => ({ ...s })) ??
@@ -118,7 +140,7 @@ export function FlowForm({
     setId(flow?.id ?? "");
     setTitle(sourceVersion?.title ?? flow?.suggested_title ?? "");
     setDescription(sourceVersion?.description ?? flow?.suggested_description ?? "");
-    setFields(sourceVersion?.fields_schema ?? flow?.suggested_fields_schema ?? []);
+    setFields((sourceVersion?.fields_schema ?? flow?.suggested_fields_schema ?? []).map(normalizeField));
     setSteps(
       sourceVersion?.steps.map((s) => ({ ...s })) ??
         flow?.suggested_steps?.map((s) => ({ ...s })) ?? [emptyStep()]
@@ -236,6 +258,10 @@ export function FlowForm({
 
     if (steps.length === 0) {
       setError("Un flow doit avoir au moins une étape d'approbation.");
+      return;
+    }
+    if (fields.some((f) => needsOptions(f.type) && (f.options ?? []).filter((o) => o.trim()).length === 0)) {
+      setError("Chaque champ « Liste » ou « Choix multiple » doit avoir au moins une option.");
       return;
     }
     if (
@@ -373,11 +399,16 @@ export function FlowForm({
             {published!.fields_schema.length === 0 && (
               <p className="text-sm text-on-surface-variant">Aucun champ.</p>
             )}
-            {published!.fields_schema.map((f) => (
+            {published!.fields_schema.map(normalizeField).map((f) => (
               <div key={f.key} className="rounded-xl border border-outline-variant p-3 text-sm">
                 <span className="font-medium text-on-surface">{f.label}</span>
                 <span className="text-on-surface-variant"> — {FIELD_TYPE_LABEL[f.type]}{f.required ? " · requis" : ""}</span>
                 {f.description && <p className="text-xs text-on-surface-variant mt-1">{f.description}</p>}
+                {needsOptions(f.type) && (f.options?.length ?? 0) > 0 && (
+                  <p className="text-xs text-on-surface-variant mt-1">
+                    Options : {f.options!.join(", ")}
+                  </p>
+                )}
               </div>
             ))}
           </div>
@@ -490,13 +521,22 @@ export function FlowForm({
                     <label className="text-xs text-on-surface-variant">Type</label>
                     <select
                       value={field.type}
-                      onChange={(e) => updateField(index, { type: e.target.value as FieldDraft["type"] })}
+                      onChange={(e) => {
+                        const type = e.target.value as FieldDraft["type"];
+                        updateField(index, {
+                          type,
+                          options: needsOptions(type) ? field.options ?? [] : undefined,
+                        });
+                      }}
                       className="px-2 py-1.5 rounded-lg border border-outline-variant bg-surface text-sm"
                     >
-                      <option value="text">Texte</option>
+                      <option value="text_short">Texte court</option>
+                      <option value="text_long">Texte long</option>
                       <option value="number">Nombre</option>
                       <option value="date">Date</option>
                       <option value="attachment">Pièce jointe</option>
+                      <option value="single_choice">Liste (choix unique)</option>
+                      <option value="multi_choice">Choix multiple</option>
                     </select>
                   </div>
                   <Checkbox
@@ -522,6 +562,47 @@ export function FlowForm({
                     className="w-full px-2 py-1.5 rounded-lg border border-outline-variant bg-surface text-sm"
                   />
                 </div>
+                {needsOptions(field.type) && (
+                  <div className="pl-8 space-y-2">
+                    <label className="text-xs text-on-surface-variant">Options</label>
+                    {(field.options ?? []).map((option, optionIndex) => (
+                      <div key={optionIndex} className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          required
+                          value={option}
+                          onChange={(e) =>
+                            updateField(index, {
+                              options: (field.options ?? []).map((o, i) =>
+                                i === optionIndex ? e.target.value : o
+                              ),
+                            })
+                          }
+                          className="flex-1 px-2 py-1.5 rounded-lg border border-outline-variant bg-surface text-sm"
+                        />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            updateField(index, {
+                              options: (field.options ?? []).filter((_, i) => i !== optionIndex),
+                            })
+                          }
+                          className="text-on-surface-variant hover:text-error"
+                        >
+                          <DeleteOutlineOutlined style={{ fontSize: 16 }} />
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => updateField(index, { options: [...(field.options ?? []), ""] })}
+                      className="flex items-center gap-1 text-xs font-medium text-primary"
+                    >
+                      <AddOutlined style={{ fontSize: 14 }} />
+                      Ajouter une option
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
           </div>

@@ -26,7 +26,7 @@ export function ApprovalFlowWrapper({
   onSubmitted?: (request: RequestDetail) => void;
 }) {
   const { flow, loading, error } = useApprovalFlow(flowId, basePath);
-  const [values, setValues] = useState<Record<string, string>>({});
+  const [values, setValues] = useState<Record<string, string | string[]>>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState<RequestDetail | null>(null);
@@ -64,7 +64,14 @@ export function ApprovalFlowWrapper({
     try {
       const fieldValues: Record<string, unknown> = {};
       for (const field of version.fields_schema) {
-        fieldValues[field.key] = field.type === "number" ? Number(values[field.key]) : values[field.key];
+        const raw = values[field.key];
+        if (field.type === "number") {
+          fieldValues[field.key] = Number(raw);
+        } else if (field.type === "multi_choice") {
+          fieldValues[field.key] = Array.isArray(raw) ? raw : [];
+        } else {
+          fieldValues[field.key] = raw ?? "";
+        }
       }
 
       const request = await submitRequest(
@@ -99,13 +106,67 @@ export function ApprovalFlowWrapper({
           {field.description && (
             <p className="text-xs text-on-surface-variant">{field.description}</p>
           )}
-          <input
-            type={field.type === "date" ? "date" : field.type === "number" ? "number" : "text"}
-            required={field.required}
-            value={values[field.key] ?? ""}
-            onChange={(e) => setValues((prev) => ({ ...prev, [field.key]: e.target.value }))}
-            className="w-full px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface"
-          />
+
+          {field.type === "text_long" ? (
+            <textarea
+              required={field.required}
+              value={(values[field.key] as string) ?? ""}
+              onChange={(e) => setValues((prev) => ({ ...prev, [field.key]: e.target.value }))}
+              rows={3}
+              className="w-full px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface"
+            />
+          ) : field.type === "single_choice" ? (
+            <select
+              required={field.required}
+              value={(values[field.key] as string) ?? ""}
+              onChange={(e) => setValues((prev) => ({ ...prev, [field.key]: e.target.value }))}
+              className="w-full px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface"
+            >
+              <option value="" disabled>
+                Sélectionner…
+              </option>
+              {(field.options ?? []).map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          ) : field.type === "multi_choice" ? (
+            <div className="space-y-1">
+              {(field.options ?? []).map((option) => {
+                const selected = (values[field.key] as string[] | undefined) ?? [];
+                const checked = selected.includes(option);
+                return (
+                  <label key={option} className="flex items-center gap-2 text-sm text-on-surface">
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={(e) =>
+                        setValues((prev) => {
+                          const prevSelected = (prev[field.key] as string[] | undefined) ?? [];
+                          return {
+                            ...prev,
+                            [field.key]: e.target.checked
+                              ? [...prevSelected, option]
+                              : prevSelected.filter((o) => o !== option),
+                          };
+                        })
+                      }
+                    />
+                    {option}
+                  </label>
+                );
+              })}
+            </div>
+          ) : (
+            <input
+              type={field.type === "date" ? "date" : field.type === "number" ? "number" : "text"}
+              required={field.required}
+              value={(values[field.key] as string) ?? ""}
+              onChange={(e) => setValues((prev) => ({ ...prev, [field.key]: e.target.value }))}
+              className="w-full px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface"
+            />
+          )}
         </div>
       ))}
 

@@ -42,8 +42,14 @@ si un autre workspace y donne accès).
   désormais **version-aware** (voir section dédiée ci-dessous pour le détail du
   versioning). Au-delà de ça :
   Champs du formulaire de soumission en lignes répétables (libellé/description
-  optionnelle/type text|number|date|attachment/requis) — **optionnels**, un flow peut
-  n'avoir aucun champ. Étapes séquentielles en lignes répétables (nom, type
+  optionnelle/type `text_short`|`text_long`|`number`|`date`|`attachment`|
+  `single_choice`|`multi_choice`/requis) — **optionnels**, un flow peut n'avoir aucun
+  champ. `single_choice`/`multi_choice` affichent un éditeur d'options (texte libre,
+  ajout/suppression de lignes) ; au moins une option non vide requise pour ces deux
+  types (validation côté `FlowForm`, le service ne valide pas `fields_schema` au-delà
+  de sa forme). Ancienne valeur `"text"` (avant le découpage court/long) normalisée
+  silencieusement en `text_short` à l'affichage (`normalizeField()`), pas de migration
+  de données nécessaire. Étapes séquentielles en lignes répétables (nom, type
   d'approbateur + config conditionnelle, mode d'approbation) — **au moins une étape
   obligatoire**, contrairement aux champs :
   - `step_key` n'est **plus saisi manuellement** — généré via `crypto.randomUUID()` à la
@@ -218,9 +224,13 @@ charge le `FlowDetail`. Si `!flow.configured || !flow.published_version` (templa
 jamais configuré dans ce workspace, ou flow existant sans version publiée), affiche
 "L'admin doit configurer l'approval flow." au lieu du formulaire — c'est le cas tant
 qu'aucun admin n'a publié au moins une version. Sinon, rend un input par champ de
-`flow.published_version.fields_schema` (`text`/`number`/`date` — `attachment` pas
-encore implémenté côté rendu), soumet via `submitRequest({ flow_id, field_values,
-external_ref, callback_url }, basePath)`. Affiche un message de confirmation avec le
+`flow.published_version.fields_schema` — `text_short`/`number`/`date` → `<input>`,
+`text_long` → `<textarea>`, `single_choice` → `<select>` (`field.options`),
+`multi_choice` → une checkbox par option (valeur soumise = `string[]`) ; `attachment`
+pas encore implémenté côté rendu (fallback `<input type="text">`). Soumet via
+`submitRequest({ flow_id, field_values, external_ref, callback_url }, basePath)` —
+`field_values[key]` est casté en `number` pour `number`, en `string[]` pour
+`multi_choice`, en `string` sinon. Affiche un message de confirmation avec le
 statut initial (`"pending"`) après soumission réussie. C'est le composant qu'embarque
 l'intégration mode 1 de `hr` (`/demo-approval`, voir `frontends/docs/apps/hr/HR.md`) en
 ne passant que `flowId="hr.leave_request"`.

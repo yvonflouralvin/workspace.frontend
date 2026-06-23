@@ -1,11 +1,22 @@
 // packages/approval-flows/types/flow.ts
 
+export type FieldType =
+  | "text_short"
+  | "text_long"
+  | "number"
+  | "date"
+  | "attachment"
+  | "single_choice"
+  | "multi_choice";
+
 export interface FieldSchemaItem {
   key: string;
   label: string;
   description?: string | null;
-  type: "text" | "number" | "date" | "attachment";
+  type: FieldType;
   required: boolean;
+  // single_choice | multi_choice uniquement
+  options?: string[] | null;
 }
 
 export interface StepDef {

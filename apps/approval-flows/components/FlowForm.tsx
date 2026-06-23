@@ -59,21 +59,6 @@ function groupLabel(group: GroupRecord): string {
   return group.name;
 }
 
-function approverSummary(step: StepDef): string {
-  if (step.approver_type === "specific_user") {
-    return step.approver_config.user_id ? `Utilisateur #${step.approver_config.user_id}` : "Utilisateur non défini";
-  }
-  if (step.approver_type === "specific_group") {
-    const mode = step.approval_mode === "all" ? "tous" : "n'importe lequel";
-    return step.approver_config.group_id
-      ? `Groupe #${step.approver_config.group_id} (${mode})`
-      : "Groupe non défini";
-  }
-  if (step.approver_config.criterion === "role_label") {
-    return step.approver_config.group_id ? `Rôle — Groupe #${step.approver_config.group_id}` : "Rôle non défini";
-  }
-  return "Supérieur hiérarchique direct";
-}
 
 export function FlowForm({
   flow,
@@ -118,6 +103,7 @@ export function FlowForm({
   const [publishing, setPublishing] = useState(false);
 
   const [allGroups, setAllGroups] = useState<GroupRecord[]>([]);
+  const [allMembers, setAllMembers] = useState<MemberRecord[]>([]);
   const [restrictVisibility, setRestrictVisibility] = useState(
     (flow?.visible_group_ids?.length ?? 0) > 0
   );
@@ -146,8 +132,38 @@ export function FlowForm({
   useEffect(() => {
     if (workspaceId) {
       listGroups(workspaceId).then(setAllGroups);
+      // Annuaire complet (pas une recherche) — sert uniquement à résoudre les noms
+      // affichés (lecture seule + valeur déjà sélectionnée), pas le dropdown de
+      // recherche lui-même (`fetchMembers` ci-dessous, qui filtre côté service).
+      searchMembers(workspaceId, "", 100).then(setAllMembers);
     }
   }, [workspaceId]);
+
+  function memberDisplayName(userId: number | undefined): string {
+    if (!userId) return "Utilisateur non défini";
+    const member = allMembers.find((m) => m.user.id === userId);
+    return member ? memberLabel(member) : `Utilisateur #${userId}`;
+  }
+
+  function groupDisplayName(groupId: number | undefined): string {
+    if (!groupId) return "Groupe non défini";
+    const group = allGroups.find((g) => g.id === groupId);
+    return group ? group.name : `Groupe #${groupId}`;
+  }
+
+  function approverSummary(step: StepDef): string {
+    if (step.approver_type === "specific_user") {
+      return memberDisplayName(step.approver_config.user_id as number | undefined);
+    }
+    if (step.approver_type === "specific_group") {
+      const mode = step.approval_mode === "all" ? "tous" : "n'importe lequel";
+      return `${groupDisplayName(step.approver_config.group_id as number | undefined)} (${mode})`;
+    }
+    if (step.approver_config.criterion === "role_label") {
+      return `Rôle — ${groupDisplayName(step.approver_config.group_id as number | undefined)}`;
+    }
+    return "Supérieur hiérarchique direct";
+  }
 
   const fetchMembers = useCallback(
     (query: string) => (workspaceId ? searchMembers(workspaceId, query) : Promise.resolve([])),
@@ -592,7 +608,7 @@ export function FlowForm({
                         getOptionValue={(member) => member.user.id}
                         initialLabel={
                           step.approver_config.user_id
-                            ? `Utilisateur #${step.approver_config.user_id}`
+                            ? memberDisplayName(step.approver_config.user_id as number)
                             : undefined
                         }
                         placeholder="Rechercher un utilisateur…"
@@ -609,7 +625,7 @@ export function FlowForm({
                         getOptionLabel={groupLabel}
                         initialLabel={
                           step.approver_config.group_id
-                            ? `Groupe #${step.approver_config.group_id}`
+                            ? groupDisplayName(step.approver_config.group_id as number)
                             : undefined
                         }
                         placeholder="Rechercher un groupe…"
@@ -645,7 +661,7 @@ export function FlowForm({
                             getOptionLabel={groupLabel}
                             initialLabel={
                               step.approver_config.group_id
-                                ? `Groupe #${step.approver_config.group_id}`
+                                ? groupDisplayName(step.approver_config.group_id as number)
                                 : undefined
                             }
                             placeholder="Rechercher un groupe…"

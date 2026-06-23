@@ -118,9 +118,13 @@ export async function deleteVersion(flowId: string, versionId: number): Promise<
   }
 }
 
-export async function searchMembers(workspaceId: number, q: string): Promise<MemberRecord[]> {
+export async function searchMembers(
+  workspaceId: number,
+  q: string,
+  limit = 20
+): Promise<MemberRecord[]> {
   const response = await apiFetch(
-    `/api/workspaces/${workspaceId}/members?q=${encodeURIComponent(q)}&limit=20`
+    `/api/workspaces/${workspaceId}/members?q=${encodeURIComponent(q)}&limit=${limit}`
   );
   const data = await parseResponse(response);
   return data.members;

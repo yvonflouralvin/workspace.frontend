@@ -16,11 +16,11 @@ export function AppShell({ sidebar, topBar, children }: AppShellProps) {
         {sidebar}
       </aside>
 
-      <div className="flex flex-col flex-1 min-w-0">
+      <div className="flex flex-col flex-1 min-w-0 min-h-0">
         <header className="flex-shrink-0 flex items-center border-b border-outline-variant bg-surface-container-lowest" style={{ height: "56px" }}>
           {topBar}
         </header>
-        <main className="flex-1 overflow-y-auto bg-background">
+        <main className="flex-1 min-h-0 overflow-y-auto bg-background">
           {children}
         </main>
       </div>

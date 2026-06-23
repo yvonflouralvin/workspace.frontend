@@ -13,7 +13,11 @@ export { NetworkDecryptionError, toBadRequestResponse } from "./errors.js";
 // `Request`/`Response` sont les interfaces globales WHATWG, stables partout.
 
 export async function decryptRequestBody<T = unknown>(request: Request): Promise<T> {
-  const payload = await request.json();
+  const text = await request.text();
+  if (!text) {
+    return undefined as T;
+  }
+  const payload = JSON.parse(text);
 
   if (!isServerEncrypted()) {
     return payload as T;

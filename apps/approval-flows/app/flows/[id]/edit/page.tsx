@@ -26,7 +26,9 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
     <DashboardShell>
       <div className="p-8 max-w-3xl mx-auto space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-on-surface">Modifier {flow?.title ?? id}</h1>
+          <h1 className="text-2xl font-bold text-on-surface">
+            {flow && flow.workspace_id === null ? "Configurer" : "Modifier"} {flow?.title ?? id}
+          </h1>
           <p className="text-sm text-on-surface-variant mt-1">
             Mettez à jour le formulaire de soumission et les étapes d&apos;approbation.
           </p>
@@ -39,11 +41,9 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
         {loading && <p className="text-sm text-on-surface-variant">Chargement…</p>}
 
         {!loading && flow && (
-          <FlowForm
-            flow={flow}
-            onSaved={() => router.push("/flows")}
-            onCancel={() => router.push("/flows")}
-          />
+          <div className="rounded-xl border border-outline-variant bg-surface-container-lowest p-6">
+            <FlowForm flow={flow} onSaved={setFlow} onCancel={() => router.push("/flows")} />
+          </div>
         )}
       </div>
     </DashboardShell>

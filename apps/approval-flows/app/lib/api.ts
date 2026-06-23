@@ -1,5 +1,13 @@
 import { apiFetch } from "@repo/network/client";
-import type { Binding, FlowCreate, FlowDetail, FlowSummary, FlowUpdate } from "@repo/approval-flows/types/flow";
+import type {
+  FlowCreate,
+  FlowDetail,
+  FlowPatch,
+  FlowSummary,
+  VersionContent,
+  VersionDetail,
+  VersionSummary,
+} from "@repo/approval-flows/types/flow";
 
 export interface MemberRecord {
   id: number;
@@ -54,7 +62,7 @@ export async function createFlow(payload: FlowCreate): Promise<FlowDetail> {
   return parseResponse(response);
 }
 
-export async function updateFlow(flowId: string, payload: FlowUpdate): Promise<FlowDetail> {
+export async function updateFlow(flowId: string, payload: FlowPatch): Promise<FlowDetail> {
   const response = await apiFetch(`/api/approval-flows/flows/${flowId}`, {
     method: "PATCH",
     body: payload,
@@ -62,26 +70,61 @@ export async function updateFlow(flowId: string, payload: FlowUpdate): Promise<F
   return parseResponse(response);
 }
 
-export async function listBindings(flowId: string): Promise<Binding[]> {
-  const response = await apiFetch(`/api/approval-flows/flows/${flowId}/bindings`);
+export async function listVersions(flowId: string): Promise<VersionSummary[]> {
+  const response = await apiFetch(`/api/approval-flows/flows/${flowId}/versions`);
   return parseResponse(response);
 }
 
-export async function setBinding(
-  flowId: string,
-  stepKey: string,
-  payload: { approver_type: string; approver_config: Record<string, unknown> }
-): Promise<Binding> {
-  const response = await apiFetch(`/api/approval-flows/flows/${flowId}/bindings/${stepKey}`, {
-    method: "PUT",
+export async function createVersion(flowId: string, payload: VersionContent): Promise<VersionDetail> {
+  const response = await apiFetch(`/api/approval-flows/flows/${flowId}/versions`, {
+    method: "POST",
     body: payload,
   });
   return parseResponse(response);
 }
 
-export async function searchMembers(workspaceId: number, q: string): Promise<MemberRecord[]> {
+export async function getVersion(flowId: string, versionId: number): Promise<VersionDetail> {
+  const response = await apiFetch(`/api/approval-flows/flows/${flowId}/versions/${versionId}`);
+  return parseResponse(response);
+}
+
+export async function updateVersion(
+  flowId: string,
+  versionId: number,
+  payload: VersionContent
+): Promise<VersionDetail> {
+  const response = await apiFetch(`/api/approval-flows/flows/${flowId}/versions/${versionId}`, {
+    method: "PATCH",
+    body: payload,
+  });
+  return parseResponse(response);
+}
+
+export async function publishVersion(flowId: string, versionId: number): Promise<VersionDetail> {
   const response = await apiFetch(
-    `/api/workspaces/${workspaceId}/members?q=${encodeURIComponent(q)}&limit=20`
+    `/api/approval-flows/flows/${flowId}/versions/${versionId}/publish`,
+    { method: "POST" }
+  );
+  return parseResponse(response);
+}
+
+export async function deleteVersion(flowId: string, versionId: number): Promise<void> {
+  const response = await apiFetch(`/api/approval-flows/flows/${flowId}/versions/${versionId}`, {
+    method: "DELETE",
+  });
+  if (!response.ok) {
+    const data = await response.json();
+    throw new ApiError(data.message ?? data.detail ?? "Une erreur est survenue", response.status);
+  }
+}
+
+export async function searchMembers(
+  workspaceId: number,
+  q: string,
+  limit = 20
+): Promise<MemberRecord[]> {
+  const response = await apiFetch(
+    `/api/workspaces/${workspaceId}/members?q=${encodeURIComponent(q)}&limit=${limit}`
   );
   const data = await parseResponse(response);
   return data.members;

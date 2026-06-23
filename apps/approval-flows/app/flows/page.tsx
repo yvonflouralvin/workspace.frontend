@@ -9,11 +9,11 @@ import { DashboardShell } from "@/components/DashboardShell";
 import { listFlows, ApiError } from "@/app/lib/api";
 import type { FlowSummary } from "@repo/approval-flows/types/flow";
 
-const STATUS_LABEL: Record<string, string> = {
-  draft: "Brouillon",
-  published: "Publié",
-  archived: "Archivé",
-};
+function statusLabel(flow: FlowSummary): string {
+  if (flow.configured) return "Publié";
+  if (flow.has_draft) return "Brouillon";
+  return "Non configuré";
+}
 
 export default function FlowsPage() {
   const router = useRouter();
@@ -44,15 +44,11 @@ export default function FlowsPage() {
       header: "Origine",
       render: (flow) => (flow.app_key ? `Template (${flow.app_key})` : "Créé librement"),
     },
-    { key: "status", header: "Statut", render: (flow) => STATUS_LABEL[flow.status] ?? flow.status },
+    { key: "status", header: "Statut", render: (flow) => statusLabel(flow) },
   ];
 
   function handleRowClick(flow: FlowSummary) {
-    if (flow.app_key) {
-      router.push(`/flows/${flow.id}/bindings`);
-    } else {
-      router.push(`/flows/${flow.id}/edit`);
-    }
+    router.push(`/flows/${flow.id}/edit`);
   }
 
   return (

@@ -375,6 +375,16 @@ Layout racine. Assemble sidebar + topbar + contenu.
 </AppShell>
 ```
 
+**Scroll** : la colonne flex qui enveloppe `header`+`main` porte `min-h-0` (en plus de
+`flex-1 min-w-0`), et `main` porte `min-h-0` en plus de `overflow-y-auto`. Sans ça, un
+flex item garde son `min-height: auto` (taille du contenu) par défaut — `main` ne
+rétrécit jamais sous la hauteur de son contenu, donc `overflow-y-auto` ne se déclenche
+jamais et le contenu est silencieusement coupé par l'`overflow-hidden` du conteneur
+racine dès qu'une page a un contenu plus long que l'écran (ex. un formulaire à
+plusieurs sections). Bug découvert via la page `/flows/new` d'`apps/approval-flows`,
+fix appliqué une seule fois ici puisqu'il bénéficie à toutes les apps qui utilisent
+`AppShell`.
+
 ### `Sidebar` (`src/shell/Sidebar.tsx`)
 
 Sidebar générique. Ne connaît pas le concept de "workspace".

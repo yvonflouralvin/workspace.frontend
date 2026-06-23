@@ -11,6 +11,7 @@ export interface DecisionOut {
 export interface RequestSummary {
   id: string;
   flow_id: string;
+  version_number: number;
   workspace_id: number;
   submitted_by: number;
   status: "pending" | "approved" | "rejected" | "cancelled";

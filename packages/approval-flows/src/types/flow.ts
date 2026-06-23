@@ -17,35 +17,56 @@ export interface StepDef {
   order: number;
 }
 
+export interface VersionContent {
+  title: string;
+  description?: string | null;
+  fields_schema: FieldSchemaItem[];
+  steps: Omit<StepDef, "order">[];
+}
+
+export interface VersionSummary {
+  id: number;
+  version_number: number;
+  status: "draft" | "published" | "archived";
+  title: string;
+  created_at: string;
+  has_submissions: boolean;
+}
+
+export interface VersionDetail extends VersionSummary {
+  description: string | null;
+  fields_schema: FieldSchemaItem[];
+  steps: StepDef[];
+}
+
 export interface FlowSummary {
   id: string;
   title: string;
-  description: string | null;
   app_key: string | null;
+  // null = template d'app jamais configuré dans ce workspace (catalogue uniquement)
   workspace_id: number | null;
-  status: string;
+  // true si une version published existe
+  configured: boolean;
+  has_draft: boolean;
   // ids de groupes `auth` autorisés à voir/soumettre ce flow ; [] = tout le workspace
   visible_group_ids: number[];
 }
 
 export interface FlowDetail extends FlowSummary {
-  fields_schema: FieldSchemaItem[];
-  steps: StepDef[];
+  published_version: VersionDetail | null;
+  draft_version: VersionDetail | null;
+  // contenu suggéré du template d'app — seulement si `configured` est false
+  suggested_title?: string | null;
+  suggested_description?: string | null;
+  suggested_fields_schema?: FieldSchemaItem[] | null;
+  suggested_steps?: Omit<StepDef, "order">[] | null;
 }
 
-export interface FlowCreate {
+export interface FlowCreate extends VersionContent {
   id: string;
-  title: string;
-  description?: string | null;
-  fields_schema: FieldSchemaItem[];
-  steps: Omit<StepDef, "order">[];
   visible_group_ids: number[];
 }
 
-export type FlowUpdate = Omit<FlowCreate, "id">;
-
-export interface Binding {
-  step_key: string;
-  approver_type: string;
-  approver_config: Record<string, unknown>;
+export interface FlowPatch {
+  visible_group_ids: number[];
 }

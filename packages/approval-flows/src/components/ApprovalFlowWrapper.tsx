@@ -39,6 +39,14 @@ export function ApprovalFlowWrapper({
     return <p className="text-sm text-error">{error ?? "Flow introuvable."}</p>;
   }
 
+  if (!flow.configured || !flow.published_version) {
+    return (
+      <p className="text-sm text-on-surface-variant bg-surface-container rounded-lg px-3 py-2">
+        L&apos;admin doit configurer l&apos;approval flow.
+      </p>
+    );
+  }
+
   if (submitted) {
     return (
       <p className="text-sm text-on-surface bg-surface-container rounded-lg px-3 py-2">
@@ -47,13 +55,15 @@ export function ApprovalFlowWrapper({
     );
   }
 
+  const version = flow.published_version;
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSubmitError(null);
     setSubmitting(true);
     try {
       const fieldValues: Record<string, unknown> = {};
-      for (const field of flow!.fields_schema) {
+      for (const field of version.fields_schema) {
         fieldValues[field.key] = field.type === "number" ? Number(values[field.key]) : values[field.key];
       }
 
@@ -73,9 +83,9 @@ export function ApprovalFlowWrapper({
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <h3 className="text-base font-semibold text-on-surface">{flow.title}</h3>
-        {flow.description && (
-          <p className="text-sm text-on-surface-variant mt-1">{flow.description}</p>
+        <h3 className="text-base font-semibold text-on-surface">{version.title}</h3>
+        {version.description && (
+          <p className="text-sm text-on-surface-variant mt-1">{version.description}</p>
         )}
       </div>
 
@@ -83,7 +93,7 @@ export function ApprovalFlowWrapper({
         <p className="text-sm text-error bg-error-container/40 rounded-lg px-3 py-2">{submitError}</p>
       )}
 
-      {flow.fields_schema.map((field) => (
+      {version.fields_schema.map((field) => (
         <div key={field.key} className="space-y-1">
           <label className="text-sm font-medium text-on-surface">{field.label}</label>
           {field.description && (

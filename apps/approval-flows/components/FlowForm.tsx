@@ -9,7 +9,10 @@ import { useSessionStore } from "@repo/auth/store/session.store";
 import type { FieldSchemaItem, FlowDetail, StepDef } from "@repo/approval-flows/types/flow";
 import {
   createFlow,
+  createVersion,
+  publishVersion,
   updateFlow,
+  updateVersion,
   searchMembers,
   listGroups,
   ApiError,
@@ -19,6 +22,12 @@ import {
 
 type FieldDraft = FieldSchemaItem;
 type StepDraft = Omit<StepDef, "order">;
+
+const STATUS_LABEL: Record<string, string> = {
+  draft: "Brouillon",
+  published: "Publié",
+  archived: "Archivé",
+};
 
 function emptyField(): FieldDraft {
   return { key: crypto.randomUUID(), label: "", description: "", type: "text", required: false };
@@ -58,19 +67,39 @@ export function FlowForm({
   onSaved: (flow: FlowDetail) => void;
   onCancel: () => void;
 }) {
-  const isEdit = !!flow;
   const activeWorkspace = useSessionStore((state) => state.activeWorkspace);
   const workspaceId = activeWorkspace?.id ?? null;
 
+  // workspace_id null = pas encore de ligne ApprovalFlow dans ce workspace (template
+  // d'app jamais configuré, ou tout premier flow libre) — createFlow à appeler plutôt
+  // que les endpoints de version.
+  const isNewFlow = !flow || flow.workspace_id === null;
+  const draft = flow?.draft_version ?? null;
+  const published = flow?.published_version ?? null;
+  // version published déjà soumise au moins une fois, sans brouillon en cours —
+  // immuable : il faut dupliquer en nouvelle version pour continuer à l'éditer
+  const locked = !!published && !draft && published.has_submissions;
+  const editableVersion = draft ?? (published && !locked ? published : null);
+  const versionKey = draft?.id ?? published?.id ?? null;
+
   const [id, setId] = useState(flow?.id ?? "");
-  const [title, setTitle] = useState(flow?.title ?? "");
-  const [description, setDescription] = useState(flow?.description ?? "");
-  const [fields, setFields] = useState<FieldDraft[]>(flow?.fields_schema ?? []);
+  const [title, setTitle] = useState(
+    editableVersion?.title ?? flow?.suggested_title ?? ""
+  );
+  const [description, setDescription] = useState(
+    editableVersion?.description ?? flow?.suggested_description ?? ""
+  );
+  const [fields, setFields] = useState<FieldDraft[]>(
+    editableVersion?.fields_schema ?? flow?.suggested_fields_schema ?? []
+  );
   const [steps, setSteps] = useState<StepDraft[]>(
-    flow?.steps.map((s) => ({ ...s })) ?? [emptyStep()]
+    editableVersion?.steps.map((s) => ({ ...s })) ??
+      flow?.suggested_steps?.map((s) => ({ ...s })) ?? [emptyStep()]
   );
   const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [publishing, setPublishing] = useState(false);
 
   const [allGroups, setAllGroups] = useState<GroupRecord[]>([]);
   const [restrictVisibility, setRestrictVisibility] = useState(
@@ -80,6 +109,22 @@ export function FlowForm({
 
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [draggedFieldIndex, setDraggedFieldIndex] = useState<number | null>(null);
+
+  // Resynchronise le buffer local seulement quand la version éditée change réellement
+  // (publication, nouvelle version créée…) — pas à chaque re-render du parent.
+  useEffect(() => {
+    setId(flow?.id ?? "");
+    setTitle(editableVersion?.title ?? flow?.suggested_title ?? "");
+    setDescription(editableVersion?.description ?? flow?.suggested_description ?? "");
+    setFields(editableVersion?.fields_schema ?? flow?.suggested_fields_schema ?? []);
+    setSteps(
+      editableVersion?.steps.map((s) => ({ ...s })) ??
+        flow?.suggested_steps?.map((s) => ({ ...s })) ?? [emptyStep()]
+    );
+    setRestrictVisibility((flow?.visible_group_ids?.length ?? 0) > 0);
+    setVisibleGroupIds(flow?.visible_group_ids ?? []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [flow?.id, versionKey]);
 
   useEffect(() => {
     if (workspaceId) {
@@ -134,9 +179,46 @@ export function FlowForm({
     setSteps((prev) => prev.map((s, i) => (i === index ? { ...s, approver_config: config } : s)));
   }
 
+  async function handleCreateNewVersion() {
+    if (!flow || !published) return;
+    setError(null);
+    setInfo(null);
+    setSubmitting(true);
+    try {
+      const saved = await createVersion(flow.id, {
+        title: published.title,
+        description: published.description,
+        fields_schema: published.fields_schema,
+        steps: published.steps,
+      });
+      onSaved({ ...flow, draft_version: saved, has_draft: true });
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Une erreur est survenue");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handlePublish() {
+    if (!flow || !draft) return;
+    setError(null);
+    setInfo(null);
+    setPublishing(true);
+    try {
+      const publishedVersion = await publishVersion(flow.id, draft.id);
+      onSaved({ ...flow, published_version: publishedVersion, draft_version: null, configured: true });
+      setInfo("Version publiée.");
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Une erreur est survenue");
+    } finally {
+      setPublishing(false);
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    setInfo(null);
 
     if (steps.length === 0) {
       setError("Un flow doit avoir au moins une étape d'approbation.");
@@ -158,6 +240,17 @@ export function FlowForm({
       setError("Chaque étape « Groupe précis » doit avoir un groupe sélectionné.");
       return;
     }
+    if (
+      steps.some(
+        (s) =>
+          s.approver_type === "criteria" &&
+          s.approver_config.criterion === "role_label" &&
+          !s.approver_config.group_id
+      )
+    ) {
+      setError("Chaque étape « Rôle » doit avoir un groupe sélectionné.");
+      return;
+    }
     if (restrictVisibility && visibleGroupIds.length === 0) {
       setError("Sélectionnez au moins un groupe autorisé, ou repassez en « visible par tout le workspace ».");
       return;
@@ -168,14 +261,33 @@ export function FlowForm({
       const normalizedSteps = steps.map((s) =>
         needsApprovalModeChoice(s.approver_type) ? s : { ...s, approval_mode: "any" as const }
       );
-      const payload = {
+      const content = {
         title,
         description: description || null,
         fields_schema: fields,
         steps: normalizedSteps,
-        visible_group_ids: restrictVisibility ? visibleGroupIds : [],
       };
-      const saved = isEdit ? await updateFlow(flow!.id, payload) : await createFlow({ id, ...payload });
+
+      let saved: FlowDetail;
+      if (isNewFlow) {
+        saved = await createFlow({
+          id,
+          ...content,
+          visible_group_ids: restrictVisibility ? visibleGroupIds : [],
+        });
+      } else {
+        await updateFlow(flow!.id, { visible_group_ids: restrictVisibility ? visibleGroupIds : [] });
+        if (draft) {
+          const updated = await updateVersion(flow!.id, draft.id, content);
+          saved = { ...flow!, draft_version: updated };
+        } else if (editableVersion) {
+          const updated = await updateVersion(flow!.id, editableVersion.id, content);
+          saved = { ...flow!, published_version: updated };
+        } else {
+          throw new Error("Aucune version éditable.");
+        }
+      }
+      setInfo("Enregistré.");
       onSaved(saved);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Une erreur est survenue");
@@ -184,14 +296,59 @@ export function FlowForm({
     }
   }
 
+  if (locked && flow && published) {
+    return (
+      <div className="space-y-4">
+        <p className="text-sm text-on-surface-variant bg-surface-container rounded-lg px-3 py-2">
+          Cette version (« {published.title} ») a déjà des soumissions — elle ne peut plus être modifiée.
+          Créez une nouvelle version pour continuer à faire évoluer ce flow.
+        </p>
+        {error && (
+          <p className="text-sm text-error bg-error-container/40 rounded-lg px-3 py-2">{error}</p>
+        )}
+        <div className="flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="px-4 py-2 rounded-xl text-sm font-medium text-on-surface-variant hover:bg-surface-container transition-colors"
+          >
+            Retour
+          </button>
+          <button
+            type="button"
+            onClick={handleCreateNewVersion}
+            disabled={submitting}
+            className="px-4 py-2 rounded-xl text-sm font-medium bg-primary text-on-primary disabled:opacity-50"
+          >
+            {submitting ? "Création…" : "Créer une nouvelle version"}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {flow && (
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-medium px-2 py-1 rounded-full bg-surface-container text-on-surface-variant">
+            {draft ? STATUS_LABEL.draft : published ? STATUS_LABEL.published : "Non configuré"}
+          </span>
+          {!isNewFlow && (
+            <span className="text-xs text-on-surface-variant">Identifiant : {flow.id}</span>
+          )}
+        </div>
+      )}
+
       {error && (
         <p className="text-sm text-error bg-error-container/40 rounded-lg px-3 py-2">{error}</p>
       )}
+      {info && (
+        <p className="text-sm text-on-surface bg-surface-container rounded-lg px-3 py-2">{info}</p>
+      )}
 
       <div className="space-y-4">
-        {!isEdit && (
+        {!flow && (
           <div className="space-y-1">
             <label className="text-sm font-medium text-on-surface">Identifiant</label>
             <input
@@ -431,26 +588,32 @@ export function FlowForm({
                       updateStepConfig(
                         index,
                         e.target.value === "role_label"
-                          ? { criterion: "role_label", label: step.approver_config.label ?? "" }
+                          ? { criterion: "role_label", group_id: step.approver_config.group_id }
                           : { criterion: e.target.value }
                       )
                     }
                     className="px-2 py-1.5 rounded-lg border border-outline-variant bg-surface text-sm"
                   >
                     <option value="hierarchical_superior">Supérieur hiérarchique direct</option>
-                    <option value="role_label">Étiquette de rôle (binding requis)</option>
+                    <option value="role_label">Rôle (groupe du workspace)</option>
                   </select>
                   {step.approver_config.criterion === "role_label" && (
-                    <input
-                      type="text"
-                      required
-                      placeholder="Étiquette (ex: Responsable RH)"
-                      value={(step.approver_config.label as string) ?? ""}
-                      onChange={(e) =>
-                        updateStepConfig(index, { criterion: "role_label", label: e.target.value })
-                      }
-                      className="px-2 py-1.5 rounded-lg border border-outline-variant bg-surface text-sm w-56"
-                    />
+                    <div className="w-64">
+                      <SearchSelect<GroupRecord>
+                        fetchOptions={fetchGroups}
+                        value={(step.approver_config.group_id as number) ?? null}
+                        onChange={(value) =>
+                          updateStepConfig(index, { criterion: "role_label", group_id: value as number })
+                        }
+                        getOptionLabel={groupLabel}
+                        initialLabel={
+                          step.approver_config.group_id
+                            ? `Groupe #${step.approver_config.group_id}`
+                            : undefined
+                        }
+                        placeholder="Rechercher un groupe…"
+                      />
+                    </div>
                   )}
                 </>
               )}
@@ -508,8 +671,18 @@ export function FlowForm({
           onClick={onCancel}
           className="px-4 py-2 rounded-xl text-sm font-medium text-on-surface-variant hover:bg-surface-container transition-colors"
         >
-          Annuler
+          Retour
         </button>
+        {!isNewFlow && draft && (
+          <button
+            type="button"
+            onClick={handlePublish}
+            disabled={publishing || submitting}
+            className="px-4 py-2 rounded-xl text-sm font-medium border border-primary text-primary disabled:opacity-50"
+          >
+            {publishing ? "Publication…" : "Publier"}
+          </button>
+        )}
         <button
           type="submit"
           disabled={submitting}

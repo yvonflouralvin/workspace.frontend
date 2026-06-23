@@ -15,20 +15,32 @@ si un autre workspace y donne accès).
 ## Pages
 
 - **`/flows`** (`app/flows/page.tsx`) — liste (`listFlows()` → `GET /api/approval-flows/flows`
-  → `GET /approval-flows/flows`, templates globaux + flows du workspace), rendue via
-  `@repo/ui/DataList` (mode local, pas `serverMode` — la liste reste petite). Colonnes :
-  Identifiant, Titre, Origine (`Template (${app_key})` si template global, "Créé
-  librement" sinon), Statut. Clic sur une ligne : si `flow.app_key` est renseigné →
-  `/flows/{id}/bindings` (configurer le binding workspace) ; sinon → `/flows/{id}/edit`.
-  Bouton "Créer un flow" gated `usePermissions().can("approval_flows.manage")`, navigue
-  vers `/flows/new`.
+  → `GET /approval-flows/flows`, flows du workspace **+** templates d'app jamais
+  configurés dans ce workspace), rendue via `@repo/ui/DataList` (mode local, pas
+  `serverMode` — la liste reste petite). Colonnes : Identifiant, Titre, Origine
+  (`Template (${app_key})` si issu d'un template, "Créé librement" sinon), Statut
+  (`statusLabel()` : "Publié" si `configured`, "Brouillon" si `has_draft` sans version
+  publiée, "Non configuré" sinon). Clic sur une ligne → toujours `/flows/{id}/edit`
+  (gère aussi bien un flow existant qu'un template pas encore configuré, voir
+  `FlowForm.tsx` ci-dessous — plus de page `/flows/[id]/bindings`, supprimée avec le
+  binding côté service). Bouton "Créer un flow" gated
+  `usePermissions().can("approval_flows.manage")`, navigue vers `/flows/new`.
 - **`/flows/new`** et **`/flows/[id]/edit`** — pages de création/édition d'un
-  `ApprovalFlow` (mode 2). Le formulaire (`components/FlowForm.tsx`) est enveloppé
-  dans une card blanche (`rounded-xl border border-outline-variant
-  bg-surface-container-lowest p-6`) au lieu d'être posé nu sur le fond de page (`/flows/[id]/edit`
-  récupère `getFlow(id)` côté client avant de monter le formulaire pré-rempli).
-  `onSaved`/`onCancel` renvoient vers `/flows`.
-- **`components/FlowForm.tsx`** — formulaire partagé par les deux pages ci-dessus.
+  `ApprovalFlow`. Le formulaire (`components/FlowForm.tsx`) est enveloppé dans une
+  card blanche (`rounded-xl border border-outline-variant bg-surface-container-lowest
+  p-6`). `/flows/[id]/edit` récupère `getFlow(id)` côté client avant de monter le
+  formulaire — fonctionne aussi bien pour un flow déjà configuré que pour un template
+  d'app jamais touché dans ce workspace (`getFlow` renvoie alors `configured: false` +
+  contenu `suggested_*`, pas de `404`). `onCancel` renvoie vers `/flows`. `onSaved` est
+  rappelé après **chaque** mutation réussie (création, sauvegarde de version,
+  publication, nouvelle version) — `/flows/new` s'en sert pour **rediriger** vers
+  `/flows/{id}/edit` dès la création initiale (le flow a alors un id réel, l'édition
+  suivante doit passer par les endpoints de version) ; `/flows/[id]/edit` s'en sert
+  juste pour mettre à jour son state local (`setFlow`), sans navigation — l'admin reste
+  sur la page pour publier ensuite.
+- **`components/FlowForm.tsx`** — formulaire partagé par les deux pages ci-dessus,
+  désormais **version-aware** (voir section dédiée ci-dessous pour le détail du
+  versioning). Au-delà de ça :
   Champs du formulaire de soumission en lignes répétables (libellé/description
   optionnelle/type text|number|date|attachment/requis) — **optionnels**, un flow peut
   n'avoir aucun champ. Étapes séquentielles en lignes répétables (nom, type
@@ -55,6 +67,12 @@ si un autre workspace y donne accès).
     directe préexistante. Le service continue de ne jamais poser de défaut lui-même
     (`backends/docs/services/approval_flows/APPROVAL_FLOWS.md`) — c'est le frontend qui
     restreint le choix selon le type, pas le backend.
+  - **`criteria` → `role_label`** utilise désormais le même `@repo/ui/SearchSelect` de
+    groupes que `specific_group` (au lieu d'un `<input>` de label libre) — stocke
+    `{criterion: "role_label", group_id}` au lieu de `{criterion: "role_label",
+    label}`. Un "rôle" est donc un groupe `auth` du workspace courant, résolu
+    directement sans binding (cf. suppression de `ApprovalFlowWorkspaceBinding` côté
+    service).
   - **Réorganisation par drag-and-drop** — chaque bloc d'étape *et* chaque bloc de champ
     est `draggable` (HTML5 DnD natif, pas de nouvelle dépendance ajoutée au monorepo
     pour ça : les listes restent toujours courtes), avec deux états de drag séparés
@@ -77,19 +95,40 @@ si un autre workspace y donne accès).
     `visible_group_ids: []` quand la case est cochée, peu importe l'état résiduel du
     `MultiSelect` — voir `backends/docs/services/approval_flows/APPROVAL_FLOWS.md` pour
     l'enforcement côté service (`_is_visible`).
-- **`/flows/[id]/bindings`** (`app/flows/[id]/bindings/page.tsx`) — pour un template
-  global uniquement. `params` consommé via `use(params)` (pattern async params Next.js
-  16). Récupère `getFlow(id)` + `listBindings(id)` (`Promise.all`), construit un
-  brouillon par step (`step_key` → `{approver_type, approver_config}`, pré-rempli avec
-  le binding existant ou, sinon, la config native du step). Un bloc par step
-  (`approver_type` select + champs conditionnels : `specific_user` → id utilisateur,
-  `specific_group` → id groupe, `criteria` → critère `hierarchical_superior`/
-  `role_label` + libellé si `role_label`), bouton "Enregistrer" par bloc →
-  `setBinding(id, stepKey, draft)` (`PUT /approval-flows/flows/{id}/bindings/{step_key}`).
-  Indicateur "· surcharge active" si un binding existe déjà pour ce step. **Note :**
-  cette page utilise encore les `<input type="number">` bruts pour `user_id`/`group_id`
-  (surcharge par workspace d'un template global) — pas dans le périmètre de la
-  recherche intégrée ci-dessous, qui couvre uniquement `FlowForm.tsx`.
+
+### Versioning (Draft/Published/Archived) dans `FlowForm.tsx`
+
+Le contenu (titre/description/champs/étapes) est désormais porté par
+`ApprovalFlowVersion`, pas `ApprovalFlow` directement — voir
+`backends/docs/services/approval_flows/APPROVAL_FLOWS.md` pour le modèle complet.
+`FlowForm` dérive son mode d'affichage depuis le `FlowDetail` reçu :
+
+- **`flow.workspace_id === null`** (pas de `flow` du tout, ou template d'app jamais
+  configuré dans ce workspace) → mode création : préremplit depuis
+  `flow.suggested_title/description/fields_schema/steps` s'ils existent, affiche un
+  champ "Identifiant" libre seulement si `!flow` (un template a déjà un slug connu,
+  non éditable). `handleSubmit` appelle `createFlow({id, ...})`, qui crée la ligne
+  `ApprovalFlow` **et** sa version `draft` n°1 en une seule requête côté service.
+- **`flow.draft_version` existant** → édite ce brouillon (`updateVersion(flow.id,
+  draft.id, content)`), bouton "Publier" (`publishVersion`) visible à côté
+  d'"Enregistrer".
+- **`flow.published_version` existant, pas de brouillon, `has_submissions === false`**
+  → édition directe en place de la version publiée (`updateVersion` sur
+  `published.id`) — pas de bouton "Publier" (déjà publiée).
+- **`flow.published_version.has_submissions === true`, pas de brouillon** → formulaire
+  remplacé par un message + bouton "Créer une nouvelle version"
+  (`handleCreateNewVersion`), qui appelle `createVersion(flow.id, {...contenu publié})`
+  pour dupliquer le contenu actuel comme point de départ d'un nouveau brouillon, puis
+  rebascule l'affichage en mode édition de brouillon.
+
+Badge de statut (Brouillon/Publié/Non configuré) affiché en tête du formulaire dès que
+`flow` existe. Le buffer local (titre/champs/étapes) ne se resynchronise que lorsque
+`flow?.id` ou l'id de la version éditée change (`useEffect` dédié) — pas à chaque
+re-render du parent, pour ne pas écraser une saisie en cours après un `setFlow` motivé
+par autre chose. `onSaved` est invoqué après chaque mutation réussie (création,
+sauvegarde, publication, nouvelle version) avec le `FlowDetail` à jour ; c'est la page
+appelante qui décide de naviguer ou non (voir section Pages ci-dessus).
+
 - **`/tasks`** et **`/submissions`** — wrappers minces autour de
   `<ApprovalTaskList mode="tasks" | "submissions" />` (`@repo/approval-flows`) dans
   `DashboardShell`. `tasks` = `GET /requests?approver=true` (mes décisions en attente,
@@ -134,7 +173,7 @@ Mirroring `@repo/auth` — vraie logique (état, appels API), pas juste de l'UI 
 
 ```
 packages/approval-flows/src/
-  types/flow.ts, types/request.ts   → types partagés (FlowDetail, FlowSummary, RequestDetail, RequestSummary...)
+  types/flow.ts, types/request.ts   → types partagés (FlowDetail, FlowSummary, VersionDetail, VersionSummary, RequestDetail, RequestSummary...)
   api/client.ts                      → getFlow, submitRequest, listTasks, listSubmissions, getRequest, decideRequest
   hooks/useApprovalFlow.ts           → fetch d'un flow par id
   hooks/useApprovalTasks.ts          → fetch "mes tâches" / "mes soumissions" + refetch
@@ -163,12 +202,16 @@ même pattern que `@repo/auth`/`@repo/ui` — résolution runtime (`default`) ve
 ### `ApprovalFlowWrapper`
 
 `{ flowId, basePath?, externalRef?, callbackUrl?, onSubmitted? }` — `useApprovalFlow(flowId, basePath)`
-charge le flow (`fields_schema`), rend un input par champ (`text`/`number`/`date` —
-`attachment` pas encore implémenté côté rendu), soumet via `submitRequest({ flow_id,
-field_values, external_ref, callback_url }, basePath)`. Affiche un message de
-confirmation avec le statut initial (`"pending"`) après soumission réussie. C'est le
-composant qu'embarque l'intégration mode 1 de `hr` (`/demo-approval`, voir
-`frontends/docs/apps/hr/HR.md`) en ne passant que `flowId="hr.leave_request"`.
+charge le `FlowDetail`. Si `!flow.configured || !flow.published_version` (template
+jamais configuré dans ce workspace, ou flow existant sans version publiée), affiche
+"L'admin doit configurer l'approval flow." au lieu du formulaire — c'est le cas tant
+qu'aucun admin n'a publié au moins une version. Sinon, rend un input par champ de
+`flow.published_version.fields_schema` (`text`/`number`/`date` — `attachment` pas
+encore implémenté côté rendu), soumet via `submitRequest({ flow_id, field_values,
+external_ref, callback_url }, basePath)`. Affiche un message de confirmation avec le
+statut initial (`"pending"`) après soumission réussie. C'est le composant qu'embarque
+l'intégration mode 1 de `hr` (`/demo-approval`, voir `frontends/docs/apps/hr/HR.md`) en
+ne passant que `flowId="hr.leave_request"`.
 
 ### `ApprovalTaskList`
 
@@ -185,9 +228,11 @@ Miroir 1-pour-1 des routes du service `approval_flows` (port 5005), toutes via
 `forwardToBackend(request, APPROVAL_FLOWS_API_URL, "/approval-flows/...")` :
 
 - `flows/route.ts` (GET liste, POST création)
-- `flows/[id]/route.ts` (GET détail, PATCH édition)
-- `flows/[id]/bindings/route.ts` (GET liste des bindings)
-- `flows/[id]/bindings/[stepKey]/route.ts` (PUT)
+- `flows/[id]/route.ts` (GET détail, PATCH édition de `visible_group_ids`)
+- `flows/[id]/versions/route.ts` (GET liste, POST nouvelle version)
+- `flows/[id]/versions/[versionId]/route.ts` (GET détail, PATCH édition, DELETE
+  brouillon)
+- `flows/[id]/versions/[versionId]/publish/route.ts` (POST publication)
 - `requests/route.ts` (GET liste avec `mine`/`approver` en query string — transmise
   automatiquement par `forwardToBackend`, pas de code dédié nécessaire —, POST soumission)
 - `requests/[id]/route.ts` (GET détail)

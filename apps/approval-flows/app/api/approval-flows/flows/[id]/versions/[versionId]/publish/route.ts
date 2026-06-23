@@ -3,14 +3,14 @@ import { forwardToBackend } from "@repo/network/server";
 
 const APPROVAL_FLOWS_API_URL = process.env.APPROVAL_FLOWS_API_URL!;
 
-export async function PUT(
+export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string; stepKey: string }> }
+  { params }: { params: Promise<{ id: string; versionId: string }> }
 ) {
-  const { id, stepKey } = await params;
+  const { id, versionId } = await params;
   return forwardToBackend(
     request,
     APPROVAL_FLOWS_API_URL,
-    `/approval-flows/flows/${id}/bindings/${stepKey}`
+    `/approval-flows/flows/${id}/versions/${versionId}/publish`
   );
 }

@@ -104,30 +104,42 @@ Le contenu (titre/description/champs/étapes) est désormais porté par
 `FlowForm` dérive son mode d'affichage depuis le `FlowDetail` reçu :
 
 - **`flow.workspace_id === null`** (pas de `flow` du tout, ou template d'app jamais
-  configuré dans ce workspace) → mode création : préremplit depuis
+  configuré dans ce workspace) → pas de version publiée à montrer, donc pas d'onglets :
+  formulaire de création directe, préremplit depuis
   `flow.suggested_title/description/fields_schema/steps` s'ils existent, affiche un
   champ "Identifiant" libre seulement si `!flow` (un template a déjà un slug connu,
   non éditable). `handleSubmit` appelle `createFlow({id, ...})`, qui crée la ligne
   `ApprovalFlow` **et** sa version `draft` n°1 en une seule requête côté service.
-- **`flow.draft_version` existant** → édite ce brouillon (`updateVersion(flow.id,
-  draft.id, content)`), bouton "Publier" (`publishVersion`) visible à côté
-  d'"Enregistrer".
-- **`flow.published_version` existant, pas de brouillon, `has_submissions === false`**
-  → édition directe en place de la version publiée (`updateVersion` sur
-  `published.id`) — pas de bouton "Publier" (déjà publiée).
-- **`flow.published_version.has_submissions === true`, pas de brouillon** → formulaire
-  remplacé par un message + bouton "Créer une nouvelle version"
-  (`handleCreateNewVersion`), qui appelle `createVersion(flow.id, {...contenu publié})`
-  pour dupliquer le contenu actuel comme point de départ d'un nouveau brouillon, puis
-  rebascule l'affichage en mode édition de brouillon.
+- **`flow.published_version` existant** → deux onglets en tête du formulaire,
+  « Version publiée » et « Brouillon » :
+  - **Version publiée** — rendu en lecture seule (titre, description, liste des
+    champs, liste des étapes avec un résumé de l'approbateur via `approverSummary()`),
+    jamais d'`<input>`. Affiché par défaut si aucun brouillon n'existe.
+  - **Brouillon** — formulaire éditable complet, préremplit depuis
+    `flow.draft_version` s'il existe, sinon depuis `flow.published_version`
+    (point de départ d'un futur brouillon — pas encore créé tant que rien n'est
+    enregistré). Affiché par défaut si un brouillon existe déjà. `handleSubmit`
+    appelle `updateVersion(flow.id, draft.id, content)` si `flow.draft_version`
+    existe, sinon `createVersion(flow.id, content)` (création à la volée du premier
+    brouillon depuis ce même onglet — pas de bouton séparé "Créer une nouvelle
+    version"). Bouton "Publier" (`publishVersion`) visible uniquement si un brouillon
+    existe.
+  - La version publiée n'est donc **jamais éditée en place depuis l'UI**, même si elle
+    n'a encore aucune soumission (le service l'autoriserait via `PATCH .../versions/
+    {id}`, mais le frontend ne l'utilise plus que sur un brouillon) — pour modifier,
+    on passe systématiquement par l'onglet Brouillon, qui crée la nouvelle version au
+    premier `handleSubmit` si besoin.
 
 Badge de statut (Brouillon/Publié/Non configuré) affiché en tête du formulaire dès que
-`flow` existe. Le buffer local (titre/champs/étapes) ne se resynchronise que lorsque
-`flow?.id` ou l'id de la version éditée change (`useEffect` dédié) — pas à chaque
-re-render du parent, pour ne pas écraser une saisie en cours après un `setFlow` motivé
-par autre chose. `onSaved` est invoqué après chaque mutation réussie (création,
-sauvegarde, publication, nouvelle version) avec le `FlowDetail` à jour ; c'est la page
-appelante qui décide de naviguer ou non (voir section Pages ci-dessus).
+`flow` existe. L'onglet actif et le buffer local (titre/champs/étapes) ne se
+resynchronisent que lorsque `flow?.id`, l'id du brouillon ou l'id de la version
+publiée changent (`useEffect` dédié) — pas à chaque re-render du parent, pour ne pas
+écraser une saisie en cours après un `setFlow` motivé par autre chose ; après une
+publication réussie, bascule explicitement sur l'onglet "Version publiée"
+(`setActiveTab("published")`), après un enregistrement de brouillon, sur "Brouillon".
+`onSaved` est invoqué après chaque mutation réussie (création, sauvegarde,
+publication) avec le `FlowDetail` à jour ; c'est la page appelante qui décide de
+naviguer ou non (voir section Pages ci-dessus).
 
 - **`/tasks`** et **`/submissions`** — wrappers minces autour de
   `<ApprovalTaskList mode="tasks" | "submissions" />` (`@repo/approval-flows`) dans

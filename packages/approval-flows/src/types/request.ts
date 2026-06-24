@@ -14,7 +14,7 @@ export interface RequestSummary {
   version_number: number;
   workspace_id: number;
   submitted_by: number;
-  status: "pending" | "approved" | "rejected" | "cancelled";
+  status: "pending" | "approved" | "rejected" | "needs_update" | "cancelled";
   current_step_order: number;
   created_at: string;
 }

@@ -13,6 +13,7 @@ const STATUS_LABEL: Record<string, string> = {
   pending: "En attente",
   approved: "Approuvée",
   rejected: "Rejetée",
+  needs_update: "À mettre à jour",
   cancelled: "Annulée",
 };
 

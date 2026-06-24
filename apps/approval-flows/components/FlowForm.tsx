@@ -1,10 +1,18 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { AddOutlined, DeleteOutlineOutlined, DragIndicatorOutlined } from "@mui/icons-material";
+import {
+  AddOutlined,
+  DeleteOutlineOutlined,
+  DragIndicatorOutlined,
+  EditOutlined,
+  LockOutlined,
+  RestartAltOutlined,
+} from "@mui/icons-material";
 import { Checkbox } from "@repo/ui/Checkbox";
 import { SearchSelect } from "@repo/ui/SearchSelect";
 import { MultiSelect } from "@repo/ui/MultiSelect";
+import { RightDrawer } from "@repo/ui/RightDrawer";
 import { useSessionStore } from "@repo/auth/store/session.store";
 import type { FieldSchemaItem, FlowDetail, StepDef, VersionDetail } from "@repo/approval-flows/types/flow";
 import {
@@ -23,6 +31,13 @@ import {
 type FieldDraft = FieldSchemaItem;
 type StepDraft = Omit<StepDef, "order">;
 
+type DrawerState =
+  | { kind: "field-edit"; index: number }
+  | { kind: "field-view"; field: FieldSchemaItem }
+  | { kind: "step-edit"; index: number }
+  | { kind: "step-view"; step: StepDef }
+  | null;
+
 const FIELD_TYPE_LABEL: Record<FieldDraft["type"], string> = {
   text_short: "Texte court",
   text_long: "Texte long",
@@ -37,6 +52,10 @@ function needsOptions(type: FieldDraft["type"]): boolean {
   return type === "single_choice" || type === "multi_choice";
 }
 
+function isFieldRestricted(field: FieldDraft | FieldSchemaItem): boolean {
+  return (field.visible_user_ids?.length ?? 0) > 0 || (field.visible_group_ids?.length ?? 0) > 0;
+}
+
 function emptyField(): FieldDraft {
   return {
     key: crypto.randomUUID(),
@@ -45,6 +64,8 @@ function emptyField(): FieldDraft {
     type: "text_short",
     required: false,
     options: [],
+    visible_user_ids: [],
+    visible_group_ids: [],
   };
 }
 
@@ -63,6 +84,7 @@ function emptyStep(): StepDraft {
     approver_type: "specific_user",
     approver_config: {},
     approval_mode: "any",
+    on_reject_restart_form: true,
   };
 }
 
@@ -81,6 +103,60 @@ function groupLabel(group: GroupRecord): string {
   return group.name;
 }
 
+// État local distinct (plutôt que dérivé de visible_user_ids/visible_group_ids) pour
+// que décocher "visible par tout le monde" affiche immédiatement les sélecteurs avant
+// toute sélection — `key={field.key}` côté appelant réinitialise cet état par champ.
+function FieldVisibilityEditor({
+  field,
+  onChange,
+  allMembers,
+  allGroups,
+}: {
+  field: FieldDraft;
+  onChange: (patch: Partial<FieldDraft>) => void;
+  allMembers: MemberRecord[];
+  allGroups: GroupRecord[];
+}) {
+  const [restrict, setRestrict] = useState(isFieldRestricted(field));
+
+  return (
+    <div className="space-y-3">
+      <Checkbox
+        checked={!restrict}
+        onChange={(checked) => {
+          setRestrict(!checked);
+          if (checked) onChange({ visible_user_ids: [], visible_group_ids: [] });
+        }}
+        label="Visible par tout le monde"
+        description="Une fois la demande soumise, qui peut voir la valeur remplie pour ce champ."
+      />
+      {restrict && (
+        <>
+          <div className="space-y-1">
+            <label className="text-xs text-on-surface-variant">Utilisateurs autorisés</label>
+            <MultiSelect
+              options={allMembers.map((m) => ({ id: m.user.id, label: memberLabel(m) }))}
+              selectedIds={field.visible_user_ids ?? []}
+              onChange={(ids) => onChange({ visible_user_ids: ids as number[] })}
+              placeholder="Rechercher un utilisateur…"
+              emptyLabel="Aucun utilisateur trouvé."
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs text-on-surface-variant">Groupes autorisés</label>
+            <MultiSelect
+              options={allGroups.map((g) => ({ id: g.id, label: g.name }))}
+              selectedIds={field.visible_group_ids ?? []}
+              onChange={(ids) => onChange({ visible_group_ids: ids as number[] })}
+              placeholder="Rechercher un groupe…"
+              emptyLabel="Aucun groupe trouvé."
+            />
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
 
 export function FlowForm({
   flow,
@@ -133,6 +209,7 @@ export function FlowForm({
 
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [draggedFieldIndex, setDraggedFieldIndex] = useState<number | null>(null);
+  const [drawer, setDrawer] = useState<DrawerState>(null);
 
   // Resynchronise le buffer local seulement quand la version source change réellement
   // (publication, nouveau brouillon créé…) — pas à chaque re-render du parent.
@@ -148,6 +225,7 @@ export function FlowForm({
     setRestrictVisibility((flow?.visible_group_ids?.length ?? 0) > 0);
     setVisibleGroupIds(flow?.visible_group_ids ?? []);
     setActiveTab(draft ? "draft" : "published");
+    setDrawer(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [flow?.id, draft?.id, published?.id]);
 
@@ -173,7 +251,7 @@ export function FlowForm({
     return group ? group.name : `Groupe #${groupId}`;
   }
 
-  function approverSummary(step: StepDef): string {
+  function approverSummary(step: StepDef | StepDraft): string {
     if (step.approver_type === "specific_user") {
       return memberDisplayName(step.approver_config.user_id as number | undefined);
     }
@@ -232,6 +310,28 @@ export function FlowForm({
 
   function updateStepConfig(index: number, config: Record<string, unknown>) {
     setSteps((prev) => prev.map((s, i) => (i === index ? { ...s, approver_config: config } : s)));
+  }
+
+  function addField() {
+    const index = fields.length;
+    setFields((prev) => [...prev, emptyField()]);
+    setDrawer({ kind: "field-edit", index });
+  }
+
+  function addStep() {
+    const index = steps.length;
+    setSteps((prev) => [...prev, emptyStep()]);
+    setDrawer({ kind: "step-edit", index });
+  }
+
+  function removeField(index: number) {
+    setFields((prev) => prev.filter((_, i) => i !== index));
+    if (drawer?.kind === "field-edit" && drawer.index === index) setDrawer(null);
+  }
+
+  function removeStep(index: number) {
+    setSteps((prev) => prev.filter((_, i) => i !== index));
+    if (drawer?.kind === "step-edit" && drawer.index === index) setDrawer(null);
   }
 
   async function handlePublish() {
@@ -400,28 +500,42 @@ export function FlowForm({
               <p className="text-sm text-on-surface-variant">Aucun champ.</p>
             )}
             {published!.fields_schema.map(normalizeField).map((f) => (
-              <div key={f.key} className="rounded-xl border border-outline-variant p-3 text-sm">
-                <span className="font-medium text-on-surface">{f.label}</span>
-                <span className="text-on-surface-variant"> — {FIELD_TYPE_LABEL[f.type]}{f.required ? " · requis" : ""}</span>
-                {f.description && <p className="text-xs text-on-surface-variant mt-1">{f.description}</p>}
-                {needsOptions(f.type) && (f.options?.length ?? 0) > 0 && (
-                  <p className="text-xs text-on-surface-variant mt-1">
-                    Options : {f.options!.join(", ")}
-                  </p>
+              <button
+                key={f.key}
+                type="button"
+                onClick={() => setDrawer({ kind: "field-view", field: f })}
+                className="w-full flex items-center justify-between gap-2 rounded-xl border border-outline-variant p-3 text-sm text-left hover:bg-surface-container transition-colors"
+              >
+                <span className="min-w-0 truncate">
+                  <span className="font-medium text-on-surface">{f.label}</span>
+                  <span className="text-on-surface-variant"> — {FIELD_TYPE_LABEL[f.type]}{f.required ? " · requis" : ""}</span>
+                </span>
+                {isFieldRestricted(f) && (
+                  <LockOutlined style={{ fontSize: 16 }} className="text-on-surface-variant flex-shrink-0" titleAccess="Visibilité restreinte" />
                 )}
-              </div>
+              </button>
             ))}
           </div>
 
           <div className="space-y-2">
             <h4 className="text-sm font-semibold text-on-surface">Étapes d&apos;approbation</h4>
             {published!.steps.map((s, i) => (
-              <div key={s.step_key} className="rounded-xl border border-outline-variant p-3 text-sm">
-                <span className="font-medium text-on-surface">
-                  {i + 1}. {s.name}
+              <button
+                key={s.step_key}
+                type="button"
+                onClick={() => setDrawer({ kind: "step-view", step: s })}
+                className="w-full flex items-center justify-between gap-2 rounded-xl border border-outline-variant p-3 text-sm text-left hover:bg-surface-container transition-colors"
+              >
+                <span className="min-w-0 truncate">
+                  <span className="font-medium text-on-surface">
+                    {i + 1}. {s.name}
+                  </span>
+                  <span className="text-on-surface-variant"> — {approverSummary(s)}</span>
                 </span>
-                <span className="text-on-surface-variant"> — {approverSummary(s)}</span>
-              </div>
+                {!s.on_reject_restart_form && (
+                  <RestartAltOutlined style={{ fontSize: 16 }} className="text-on-surface-variant flex-shrink-0" titleAccess="Rejet souple" />
+                )}
+              </button>
             ))}
           </div>
 
@@ -476,7 +590,7 @@ export function FlowForm({
               <h3 className="text-sm font-semibold text-on-surface">Champs du formulaire de soumission</h3>
               <button
                 type="button"
-                onClick={() => setFields((prev) => [...prev, emptyField()])}
+                onClick={addField}
                 className="flex items-center gap-1 text-xs font-medium text-primary"
               >
                 <AddOutlined style={{ fontSize: 16 }} />
@@ -496,113 +610,48 @@ export function FlowForm({
                   setDraggedFieldIndex(null);
                 }}
                 onDragEnd={() => setDraggedFieldIndex(null)}
-                className={`space-y-2 rounded-xl border border-outline-variant p-3 ${
+                className={`flex items-center gap-2 rounded-xl border border-outline-variant p-3 ${
                   draggedFieldIndex === index ? "opacity-50" : ""
                 }`}
               >
-                <div className="flex items-end gap-2">
-                  <span
-                    className="text-on-surface-variant cursor-grab active:cursor-grabbing pb-2"
-                    title="Glisser pour réordonner"
-                  >
-                    <DragIndicatorOutlined style={{ fontSize: 18 }} />
+                <span
+                  className="text-on-surface-variant cursor-grab active:cursor-grabbing"
+                  title="Glisser pour réordonner"
+                >
+                  <DragIndicatorOutlined style={{ fontSize: 18 }} />
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setDrawer({ kind: "field-edit", index })}
+                  className="flex-1 flex items-center gap-2 min-w-0 text-left text-sm"
+                >
+                  <span className="font-medium text-on-surface truncate">
+                    {field.label || "Sans libellé"}
                   </span>
-                  <div className="flex-1 space-y-1">
-                    <label className="text-xs text-on-surface-variant">Libellé</label>
-                    <input
-                      type="text"
-                      required
-                      value={field.label}
-                      onChange={(e) => updateField(index, { label: e.target.value })}
-                      className="w-full px-2 py-1.5 rounded-lg border border-outline-variant bg-surface text-sm"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs text-on-surface-variant">Type</label>
-                    <select
-                      value={field.type}
-                      onChange={(e) => {
-                        const type = e.target.value as FieldDraft["type"];
-                        updateField(index, {
-                          type,
-                          options: needsOptions(type) ? field.options ?? [] : undefined,
-                        });
-                      }}
-                      className="px-2 py-1.5 rounded-lg border border-outline-variant bg-surface text-sm"
-                    >
-                      <option value="text_short">Texte court</option>
-                      <option value="text_long">Texte long</option>
-                      <option value="number">Nombre</option>
-                      <option value="date">Date</option>
-                      <option value="attachment">Pièce jointe</option>
-                      <option value="single_choice">Liste (choix unique)</option>
-                      <option value="multi_choice">Choix multiple</option>
-                    </select>
-                  </div>
-                  <Checkbox
-                    checked={field.required}
-                    onChange={(checked) => updateField(index, { required: checked })}
-                    label="Requis"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setFields((prev) => prev.filter((_, i) => i !== index))}
-                    className="text-on-surface-variant hover:text-error pb-2"
-                  >
-                    <DeleteOutlineOutlined style={{ fontSize: 18 }} />
-                  </button>
-                </div>
-                <div className="pl-8 space-y-1">
-                  <label className="text-xs text-on-surface-variant">Description (optionnel)</label>
-                  <input
-                    type="text"
-                    placeholder="Aide affichée sous le champ au moment de la soumission"
-                    value={field.description ?? ""}
-                    onChange={(e) => updateField(index, { description: e.target.value })}
-                    className="w-full px-2 py-1.5 rounded-lg border border-outline-variant bg-surface text-sm"
-                  />
-                </div>
-                {needsOptions(field.type) && (
-                  <div className="pl-8 space-y-2">
-                    <label className="text-xs text-on-surface-variant">Options</label>
-                    {(field.options ?? []).map((option, optionIndex) => (
-                      <div key={optionIndex} className="flex items-center gap-2">
-                        <input
-                          type="text"
-                          required
-                          value={option}
-                          onChange={(e) =>
-                            updateField(index, {
-                              options: (field.options ?? []).map((o, i) =>
-                                i === optionIndex ? e.target.value : o
-                              ),
-                            })
-                          }
-                          className="flex-1 px-2 py-1.5 rounded-lg border border-outline-variant bg-surface text-sm"
-                        />
-                        <button
-                          type="button"
-                          onClick={() =>
-                            updateField(index, {
-                              options: (field.options ?? []).filter((_, i) => i !== optionIndex),
-                            })
-                          }
-                          className="text-on-surface-variant hover:text-error"
-                        >
-                          <DeleteOutlineOutlined style={{ fontSize: 16 }} />
-                        </button>
-                      </div>
-                    ))}
-                    <button
-                      type="button"
-                      onClick={() => updateField(index, { options: [...(field.options ?? []), ""] })}
-                      className="flex items-center gap-1 text-xs font-medium text-primary"
-                    >
-                      <AddOutlined style={{ fontSize: 14 }} />
-                      Ajouter une option
-                    </button>
-                  </div>
-                )}
+                  <span className="text-xs text-on-surface-variant flex-shrink-0">
+                    {FIELD_TYPE_LABEL[field.type]}
+                    {field.required ? " · requis" : ""}
+                  </span>
+                  {isFieldRestricted(field) && (
+                    <LockOutlined style={{ fontSize: 16 }} className="text-on-surface-variant flex-shrink-0" titleAccess="Visibilité restreinte" />
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDrawer({ kind: "field-edit", index })}
+                  className="text-on-surface-variant hover:text-primary"
+                  title="Modifier"
+                >
+                  <EditOutlined style={{ fontSize: 18 }} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => removeField(index)}
+                  className="text-on-surface-variant hover:text-error"
+                  title="Supprimer"
+                >
+                  <DeleteOutlineOutlined style={{ fontSize: 18 }} />
+                </button>
               </div>
             ))}
           </div>
@@ -612,7 +661,7 @@ export function FlowForm({
               <h3 className="text-sm font-semibold text-on-surface">Étapes d&apos;approbation (séquentielles)</h3>
               <button
                 type="button"
-                onClick={() => setSteps((prev) => [...prev, emptyStep()])}
+                onClick={addStep}
                 className="flex items-center gap-1 text-xs font-medium text-primary"
               >
                 <AddOutlined style={{ fontSize: 16 }} />
@@ -632,143 +681,43 @@ export function FlowForm({
                   setDraggedIndex(null);
                 }}
                 onDragEnd={() => setDraggedIndex(null)}
-                className={`space-y-2 rounded-xl border border-outline-variant p-3 ${
+                className={`flex items-center gap-2 rounded-xl border border-outline-variant p-3 ${
                   draggedIndex === index ? "opacity-50" : ""
                 }`}
               >
-                <div className="flex items-center gap-2">
-                  <span className="text-on-surface-variant cursor-grab active:cursor-grabbing" title="Glisser pour réordonner">
-                    <DragIndicatorOutlined style={{ fontSize: 18 }} />
+                <span className="text-on-surface-variant cursor-grab active:cursor-grabbing" title="Glisser pour réordonner">
+                  <DragIndicatorOutlined style={{ fontSize: 18 }} />
+                </span>
+                <span className="text-xs font-medium text-on-surface-variant w-6">{index + 1}.</span>
+                <button
+                  type="button"
+                  onClick={() => setDrawer({ kind: "step-edit", index })}
+                  className="flex-1 flex items-center gap-2 min-w-0 text-left text-sm"
+                >
+                  <span className="font-medium text-on-surface truncate">
+                    {step.name || "Sans nom"}
                   </span>
-                  <span className="text-xs font-medium text-on-surface-variant w-6">{index + 1}.</span>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Nom (ex: Approbation manager)"
-                    value={step.name}
-                    onChange={(e) => updateStep(index, { name: e.target.value })}
-                    className="flex-1 px-2 py-1.5 rounded-lg border border-outline-variant bg-surface text-sm"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setSteps((prev) => prev.filter((_, i) => i !== index))}
-                    className="text-on-surface-variant hover:text-error"
-                  >
-                    <DeleteOutlineOutlined style={{ fontSize: 18 }} />
-                  </button>
-                </div>
-
-                <div className="flex items-center gap-2 pl-8">
-                  <select
-                    value={step.approver_type}
-                    onChange={(e) => {
-                      const approver_type = e.target.value as StepDraft["approver_type"];
-                      updateStep(index, {
-                        approver_type,
-                        approval_mode: needsApprovalModeChoice(approver_type) ? ("" as "any" | "all") : "any",
-                      });
-                      updateStepConfig(
-                        index,
-                        approver_type === "criteria" ? { criterion: "hierarchical_superior" } : {}
-                      );
-                    }}
-                    className="px-2 py-1.5 rounded-lg border border-outline-variant bg-surface text-sm"
-                  >
-                    <option value="specific_user">Utilisateur précis</option>
-                    <option value="specific_group">Groupe précis</option>
-                    <option value="criteria">Critère</option>
-                  </select>
-
-                  {step.approver_type === "specific_user" && (
-                    <div className="w-64">
-                      <SearchSelect<MemberRecord>
-                        fetchOptions={fetchMembers}
-                        value={(step.approver_config.user_id as number) ?? null}
-                        onChange={(value) => updateStepConfig(index, { user_id: value as number })}
-                        getOptionLabel={memberLabel}
-                        getOptionValue={(member) => member.user.id}
-                        initialLabel={
-                          step.approver_config.user_id
-                            ? memberDisplayName(step.approver_config.user_id as number)
-                            : undefined
-                        }
-                        placeholder="Rechercher un utilisateur…"
-                      />
-                    </div>
+                  <span className="text-xs text-on-surface-variant truncate">{approverSummary(step)}</span>
+                  {!step.on_reject_restart_form && (
+                    <RestartAltOutlined style={{ fontSize: 16 }} className="text-on-surface-variant flex-shrink-0" titleAccess="Rejet souple" />
                   )}
-
-                  {step.approver_type === "specific_group" && (
-                    <div className="w-64">
-                      <SearchSelect<GroupRecord>
-                        fetchOptions={fetchGroups}
-                        value={(step.approver_config.group_id as number) ?? null}
-                        onChange={(value) => updateStepConfig(index, { group_id: value as number })}
-                        getOptionLabel={groupLabel}
-                        initialLabel={
-                          step.approver_config.group_id
-                            ? groupDisplayName(step.approver_config.group_id as number)
-                            : undefined
-                        }
-                        placeholder="Rechercher un groupe…"
-                      />
-                    </div>
-                  )}
-
-                  {step.approver_type === "criteria" && (
-                    <>
-                      <select
-                        value={(step.approver_config.criterion as string) ?? "hierarchical_superior"}
-                        onChange={(e) =>
-                          updateStepConfig(
-                            index,
-                            e.target.value === "role_label"
-                              ? { criterion: "role_label", group_id: step.approver_config.group_id }
-                              : { criterion: e.target.value }
-                          )
-                        }
-                        className="px-2 py-1.5 rounded-lg border border-outline-variant bg-surface text-sm"
-                      >
-                        <option value="hierarchical_superior">Supérieur hiérarchique direct</option>
-                        <option value="role_label">Rôle (groupe du workspace)</option>
-                      </select>
-                      {step.approver_config.criterion === "role_label" && (
-                        <div className="w-64">
-                          <SearchSelect<GroupRecord>
-                            fetchOptions={fetchGroups}
-                            value={(step.approver_config.group_id as number) ?? null}
-                            onChange={(value) =>
-                              updateStepConfig(index, { criterion: "role_label", group_id: value as number })
-                            }
-                            getOptionLabel={groupLabel}
-                            initialLabel={
-                              step.approver_config.group_id
-                                ? groupDisplayName(step.approver_config.group_id as number)
-                                : undefined
-                            }
-                            placeholder="Rechercher un groupe…"
-                          />
-                        </div>
-                      )}
-                    </>
-                  )}
-
-                  {needsApprovalModeChoice(step.approver_type) && (
-                    <select
-                      required
-                      value={step.approval_mode}
-                      onChange={(e) =>
-                        updateStep(index, { approval_mode: e.target.value as StepDraft["approval_mode"] })
-                      }
-                      className="px-2 py-1.5 rounded-lg border border-outline-variant bg-surface text-sm"
-                    >
-                      <option value="" disabled>
-                        Mode d&apos;approbation…
-                      </option>
-                      <option value="any">N&apos;importe quel approbateur (any)</option>
-                      <option value="all">Tous les approbateurs (all)</option>
-                    </select>
-                  )}
-                </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDrawer({ kind: "step-edit", index })}
+                  className="text-on-surface-variant hover:text-primary"
+                  title="Modifier"
+                >
+                  <EditOutlined style={{ fontSize: 18 }} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => removeStep(index)}
+                  className="text-on-surface-variant hover:text-error"
+                  title="Supprimer"
+                >
+                  <DeleteOutlineOutlined style={{ fontSize: 18 }} />
+                </button>
               </div>
             ))}
           </div>
@@ -826,6 +775,338 @@ export function FlowForm({
             </button>
           </div>
         </form>
+      )}
+
+      {drawer?.kind === "field-edit" && fields[drawer.index] && (
+        <RightDrawer title="Modifier le champ" onClose={() => setDrawer(null)}>
+          <div className="space-y-4 overflow-y-auto h-full pb-4">
+            <div className="flex items-end gap-2">
+              <div className="flex-1 space-y-1">
+                <label className="text-xs text-on-surface-variant">Libellé</label>
+                <input
+                  type="text"
+                  required
+                  value={fields[drawer.index].label}
+                  onChange={(e) => updateField(drawer.index, { label: e.target.value })}
+                  className="w-full px-2 py-1.5 rounded-lg border border-outline-variant bg-surface text-sm"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs text-on-surface-variant">Type</label>
+                <select
+                  value={fields[drawer.index].type}
+                  onChange={(e) => {
+                    const type = e.target.value as FieldDraft["type"];
+                    updateField(drawer.index, {
+                      type,
+                      options: needsOptions(type) ? fields[drawer.index].options ?? [] : undefined,
+                    });
+                  }}
+                  className="px-2 py-1.5 rounded-lg border border-outline-variant bg-surface text-sm"
+                >
+                  <option value="text_short">Texte court</option>
+                  <option value="text_long">Texte long</option>
+                  <option value="number">Nombre</option>
+                  <option value="date">Date</option>
+                  <option value="attachment">Pièce jointe</option>
+                  <option value="single_choice">Liste (choix unique)</option>
+                  <option value="multi_choice">Choix multiple</option>
+                </select>
+              </div>
+              <Checkbox
+                checked={fields[drawer.index].required}
+                onChange={(checked) => updateField(drawer.index, { required: checked })}
+                label="Requis"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs text-on-surface-variant">Description (optionnel)</label>
+              <input
+                type="text"
+                placeholder="Aide affichée sous le champ au moment de la soumission"
+                value={fields[drawer.index].description ?? ""}
+                onChange={(e) => updateField(drawer.index, { description: e.target.value })}
+                className="w-full px-2 py-1.5 rounded-lg border border-outline-variant bg-surface text-sm"
+              />
+            </div>
+
+            {needsOptions(fields[drawer.index].type) && (
+              <div className="space-y-2">
+                <label className="text-xs text-on-surface-variant">Options</label>
+                {(fields[drawer.index].options ?? []).map((option, optionIndex) => (
+                  <div key={optionIndex} className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      required
+                      value={option}
+                      onChange={(e) =>
+                        updateField(drawer.index, {
+                          options: (fields[drawer.index].options ?? []).map((o, i) =>
+                            i === optionIndex ? e.target.value : o
+                          ),
+                        })
+                      }
+                      className="flex-1 px-2 py-1.5 rounded-lg border border-outline-variant bg-surface text-sm"
+                    />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        updateField(drawer.index, {
+                          options: (fields[drawer.index].options ?? []).filter((_, i) => i !== optionIndex),
+                        })
+                      }
+                      className="text-on-surface-variant hover:text-error"
+                    >
+                      <DeleteOutlineOutlined style={{ fontSize: 16 }} />
+                    </button>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() =>
+                    updateField(drawer.index, { options: [...(fields[drawer.index].options ?? []), ""] })
+                  }
+                  className="flex items-center gap-1 text-xs font-medium text-primary"
+                >
+                  <AddOutlined style={{ fontSize: 14 }} />
+                  Ajouter une option
+                </button>
+              </div>
+            )}
+
+            <div className="pt-2 border-t border-outline-variant space-y-2">
+              <h4 className="text-sm font-semibold text-on-surface">Visibilité après soumission</h4>
+              <FieldVisibilityEditor
+                key={fields[drawer.index].key}
+                field={fields[drawer.index]}
+                onChange={(patch) => updateField(drawer.index, patch)}
+                allMembers={allMembers}
+                allGroups={allGroups}
+              />
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <button
+                type="button"
+                onClick={() => setDrawer(null)}
+                className="px-4 py-2 rounded-xl text-sm font-medium bg-primary text-on-primary"
+              >
+                Fermer
+              </button>
+            </div>
+          </div>
+        </RightDrawer>
+      )}
+
+      {drawer?.kind === "field-view" && (
+        <RightDrawer title="Détail du champ" onClose={() => setDrawer(null)}>
+          <div className="space-y-3 text-sm overflow-y-auto h-full pb-4">
+            <div>
+              <p className="font-medium text-on-surface">{drawer.field.label}</p>
+              <p className="text-on-surface-variant">
+                {FIELD_TYPE_LABEL[drawer.field.type]}
+                {drawer.field.required ? " · requis" : ""}
+              </p>
+            </div>
+            {drawer.field.description && (
+              <p className="text-xs text-on-surface-variant">{drawer.field.description}</p>
+            )}
+            {needsOptions(drawer.field.type) && (drawer.field.options?.length ?? 0) > 0 && (
+              <p className="text-xs text-on-surface-variant">
+                Options : {drawer.field.options!.join(", ")}
+              </p>
+            )}
+            <div className="pt-2 border-t border-outline-variant">
+              <p className="text-xs font-medium text-on-surface-variant mb-1">Visibilité après soumission</p>
+              {!isFieldRestricted(drawer.field) ? (
+                <p className="text-xs text-on-surface-variant">Visible par tout le monde.</p>
+              ) : (
+                <div className="text-xs text-on-surface-variant space-y-1">
+                  {(drawer.field.visible_user_ids?.length ?? 0) > 0 && (
+                    <p>
+                      Utilisateurs :{" "}
+                      {drawer.field.visible_user_ids!.map((id) => memberDisplayName(id)).join(", ")}
+                    </p>
+                  )}
+                  {(drawer.field.visible_group_ids?.length ?? 0) > 0 && (
+                    <p>
+                      Groupes :{" "}
+                      {drawer.field.visible_group_ids!.map((id) => groupDisplayName(id)).join(", ")}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </RightDrawer>
+      )}
+
+      {drawer?.kind === "step-edit" && steps[drawer.index] && (
+        <RightDrawer title="Modifier l'étape" onClose={() => setDrawer(null)}>
+          <div className="space-y-4 overflow-y-auto h-full pb-4">
+            <div className="space-y-1">
+              <label className="text-xs text-on-surface-variant">Nom</label>
+              <input
+                type="text"
+                required
+                placeholder="ex: Approbation manager"
+                value={steps[drawer.index].name}
+                onChange={(e) => updateStep(drawer.index, { name: e.target.value })}
+                className="w-full px-2 py-1.5 rounded-lg border border-outline-variant bg-surface text-sm"
+              />
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <select
+                value={steps[drawer.index].approver_type}
+                onChange={(e) => {
+                  const approver_type = e.target.value as StepDraft["approver_type"];
+                  updateStep(drawer.index, {
+                    approver_type,
+                    approval_mode: needsApprovalModeChoice(approver_type) ? ("" as "any" | "all") : "any",
+                  });
+                  updateStepConfig(
+                    drawer.index,
+                    approver_type === "criteria" ? { criterion: "hierarchical_superior" } : {}
+                  );
+                }}
+                className="px-2 py-1.5 rounded-lg border border-outline-variant bg-surface text-sm"
+              >
+                <option value="specific_user">Utilisateur précis</option>
+                <option value="specific_group">Groupe précis</option>
+                <option value="criteria">Critère</option>
+              </select>
+
+              {steps[drawer.index].approver_type === "specific_user" && (
+                <div className="w-64">
+                  <SearchSelect<MemberRecord>
+                    fetchOptions={fetchMembers}
+                    value={(steps[drawer.index].approver_config.user_id as number) ?? null}
+                    onChange={(value) => updateStepConfig(drawer.index, { user_id: value as number })}
+                    getOptionLabel={memberLabel}
+                    getOptionValue={(member) => member.user.id}
+                    initialLabel={
+                      steps[drawer.index].approver_config.user_id
+                        ? memberDisplayName(steps[drawer.index].approver_config.user_id as number)
+                        : undefined
+                    }
+                    placeholder="Rechercher un utilisateur…"
+                  />
+                </div>
+              )}
+
+              {steps[drawer.index].approver_type === "specific_group" && (
+                <div className="w-64">
+                  <SearchSelect<GroupRecord>
+                    fetchOptions={fetchGroups}
+                    value={(steps[drawer.index].approver_config.group_id as number) ?? null}
+                    onChange={(value) => updateStepConfig(drawer.index, { group_id: value as number })}
+                    getOptionLabel={groupLabel}
+                    initialLabel={
+                      steps[drawer.index].approver_config.group_id
+                        ? groupDisplayName(steps[drawer.index].approver_config.group_id as number)
+                        : undefined
+                    }
+                    placeholder="Rechercher un groupe…"
+                  />
+                </div>
+              )}
+
+              {steps[drawer.index].approver_type === "criteria" && (
+                <>
+                  <select
+                    value={(steps[drawer.index].approver_config.criterion as string) ?? "hierarchical_superior"}
+                    onChange={(e) =>
+                      updateStepConfig(
+                        drawer.index,
+                        e.target.value === "role_label"
+                          ? { criterion: "role_label", group_id: steps[drawer.index].approver_config.group_id }
+                          : { criterion: e.target.value }
+                      )
+                    }
+                    className="px-2 py-1.5 rounded-lg border border-outline-variant bg-surface text-sm"
+                  >
+                    <option value="hierarchical_superior">Supérieur hiérarchique direct</option>
+                    <option value="role_label">Rôle (groupe du workspace)</option>
+                  </select>
+                  {steps[drawer.index].approver_config.criterion === "role_label" && (
+                    <div className="w-64">
+                      <SearchSelect<GroupRecord>
+                        fetchOptions={fetchGroups}
+                        value={(steps[drawer.index].approver_config.group_id as number) ?? null}
+                        onChange={(value) =>
+                          updateStepConfig(drawer.index, { criterion: "role_label", group_id: value as number })
+                        }
+                        getOptionLabel={groupLabel}
+                        initialLabel={
+                          steps[drawer.index].approver_config.group_id
+                            ? groupDisplayName(steps[drawer.index].approver_config.group_id as number)
+                            : undefined
+                        }
+                        placeholder="Rechercher un groupe…"
+                      />
+                    </div>
+                  )}
+                </>
+              )}
+
+              {needsApprovalModeChoice(steps[drawer.index].approver_type) && (
+                <select
+                  required
+                  value={steps[drawer.index].approval_mode}
+                  onChange={(e) =>
+                    updateStep(drawer.index, { approval_mode: e.target.value as StepDraft["approval_mode"] })
+                  }
+                  className="px-2 py-1.5 rounded-lg border border-outline-variant bg-surface text-sm"
+                >
+                  <option value="" disabled>
+                    Mode d&apos;approbation…
+                  </option>
+                  <option value="any">N&apos;importe quel approbateur (any)</option>
+                  <option value="all">Tous les approbateurs (all)</option>
+                </select>
+              )}
+            </div>
+
+            <div className="pt-2 border-t border-outline-variant">
+              <h4 className="text-sm font-semibold text-on-surface mb-1">En cas de rejet</h4>
+              <Checkbox
+                checked={steps[drawer.index].on_reject_restart_form}
+                onChange={(checked) => updateStep(drawer.index, { on_reject_restart_form: checked })}
+                label="Renvoyer tout le formulaire au soumetteur (redémarrage complet)"
+                description="Décoché : le soumetteur met juste à jour les infos, et c'est cette même étape qui redécide après resoumission."
+              />
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <button
+                type="button"
+                onClick={() => setDrawer(null)}
+                className="px-4 py-2 rounded-xl text-sm font-medium bg-primary text-on-primary"
+              >
+                Fermer
+              </button>
+            </div>
+          </div>
+        </RightDrawer>
+      )}
+
+      {drawer?.kind === "step-view" && (
+        <RightDrawer title="Détail de l'étape" onClose={() => setDrawer(null)}>
+          <div className="space-y-3 text-sm overflow-y-auto h-full pb-4">
+            <p className="font-medium text-on-surface">{drawer.step.name}</p>
+            <p className="text-on-surface-variant">{approverSummary(drawer.step)}</p>
+            <div className="pt-2 border-t border-outline-variant">
+              <p className="text-xs font-medium text-on-surface-variant mb-1">En cas de rejet</p>
+              <p className="text-xs text-on-surface-variant">
+                {drawer.step.on_reject_restart_form
+                  ? "Renvoie tout le formulaire au soumetteur (redémarrage complet)."
+                  : "Demande juste une mise à jour — la même étape redécide après resoumission."}
+              </p>
+            </div>
+          </div>
+        </RightDrawer>
       )}
     </div>
   );

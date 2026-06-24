@@ -17,6 +17,10 @@ export interface FieldSchemaItem {
   required: boolean;
   // single_choice | multi_choice uniquement
   options?: string[] | null;
+  // restriction de visibilité de la valeur une fois soumise — vides des deux côtés
+  // (défaut) = visible par quiconque peut déjà voir la demande. Cumulables.
+  visible_user_ids?: number[];
+  visible_group_ids?: number[];
 }
 
 export interface StepDef {
@@ -25,6 +29,10 @@ export interface StepDef {
   approver_type: "specific_user" | "specific_group" | "criteria";
   approver_config: Record<string, unknown>;
   approval_mode: "any" | "all";
+  // true (défaut) = un rejet à cette étape clôture toute la demande (rejected,
+  // resoumission complète) ; false = rejet "soft" (needs_update), la même étape
+  // redécide après mise à jour via POST .../resubmit.
+  on_reject_restart_form: boolean;
   order: number;
 }
 

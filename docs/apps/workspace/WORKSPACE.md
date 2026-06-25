@@ -547,6 +547,37 @@ politique du workspace, consommé par `/settings` (section ci-dessus).
 
 ---
 
+## Journal d'activité (`app/(dashboard)/audit-logs/page.tsx`)
+
+Liste les logs d'audit (connexions, changements de permissions, et tout autre
+événement futur) émis par les services backend vers le nouveau microservice
+`audit_logs` (port 5006, base dédiée — voir `backends/docs/services/audit_logs/AUDIT_LOGS.md`).
+Gardée par `usePermissions().can("audit_logs.view")` — affiche un message
+d'accès refusé inline plutôt que `AccessDenied` (même pattern que `/members`),
+puisque c'est une page secondaire et non l'app entière.
+
+**Proxies** (`app/api/audit-logs/route.ts`, `app/api/audit-logs/facets/route.ts`) —
+`forwardToBackend` vers `AUDIT_LOGS_API_URL`, même pattern que `approval-flows`
+(pas de `forwardToAuthApi`, ce n'est pas le service `auth`).
+
+**Client (`app/lib/api.ts`)** : `listAuditLogs(filters)` → `{ logs, total }`
+(pagination serveur), `getAuditLogFacets()` → valeurs distinctes vues
+(`event_types`, `applications`, `devices`, `locations`, `ip_addresses`) pour
+peupler dynamiquement les filtres — aucune liste de valeurs codée en dur côté
+frontend, le champ `type` étant libre côté backend.
+
+**UI** — modelée sur `apps/approval-flows/app/page.tsx` : `DataList` en
+`serverMode`, recherche debouncée 300ms (couvre aussi les métadonnées JSON
+libres côté backend), colonnes Date/Email/Application (badge)/Type (badge)/
+Emplacement/IP/Device+Navigateur. `RightDrawer "Filtres"` : email (texte libre),
+intervalle de dates **du/au** (deux `<input type="date">`, contrairement à la
+date unique d'`approval-flows`), emplacement (`<select>`), IP/devices/type/
+application (`MultiSelect`, alimentés par les facets).
+
+**Types (`app/lib/types.ts`)** : `AuditLog`, `AuditLogFacets`.
+
+---
+
 ## Ordre d'implémentation
 
 1. `packages/ui/src/types/shell.ts` — types

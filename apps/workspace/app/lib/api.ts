@@ -11,6 +11,8 @@ import type {
   AuthMethodProvider,
   NotificationChannel,
   NotificationChannelConfig,
+  AuditLog,
+  AuditLogFacets,
 } from "./types";
 
 export class ApiError extends Error {
@@ -252,5 +254,43 @@ export async function updateMyAuthMethod(
 
 export async function unlinkMyAuthMethod(provider: AuthMethodProvider) {
   const response = await apiFetch(`/api/me/auth-methods/${provider}`, { method: "DELETE" });
+  return parseResponse(response);
+}
+
+export interface AuditLogFilters {
+  q?: string;
+  userEmail?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  ipAddress?: string[];
+  device?: string[];
+  eventType?: string[];
+  application?: string[];
+  location?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export async function listAuditLogs(
+  filters: AuditLogFilters = {}
+): Promise<{ logs: AuditLog[]; total: number }> {
+  const qs = new URLSearchParams();
+  if (filters.q) qs.set("q", filters.q);
+  if (filters.userEmail) qs.set("user_email", filters.userEmail);
+  if (filters.dateFrom) qs.set("date_from", filters.dateFrom);
+  if (filters.dateTo) qs.set("date_to", filters.dateTo);
+  for (const ip of filters.ipAddress ?? []) qs.append("ip_address", ip);
+  for (const d of filters.device ?? []) qs.append("device", d);
+  for (const t of filters.eventType ?? []) qs.append("event_type", t);
+  for (const a of filters.application ?? []) qs.append("application", a);
+  if (filters.location) qs.set("location", filters.location);
+  qs.set("limit", String(filters.limit ?? 20));
+  qs.set("offset", String(filters.offset ?? 0));
+  const response = await apiFetch(`/api/audit-logs?${qs}`);
+  return parseResponse(response);
+}
+
+export async function getAuditLogFacets(): Promise<AuditLogFacets> {
+  const response = await apiFetch(`/api/audit-logs/facets`);
   return parseResponse(response);
 }

@@ -1,0 +1,25 @@
+services:
+  app:
+    build:
+      context: ../..
+      dockerfile: apps/workspace/Dockerfile
+      args:
+        NEXT_PUBLIC_AUTH_API: ${NEXT_PUBLIC_AUTH_API}
+        NEXT_PUBLIC_AUTH_API_AUTH_DOMAIN: ${NEXT_PUBLIC_AUTH_API_AUTH_DOMAIN}
+        NEXT_PUBLIC_AUTH_API_HR_DOMAIN: ${NEXT_PUBLIC_AUTH_API_HR_DOMAIN}
+        NEXT_PUBLIC_AUTH_API_APPROVAL_FLOWS_DOMAIN: ${NEXT_PUBLIC_AUTH_API_APPROVAL_FLOWS_DOMAIN}
+        NEXT_PUBLIC_WORKSPACE_DOMAIN: ${NEXT_PUBLIC_WORKSPACE_DOMAIN}
+        NEXT_PUBLIC_NETWORK_ENCRYPTION: ${NEXT_PUBLIC_NETWORK_ENCRYPTION}
+        NEXT_PUBLIC_NETWORK_ENCRYPTION_KEY: ${NEXT_PUBLIC_NETWORK_ENCRYPTION_KEY}
+    container_name: workspace_frontend
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "${APP_PORT:-3005}:3005"
+    networks:
+      - workspace_uat
+
+networks:
+  workspace_uat:
+    external: true

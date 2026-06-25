@@ -1,0 +1,24 @@
+services:
+  app:
+    build:
+      context: ../..
+      dockerfile: apps/auth/Dockerfile
+      args:
+        NEXT_PUBLIC_AUTH_API: ${NEXT_PUBLIC_AUTH_API}
+        NEXT_PUBLIC_AUTH_API_AUTH_DOMAIN: ${NEXT_PUBLIC_AUTH_API_AUTH_DOMAIN}
+        NEXT_PUBLIC_AUTH_API_HR_DOMAIN: ${NEXT_PUBLIC_AUTH_API_HR_DOMAIN}
+        NEXT_PUBLIC_WORKSPACE_DOMAIN: ${NEXT_PUBLIC_WORKSPACE_DOMAIN}
+        NEXT_PUBLIC_NETWORK_ENCRYPTION: ${NEXT_PUBLIC_NETWORK_ENCRYPTION}
+        NEXT_PUBLIC_NETWORK_ENCRYPTION_KEY: ${NEXT_PUBLIC_NETWORK_ENCRYPTION_KEY}
+    container_name: auth_frontend
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "${APP_PORT:-3001}:3001"
+    networks:
+      - workspace_uat
+
+networks:
+  workspace_uat:
+    external: true

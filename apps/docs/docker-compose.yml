@@ -1,0 +1,9 @@
+services:
+  app:
+    build:
+      context: ../..
+      dockerfile: apps/docs/Dockerfile
+    container_name: docs_frontend
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-3002}:3002"

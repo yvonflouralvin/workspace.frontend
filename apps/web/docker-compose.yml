@@ -1,0 +1,9 @@
+services:
+  app:
+    build:
+      context: ../..
+      dockerfile: apps/web/Dockerfile
+    container_name: web_frontend
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-3004}:3004"

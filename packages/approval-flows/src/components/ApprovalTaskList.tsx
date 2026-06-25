@@ -9,7 +9,7 @@ import { useState } from "react";
 import { useApprovalTasks } from "../hooks/useApprovalTasks.js";
 import { decideRequest } from "../api/client.js";
 
-const STATUS_LABEL: Record<string, string> = {
+export const STATUS_LABEL: Record<string, string> = {
   pending: "En attente",
   approved: "Approuvée",
   rejected: "Rejetée",

@@ -14,10 +14,10 @@ import { logout as logoutRequest } from "@/app/lib/api";
 const WORKSPACE_DOMAIN = process.env.NEXT_PUBLIC_WORKSPACE_DOMAIN ?? "http://localhost:3005";
 
 const NAV_ITEMS: NavItem[] = [
-  { label: "Accueil", href: WORKSPACE_DOMAIN, icon: <HomeOutlined style={{ fontSize: 20 }} />, exact: true },
+  { label: "MyRequest", href: "/", icon: <HomeOutlined style={{ fontSize: 20 }} />, exact: true },
+  { label: "Requests", href: "/requests", icon: <AssignmentTurnedInOutlined style={{ fontSize: 20 }} /> },
   { label: "Flows", href: "/flows", icon: <AccountTreeOutlined style={{ fontSize: 20 }} /> },
-  { label: "Mes tâches", href: "/tasks", icon: <AssignmentTurnedInOutlined style={{ fontSize: 20 }} /> },
-  { label: "Mes soumissions", href: "/submissions", icon: <OutboxOutlined style={{ fontSize: 20 }} /> },
+  { label: "Submission", href: "/submissions", icon: <OutboxOutlined style={{ fontSize: 20 }} /> },
 ];
 
 const APPS: AppDefinition[] = [

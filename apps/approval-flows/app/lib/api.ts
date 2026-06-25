@@ -8,6 +8,7 @@ import type {
   VersionDetail,
   VersionSummary,
 } from "@repo/approval-flows/types/flow";
+import type { RequestDetail, RequestListResponse } from "@repo/approval-flows/types/request";
 
 export interface MemberRecord {
   id: number;
@@ -134,4 +135,32 @@ export async function listGroups(workspaceId: number): Promise<GroupRecord[]> {
   const response = await apiFetch(`/api/workspaces/${workspaceId}/groups`);
   const data = await parseResponse(response);
   return data.groups;
+}
+
+export interface MyRequestsParams {
+  q?: string;
+  status?: string[];
+  flowId?: string;
+  date?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export async function listMyRequests(params: MyRequestsParams = {}): Promise<RequestListResponse> {
+  const search = new URLSearchParams();
+  search.set("mine", "true");
+  if (params.q) search.set("q", params.q);
+  for (const status of params.status ?? []) search.append("status", status);
+  if (params.flowId) search.set("flow_id", params.flowId);
+  if (params.date) search.set("date", params.date);
+  search.set("limit", String(params.limit ?? 20));
+  search.set("offset", String(params.offset ?? 0));
+
+  const response = await apiFetch(`/api/approval-flows/requests?${search.toString()}`);
+  return parseResponse(response);
+}
+
+export async function getRequest(requestId: string): Promise<RequestDetail> {
+  const response = await apiFetch(`/api/approval-flows/requests/${requestId}`);
+  return parseResponse(response);
 }

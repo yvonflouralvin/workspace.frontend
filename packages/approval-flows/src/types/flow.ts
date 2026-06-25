@@ -69,6 +69,9 @@ export interface FlowSummary {
   has_draft: boolean;
   // ids de groupes `auth` autorisés à voir/soumettre ce flow ; [] = tout le workspace
   visible_group_ids: number[];
+  // destinataires des demandes une fois entièrement approuvées (cumulables, [] = personne désigné)
+  destination_user_ids: number[];
+  destination_group_ids: number[];
 }
 
 export interface FlowDetail extends FlowSummary {
@@ -84,8 +87,12 @@ export interface FlowDetail extends FlowSummary {
 export interface FlowCreate extends VersionContent {
   id: string;
   visible_group_ids: number[];
+  destination_user_ids: number[];
+  destination_group_ids: number[];
 }
 
 export interface FlowPatch {
   visible_group_ids: number[];
+  destination_user_ids: number[];
+  destination_group_ids: number[];
 }

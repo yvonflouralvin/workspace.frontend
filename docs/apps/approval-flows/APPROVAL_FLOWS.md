@@ -101,6 +101,26 @@ si un autre workspace y donne accès).
     `visible_group_ids: []` quand la case est cochée, peu importe l'état résiduel du
     `MultiSelect` — voir `backends/docs/services/approval_flows/APPROVAL_FLOWS.md` pour
     l'enforcement côté service (`_is_visible`).
+  - **Destination (`destination_user_ids`/`destination_group_ids`)** — section
+    "Destination", juste après "Accessibilité", même style. Deux `MultiSelect`
+    séparés (pas un sélecteur combiné — même choix que pour la visibilité de champ :
+    "deux listes différentes pour être plus simple pour l'utilisateur") : un sur
+    `allMembers` (`{id: m.user.id, label: memberLabel(m)}`), un sur `allGroups`. Pas
+    de validation bloquante (vide = personne désigné, état valide, contrairement à
+    `visible_group_ids` qui rendrait le flow invisible). Envoyés dans le même
+    `updateFlow`/`createFlow` que `visible_group_ids` (un seul submit pour toute la
+    section accessibilité+destination). **Aucune vue ne consomme encore ces deux
+    listes** — `apps/approval-flows` les persiste seulement ; la future page
+    "Submission" (placeholder "Bientôt disponible", voir plus bas) les lira pour
+    déterminer qui peut y voir une demande `approved`.
+  - **Bug corrigé en même temps** (`handleSubmit`, branche "flow existant") : après
+    `updateFlow(...)`, son résultat n'était **pas** capturé — `saved` repartait de
+    l'ancien `flow!` (spread), donc `visible_group_ids`/`destination_*` retombaient
+    visuellement à leur valeur d'avant le save dès que `draft?.id` changeait (premier
+    brouillon créé depuis l'onglet "Version publiée", ou tout juste après création
+    d'un flow) — pas un bug de persistance serveur, juste un re-sync client avec des
+    données obsolètes. Désormais `saved` part de `updatedFlow` (réponse de
+    `updateFlow`), pas de `flow!`.
 
 ### Versioning (Draft/Published/Archived) dans `FlowForm.tsx`
 
@@ -147,11 +167,77 @@ publication réussie, bascule explicitement sur l'onglet "Version publiée"
 publication) avec le `FlowDetail` à jour ; c'est la page appelante qui décide de
 naviguer ou non (voir section Pages ci-dessus).
 
-- **`/tasks`** et **`/submissions`** — wrappers minces autour de
-  `<ApprovalTaskList mode="tasks" | "submissions" />` (`@repo/approval-flows`) dans
-  `DashboardShell`. `tasks` = `GET /requests?approver=true` (mes décisions en attente,
-  boutons Approuver/Rejeter visibles uniquement pour les requêtes `pending`) ;
-  `submissions` = `GET /requests?mine=true` (lecture seule).
+- **`/`** (`app/page.tsx`, "MyRequest") — accueil de l'app : tableau (`@repo/ui/DataList`
+  en `serverMode`) des demandes soumises par l'utilisateur courant, colonnes Date
+  soumission/Titre form/Statut (`Badge` coloré via `STATUS_LABEL`/`STATUS_COLOR`), tri
+  `created_at desc` (toujours géré côté service, pas de contrôle de tri en UI). La
+  recherche libre reste intégrée à `DataList` (`q`, debounce 300ms côté page, même
+  pattern que `apps/workspace/.../members/page.tsx`) ; les filtres structurés (date
+  exacte, statuts, type de formulaire) sont dans un `@repo/ui/RightDrawer` ouvert via un
+  bouton "Filtres" (badge = nombre de filtres actifs) — pas affichés inline, pour garder
+  l'en-tête de page compact. Les contrôles du drawer (`<input type="date">`,
+  `MultiSelect` statuts `pending`/`needs_update`/`approved`/`rejected`, `<select>` type
+  de formulaire alimenté par `listFlows()`) s'appliquent en direct (chaque `onChange`
+  déclenche le refetch via `listMyRequests()`, `app/lib/api.ts` — pas de bouton
+  "Appliquer" séparé) ; le drawer n'est qu'un conteneur, fermé via son bouton "Fermer"
+  ou sa croix. Pagination 100% côté serveur (`PAGE_SIZE = 20`, `offset`/`limit`). Clic
+  sur une ligne → `/my-requests/{id}`. Bouton "Nouveau" (`components/NewRequestModal.tsx`)
+  ouvre une modale centrée (même habillage visuel que la `SearchModal` du `⌘K` de
+  `@repo/ui/shell/TopBar` — fond `black/40` flouté, carte `rounded-2xl`, input de
+  recherche en en-tête) listant les flows **`configured` ET `app_key === null`**
+  (réutilise les `flows` déjà chargés pour le filtre type de formulaire, pas de requête
+  dédiée) : les 5 premiers par défaut, filtrés par titre dès qu'une recherche est tapée
+  (pas de troncature à 5 dans ce cas). Clic sur un flow → `/submit/{flowId}`.
+  **`app_key !== null` = template d'app (mode 1, ex. `hr.leave_request`) — exclu
+  délibérément** : ces flows ne se soumettent que depuis le composant métier de l'app qui
+  les embarque (`ApprovalFlowWrapper` câblé en dur sur son `flowId`, ex. `hr`), jamais en
+  libre-service générique ici ; seuls les flows créés librement dans ce workspace
+  (mode 2, `app_key` null) sont éligibles à ce raccourci.
+- **`/submit/[id]`** (nouveau) — page de soumission libre-service : `getFlow(id)` d'abord
+  pour vérifier `app_key` — si non `null`, affiche un message ("Ce formulaire appartient
+  à l'application « {app_key} » — il se soumet depuis cette application, pas en
+  libre-service ici.") au lieu du formulaire, **garde-fou redondant avec le filtre de la
+  modale** pour le cas d'une navigation directe vers l'URL. Sinon, enveloppe
+  `<ApprovalFlowWrapper flowId={id} />` (`@repo/approval-flows`, `basePath` par défaut
+  `/api/approval-flows`, déjà le bon proxy BFF de cette app) dans une card, `onSubmitted`
+  redirige vers `/my-requests/{request.id}`. C'est la première utilisation de
+  `ApprovalFlowWrapper` **dans cette app elle-même** (jusqu'ici réservé à l'intégration
+  mode 1 d'autres apps, ex. `hr`) — logique car `apps/approval-flows` est aussi le
+  produit où un membre du workspace soumet librement une demande **créée dans ce
+  workspace**, pas seulement où un admin construit des flows.
+- **`/my-requests/[id]`** (nouveau) — détail d'une demande soumise (`getRequest(id)`) :
+  en-tête (titre du flow, badge statut), section "Champs soumis" dans une card
+  (`rounded-xl border bg-surface-container-lowest`, même habillage que les autres cards
+  de l'app) — clé technique (uuid pour un flow créé après l'introduction de
+  `crypto.randomUUID()` côté `FlowForm`) résolue en **libellé** via `fieldLabel(request.
+  fields, key)` (helper local, `RequestDetail.fields: {key, label, type}[]`, jamais
+  l'inverse), valeur `{"__restricted__": true}` affichée "🔒 Information restreinte"
+  (cohérent avec le masquage de champ côté service). Un champ `fieldType(request.
+  fields, key) === "attachment"` non restreint est rendu comme un lien `<a href="/api/
+  approval-flows/requests/{id}/attachments/{document_id}">Télécharger la pièce
+  jointe</a>` (navigation directe, pas de fetch JS — le navigateur envoie le cookie de
+  session automatiquement) plutôt que la valeur brute (le `document_id`, un entier
+  sans signification pour l'utilisateur). Timeline "Historique et avancement" construite en
+  croisant `RequestDetail.steps` (`step_key`/`name`/`order`) et `.decisions` — pour
+  chaque step, la **dernière** décision de son `step_order` détermine l'icône (✅ si
+  `approve`, ❌ si `reject`, ⏳ si c'est l'étape courante d'une demande `pending`, ○
+  sinon) ; **toutes** les décisions historiques du step sont listées (important pour un
+  step rejeté "soft" — voir `backends/docs/services/approval_flows/
+  APPROVAL_FLOWS.md#rejet` — puis re-décidé après resoumission : on voit le rejet **et**
+  l'approbation qui a suivi), chacune affichant `decision.decided_by_name ?? "l'utilisateur
+  #${decided_by}"` (fallback id si la résolution backend échoue) — jamais l'id brut en
+  premier choix.
+- **`/requests`** (renommé depuis `/tasks`) — wrapper mince autour de
+  `<ApprovalTaskList mode="tasks" />` (`@repo/approval-flows`) dans `DashboardShell`.
+  `GET /requests?approver=true` (mes décisions en attente, boutons Approuver/Rejeter
+  visibles uniquement pour les requêtes `pending`). Comportement inchangé, seulement
+  déplacé/renommé pour matcher le nouveau menu.
+- **`/submissions`** — n'utilise plus `ApprovalTaskList` (cette vue "mes soumissions" a
+  migré sur l'accueil `/`, voir ci-dessus). Devient un placeholder "Bientôt disponible"
+  pour le futur écran des formulaires intégralement approuvés (nav "Submission") —
+  destiné à lire `destination_user_ids`/`destination_group_ids` du flow (section
+  "Champs du formulaire de soumission" ci-dessus) pour décider qui y voit quoi, une
+  fois construit.
 
 ### Recherche intégrée utilisateur/groupe (`specific_user`/`specific_group`)
 
@@ -191,13 +277,19 @@ Mirroring `@repo/auth` — vraie logique (état, appels API), pas juste de l'UI 
 
 ```
 packages/approval-flows/src/
-  types/flow.ts, types/request.ts   → types partagés (FlowDetail, FlowSummary, VersionDetail, VersionSummary, RequestDetail, RequestSummary...)
-  api/client.ts                      → getFlow, submitRequest, listTasks, listSubmissions, getRequest, decideRequest
+  types/flow.ts, types/request.ts   → types partagés (FlowDetail, FlowSummary, VersionDetail, VersionSummary, RequestDetail, RequestSummary, RequestStepInfo, RequestFieldInfo, RequestListResponse, AttachmentOut...)
+  api/client.ts                      → getFlow, submitRequest, listTasks, listSubmissions, getRequest, decideRequest, uploadAttachment
   hooks/useApprovalFlow.ts           → fetch d'un flow par id
   hooks/useApprovalTasks.ts          → fetch "mes tâches" / "mes soumissions" + refetch
   components/ApprovalFlowWrapper.tsx → formulaire de soumission généré depuis fields_schema
-  components/ApprovalTaskList.tsx    → liste de tâches avec actions Approuver/Rejeter
+  components/ApprovalTaskList.tsx    → liste de tâches avec actions Approuver/Rejeter, exporte aussi `STATUS_LABEL` (réutilisé par l'accueil "MyRequest" de `apps/approval-flows`)
 ```
+
+`RequestSummary`/`RequestDetail` incluent désormais `flow_title` (titre de la version
+épinglée). `GET /requests` (donc `listTasks`/`listSubmissions`) renvoie côté service une
+enveloppe `{requests, total}` (voir doc backend) — déballée dans `api/client.ts`, la
+signature de retour de ces deux fonctions reste `RequestSummary[]` pour leurs appelants
+existants (`useApprovalTasks`, inchangé).
 
 **`basePath` configurable** (toutes les fonctions de `api/client.ts`, défaut
 `"/api/approval-flows"`) — chaque app consommatrice (`apps/approval-flows`,
@@ -226,14 +318,31 @@ jamais configuré dans ce workspace, ou flow existant sans version publiée), af
 qu'aucun admin n'a publié au moins une version. Sinon, rend un input par champ de
 `flow.published_version.fields_schema` — `text_short`/`number`/`date` → `<input>`,
 `text_long` → `<textarea>`, `single_choice` → `<select>` (`field.options`),
-`multi_choice` → une checkbox par option (valeur soumise = `string[]`) ; `attachment`
-pas encore implémenté côté rendu (fallback `<input type="text">`). Soumet via
+`multi_choice` → une checkbox par option (valeur soumise = `string[]`). Soumet via
 `submitRequest({ flow_id, field_values, external_ref, callback_url }, basePath)` —
 `field_values[key]` est casté en `number` pour `number`, en `string[]` pour
 `multi_choice`, en `string` sinon. Affiche un message de confirmation avec le
 statut initial (`"pending"`) après soumission réussie. C'est le composant qu'embarque
 l'intégration mode 1 de `hr` (`/demo-approval`, voir `frontends/docs/apps/hr/HR.md`) en
 ne passant que `flowId="hr.leave_request"`.
+
+**`attachment`** — `<input type="file">`, upload **immédiat** au choix du fichier
+(pas au submit final) via `uploadAttachment(file, basePath)` (`api/client.ts`,
+multipart, **bypass `apiFetch`/`@repo/network`** — body `FormData` direct via
+`fetch`, même exception que les routes OAuth et l'upload `hr`, voir
+`backends/docs/services/documents/DOCUMENTS.md`) → `POST {basePath}/requests/
+attachments`. Le `document_id` renvoyé est stocké dans `values[field.key]` (`string`,
+casté en `number` au submit, comme un champ `number` classique) ; état local
+`attachments: Record<string, {uploading, filename, error}>` affiche "Envoi en
+cours…"/le nom du fichier/une erreur sous l'input. Bouton "Soumettre" désactivé tant
+qu'un upload est en cours. Un champ `attachment` `required` sans `document_id`
+bloque la soumission côté client avec un message dédié (validation manuelle — un
+`<input type="file" required>` ne suffit pas puisque la valeur réelle est le
+`document_id`, pas le fichier lui-même). **Chaque app consommatrice doit exposer son
+propre proxy `POST {basePath}/requests/attachments` et `GET {basePath}/requests/{id}/
+attachments/{document_id}`** pour que cette fonctionnalité marche chez elle — voir
+"Routes BFF" ci-dessous ; à ce jour seule `apps/approval-flows` les expose (`hr`
+n'a pas encore de champ `attachment` dans `hr.leave_request`).
 
 ### `ApprovalTaskList`
 
@@ -255,10 +364,27 @@ Miroir 1-pour-1 des routes du service `approval_flows` (port 5005), toutes via
 - `flows/[id]/versions/[versionId]/route.ts` (GET détail, PATCH édition, DELETE
   brouillon)
 - `flows/[id]/versions/[versionId]/publish/route.ts` (POST publication)
-- `requests/route.ts` (GET liste avec `mine`/`approver` en query string — transmise
-  automatiquement par `forwardToBackend`, pas de code dédié nécessaire —, POST soumission)
-- `requests/[id]/route.ts` (GET détail)
+- `requests/route.ts` (GET liste — `mine`/`approver`/`q`/`status`/`flow_id`/`date`/
+  `limit`/`offset` en query string, transmise automatiquement par `forwardToBackend`,
+  pas de code dédié nécessaire —, POST soumission). Consommé directement par
+  `app/lib/api.ts::listMyRequests()` (accueil "MyRequest") en plus de
+  `listTasks`/`listSubmissions` (`@repo/approval-flows`).
+- `requests/[id]/route.ts` (GET détail — consommé par `app/lib/api.ts::getRequest()`
+  pour `/my-requests/[id]`)
 - `requests/[id]/decide/route.ts` (POST décision)
+- `requests/attachments/route.ts` (POST upload — **pas** `forwardToBackend`/
+  `@repo/network`, body multipart pass-through brut vers
+  `APPROVAL_FLOWS_API_URL`, cookie forwardé manuellement, même pattern que
+  `apps/hr/app/api/employees/[id]/documents/route.ts`)
+- `requests/[id]/attachments/[documentId]/route.ts` (GET téléchargement — réponse
+  binaire pass-through brute, même pattern que `apps/hr/.../documents/[documentId]/
+  content/route.ts` ; consommé par un simple `<a href>` dans `/my-requests/[id]`,
+  pas par `app/lib/api.ts` — navigation directe du navigateur, pas de fetch JS)
+
+> Pas encore de proxy pour `POST /requests/{id}/resubmit` (service backend prêt, voir
+> `backends/docs/services/approval_flows/APPROVAL_FLOWS.md`) — aucune UI de
+> resoumission n'existe encore dans cette app, hors scope tant qu'elle n'est pas
+> demandée.
 
 ---
 

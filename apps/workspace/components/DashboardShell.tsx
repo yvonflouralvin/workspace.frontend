@@ -13,6 +13,7 @@ import {
   FolderOpenOutlined,
   GroupOutlined,
   InboxOutlined,
+  HistoryOutlined,
   SettingsOutlined,
   HelpOutlineOutlined,
 } from "@mui/icons-material";
@@ -23,6 +24,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Projets",  href: "/projects",  icon: <FolderOpenOutlined style={{ fontSize: 20 }} /> },
   { label: "Membres",  href: "/members",   icon: <GroupOutlined style={{ fontSize: 20 }} /> },
   { label: "Inbox",    href: "/inbox",     icon: <InboxOutlined style={{ fontSize: 20 }} /> },
+  { label: "Journal d'activité", href: "/audit-logs", icon: <HistoryOutlined style={{ fontSize: 20 }} /> },
 ];
 
 const SECONDARY_ITEMS: NavItem[] = [

@@ -43,7 +43,7 @@ frontends/
 | App         | Port | Rôle                                               | Doc détaillée                           |
 |-------------|------|----------------------------------------------------|-----------------------------------------|
 | `auth`      | 3001 | Login 2 étapes + inscription 4 étapes              | `docs/apps/auth/AUTH.md`               |
-| `workspace` | 3005 | App principale — dashboard, projets, membres       | `docs/apps/workspace/WORKSPACE.md`     |
+| `workspace` | 3005 | App principale — dashboard, projets, membres, journal d'activité | `docs/apps/workspace/WORKSPACE.md`     |
 | `hr`        | 3003 | Module RH (en construction)                        | `docs/apps/hr/HR.md`                   |
 | `approval-flows` | 3006 | Création/gestion libre de workflows d'approbation + console des tâches | `docs/apps/approval-flows/APPROVAL_FLOWS.md` |
 | `web`       | —    | Landing page publique                              | —                                      |
@@ -229,6 +229,7 @@ les 3 `.env` par app synchronisés pour les variables communes.
 | `NEXT_PUBLIC_WORKSPACE_DOMAIN`    | `http://localhost:3005` | Browser (auth) |
 | `AUTH_API_URL`                    | `http://127.0.0.1:5000`| Server only    |
 | `HR_API_URL`                      | `http://127.0.0.1:5001`| Server only — app `hr`, proxy vers le backend FastAPI `hr` |
+| `AUDIT_LOGS_API_URL`              | `http://127.0.0.1:5006`| Server only — app `workspace`, proxy vers le backend FastAPI `audit_logs` (page "Journal d'activité") |
 | `NETWORK_ENCRYPTION`              | `clear` \| `encrypted` (défaut `encrypted` si absent) | Server only — désactive le chiffrement `@repo/network` pour troubleshooter avec curl/Bruno/Postman sans déchiffrer à la main |
 | `NETWORK_ENCRYPTION_KEY`          | clé AES-256 en base64, même valeur dans les 3 apps | Server only |
 | `NEXT_PUBLIC_NETWORK_ENCRYPTION`  | `clear` \| `encrypted` — **doit toujours valoir la même chose que `NETWORK_ENCRYPTION`** | Browser |

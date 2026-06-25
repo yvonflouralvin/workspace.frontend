@@ -93,3 +93,26 @@ export interface AuthMethod {
   linked: boolean;
   provider_email: string | null;
 }
+
+export interface AuditLog {
+  id: number;
+  workspace_id: number | null;
+  user_email: string;
+  occurred_at: string;
+  ip_address: string;
+  location_country: string | null;
+  location_city: string | null;
+  device: string | null;
+  browser: string | null;
+  event_type: string;
+  application: string;
+  event_metadata: Record<string, unknown>;
+}
+
+export interface AuditLogFacets {
+  event_types: string[];
+  applications: string[];
+  devices: string[];
+  locations: string[];
+  ip_addresses: string[];
+}

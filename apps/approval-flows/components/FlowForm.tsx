@@ -206,6 +206,12 @@ export function FlowForm({
     (flow?.visible_group_ids?.length ?? 0) > 0
   );
   const [visibleGroupIds, setVisibleGroupIds] = useState<number[]>(flow?.visible_group_ids ?? []);
+  const [destinationUserIds, setDestinationUserIds] = useState<number[]>(
+    flow?.destination_user_ids ?? []
+  );
+  const [destinationGroupIds, setDestinationGroupIds] = useState<number[]>(
+    flow?.destination_group_ids ?? []
+  );
 
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [draggedFieldIndex, setDraggedFieldIndex] = useState<number | null>(null);
@@ -224,6 +230,8 @@ export function FlowForm({
     );
     setRestrictVisibility((flow?.visible_group_ids?.length ?? 0) > 0);
     setVisibleGroupIds(flow?.visible_group_ids ?? []);
+    setDestinationUserIds(flow?.destination_user_ids ?? []);
+    setDestinationGroupIds(flow?.destination_group_ids ?? []);
     setActiveTab(draft ? "draft" : "published");
     setDrawer(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -414,18 +422,24 @@ export function FlowForm({
           id,
           ...content,
           visible_group_ids: restrictVisibility ? visibleGroupIds : [],
+          destination_user_ids: destinationUserIds,
+          destination_group_ids: destinationGroupIds,
         });
       } else {
-        await updateFlow(flow!.id, { visible_group_ids: restrictVisibility ? visibleGroupIds : [] });
+        const updatedFlow = await updateFlow(flow!.id, {
+          visible_group_ids: restrictVisibility ? visibleGroupIds : [],
+          destination_user_ids: destinationUserIds,
+          destination_group_ids: destinationGroupIds,
+        });
         if (draft) {
           const updated = await updateVersion(flow!.id, draft.id, content);
-          saved = { ...flow!, draft_version: updated };
+          saved = { ...updatedFlow, draft_version: updated };
         } else {
           // Pas de brouillon en cours (flow déjà configuré, version publiée
           // affichée en lecture seule sur l'autre onglet) — "Enregistrer" depuis
           // l'onglet Brouillon en crée un.
           const created = await createVersion(flow!.id, content);
-          saved = { ...flow!, draft_version: created, has_draft: true };
+          saved = { ...updatedFlow, draft_version: created, has_draft: true };
         }
       }
       setActiveTab("draft");
@@ -746,6 +760,34 @@ export function FlowForm({
                 />
               </div>
             )}
+          </div>
+
+          <div className="space-y-3">
+            <h3 className="text-sm font-semibold text-on-surface">Destination</h3>
+            <p className="text-xs text-on-surface-variant">
+              Utilisateurs et/ou groupes qui recevront les demandes une fois
+              entièrement approuvées (cumulables).
+            </p>
+            <div className="space-y-1">
+              <label className="text-xs text-on-surface-variant">Utilisateurs destinataires</label>
+              <MultiSelect
+                options={allMembers.map((m) => ({ id: m.user.id, label: memberLabel(m) }))}
+                selectedIds={destinationUserIds}
+                onChange={(ids) => setDestinationUserIds(ids as number[])}
+                placeholder="Rechercher un utilisateur…"
+                emptyLabel="Aucun utilisateur trouvé."
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-on-surface-variant">Groupes destinataires</label>
+              <MultiSelect
+                options={allGroups.map((g) => ({ id: g.id, label: g.name }))}
+                selectedIds={destinationGroupIds}
+                onChange={(ids) => setDestinationGroupIds(ids as number[])}
+                placeholder="Rechercher un groupe…"
+                emptyLabel="Aucun groupe trouvé."
+              />
+            </div>
           </div>
 
           <div className="flex justify-end gap-2 pt-2">

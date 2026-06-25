@@ -6,7 +6,14 @@
 
 import { apiFetch } from "@repo/network/client";
 import type { FlowDetail } from "../types/flow.js";
-import type { DecisionIn, RequestCreate, RequestDetail, RequestSummary } from "../types/request.js";
+import type {
+  AttachmentOut,
+  DecisionIn,
+  RequestCreate,
+  RequestDetail,
+  RequestListResponse,
+  RequestSummary,
+} from "../types/request.js";
 
 export class ApprovalFlowsApiError extends Error {
   status: number;
@@ -47,16 +54,35 @@ export async function submitRequest(
 
 export async function listTasks(basePath = DEFAULT_BASE_PATH): Promise<RequestSummary[]> {
   const response = await apiFetch(`${basePath}/requests?approver=true`);
-  return parseResponse(response);
+  const data: RequestListResponse = await parseResponse(response);
+  return data.requests;
 }
 
 export async function listSubmissions(basePath = DEFAULT_BASE_PATH): Promise<RequestSummary[]> {
   const response = await apiFetch(`${basePath}/requests?mine=true`);
-  return parseResponse(response);
+  const data: RequestListResponse = await parseResponse(response);
+  return data.requests;
 }
 
 export async function getRequest(requestId: string, basePath = DEFAULT_BASE_PATH): Promise<RequestDetail> {
   const response = await apiFetch(`${basePath}/requests/${requestId}`);
+  return parseResponse(response);
+}
+
+// Body multipart (upload de fichier) — pas de JSON à chiffrer, même exception que
+// les routes OAuth et l'upload de documents `hr` : on bypass `apiFetch` et `fetch`
+// directement le proxy BFF de l'app hôte (relatif, donc même origine — le cookie de
+// session est envoyé automatiquement par le navigateur).
+export async function uploadAttachment(
+  file: File,
+  basePath = DEFAULT_BASE_PATH
+): Promise<AttachmentOut> {
+  const formData = new FormData();
+  formData.append("file", file);
+  const response = await fetch(`${basePath}/requests/attachments`, {
+    method: "POST",
+    body: formData,
+  });
   return parseResponse(response);
 }
 

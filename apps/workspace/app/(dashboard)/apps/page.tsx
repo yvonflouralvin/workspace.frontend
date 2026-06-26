@@ -5,7 +5,7 @@ const APPS = [
     initial: "W",
     color: "#3525cd",
     description: "Tableau de bord, projets et gestion de l'équipe.",
-    url: process.env.NEXT_PUBLIC_AUTH_API_AUTH_DOMAIN ?? "http://localhost:3005",
+    url: process.env.AUTH_API_AUTH_DOMAIN ?? "http://localhost:3005",
   },
   {
     id: "hr",
@@ -13,7 +13,7 @@ const APPS = [
     initial: "H",
     color: "#006c49",
     description: "Gestion des employés, congés et recrutement.",
-    url: process.env.NEXT_PUBLIC_AUTH_API_HR_DOMAIN ?? "http://localhost:3003",
+    url: process.env.AUTH_API_HR_DOMAIN ?? "http://localhost:3003",
   },
 ];
 

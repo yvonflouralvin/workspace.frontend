@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useSessionStore } from "@repo/auth/store/session.store";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
 import { AppShell } from "@repo/ui/shell/AppShell";
@@ -9,9 +10,8 @@ import { UserFooter } from "@repo/ui/shell/UserFooter";
 import { WorkspaceSwitcher } from "@repo/ui/WorkspaceSwitcher";
 import { HomeOutlined, AccountTreeOutlined, AssignmentTurnedInOutlined, OutboxOutlined } from "@mui/icons-material";
 import type { NavItem, AppDefinition } from "@repo/ui/types/shell";
+import { getPublicConfig } from "@repo/network/client";
 import { logout as logoutRequest } from "@/app/lib/api";
-
-const WORKSPACE_DOMAIN = process.env.NEXT_PUBLIC_WORKSPACE_DOMAIN ?? "http://localhost:3005";
 
 const NAV_ITEMS: NavItem[] = [
   { label: "MyRequest", href: "/", icon: <HomeOutlined style={{ fontSize: 20 }} />, exact: true },
@@ -20,47 +20,32 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Submission", href: "/submissions", icon: <OutboxOutlined style={{ fontSize: 20 }} /> },
 ];
 
-const APPS: AppDefinition[] = [
-  {
-    id: "workspace",
-    name: "Workspace",
-    icon: "W",
-    url: WORKSPACE_DOMAIN,
-    color: "#3525cd",
-    description: "Tableau de bord principal",
-  },
-  {
-    id: "approval_flows",
-    name: "Workflows d'approbation",
-    icon: "A",
-    url: "http://localhost:3006",
-    color: "#004598",
-    description: "Création et gestion de workflows d'approbation",
-  },
-  {
-    id: "hr",
-    name: "RH",
-    icon: "H",
-    url: process.env.NEXT_PUBLIC_AUTH_API_HR_DOMAIN ?? "http://localhost:3003",
-    color: "#006c49",
-    description: "Ressources humaines",
-  },
-];
-
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const { user, logout } = useSessionStore();
   const { can } = usePermissions();
+  const [apps, setApps] = useState<AppDefinition[]>([]);
 
-  const visibleApps = APPS.filter((app) => can(`${app.id}.access`));
+  useEffect(() => {
+    getPublicConfig().then((cfg) => {
+      setApps([
+        { id: "workspace", name: "Workspace", icon: "W", url: cfg.workspaceDomain ?? "http://localhost:3005", color: "#3525cd", description: "Tableau de bord principal" },
+        { id: "approval_flows", name: "Workflows d'approbation", icon: "A", url: "http://localhost:3006", color: "#004598", description: "Création et gestion de workflows d'approbation" },
+        { id: "hr", name: "RH", icon: "H", url: cfg.hrDomain ?? "http://localhost:3003", color: "#006c49", description: "Ressources humaines" },
+      ]);
+    });
+  }, []);
 
   const userSummary = user
     ? { id: user.id, username: user.username, email: user.email }
     : null;
 
+  const visibleApps = apps.filter((app) => can(`${app.id}.access`));
+
   async function handleLogout() {
     logout();
     await logoutRequest();
-    window.location.href = process.env.NEXT_PUBLIC_AUTH_API_AUTH_DOMAIN ?? "http://localhost:3001";
+    const { authDomain } = await getPublicConfig();
+    window.location.href = authDomain ?? "http://localhost:3001";
   }
 
   return (

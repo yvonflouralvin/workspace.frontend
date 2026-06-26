@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import { SessionProvider } from '@repo/auth/SessionProvider'
 import { getServerSession } from '@repo/auth/api/session.server'
 import { AccessDenied } from '@repo/ui/AccessDenied'
@@ -27,6 +29,19 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const session = await getServerSession();
+
+  if (!session.authenticated) {
+    const authDomain = process.env.NEXT_PUBLIC_AUTH_API_AUTH_DOMAIN;
+    if (authDomain) {
+      const reqHeaders = await headers();
+      const referer = reqHeaders.get("referer") ?? "";
+      // Guard: don't redirect if we already came from auth — breaks auth→workspace→auth loop
+      if (!referer.startsWith(authDomain)) {
+        redirect(authDomain);
+      }
+    }
+  }
+
   const accessDenied =
     session.authenticated && !session.permissions.includes("workspace.access");
   const canSwitchTo = session.workspaces.some(

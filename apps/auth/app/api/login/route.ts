@@ -1,7 +1,7 @@
 import { decryptRequestBody, encryptResponseBody, toBadRequestResponse } from "@repo/network/server";
 import { AUTH_COOKIE_OPTIONS } from "@/app/lib/cookies";
 
-const AUTH_API = process.env.AUTH_API_URL ?? process.env.NEXT_PUBLIC_AUTH_API!;
+const AUTH_API = process.env.AUTH_API_URL!;
 
 export async function POST(request: Request) {
   let body: unknown;

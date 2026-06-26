@@ -4,9 +4,9 @@ import { useState, useRef, useEffect } from "react";
 import { CheckOutlined, ExpandMoreOutlined, AddOutlined } from "@mui/icons-material";
 import Link from "next/link";
 import { useSessionStore } from "@repo/auth/store/session.store";
+import { getPublicConfig } from "@repo/network/client";
 
 const COLORS = ["#3525cd", "#006c49", "#004598", "#b91c1c", "#a16207", "#7c3aed"];
-const WORKSPACE_DOMAIN = process.env.NEXT_PUBLIC_WORKSPACE_DOMAIN ?? "http://localhost:3005";
 
 function workspaceColor(id: number): string {
   return COLORS[id % COLORS.length] ?? "#3525cd";
@@ -19,6 +19,13 @@ export function WorkspaceSwitcher({
 }) {
   const { activeWorkspace, workspaces, switchWorkspace } = useSessionStore();
   const [open, setOpen] = useState(false);
+  const [workspaceDomain, setWorkspaceDomain] = useState("http://localhost:3005");
+
+  useEffect(() => {
+    getPublicConfig().then((c) => {
+      if (c.workspaceDomain) setWorkspaceDomain(c.workspaceDomain);
+    });
+  }, []);
   const [switching, setSwitching] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -120,7 +127,7 @@ export function WorkspaceSwitcher({
           </div>
           <div className="border-t border-outline-variant p-1.5">
             <Link
-              href={`${WORKSPACE_DOMAIN}/onboarding/new-workspace`}
+              href={`${workspaceDomain}/onboarding/new-workspace`}
               onClick={() => setOpen(false)}
               className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm text-on-surface-variant hover:bg-surface-container transition-colors"
             >

@@ -3,7 +3,13 @@ services:
     build:
       context: ../..
       dockerfile: apps/web/Dockerfile
-    container_name: web_frontend
+    container_name: workspace_uat_ft_web
     restart: unless-stopped
-    ports:
-      - "${APP_PORT:-3004}:3004"
+    expose:
+      - "3004"
+    networks:
+      - dokploy-network
+
+networks:
+  dokploy-network:
+    external: true

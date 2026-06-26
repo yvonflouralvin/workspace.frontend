@@ -11,15 +11,15 @@ services:
         NEXT_PUBLIC_WORKSPACE_DOMAIN: ${NEXT_PUBLIC_WORKSPACE_DOMAIN}
         NEXT_PUBLIC_NETWORK_ENCRYPTION: ${NEXT_PUBLIC_NETWORK_ENCRYPTION}
         NEXT_PUBLIC_NETWORK_ENCRYPTION_KEY: ${NEXT_PUBLIC_NETWORK_ENCRYPTION_KEY}
-    container_name: workspace_frontend
+    container_name: workspace_uat_ft_workspace
     restart: unless-stopped
     env_file:
       - .env
-    ports:
-      - "${APP_PORT:-3005}:3005"
+    expose:
+      - "3005"
     networks:
-      - workspace_uat
+      - dokploy-network
 
 networks:
-  workspace_uat:
+  dokploy-network:
     external: true

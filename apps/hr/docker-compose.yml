@@ -10,15 +10,15 @@ services:
         NEXT_PUBLIC_AUTH_API_APPROVAL_FLOWS_DOMAIN: ${NEXT_PUBLIC_AUTH_API_APPROVAL_FLOWS_DOMAIN}
         NEXT_PUBLIC_NETWORK_ENCRYPTION: ${NEXT_PUBLIC_NETWORK_ENCRYPTION}
         NEXT_PUBLIC_NETWORK_ENCRYPTION_KEY: ${NEXT_PUBLIC_NETWORK_ENCRYPTION_KEY}
-    container_name: hr_frontend
+    container_name: workspace_uat_ft_hr
     restart: unless-stopped
     env_file:
       - .env
-    ports:
-      - "${APP_PORT:-3003}:3003"
+    expose:
+      - "3003"
     networks:
-      - workspace_uat
+      - dokploy-network
 
 networks:
-  workspace_uat:
+  dokploy-network:
     external: true

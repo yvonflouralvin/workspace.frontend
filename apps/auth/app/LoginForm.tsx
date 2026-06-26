@@ -64,7 +64,8 @@ export function LoginForm() {
       }
 
       setStep("choose");
-    } catch {
+    } catch (err) {
+      console.error("[auth] check-email failed:", err);
       setError("Impossible de vérifier cet email. Veuillez réessayer.");
     } finally {
       setLoading(false);

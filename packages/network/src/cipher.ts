@@ -14,6 +14,11 @@ export class NetworkDecryptionError extends Error {
 
 async function importKey(crypto: WebCrypto, base64Key: string): Promise<CryptoKey> {
   const rawKey = base64ToBytes(base64Key);
+  if (![16, 24, 32].includes(rawKey.byteLength)) {
+    throw new Error(
+      `Invalid NETWORK_ENCRYPTION_KEY: decoded to ${rawKey.byteLength} bytes, AES-GCM requires 16, 24 or 32. Generate with: openssl rand -base64 32`
+    );
+  }
   return crypto.subtle.importKey("raw", rawKey, ALGORITHM, false, ["encrypt", "decrypt"]);
 }
 

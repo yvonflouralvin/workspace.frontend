@@ -1,5 +1,5 @@
 services:
-  app:
+  workspace_uat_ft_auth:
     build:
       context: ../..
       dockerfile: apps/auth/Dockerfile
@@ -10,15 +10,16 @@ services:
         NEXT_PUBLIC_WORKSPACE_DOMAIN: ${NEXT_PUBLIC_WORKSPACE_DOMAIN}
         NEXT_PUBLIC_NETWORK_ENCRYPTION: ${NEXT_PUBLIC_NETWORK_ENCRYPTION}
         NEXT_PUBLIC_NETWORK_ENCRYPTION_KEY: ${NEXT_PUBLIC_NETWORK_ENCRYPTION_KEY}
-    container_name: auth_frontend
+    container_name: workspace_uat_ft_auth
     restart: unless-stopped
     env_file:
       - .env
-    ports:
-      - "${APP_PORT:-3001}:3001"
+    expose:
+      - "3000"
     networks:
-      - workspace_uat
+      - dokploy-network
 
 networks:
-  workspace_uat:
-    external: true
+  dokploy-network:
+    external: true  # Use the previously created shared network
+

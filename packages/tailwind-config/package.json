@@ -10,5 +10,7 @@
     "tailwind-config": "^0.1.2",
     "tailwindcss": "^4.3.0"
   },
-  "dependencies": {}
+  "dependencies": {
+    "@repo/design-system": "*"
+  }
 }

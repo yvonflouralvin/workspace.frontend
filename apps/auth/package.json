@@ -14,6 +14,7 @@
     "@mui/icons-material": "^9.1.1",
     "@mui/material": "^9.1.1",
     "@repo/auth": "*",
+    "@repo/design-system": "*",
     "@repo/network": "*",
     "@repo/tailwind-config": "^0.0.0",
     "@repo/ui": "^0.0.0",

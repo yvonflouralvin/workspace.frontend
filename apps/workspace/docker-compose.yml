@@ -12,9 +12,7 @@ services:
         NEXT_PUBLIC_NETWORK_ENCRYPTION: ${NEXT_PUBLIC_NETWORK_ENCRYPTION}
         NEXT_PUBLIC_NETWORK_ENCRYPTION_KEY: ${NEXT_PUBLIC_NETWORK_ENCRYPTION_KEY}
     container_name: workspace_uat_ft_workspace
-    restart: unless-stopped
-    env_file:
-      - .env
+    restart: unless-stopped 
     expose:
       - "3005"
     networks:

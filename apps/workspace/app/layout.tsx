@@ -31,7 +31,7 @@ export default async function RootLayout({
   const session = await getServerSession();
 
   if (!session.authenticated) {
-    const authDomain = process.env.NEXT_PUBLIC_AUTH_API_AUTH_DOMAIN;
+    const authDomain = process.env.AUTH_API_AUTH_DOMAIN;
     if (authDomain) {
       const reqHeaders = await headers();
       const referer = reqHeaders.get("referer") ?? "";

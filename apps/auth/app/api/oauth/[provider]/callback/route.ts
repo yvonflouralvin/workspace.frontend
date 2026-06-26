@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { AUTH_COOKIE_OPTIONS } from "@/app/lib/cookies";
 
-const AUTH_API = process.env.AUTH_API_URL ?? process.env.NEXT_PUBLIC_AUTH_API;
+const AUTH_API = process.env.AUTH_API_URL!;
 const WORKSPACE_DOMAIN = process.env.NEXT_PUBLIC_WORKSPACE_DOMAIN!;
 
 export async function GET(

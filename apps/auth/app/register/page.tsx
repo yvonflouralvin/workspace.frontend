@@ -19,8 +19,7 @@ import { Suspense, useState, FormEvent } from "react"
 import { useSearchParams } from "next/navigation"
 
 import { checkEmail, register, login, requestOtp, verifyOtp, ApiError } from "../lib/api"
-
-const WORKSPACE_DOMAIN = process.env.NEXT_PUBLIC_WORKSPACE_DOMAIN!;
+import { getPublicConfig } from "@repo/network/client"
 
 type Step = "email" | "name" | "password" | "workspace" | "otp";
 type WorkspaceType = "individual" | "organization";
@@ -161,7 +160,8 @@ function RegisterForm() {
 
       await register(email, password, fullName, workspaceName, workspaceType);
       await login(email, password);
-      window.location.href = WORKSPACE_DOMAIN;
+      const { workspaceDomain } = await getPublicConfig();
+      window.location.href = workspaceDomain ?? "/";
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
         setError("Un compte existe déjà avec cet email.");
@@ -195,7 +195,8 @@ function RegisterForm() {
         workspaceName,
         workspaceType,
       });
-      window.location.href = WORKSPACE_DOMAIN;
+      const { workspaceDomain } = await getPublicConfig();
+      window.location.href = workspaceDomain ?? "/";
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
         setError("Un compte existe déjà avec cet email.");

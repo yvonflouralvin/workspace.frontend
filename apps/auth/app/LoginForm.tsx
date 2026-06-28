@@ -14,8 +14,7 @@ import { useState, FormEvent } from "react"
 import Link from "next/link"
 
 import { checkEmail, getLoginMethods, login, requestOtp, verifyOtp, ApiError } from "./lib/api"
-
-const WORKSPACE_DOMAIN = process.env.NEXT_PUBLIC_WORKSPACE_DOMAIN!;
+import { getPublicConfig } from "@repo/network/client"
 
 const PROVIDER_LABELS: Record<string, string> = {
   microsoft: "Microsoft",
@@ -91,7 +90,8 @@ export function LoginForm() {
 
     try {
       await login(email, password);
-      window.location.href = WORKSPACE_DOMAIN;
+      const { workspaceDomain } = await getPublicConfig();
+      window.location.href = workspaceDomain;
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
         setError("Mot de passe incorrect.");
@@ -127,7 +127,8 @@ export function LoginForm() {
 
     try {
       await verifyOtp({ email, code: otpCode, purpose: "login" });
-      window.location.href = WORKSPACE_DOMAIN;
+      const { workspaceDomain } = await getPublicConfig();
+      window.location.href = workspaceDomain;
     } catch {
       setError("Code invalide ou expiré.");
     } finally {

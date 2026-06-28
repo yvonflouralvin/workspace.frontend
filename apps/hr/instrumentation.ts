@@ -16,9 +16,7 @@ export async function register() {
 
     const config: Record<string, string> = await res.json();
     for (const [key, value] of Object.entries(config)) {
-      if (!key.startsWith("NEXT_PUBLIC_")) {
-        process.env[key] = value;
-      }
+      process.env[key] = value;
     }
   } catch (err) {
     console.error("[vault] FATAL: cannot reach vault —", err);

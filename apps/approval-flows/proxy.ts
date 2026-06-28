@@ -6,7 +6,7 @@ export function proxy(request: NextRequest) {
   const accessToken = request.cookies.get("access_token");
 
   if (!accessToken) {
-    return NextResponse.redirect(new URL(process.env.NEXT_PUBLIC_AUTH_API_AUTH_DOMAIN!));
+    return NextResponse.redirect(new URL(process.env.AUTH_API_AUTH_DOMAIN!));
   }
 
   return NextResponse.next();

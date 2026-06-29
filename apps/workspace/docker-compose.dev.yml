@@ -1,4 +1,5 @@
 # docker-compose.dev.yml — app workspace seule, hot reload (next dev)
+name: ft_workspace
 # Prérequis : docker compose -f docker-compose.postgres.dev.yml up -d (workspace root)
 # Usage    : docker compose -f frontends/apps/workspace/docker-compose.dev.yml up
 
@@ -22,7 +23,7 @@ services:
       - -c
       - |
         [ ! -d node_modules/.bin ] && npm ci
-        exec npx next dev --port 3005
+        cd apps/workspace && exec npx next dev --port 3005
     ports:
       - "3005:3005"
     networks:

@@ -1,17 +1,19 @@
 # docker-compose.dev.yml — app hr seule, hot reload (next dev)
+# Premier démarrage : docker compose -f docker-compose.dev.yml build
+# Usage             : docker compose -f docker-compose.dev.yml up
 name: ft_hr
-# Prérequis : docker compose -f docker-compose.postgres.dev.yml up -d (workspace root)
-# Usage    : docker compose -f frontends/apps/hr/docker-compose.dev.yml up
 
 services:
   ft_hr:
-    image: node:24-alpine
+    build:
+      context: ../../
+      dockerfile: Dockerfile.dev
     container_name: dev_ft_hr
     restart: unless-stopped
     working_dir: /app
     volumes:
       - ../../:/app
-      - frontends_nm:/app/node_modules
+      - /app/node_modules
     env_file: ./.env
     environment:
       PORT: "3003"
@@ -20,12 +22,7 @@ services:
       HR_API_URL: http://dev_hr:5001
       GRAPHQL_API_URL: http://dev_graphql:5002
       APPROVAL_FLOWS_API_URL: http://dev_approval_flows:5005
-    command:
-      - sh
-      - -c
-      - |
-        [ ! -d node_modules/.bin ] && npm ci
-        cd apps/hr && exec npx next dev --port 3003
+    command: sh -c "cd apps/hr && exec npx next dev --port 3003"
     ports:
       - "3003:3003"
     networks:
@@ -35,7 +32,3 @@ networks:
   dev:
     name: dev
     external: true
-
-volumes:
-  frontends_nm:
-    name: frontends_nm

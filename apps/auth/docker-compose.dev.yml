@@ -1,0 +1,37 @@
+# docker-compose.dev.yml — app auth seule, hot reload (next dev)
+# Prérequis : docker compose -f docker-compose.postgres.dev.yml up -d (workspace root)
+# Usage    : docker compose -f frontends/apps/auth/docker-compose.dev.yml up
+
+services:
+  ft_auth:
+    image: node:24-alpine
+    container_name: dev_ft_auth
+    restart: unless-stopped
+    working_dir: /app
+    volumes:
+      - ../../:/app
+      - frontends_nm:/app/node_modules
+    env_file: ./.env
+    environment:
+      PORT: "3001"
+      HOSTNAME: "0.0.0.0"
+      AUTH_API_URL: http://dev_auth:4999
+    command:
+      - sh
+      - -c
+      - |
+        [ ! -d node_modules/.bin ] && npm ci
+        exec npx next dev --port 3001
+    ports:
+      - "3001:3001"
+    networks:
+      - dev
+
+networks:
+  dev:
+    name: dev
+    external: true
+
+volumes:
+  frontends_nm:
+    name: frontends_nm

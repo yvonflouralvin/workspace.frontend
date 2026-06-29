@@ -1,5 +1,3 @@
-export { getPublicConfig } from "./runtime-config.js";
-
 import { decrypt, encrypt } from "./cipher.js";
 import { getWebCrypto } from "./crypto.browser.js";
 import { getClientKey, isClientEncrypted } from "./config.js";
@@ -8,14 +6,14 @@ import { isEnvelope } from "./envelope.js";
 export type ApiFetchInit = Omit<RequestInit, "body"> & { body?: unknown };
 
 export async function apiFetch(path: string, init: ApiFetchInit = {}): Promise<Response> {
-  const encrypted = await isClientEncrypted();
+  const encrypted = isClientEncrypted();
   const headers = new Headers(init.headers);
   headers.set("Content-Type", "application/json");
 
   let body: string | undefined;
   if (init.body !== undefined) {
     body = encrypted
-      ? JSON.stringify(await encrypt(getWebCrypto(), await getClientKey(), init.body))
+      ? JSON.stringify(await encrypt(getWebCrypto(), getClientKey(), init.body))
       : JSON.stringify(init.body);
   }
 
@@ -24,7 +22,7 @@ export async function apiFetch(path: string, init: ApiFetchInit = {}): Promise<R
 
   const resolved =
     encrypted && isEnvelope(payload)
-      ? await decrypt(getWebCrypto(), await getClientKey(), payload)
+      ? await decrypt(getWebCrypto(), getClientKey(), payload)
       : payload;
 
   return new Response(JSON.stringify(resolved), { status: response.status });

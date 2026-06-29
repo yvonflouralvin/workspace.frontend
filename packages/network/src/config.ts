@@ -1,5 +1,3 @@
-import { getPublicConfig } from "./runtime-config.js";
-
 export function isServerEncrypted(): boolean {
   return process.env.NETWORK_ENCRYPTION !== "clear";
 }
@@ -10,12 +8,12 @@ export function getServerKey(): string {
   return key;
 }
 
-export async function isClientEncrypted(): Promise<boolean> {
-  const config = await getPublicConfig();
-  return config.networkEncryption !== "clear";
+export function isClientEncrypted(): boolean {
+  return process.env.NEXT_PUBLIC_NETWORK_ENCRYPTION !== "clear";
 }
 
-export async function getClientKey(): Promise<string> {
-  const config = await getPublicConfig();
-  return config.networkEncryptionKey ?? "";
+export function getClientKey(): string {
+  const key = process.env.NEXT_PUBLIC_NETWORK_ENCRYPTION_KEY;
+  if (!key) throw new Error("NEXT_PUBLIC_NETWORK_ENCRYPTION_KEY is not set");
+  return key;
 }

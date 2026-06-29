@@ -1,14 +1,22 @@
+# docker-compose.dev.yml — app auth seule, hot reload (next dev)
+# Usage : docker compose -f docker-compose.dev.yml up
+name: ft_auth
+
 services:
   workspace_uat_ft_auth:
-    build:
-      context: ../..
-      dockerfile: apps/auth/Dockerfile
+    image: node:24-alpine
     container_name: workspace_uat_ft_auth
     restart: unless-stopped
-    env_file:
-      - .env
+    working_dir: /app
+    volumes:
+      - ../../:/app
+    env_file: ./.env
+    environment:
+      PORT: "3000"
+      HOSTNAME: "0.0.0.0" 
+    command: sh -c "[ ! -d node_modules/.bin ] && npm ci; cd apps/auth && exec npx next dev --port 3000"
     expose:
-      - "3001"
+      - "3000"
     networks:
       - dokploy-network
 

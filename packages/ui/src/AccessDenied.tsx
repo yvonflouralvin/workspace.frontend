@@ -1,7 +1,7 @@
 "use client";
 
 import { LockOutlined, LogoutOutlined } from "@mui/icons-material";
-import { apiFetch, getPublicConfig } from "@repo/network/client";
+import { apiFetch } from "@repo/network/client";
 
 export function AccessDenied({
   appName,
@@ -14,8 +14,7 @@ export function AccessDenied({
 }) {
   async function handleLogout() {
     await apiFetch("/api/logout", { method: "POST" });
-    const { authDomain } = await getPublicConfig();
-    window.location.href = authDomain ?? "/";
+    window.location.href = process.env.NEXT_PUBLIC_AUTH_API_AUTH_DOMAIN ?? "/";
   }
 
   return (

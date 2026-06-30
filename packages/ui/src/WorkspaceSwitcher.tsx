@@ -4,8 +4,6 @@ import { useState, useRef, useEffect } from "react";
 import { CheckOutlined, ExpandMoreOutlined, AddOutlined } from "@mui/icons-material";
 import Link from "next/link";
 import { useSessionStore } from "@repo/auth/store/session.store";
-import { getPublicConfig } from "@repo/network/client";
-
 const COLORS = ["#3525cd", "#006c49", "#004598", "#b91c1c", "#a16207", "#7c3aed"];
 
 function workspaceColor(id: number): string {
@@ -19,13 +17,7 @@ export function WorkspaceSwitcher({
 }) {
   const { activeWorkspace, workspaces, switchWorkspace } = useSessionStore();
   const [open, setOpen] = useState(false);
-  const [workspaceDomain, setWorkspaceDomain] = useState("http://localhost:3005");
-
-  useEffect(() => {
-    getPublicConfig().then((c) => {
-      if (c.workspaceDomain) setWorkspaceDomain(c.workspaceDomain);
-    });
-  }, []);
+  const workspaceDomain = process.env.NEXT_PUBLIC_WORKSPACE_DOMAIN ?? "http://localhost:3005";
   const [switching, setSwitching] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 

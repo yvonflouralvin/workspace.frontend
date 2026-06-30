@@ -1,16 +1,35 @@
+# docker-compose.yml — app approval-flows seule, build + start production
+# Usage : docker compose up --build
+name: ft_approval-flows
+
 services:
-  app:
-    build:
-      context: ../..
-      dockerfile: apps/approval-flows/Dockerfile
-    container_name: workspace_uat_ft_af
+  approval-flows_uat_ft_approval_flows:
+    image: node:24-alpine
+    container_name: approval-flows_uat_ft_approval_flows
     restart: unless-stopped
-    env_file:
-      - .env
+    working_dir: /app
+    volumes:
+      - ../../:/app
+      - ft_approval-flows_node_modules:/app/node_modules
+      - ft_approval-flows_approval-flows_node_modules:/app/apps/approval-flows/node_modules
+    env_file: ./.env
+    environment:
+      PORT: "3000"
+      HOSTNAME: "0.0.0.0"
+    command: >-
+      sh -c "npm ci &&
+      npx turbo run build --filter=approval-flows &&
+      cp -r apps/approval-flows/.next/static apps/approval-flows/.next/standalone/apps/approval-flows/.next/static &&
+      cp -r apps/approval-flows/public apps/approval-flows/.next/standalone/apps/approval-flows/public &&
+      exec node apps/approval-flows/.next/standalone/apps/approval-flows/server.js"
     expose:
-      - "3006"
+      - "3000"
     networks:
       - dokploy-network
+
+volumes:
+  ft_approval-flows_node_modules:
+  ft_approval-flows_approval-flows_node_modules:
 
 networks:
   dokploy-network:

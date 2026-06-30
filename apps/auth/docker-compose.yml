@@ -11,11 +11,12 @@ services:
     volumes:
       - ../../:/app
       - ft_auth_node_modules:/app/node_modules
+      - ft_auth_auth_node_modules:/app/apps/auth/node_modules
     env_file: ./.env
     environment:
       PORT: "3000"
       HOSTNAME: "0.0.0.0"
-    command: sh -c "npm ci && cd apps/auth && npx next build && exec node .next/standalone/apps/auth/server.js"
+    command: sh -c "npm ci && npx turbo run build --filter=auth && exec node apps/auth/.next/standalone/apps/auth/server.js"
     expose:
       - "3000"
     networks:
@@ -23,6 +24,7 @@ services:
 
 volumes:
   ft_auth_node_modules:
+  ft_auth_auth_node_modules:
 
 networks:
   dokploy-network:

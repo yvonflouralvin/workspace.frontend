@@ -16,7 +16,12 @@ services:
     environment:
       PORT: "3000"
       HOSTNAME: "0.0.0.0"
-    command: sh -c "npm ci && npx turbo run build --filter=auth && exec node apps/auth/.next/standalone/apps/auth/server.js"
+    command: >-
+      sh -c "npm ci &&
+      npx turbo run build --filter=auth &&
+      cp -r apps/auth/.next/static apps/auth/.next/standalone/apps/auth/.next/static &&
+      cp -r apps/auth/public apps/auth/.next/standalone/apps/auth/public &&
+      exec node apps/auth/.next/standalone/apps/auth/server.js"
     expose:
       - "3000"
     networks:

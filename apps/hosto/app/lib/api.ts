@@ -313,6 +313,7 @@ export interface ServiceSchedule {
   label: string | null;
   active: boolean;
   created_at: string;
+  staff: HostoStaff[];
 }
 
 export interface ScheduleCreateInput {
@@ -359,6 +360,14 @@ export async function deleteSchedule(id: number): Promise<void> {
     const data = await res.json().catch(() => ({}));
     throw new ApiError(data.detail ?? "Impossible de supprimer cet horaire", res.status);
   }
+}
+
+export async function addStaffToSchedule(scheduleId: number, staffId: number): Promise<ServiceSchedule> {
+  return parseResponse(await apiFetch(`/api/schedules/${scheduleId}/staff`, { method: "POST", body: { staff_id: staffId } }));
+}
+
+export async function removeStaffFromSchedule(scheduleId: number, staffId: number): Promise<ServiceSchedule> {
+  return parseResponse(await apiFetch(`/api/schedules/${scheduleId}/staff/${staffId}`, { method: "DELETE" }));
 }
 
 // ─── Appointments ─────────────────────────────────────────────────────────────

@@ -40,7 +40,7 @@ export default function StaffPage() {
 
   const [showForm, setShowForm]    = useState(false);
   const [form, setForm]            = useState<StaffCreateInput>({
-    employee_id: 0, nom_cache: "", prenom_cache: "", role: "MEDECIN",
+    employee_id: 0, nom_cache: "", prenom_cache: "", role: "MEDECIN", service_ids: [],
   });
   const [saving, setSaving]        = useState(false);
   const [formError, setFormError]  = useState<string | null>(null);
@@ -65,11 +65,10 @@ export default function StaffPage() {
       const member = await createStaff({
         ...form,
         employee_id: Number(form.employee_id),
-        service_id: form.service_id ? Number(form.service_id) : undefined,
       });
       setStaff((s) => [...s, member]);
       setShowForm(false);
-      setForm({ employee_id: 0, nom_cache: "", prenom_cache: "", role: "MEDECIN" });
+      setForm({ employee_id: 0, nom_cache: "", prenom_cache: "", role: "MEDECIN", service_ids: [] });
     } catch (err) {
       setFormError(err instanceof Error ? err.message : "Erreur.");
     } finally {
@@ -95,7 +94,7 @@ export default function StaffPage() {
   }
 
   const filtered = staff.filter((m) => {
-    if (filterService && String(m.service_id) !== filterService) return false;
+    if (filterService && !m.services.some((s) => String(s.id) === filterService)) return false;
     if (filterRole && m.role !== filterRole) return false;
     return true;
   });
@@ -174,13 +173,28 @@ export default function StaffPage() {
                 <input className={inputCls} value={form.specialite ?? ""}
                   onChange={(e) => setForm((f) => ({ ...f, specialite: e.target.value }))} placeholder="Ex: Cardiologie" />
               </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-label-md font-medium text-on-surface-variant">Service</label>
-                <select className={selectCls} value={form.service_id ?? ""}
-                  onChange={(e) => setForm((f) => ({ ...f, service_id: e.target.value ? Number(e.target.value) : undefined }))}>
-                  <option value="">— Aucun —</option>
-                  {services.filter((s) => s.active).map((s) => <option key={s.id} value={s.id}>{s.nom}</option>)}
-                </select>
+              <div className="flex flex-col gap-1 col-span-1">
+                <label className="text-label-md font-medium text-on-surface-variant">Services</label>
+                <div className="rounded-xl border border-outline-variant bg-surface-container-lowest px-3 py-2 max-h-36 overflow-y-auto space-y-1">
+                  {services.filter((s) => s.active).length === 0 && (
+                    <span className="text-body-sm text-on-surface-variant/60">Aucun service disponible</span>
+                  )}
+                  {services.filter((s) => s.active).map((s) => (
+                    <label key={s.id} className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox"
+                        checked={(form.service_ids ?? []).includes(s.id)}
+                        onChange={(e) => setForm((f) => ({
+                          ...f,
+                          service_ids: e.target.checked
+                            ? [...(f.service_ids ?? []), s.id]
+                            : (f.service_ids ?? []).filter((id) => id !== s.id),
+                        }))}
+                        className="accent-primary"
+                      />
+                      <span className="text-body-sm text-on-surface">{s.nom}</span>
+                    </label>
+                  ))}
+                </div>
               </div>
             </div>
             {formError && <p className="text-body-sm text-error">{formError}</p>}
@@ -276,10 +290,10 @@ function StaffTable({
               </div>
               <div className="flex items-center gap-3 mt-0.5 flex-wrap">
                 {m.specialite && <span className="text-body-sm text-on-surface-variant">{m.specialite}</span>}
-                {m.service && (
+                {m.services.length > 0 && (
                   <span className="inline-flex items-center gap-1 text-body-sm text-on-surface-variant">
                     <MedicalServicesOutlined style={{ fontSize: 13 }} />
-                    {m.service.nom}
+                    {m.services.map((s) => s.nom).join(", ")}
                   </span>
                 )}
               </div>

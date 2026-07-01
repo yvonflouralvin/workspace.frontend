@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
+import { RightDrawer } from "@repo/ui/RightDrawer";
 import { DashboardShell } from "@/components/DashboardShell";
 import {
   listStaff, listServices, createStaff, updateStaff, deleteStaff,
@@ -462,65 +463,60 @@ export default function StaffPage() {
           </form>
         )}
 
-        {/* Edit form */}
+        {/* Edit drawer */}
         {editTarget && (
-          <form onSubmit={handleEditSubmit}
-            className="rounded-2xl border border-primary/30 bg-surface-container-lowest p-5 space-y-5">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <h2 className="text-body-md font-semibold text-on-surface">
-                  Modifier — {editTarget.prenom_cache} {editTarget.nom_cache}
-                </h2>
-                <p className="text-body-sm text-on-surface-variant mt-0.5">
+          <RightDrawer
+            title={`${editTarget.prenom_cache} ${editTarget.nom_cache}`}
+            onClose={cancelEdit}
+          >
+            <form onSubmit={handleEditSubmit} className="h-full flex flex-col gap-5">
+              <div className="flex-1 space-y-5 overflow-y-auto">
+                <p className="text-body-sm text-on-surface-variant">
                   Modifiez le rôle, la spécialité et les services affectés.
                 </p>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-label-md font-medium text-on-surface-variant">
+                      Rôle médical <span className="text-error">*</span>
+                    </label>
+                    <select className={selectCls} value={editForm.role}
+                      onChange={(e) => setEditForm((f) => ({ ...f, role: e.target.value as StaffRole }))}>
+                      {ROLES.map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
+                    </select>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-label-md font-medium text-on-surface-variant">Spécialité</label>
+                    <input className={inputCls} value={editForm.specialite}
+                      onChange={(e) => setEditForm((f) => ({ ...f, specialite: e.target.value }))}
+                      placeholder="Ex: Cardiologie, Pédiatrie…" />
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-label-md font-medium text-on-surface-variant">Service(s)</label>
+                  <ServiceDropdown
+                    services={services}
+                    selected={editForm.service_ids}
+                    onChange={(ids) => setEditForm((f) => ({ ...f, service_ids: ids }))}
+                  />
+                </div>
+
+                {editError && <p className="text-body-sm text-error">{editError}</p>}
               </div>
-              <button type="button" onClick={cancelEdit}
-                className="text-on-surface-variant hover:text-on-surface transition-colors shrink-0 mt-0.5">
-                <CloseOutlined style={{ fontSize: 18 }} />
-              </button>
-            </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex flex-col gap-1">
-                <label className="text-label-md font-medium text-on-surface-variant">
-                  Rôle médical <span className="text-error">*</span>
-                </label>
-                <select className={selectCls} value={editForm.role}
-                  onChange={(e) => setEditForm((f) => ({ ...f, role: e.target.value as StaffRole }))}>
-                  {ROLES.map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
-                </select>
+              <div className="shrink-0 flex gap-3 pt-4 border-t border-outline-variant">
+                <button type="submit" disabled={editSaving}
+                  className="flex-1 py-2 rounded-xl bg-primary text-on-primary text-body-md font-medium hover:bg-primary-container transition-colors disabled:opacity-50">
+                  {editSaving ? "Enregistrement…" : "Enregistrer"}
+                </button>
+                <button type="button" onClick={cancelEdit} disabled={editSaving}
+                  className="px-5 py-2 rounded-xl text-body-md text-on-surface-variant border border-outline-variant hover:bg-surface-container transition-colors disabled:opacity-50">
+                  Annuler
+                </button>
               </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-label-md font-medium text-on-surface-variant">Spécialité</label>
-                <input className={inputCls} value={editForm.specialite}
-                  onChange={(e) => setEditForm((f) => ({ ...f, specialite: e.target.value }))}
-                  placeholder="Ex: Cardiologie, Pédiatrie…" />
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-1">
-              <label className="text-label-md font-medium text-on-surface-variant">Service(s)</label>
-              <ServiceDropdown
-                services={services}
-                selected={editForm.service_ids}
-                onChange={(ids) => setEditForm((f) => ({ ...f, service_ids: ids }))}
-              />
-            </div>
-
-            {editError && <p className="text-body-sm text-error">{editError}</p>}
-
-            <div className="flex gap-3 justify-end">
-              <button type="button" onClick={cancelEdit} disabled={editSaving}
-                className="px-4 py-2 rounded-xl text-body-md text-on-surface-variant hover:bg-surface-container transition-colors disabled:opacity-50">
-                Annuler
-              </button>
-              <button type="submit" disabled={editSaving}
-                className="px-6 py-2 rounded-xl bg-primary text-on-primary text-body-md font-medium hover:bg-primary-container transition-colors disabled:opacity-50">
-                {editSaving ? "Enregistrement…" : "Enregistrer"}
-              </button>
-            </div>
-          </form>
+            </form>
+          </RightDrawer>
         )}
 
         {loading && <p className="text-body-sm text-on-surface-variant">Chargement…</p>}
@@ -554,12 +550,10 @@ export default function StaffPage() {
 
         {!loading && active.length > 0 && (
           <StaffTable title="Actif" items={active} canManage={canManage}
-            editingId={editTarget?.id ?? null}
             onEdit={openEdit} onToggle={toggleActive} onDelete={setDeleteTarget} />
         )}
         {!loading && inactive.length > 0 && (
           <StaffTable title="Inactif" items={inactive} canManage={canManage}
-            editingId={editTarget?.id ?? null}
             onEdit={openEdit} onToggle={toggleActive} onDelete={setDeleteTarget} dimmed />
         )}
       </div>
@@ -568,10 +562,9 @@ export default function StaffPage() {
 }
 
 function StaffTable({
-  title, items, canManage, editingId, onEdit, onToggle, onDelete, dimmed,
+  title, items, canManage, onEdit, onToggle, onDelete, dimmed,
 }: {
   title: string; items: HostoStaff[]; canManage: boolean;
-  editingId: number | null;
   onEdit: (m: HostoStaff) => void;
   onToggle: (m: HostoStaff) => void;
   onDelete: (m: HostoStaff) => void;
@@ -582,8 +575,7 @@ function StaffTable({
       <h2 className="text-body-sm font-semibold text-on-surface-variant mb-3 uppercase tracking-wider">{title}</h2>
       <div className={`rounded-2xl border border-outline-variant overflow-hidden divide-y divide-outline-variant ${dimmed ? "opacity-60" : ""}`}>
         {items.map((m) => (
-          <div key={m.id}
-            className={`flex items-center gap-4 px-5 py-3.5 transition-colors ${editingId === m.id ? "bg-primary/5" : ""}`}>
+          <div key={m.id} className="flex items-center gap-4 px-5 py-3.5">
             <div className="w-10 h-10 rounded-full bg-secondary/10 flex items-center justify-center shrink-0 text-secondary font-semibold text-body-md select-none">
               {m.prenom_cache.charAt(0)}{m.nom_cache.charAt(0)}
             </div>
@@ -612,7 +604,7 @@ function StaffTable({
               <div className="flex items-center gap-1 shrink-0">
                 <button onClick={() => onEdit(m)}
                   title="Modifier"
-                  className={`p-1.5 rounded-lg transition-colors ${editingId === m.id ? "text-primary bg-primary/10" : "text-on-surface-variant hover:text-primary hover:bg-primary/8"}`}>
+                  className="p-1.5 rounded-lg text-on-surface-variant hover:text-primary hover:bg-primary/8 transition-colors">
                   <EditOutlined style={{ fontSize: 17 }} />
                 </button>
                 <button onClick={() => onToggle(m)}

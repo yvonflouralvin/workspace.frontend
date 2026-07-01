@@ -9,7 +9,13 @@ import { TopBar } from "@repo/ui/shell/TopBar";
 import type { SearchSection } from "@repo/ui/shell/TopBar";
 import { UserFooter } from "@repo/ui/shell/UserFooter";
 import { WorkspaceSwitcher } from "@repo/ui/WorkspaceSwitcher";
-import { HomeOutlined, PeopleAltOutlined } from "@mui/icons-material";
+import {
+  CalendarMonthOutlined,
+  HomeOutlined,
+  LocalHospitalOutlined,
+  MedicalServicesOutlined,
+  PeopleAltOutlined,
+} from "@mui/icons-material";
 import type { NavItem, AppDefinition } from "@repo/ui/types/shell";
 import { logout as logoutRequest } from "@/app/lib/api";
 
@@ -24,6 +30,21 @@ const NAV_ITEMS: NavItem[] = [
     label: "Patients",
     href: "/",
     icon: <PeopleAltOutlined style={{ fontSize: 20 }} />,
+  },
+  {
+    label: "Services",
+    href: "/services",
+    icon: <LocalHospitalOutlined style={{ fontSize: 20 }} />,
+  },
+  {
+    label: "Personnel",
+    href: "/staff",
+    icon: <MedicalServicesOutlined style={{ fontSize: 20 }} />,
+  },
+  {
+    label: "Calendrier",
+    href: "/calendar",
+    icon: <CalendarMonthOutlined style={{ fontSize: 20 }} />,
   },
 ];
 

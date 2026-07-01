@@ -46,6 +46,7 @@ frontends/
 | `workspace` | 3005 | App principale — dashboard, projets, membres, journal d'activité | `docs/apps/workspace/WORKSPACE.md`     |
 | `hr`        | 3003 | Module RH (en construction)                        | `docs/apps/hr/HR.md`                   |
 | `approval-flows` | 3006 | Création/gestion libre de workflows d'approbation + console des tâches | `docs/apps/approval-flows/APPROVAL_FLOWS.md` |
+| `hosto`     | 3007 | Gestion hospitalière — patients, contacts                            | —                                      |
 | `web`       | —    | Landing page publique                              | —                                      |
 | `docs`      | —    | Documentation produit                              | —                                      |
 
@@ -226,6 +227,7 @@ les 3 `.env` par app synchronisés pour les variables communes.
 | `NEXT_PUBLIC_AUTH_API_AUTH_DOMAIN`| `http://localhost:3001` | Browser        |
 | `NEXT_PUBLIC_AUTH_API_HR_DOMAIN`  | `http://localhost:3003` | Browser        |
 | `NEXT_PUBLIC_AUTH_API_APPROVAL_FLOWS_DOMAIN` | `http://localhost:3006` | Browser — utilisé par le sélecteur d'apps (`workspace`, `hr`) pour pointer vers `approval-flows` |
+| `HOSTO_API_URL`                   | `http://127.0.0.1:5007`| Server only — app `hosto`, proxy vers le backend FastAPI `hosto` |
 | `NEXT_PUBLIC_WORKSPACE_DOMAIN`    | `http://localhost:3005` | Browser (auth) |
 | `AUTH_API_URL`                    | `http://127.0.0.1:5000`| Server only    |
 | `HR_API_URL`                      | `http://127.0.0.1:5001`| Server only — app `hr`, proxy vers le backend FastAPI `hr` |

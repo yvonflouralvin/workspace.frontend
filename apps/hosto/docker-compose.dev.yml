@@ -22,9 +22,9 @@ services:
     ports:
       - "3007:3007"
     networks:
-      - dev
+      - workspace_dev
 
 networks:
-  dev:
-    name: dev
+  workspace_dev:
+    name: workspace_dev
     external: true

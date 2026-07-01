@@ -9,7 +9,7 @@ import {
   type HostoStaff, type Service, type HREmployee, ROLE_LABELS, type StaffRole,
 } from "@/app/lib/api";
 import {
-  AddOutlined, CheckOutlined, CloseOutlined, DeleteOutlined,
+  AddOutlined, CheckOutlined, CloseOutlined, DeleteOutlined, EditOutlined,
   FilterListOutlined, MedicalServicesOutlined,
   PersonSearchOutlined, WarningAmberOutlined,
 } from "@mui/icons-material";
@@ -219,12 +219,23 @@ export default function StaffPage() {
   const [filterService, setFilterService] = useState<string>("");
   const [filterRole, setFilterRole]       = useState<string>("");
 
+  // Create form
   const emptyForm = { employee_id: 0, nom_cache: "", prenom_cache: "", role: "MEDECIN" as StaffRole, service_ids: [] as number[], specialite: "" };
-  const [showForm, setShowForm]       = useState(false);
+  const [showForm, setShowForm]             = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<HREmployee | null>(null);
-  const [form, setForm]               = useState(emptyForm);
-  const [saving, setSaving]           = useState(false);
-  const [formError, setFormError]     = useState<string | null>(null);
+  const [form, setForm]                     = useState(emptyForm);
+  const [saving, setSaving]                 = useState(false);
+  const [formError, setFormError]           = useState<string | null>(null);
+
+  // Edit form
+  const [editTarget, setEditTarget] = useState<HostoStaff | null>(null);
+  const [editForm, setEditForm]     = useState<{ role: StaffRole; specialite: string; service_ids: number[] }>({
+    role: "MEDECIN", specialite: "", service_ids: [],
+  });
+  const [editSaving, setEditSaving]   = useState(false);
+  const [editError, setEditError]     = useState<string | null>(null);
+
+  // Delete confirm
   const [deleteTarget, setDeleteTarget] = useState<HostoStaff | null>(null);
 
   useEffect(() => {
@@ -237,12 +248,7 @@ export default function StaffPage() {
 
   function handleEmployeeSelect(emp: HREmployee) {
     setSelectedEmployee(emp);
-    setForm((f) => ({
-      ...f,
-      employee_id: emp.id,
-      nom_cache: emp.last_name,
-      prenom_cache: emp.first_name,
-    }));
+    setForm((f) => ({ ...f, employee_id: emp.id, nom_cache: emp.last_name, prenom_cache: emp.first_name }));
   }
 
   function resetForm() {
@@ -272,6 +278,42 @@ export default function StaffPage() {
       setFormError(err instanceof Error ? err.message : "Erreur.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  function openEdit(member: HostoStaff) {
+    setEditTarget(member);
+    setEditForm({
+      role: member.role,
+      specialite: member.specialite ?? "",
+      service_ids: member.services.map((s) => s.id),
+    });
+    setEditError(null);
+    setShowForm(false);
+  }
+
+  function cancelEdit() {
+    setEditTarget(null);
+    setEditError(null);
+  }
+
+  async function handleEditSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editTarget) return;
+    setEditSaving(true);
+    setEditError(null);
+    try {
+      const updated = await updateStaff(editTarget.id, {
+        role: editForm.role,
+        specialite: editForm.specialite || undefined,
+        service_ids: editForm.service_ids,
+      });
+      setStaff((s) => s.map((x) => (x.id === updated.id ? updated : x)));
+      cancelEdit();
+    } catch (err) {
+      setEditError(err instanceof Error ? err.message : "Erreur lors de la modification.");
+    } finally {
+      setEditSaving(false);
     }
   }
 
@@ -313,7 +355,7 @@ export default function StaffPage() {
               {staff.length} membre{staff.length !== 1 ? "s" : ""} enregistré{staff.length !== 1 ? "s" : ""}
             </p>
           </div>
-          {canManage && !showForm && (
+          {canManage && !showForm && !editTarget && (
             <button onClick={() => setShowForm(true)}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-on-primary text-body-md font-medium hover:bg-primary-container transition-colors">
               <AddOutlined style={{ fontSize: 18 }} />
@@ -348,11 +390,10 @@ export default function StaffPage() {
             <div>
               <h2 className="text-body-md font-semibold text-on-surface">Ajouter un membre du personnel</h2>
               <p className="text-body-sm text-on-surface-variant mt-0.5">
-                Recherchez l'employé dans le système RH, puis configurez son rôle médical.
+                Recherchez l&apos;employé dans le système RH, puis configurez son rôle médical.
               </p>
             </div>
 
-            {/* Step 1 — Employee search */}
             <div className="space-y-2">
               <label className="text-label-md font-medium text-on-surface-variant">
                 Employé RH <span className="text-error">*</span>
@@ -379,7 +420,6 @@ export default function StaffPage() {
               )}
             </div>
 
-            {/* Step 2 — Medical role */}
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-1">
                 <label className="text-label-md font-medium text-on-surface-variant">
@@ -398,7 +438,6 @@ export default function StaffPage() {
               </div>
             </div>
 
-            {/* Step 3 — Services */}
             <div className="flex flex-col gap-1">
               <label className="text-label-md font-medium text-on-surface-variant">Service(s)</label>
               <ServiceDropdown
@@ -418,6 +457,67 @@ export default function StaffPage() {
               <button type="submit" disabled={saving || !selectedEmployee}
                 className="px-6 py-2 rounded-xl bg-primary text-on-primary text-body-md font-medium hover:bg-primary-container transition-colors disabled:opacity-50">
                 {saving ? "Enregistrement…" : "Ajouter"}
+              </button>
+            </div>
+          </form>
+        )}
+
+        {/* Edit form */}
+        {editTarget && (
+          <form onSubmit={handleEditSubmit}
+            className="rounded-2xl border border-primary/30 bg-surface-container-lowest p-5 space-y-5">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-body-md font-semibold text-on-surface">
+                  Modifier — {editTarget.prenom_cache} {editTarget.nom_cache}
+                </h2>
+                <p className="text-body-sm text-on-surface-variant mt-0.5">
+                  Modifiez le rôle, la spécialité et les services affectés.
+                </p>
+              </div>
+              <button type="button" onClick={cancelEdit}
+                className="text-on-surface-variant hover:text-on-surface transition-colors shrink-0 mt-0.5">
+                <CloseOutlined style={{ fontSize: 18 }} />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex flex-col gap-1">
+                <label className="text-label-md font-medium text-on-surface-variant">
+                  Rôle médical <span className="text-error">*</span>
+                </label>
+                <select className={selectCls} value={editForm.role}
+                  onChange={(e) => setEditForm((f) => ({ ...f, role: e.target.value as StaffRole }))}>
+                  {ROLES.map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
+                </select>
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-label-md font-medium text-on-surface-variant">Spécialité</label>
+                <input className={inputCls} value={editForm.specialite}
+                  onChange={(e) => setEditForm((f) => ({ ...f, specialite: e.target.value }))}
+                  placeholder="Ex: Cardiologie, Pédiatrie…" />
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <label className="text-label-md font-medium text-on-surface-variant">Service(s)</label>
+              <ServiceDropdown
+                services={services}
+                selected={editForm.service_ids}
+                onChange={(ids) => setEditForm((f) => ({ ...f, service_ids: ids }))}
+              />
+            </div>
+
+            {editError && <p className="text-body-sm text-error">{editError}</p>}
+
+            <div className="flex gap-3 justify-end">
+              <button type="button" onClick={cancelEdit} disabled={editSaving}
+                className="px-4 py-2 rounded-xl text-body-md text-on-surface-variant hover:bg-surface-container transition-colors disabled:opacity-50">
+                Annuler
+              </button>
+              <button type="submit" disabled={editSaving}
+                className="px-6 py-2 rounded-xl bg-primary text-on-primary text-body-md font-medium hover:bg-primary-container transition-colors disabled:opacity-50">
+                {editSaving ? "Enregistrement…" : "Enregistrer"}
               </button>
             </div>
           </form>
@@ -454,11 +554,13 @@ export default function StaffPage() {
 
         {!loading && active.length > 0 && (
           <StaffTable title="Actif" items={active} canManage={canManage}
-            onToggle={toggleActive} onDelete={setDeleteTarget} />
+            editingId={editTarget?.id ?? null}
+            onEdit={openEdit} onToggle={toggleActive} onDelete={setDeleteTarget} />
         )}
         {!loading && inactive.length > 0 && (
           <StaffTable title="Inactif" items={inactive} canManage={canManage}
-            onToggle={toggleActive} onDelete={setDeleteTarget} dimmed />
+            editingId={editTarget?.id ?? null}
+            onEdit={openEdit} onToggle={toggleActive} onDelete={setDeleteTarget} dimmed />
         )}
       </div>
     </DashboardShell>
@@ -466,17 +568,22 @@ export default function StaffPage() {
 }
 
 function StaffTable({
-  title, items, canManage, onToggle, onDelete, dimmed,
+  title, items, canManage, editingId, onEdit, onToggle, onDelete, dimmed,
 }: {
   title: string; items: HostoStaff[]; canManage: boolean;
-  onToggle: (m: HostoStaff) => void; onDelete: (m: HostoStaff) => void; dimmed?: boolean;
+  editingId: number | null;
+  onEdit: (m: HostoStaff) => void;
+  onToggle: (m: HostoStaff) => void;
+  onDelete: (m: HostoStaff) => void;
+  dimmed?: boolean;
 }) {
   return (
     <div>
       <h2 className="text-body-sm font-semibold text-on-surface-variant mb-3 uppercase tracking-wider">{title}</h2>
       <div className={`rounded-2xl border border-outline-variant overflow-hidden divide-y divide-outline-variant ${dimmed ? "opacity-60" : ""}`}>
         {items.map((m) => (
-          <div key={m.id} className="flex items-center gap-4 px-5 py-3.5">
+          <div key={m.id}
+            className={`flex items-center gap-4 px-5 py-3.5 transition-colors ${editingId === m.id ? "bg-primary/5" : ""}`}>
             <div className="w-10 h-10 rounded-full bg-secondary/10 flex items-center justify-center shrink-0 text-secondary font-semibold text-body-md select-none">
               {m.prenom_cache.charAt(0)}{m.nom_cache.charAt(0)}
             </div>
@@ -503,6 +610,11 @@ function StaffTable({
             </div>
             {canManage && (
               <div className="flex items-center gap-1 shrink-0">
+                <button onClick={() => onEdit(m)}
+                  title="Modifier"
+                  className={`p-1.5 rounded-lg transition-colors ${editingId === m.id ? "text-primary bg-primary/10" : "text-on-surface-variant hover:text-primary hover:bg-primary/8"}`}>
+                  <EditOutlined style={{ fontSize: 17 }} />
+                </button>
                 <button onClick={() => onToggle(m)}
                   className="px-3 py-1.5 rounded-lg text-label-sm text-on-surface-variant border border-outline-variant hover:bg-surface-container transition-colors">
                   {m.active ? "Désactiver" : "Réactiver"}

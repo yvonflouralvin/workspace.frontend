@@ -18,7 +18,14 @@ services:
       AUTH_API_URL: http://dev_auth:4999
       HOSTO_API_URL: http://dev_hosto:5007
       HR_API_URL: http://dev_hr:5001
-    command: sh -c "[ ! -d node_modules/.bin ] && npm ci; cd apps/hosto && exec npx next dev --port 3007"
+    command: >
+      sh -c "
+        if [ ! -d /app/node_modules/lightningcss-linux-arm64-musl ]; then
+          npm install --prefix /app lightningcss-linux-arm64-musl@$(node -p \"require('/app/node_modules/lightningcss/package.json').version\") --no-save --ignore-scripts &&
+          rm -rf /app/apps/hosto/.next;
+        fi;
+        cd apps/hosto && exec npx next dev --port 3007
+      "
     ports:
       - "3007:3007"
     networks:

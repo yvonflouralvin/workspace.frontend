@@ -17,6 +17,7 @@ services:
       HOSTNAME: "0.0.0.0"
       AUTH_API_URL: http://dev_auth:4999
       HOSTO_API_URL: http://dev_hosto:5007
+      HR_API_URL: http://dev_hr:5001
     command: sh -c "[ ! -d node_modules/.bin ] && npm ci; cd apps/hosto && exec npx next dev --port 3007"
     ports:
       - "3007:3007"

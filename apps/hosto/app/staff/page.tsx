@@ -10,15 +10,16 @@ import {
   type HostoStaff, type Service, type HREmployee, ROLE_LABELS, type StaffRole,
 } from "@/app/lib/api";
 import {
-  AddOutlined, CheckOutlined, CloseOutlined, DeleteOutlined, EditOutlined,
-  FilterListOutlined, MedicalServicesOutlined,
-  PersonSearchOutlined, WarningAmberOutlined,
+  AddOutlined, CheckOutlined, ChevronLeftOutlined, ChevronRightOutlined,
+  CloseOutlined, DeleteOutlined, EditOutlined, FilterListOutlined,
+  MedicalServicesOutlined, PersonSearchOutlined, SearchOutlined, WarningAmberOutlined,
 } from "@mui/icons-material";
 
 const inputCls = "w-full rounded-xl border border-outline-variant bg-surface-container-lowest px-3 py-2 text-body-md text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary transition-colors";
 const selectCls = inputCls;
 
 const ROLES: StaffRole[] = ["MEDECIN", "INFIRMIER", "AIDE_SOIGNANT", "SECRETAIRE", "AUTRE"];
+const PAGE_SIZE = 20;
 
 const ROLE_COLORS: Record<StaffRole, string> = {
   MEDECIN: "bg-primary/10 text-primary",
@@ -30,26 +31,22 @@ const ROLE_COLORS: Record<StaffRole, string> = {
 
 // ─── Service multi-select dropdown ───────────────────────────────────────────
 
-function ServiceDropdown({
-  services, selected, onChange,
-}: {
-  services: Service[];
-  selected: number[];
-  onChange: (ids: number[]) => void;
+function ServiceDropdown({ services, selected, onChange }: {
+  services: Service[]; selected: number[]; onChange: (ids: number[]) => void;
 }) {
-  const [open, setOpen]     = useState(false);
-  const [query, setQuery]   = useState("");
-  const ref                 = useRef<HTMLDivElement>(null);
+  const [open, setOpen]   = useState(false);
+  const [query, setQuery] = useState("");
+  const ref               = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    function onClickOutside(e: MouseEvent) {
+    function onOut(e: MouseEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
     }
-    document.addEventListener("mousedown", onClickOutside);
-    return () => document.removeEventListener("mousedown", onClickOutside);
+    document.addEventListener("mousedown", onOut);
+    return () => document.removeEventListener("mousedown", onOut);
   }, []);
 
-  const active  = services.filter((s) => s.active);
+  const active   = services.filter((s) => s.active);
   const filtered = active.filter((s) =>
     !query || s.nom.toLowerCase().includes(query.toLowerCase()) || s.code.toLowerCase().includes(query.toLowerCase())
   );
@@ -64,28 +61,19 @@ function ServiceDropdown({
       <button type="button" onClick={() => setOpen((o) => !o)}
         className="w-full flex items-center justify-between gap-2 rounded-xl border border-outline-variant bg-surface-container-lowest px-3 py-2 text-body-md text-on-surface text-left hover:border-primary transition-colors">
         <span className={selected.length === 0 ? "text-on-surface-variant/50" : ""}>
-          {selected.length === 0
-            ? "Sélectionner des services…"
-            : selectedServices.map((s) => s.nom).join(", ")}
+          {selected.length === 0 ? "Sélectionner des services…" : selectedServices.map((s) => s.nom).join(", ")}
         </span>
         <span className="text-on-surface-variant text-xs shrink-0">▾</span>
       </button>
-
       {open && (
         <div className="absolute z-50 top-full mt-1 left-0 right-0 rounded-xl border border-outline-variant bg-surface-container-lowest shadow-lg overflow-hidden">
           <div className="p-2 border-b border-outline-variant">
-            <input
-              autoFocus
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
+            <input autoFocus value={query} onChange={(e) => setQuery(e.target.value)}
               placeholder="Rechercher…"
-              className="w-full rounded-lg border border-outline-variant px-3 py-1.5 text-body-sm text-on-surface focus:outline-none focus:border-primary"
-            />
+              className="w-full rounded-lg border border-outline-variant px-3 py-1.5 text-body-sm text-on-surface focus:outline-none focus:border-primary" />
           </div>
           <div className="max-h-48 overflow-y-auto">
-            {filtered.length === 0 && (
-              <p className="px-4 py-3 text-body-sm text-on-surface-variant">Aucun service trouvé.</p>
-            )}
+            {filtered.length === 0 && <p className="px-4 py-3 text-body-sm text-on-surface-variant">Aucun service trouvé.</p>}
             {filtered.map((s) => {
               const checked = selected.includes(s.id);
               return (
@@ -120,24 +108,20 @@ function ServiceDropdown({
 
 // ─── Employee search ──────────────────────────────────────────────────────────
 
-function EmployeeSearch({
-  onSelect,
-}: {
-  onSelect: (emp: HREmployee) => void;
-}) {
-  const [query, setQuery]       = useState("");
-  const [results, setResults]   = useState<HREmployee[]>([]);
-  const [loading, setLoading]   = useState(false);
-  const [open, setOpen]         = useState(false);
-  const ref                     = useRef<HTMLDivElement>(null);
-  const debounceRef             = useRef<ReturnType<typeof setTimeout> | null>(null);
+function EmployeeSearch({ onSelect }: { onSelect: (emp: HREmployee) => void }) {
+  const [query, setQuery]     = useState("");
+  const [results, setResults] = useState<HREmployee[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [open, setOpen]       = useState(false);
+  const ref                   = useRef<HTMLDivElement>(null);
+  const debounceRef           = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    function onClickOutside(e: MouseEvent) {
+    function onOut(e: MouseEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
     }
-    document.addEventListener("mousedown", onClickOutside);
-    return () => document.removeEventListener("mousedown", onClickOutside);
+    document.addEventListener("mousedown", onOut);
+    return () => document.removeEventListener("mousedown", onOut);
   }, []);
 
   const handleQuery = useCallback((q: string) => {
@@ -146,15 +130,9 @@ function EmployeeSearch({
     if (!q.trim()) { setResults([]); setOpen(false); return; }
     debounceRef.current = setTimeout(async () => {
       setLoading(true);
-      try {
-        const res = await searchHREmployees(q);
-        setResults(res);
-        setOpen(true);
-      } catch {
-        setResults([]);
-      } finally {
-        setLoading(false);
-      }
+      try { const res = await searchHREmployees(q); setResults(res); setOpen(true); }
+      catch { setResults([]); }
+      finally { setLoading(false); }
     }, 300);
   }, []);
 
@@ -167,22 +145,14 @@ function EmployeeSearch({
   return (
     <div ref={ref} className="relative">
       <div className="relative">
-        <PersonSearchOutlined
-          style={{ fontSize: 18 }}
-          className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none"
-        />
-        <input
-          value={query}
-          onChange={(e) => handleQuery(e.target.value)}
+        <PersonSearchOutlined style={{ fontSize: 18 }}
+          className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none" />
+        <input value={query} onChange={(e) => handleQuery(e.target.value)}
           onFocus={() => results.length > 0 && setOpen(true)}
           placeholder="Rechercher un employé RH…"
-          className="w-full rounded-xl border border-outline-variant bg-surface-container-lowest pl-9 pr-3 py-2 text-body-md text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary transition-colors"
-        />
-        {loading && (
-          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-label-sm text-on-surface-variant">…</span>
-        )}
+          className="w-full rounded-xl border border-outline-variant bg-surface-container-lowest pl-9 pr-3 py-2 text-body-md text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary transition-colors" />
+        {loading && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-label-sm text-on-surface-variant">…</span>}
       </div>
-
       {open && results.length > 0 && (
         <div className="absolute z-50 top-full mt-1 left-0 right-0 rounded-xl border border-outline-variant bg-surface-container-lowest shadow-lg overflow-hidden">
           <div className="max-h-56 overflow-y-auto divide-y divide-outline-variant">
@@ -208,17 +178,26 @@ function EmployeeSearch({
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function StaffPage() {
-  const { can } = usePermissions();
+  const { can }   = usePermissions();
   const canView   = can("hosto.staff.view");
   const canManage = can("hosto.staff.manage");
 
-  const [staff, setStaff]       = useState<HostoStaff[]>([]);
   const [services, setServices] = useState<Service[]>([]);
-  const [loading, setLoading]   = useState(true);
-  const [error, setError]       = useState<string | null>(null);
 
-  const [filterService, setFilterService] = useState<string>("");
-  const [filterRole, setFilterRole]       = useState<string>("");
+  // List state
+  const [items, setItems]   = useState<HostoStaff[]>([]);
+  const [total, setTotal]   = useState(0);
+  const [pages, setPages]   = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [error, setError]   = useState<string | null>(null);
+
+  // Filters
+  const [search, setSearch]           = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [filterService, setFilterService]     = useState<string>("");
+  const [filterRole, setFilterRole]           = useState<string>("");
+  const [filterActive, setFilterActive]       = useState<string>("all"); // "all" | "true" | "false"
+  const [page, setPage]               = useState(1);
 
   // Create form
   const emptyForm = { employee_id: 0, nom_cache: "", prenom_cache: "", role: "MEDECIN" as StaffRole, service_ids: [] as number[], specialite: "" };
@@ -228,24 +207,50 @@ export default function StaffPage() {
   const [saving, setSaving]                 = useState(false);
   const [formError, setFormError]           = useState<string | null>(null);
 
-  // Edit form
+  // Edit drawer
   const [editTarget, setEditTarget] = useState<HostoStaff | null>(null);
   const [editForm, setEditForm]     = useState<{ role: StaffRole; specialite: string; service_ids: number[] }>({
     role: "MEDECIN", specialite: "", service_ids: [],
   });
-  const [editSaving, setEditSaving]   = useState(false);
-  const [editError, setEditError]     = useState<string | null>(null);
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError]   = useState<string | null>(null);
 
   // Delete confirm
   const [deleteTarget, setDeleteTarget] = useState<HostoStaff | null>(null);
 
+  // Debounce search
+  useEffect(() => {
+    const t = setTimeout(() => { setDebouncedSearch(search); setPage(1); }, 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  // Load services once
+  useEffect(() => {
+    if (!canView) return;
+    listServices().then(setServices).catch(() => {});
+  }, [canView]);
+
+  // Fetch staff (server-side)
   useEffect(() => {
     if (!canView) { setLoading(false); return; }
-    Promise.all([listStaff({ active_only: false }), listServices()])
-      .then(([s, svcs]) => { setStaff(s); setServices(svcs); })
+    setLoading(true);
+    setError(null);
+    listStaff({
+      q: debouncedSearch || undefined,
+      service_id: filterService ? Number(filterService) : undefined,
+      role: filterRole || undefined,
+      active: filterActive === "all" ? null : filterActive === "true",
+      page,
+      page_size: PAGE_SIZE,
+    })
+      .then((res) => { setItems(res.items); setTotal(res.total); setPages(res.pages); })
       .catch(() => setError("Impossible de charger le personnel."))
       .finally(() => setLoading(false));
-  }, [canView]);
+  }, [canView, debouncedSearch, filterService, filterRole, filterActive, page]);
+
+  function resetFilters() {
+    setSearch(""); setFilterService(""); setFilterRole(""); setFilterActive("all"); setPage(1);
+  }
 
   function handleEmployeeSelect(emp: HREmployee) {
     setSelectedEmployee(emp);
@@ -253,28 +258,20 @@ export default function StaffPage() {
   }
 
   function resetForm() {
-    setShowForm(false);
-    setSelectedEmployee(null);
-    setForm(emptyForm);
-    setFormError(null);
+    setShowForm(false); setSelectedEmployee(null); setForm(emptyForm); setFormError(null);
   }
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     if (!selectedEmployee) { setFormError("Veuillez sélectionner un employé."); return; }
-    setSaving(true);
-    setFormError(null);
+    setSaving(true); setFormError(null);
     try {
-      const member = await createStaff({
-        employee_id: form.employee_id,
-        nom_cache: form.nom_cache,
-        prenom_cache: form.prenom_cache,
-        role: form.role,
-        specialite: form.specialite || undefined,
-        service_ids: form.service_ids,
+      await createStaff({
+        employee_id: form.employee_id, nom_cache: form.nom_cache, prenom_cache: form.prenom_cache,
+        role: form.role, specialite: form.specialite || undefined, service_ids: form.service_ids,
       });
-      setStaff((s) => [...s, member]);
       resetForm();
+      setPage(1);
     } catch (err) {
       setFormError(err instanceof Error ? err.message : "Erreur.");
     } finally {
@@ -284,32 +281,22 @@ export default function StaffPage() {
 
   function openEdit(member: HostoStaff) {
     setEditTarget(member);
-    setEditForm({
-      role: member.role,
-      specialite: member.specialite ?? "",
-      service_ids: member.services.map((s) => s.id),
-    });
+    setEditForm({ role: member.role, specialite: member.specialite ?? "", service_ids: member.services.map((s) => s.id) });
     setEditError(null);
     setShowForm(false);
   }
 
-  function cancelEdit() {
-    setEditTarget(null);
-    setEditError(null);
-  }
+  function cancelEdit() { setEditTarget(null); setEditError(null); }
 
   async function handleEditSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!editTarget) return;
-    setEditSaving(true);
-    setEditError(null);
+    setEditSaving(true); setEditError(null);
     try {
       const updated = await updateStaff(editTarget.id, {
-        role: editForm.role,
-        specialite: editForm.specialite || undefined,
-        service_ids: editForm.service_ids,
+        role: editForm.role, specialite: editForm.specialite || undefined, service_ids: editForm.service_ids,
       });
-      setStaff((s) => s.map((x) => (x.id === updated.id ? updated : x)));
+      setItems((s) => s.map((x) => (x.id === updated.id ? updated : x)));
       cancelEdit();
     } catch (err) {
       setEditError(err instanceof Error ? err.message : "Erreur lors de la modification.");
@@ -321,28 +308,22 @@ export default function StaffPage() {
   async function toggleActive(member: HostoStaff) {
     try {
       const updated = await updateStaff(member.id, { active: !member.active });
-      setStaff((s) => s.map((x) => (x.id === member.id ? updated : x)));
+      setItems((s) => s.map((x) => (x.id === updated.id ? updated : x)));
     } catch {}
   }
 
   async function handleDelete(member: HostoStaff) {
     try {
       await deleteStaff(member.id);
-      setStaff((s) => s.filter((x) => x.id !== member.id));
+      setItems((s) => s.filter((x) => x.id !== member.id));
+      setTotal((t) => t - 1);
       setDeleteTarget(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Impossible de supprimer.");
     }
   }
 
-  const filtered = staff.filter((m) => {
-    if (filterService && !m.services.some((s) => String(s.id) === filterService)) return false;
-    if (filterRole && m.role !== filterRole) return false;
-    return true;
-  });
-
-  const active   = filtered.filter((m) => m.active);
-  const inactive = filtered.filter((m) => !m.active);
+  const hasFilters = !!(debouncedSearch || filterService || filterRole || filterActive !== "all");
 
   return (
     <DashboardShell>
@@ -353,10 +334,11 @@ export default function StaffPage() {
           <div>
             <h1 className="text-headline-sm font-display text-on-surface">Personnel médical</h1>
             <p className="text-body-sm text-on-surface-variant mt-0.5">
-              {staff.length} membre{staff.length !== 1 ? "s" : ""} enregistré{staff.length !== 1 ? "s" : ""}
+              {total} membre{total !== 1 ? "s" : ""}
+              {hasFilters ? " trouvé" : " enregistré"}{total !== 1 ? "s" : ""}
             </p>
           </div>
-          {canManage && !showForm && !editTarget && (
+          {canManage && !showForm && (
             <button onClick={() => setShowForm(true)}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-on-primary text-body-md font-medium hover:bg-primary-container transition-colors">
               <AddOutlined style={{ fontSize: 18 }} />
@@ -367,21 +349,49 @@ export default function StaffPage() {
 
         {error && <p className="text-body-sm text-error bg-error-container/40 rounded-xl px-4 py-3">{error}</p>}
 
-        {/* Filters */}
-        <div className="flex gap-3 items-center flex-wrap">
-          <FilterListOutlined style={{ fontSize: 18 }} className="text-on-surface-variant" />
-          <select
-            className="rounded-xl border border-outline-variant bg-surface-container-lowest px-3 py-1.5 text-body-sm text-on-surface-variant focus:outline-none"
-            value={filterService} onChange={(e) => setFilterService(e.target.value)}>
-            <option value="">Tous les services</option>
-            {services.map((s) => <option key={s.id} value={String(s.id)}>{s.nom}</option>)}
-          </select>
-          <select
-            className="rounded-xl border border-outline-variant bg-surface-container-lowest px-3 py-1.5 text-body-sm text-on-surface-variant focus:outline-none"
-            value={filterRole} onChange={(e) => setFilterRole(e.target.value)}>
-            <option value="">Tous les rôles</option>
-            {ROLES.map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
-          </select>
+        {/* Search + Filters */}
+        <div className="space-y-3">
+          <div className="relative">
+            <SearchOutlined style={{ fontSize: 18 }}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Rechercher par nom ou prénom…"
+              className="w-full rounded-xl border border-outline-variant bg-surface-container-lowest pl-9 pr-9 py-2 text-body-md text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary transition-colors"
+            />
+            {search && (
+              <button onClick={() => setSearch("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface transition-colors">
+                <CloseOutlined style={{ fontSize: 16 }} />
+              </button>
+            )}
+          </div>
+
+          <div className="flex gap-3 items-center flex-wrap">
+            <FilterListOutlined style={{ fontSize: 18 }} className="text-on-surface-variant" />
+            <select className="rounded-xl border border-outline-variant bg-surface-container-lowest px-3 py-1.5 text-body-sm text-on-surface-variant focus:outline-none"
+              value={filterService} onChange={(e) => { setFilterService(e.target.value); setPage(1); }}>
+              <option value="">Tous les services</option>
+              {services.map((s) => <option key={s.id} value={String(s.id)}>{s.nom}</option>)}
+            </select>
+            <select className="rounded-xl border border-outline-variant bg-surface-container-lowest px-3 py-1.5 text-body-sm text-on-surface-variant focus:outline-none"
+              value={filterRole} onChange={(e) => { setFilterRole(e.target.value); setPage(1); }}>
+              <option value="">Tous les rôles</option>
+              {ROLES.map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
+            </select>
+            <select className="rounded-xl border border-outline-variant bg-surface-container-lowest px-3 py-1.5 text-body-sm text-on-surface-variant focus:outline-none"
+              value={filterActive} onChange={(e) => { setFilterActive(e.target.value); setPage(1); }}>
+              <option value="all">Tous (actifs + inactifs)</option>
+              <option value="true">Actifs uniquement</option>
+              <option value="false">Inactifs uniquement</option>
+            </select>
+            {hasFilters && (
+              <button onClick={resetFilters} className="text-body-sm text-on-surface-variant hover:text-on-surface underline transition-colors">
+                Réinitialiser
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Create form */}
@@ -394,7 +404,6 @@ export default function StaffPage() {
                 Recherchez l&apos;employé dans le système RH, puis configurez son rôle médical.
               </p>
             </div>
-
             <div className="space-y-2">
               <label className="text-label-md font-medium text-on-surface-variant">
                 Employé RH <span className="text-error">*</span>
@@ -420,12 +429,9 @@ export default function StaffPage() {
                 </div>
               )}
             </div>
-
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-1">
-                <label className="text-label-md font-medium text-on-surface-variant">
-                  Rôle médical <span className="text-error">*</span>
-                </label>
+                <label className="text-label-md font-medium text-on-surface-variant">Rôle médical <span className="text-error">*</span></label>
                 <select className={selectCls} value={form.role}
                   onChange={(e) => setForm((f) => ({ ...f, role: e.target.value as StaffRole }))}>
                   {ROLES.map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
@@ -438,18 +444,12 @@ export default function StaffPage() {
                   placeholder="Ex: Cardiologie, Pédiatrie…" />
               </div>
             </div>
-
             <div className="flex flex-col gap-1">
               <label className="text-label-md font-medium text-on-surface-variant">Service(s)</label>
-              <ServiceDropdown
-                services={services}
-                selected={form.service_ids}
-                onChange={(ids) => setForm((f) => ({ ...f, service_ids: ids }))}
-              />
+              <ServiceDropdown services={services} selected={form.service_ids}
+                onChange={(ids) => setForm((f) => ({ ...f, service_ids: ids }))} />
             </div>
-
             {formError && <p className="text-body-sm text-error">{formError}</p>}
-
             <div className="flex gap-3 justify-end">
               <button type="button" onClick={resetForm} disabled={saving}
                 className="px-4 py-2 rounded-xl text-body-md text-on-surface-variant hover:bg-surface-container transition-colors disabled:opacity-50">
@@ -462,64 +462,6 @@ export default function StaffPage() {
             </div>
           </form>
         )}
-
-        {/* Edit drawer */}
-        {editTarget && (
-          <RightDrawer
-            title={`${editTarget.prenom_cache} ${editTarget.nom_cache}`}
-            onClose={cancelEdit}
-          >
-            <form onSubmit={handleEditSubmit} className="h-full flex flex-col gap-5">
-              <div className="flex-1 space-y-5 overflow-y-auto">
-                <p className="text-body-sm text-on-surface-variant">
-                  Modifiez le rôle, la spécialité et les services affectés.
-                </p>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="flex flex-col gap-1">
-                    <label className="text-label-md font-medium text-on-surface-variant">
-                      Rôle médical <span className="text-error">*</span>
-                    </label>
-                    <select className={selectCls} value={editForm.role}
-                      onChange={(e) => setEditForm((f) => ({ ...f, role: e.target.value as StaffRole }))}>
-                      {ROLES.map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
-                    </select>
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-label-md font-medium text-on-surface-variant">Spécialité</label>
-                    <input className={inputCls} value={editForm.specialite}
-                      onChange={(e) => setEditForm((f) => ({ ...f, specialite: e.target.value }))}
-                      placeholder="Ex: Cardiologie, Pédiatrie…" />
-                  </div>
-                </div>
-
-                <div className="flex flex-col gap-1">
-                  <label className="text-label-md font-medium text-on-surface-variant">Service(s)</label>
-                  <ServiceDropdown
-                    services={services}
-                    selected={editForm.service_ids}
-                    onChange={(ids) => setEditForm((f) => ({ ...f, service_ids: ids }))}
-                  />
-                </div>
-
-                {editError && <p className="text-body-sm text-error">{editError}</p>}
-              </div>
-
-              <div className="shrink-0 flex gap-3 pt-4 border-t border-outline-variant">
-                <button type="submit" disabled={editSaving}
-                  className="flex-1 py-2 rounded-xl bg-primary text-on-primary text-body-md font-medium hover:bg-primary-container transition-colors disabled:opacity-50">
-                  {editSaving ? "Enregistrement…" : "Enregistrer"}
-                </button>
-                <button type="button" onClick={cancelEdit} disabled={editSaving}
-                  className="px-5 py-2 rounded-xl text-body-md text-on-surface-variant border border-outline-variant hover:bg-surface-container transition-colors disabled:opacity-50">
-                  Annuler
-                </button>
-              </div>
-            </form>
-          </RightDrawer>
-        )}
-
-        {loading && <p className="text-body-sm text-on-surface-variant">Chargement…</p>}
 
         {/* Delete confirm */}
         {deleteTarget && (
@@ -541,85 +483,145 @@ export default function StaffPage() {
           </div>
         )}
 
-        {/* Staff list */}
-        {!loading && active.length === 0 && inactive.length === 0 && (
+        {/* List */}
+        {loading ? (
+          <p className="text-body-sm text-on-surface-variant py-8 text-center">Chargement…</p>
+        ) : items.length === 0 ? (
           <p className="text-body-sm text-on-surface-variant text-center py-12">
-            Aucun membre du personnel enregistré.
+            {hasFilters ? "Aucun résultat pour ces critères." : "Aucun membre du personnel enregistré."}
           </p>
-        )}
-
-        {!loading && active.length > 0 && (
-          <StaffTable title="Actif" items={active} canManage={canManage}
-            onEdit={openEdit} onToggle={toggleActive} onDelete={setDeleteTarget} />
-        )}
-        {!loading && inactive.length > 0 && (
-          <StaffTable title="Inactif" items={inactive} canManage={canManage}
-            onEdit={openEdit} onToggle={toggleActive} onDelete={setDeleteTarget} dimmed />
-        )}
-      </div>
-    </DashboardShell>
-  );
-}
-
-function StaffTable({
-  title, items, canManage, onEdit, onToggle, onDelete, dimmed,
-}: {
-  title: string; items: HostoStaff[]; canManage: boolean;
-  onEdit: (m: HostoStaff) => void;
-  onToggle: (m: HostoStaff) => void;
-  onDelete: (m: HostoStaff) => void;
-  dimmed?: boolean;
-}) {
-  return (
-    <div>
-      <h2 className="text-body-sm font-semibold text-on-surface-variant mb-3 uppercase tracking-wider">{title}</h2>
-      <div className={`rounded-2xl border border-outline-variant overflow-hidden divide-y divide-outline-variant ${dimmed ? "opacity-60" : ""}`}>
-        {items.map((m) => (
-          <div key={m.id} className="flex items-center gap-4 px-5 py-3.5">
-            <div className="w-10 h-10 rounded-full bg-secondary/10 flex items-center justify-center shrink-0 text-secondary font-semibold text-body-md select-none">
-              {m.prenom_cache.charAt(0)}{m.nom_cache.charAt(0)}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-body-md font-medium text-on-surface">
-                  {m.prenom_cache} {m.nom_cache}
-                </span>
-                <span className={`text-label-sm px-2 py-0.5 rounded-full font-medium ${ROLE_COLORS[m.role]}`}>
-                  {ROLE_LABELS[m.role]}
-                </span>
-              </div>
-              <div className="flex items-center gap-3 mt-0.5 flex-wrap">
-                {m.specialite && (
-                  <span className="text-body-sm text-on-surface-variant">{m.specialite}</span>
-                )}
-                {m.services.length > 0 && (
-                  <span className="inline-flex items-center gap-1 text-body-sm text-on-surface-variant">
-                    <MedicalServicesOutlined style={{ fontSize: 13 }} />
-                    {m.services.map((s) => s.nom).join(", ")}
-                  </span>
+        ) : (
+          <div className="rounded-2xl border border-outline-variant overflow-hidden divide-y divide-outline-variant">
+            {items.map((m) => (
+              <div key={m.id} className="flex items-center gap-4 px-5 py-3.5">
+                <div className="w-10 h-10 rounded-full bg-secondary/10 flex items-center justify-center shrink-0 text-secondary font-semibold text-body-md select-none">
+                  {m.prenom_cache.charAt(0)}{m.nom_cache.charAt(0)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-body-md font-medium text-on-surface">
+                      {m.prenom_cache} {m.nom_cache}
+                    </span>
+                    <span className={`text-label-sm px-2 py-0.5 rounded-full font-medium ${ROLE_COLORS[m.role]}`}>
+                      {ROLE_LABELS[m.role]}
+                    </span>
+                    {!m.active && (
+                      <span className="text-label-sm px-2 py-0.5 rounded-full bg-surface-container text-on-surface-variant">
+                        Inactif
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3 mt-0.5 flex-wrap">
+                    {m.specialite && <span className="text-body-sm text-on-surface-variant">{m.specialite}</span>}
+                    {m.services.length > 0 && (
+                      <span className="inline-flex items-center gap-1 text-body-sm text-on-surface-variant">
+                        <MedicalServicesOutlined style={{ fontSize: 13 }} />
+                        {m.services.map((s) => s.nom).join(", ")}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                {canManage && (
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button onClick={() => openEdit(m)} title="Modifier"
+                      className="p-1.5 rounded-lg text-on-surface-variant hover:text-primary hover:bg-primary/8 transition-colors">
+                      <EditOutlined style={{ fontSize: 17 }} />
+                    </button>
+                    <button onClick={() => toggleActive(m)}
+                      className="px-3 py-1.5 rounded-lg text-label-sm text-on-surface-variant border border-outline-variant hover:bg-surface-container transition-colors">
+                      {m.active ? "Désactiver" : "Réactiver"}
+                    </button>
+                    <button onClick={() => setDeleteTarget(m)}
+                      className="p-1.5 rounded-lg text-on-surface-variant hover:text-error hover:bg-error/8 transition-colors">
+                      <DeleteOutlined style={{ fontSize: 17 }} />
+                    </button>
+                  </div>
                 )}
               </div>
-            </div>
-            {canManage && (
-              <div className="flex items-center gap-1 shrink-0">
-                <button onClick={() => onEdit(m)}
-                  title="Modifier"
-                  className="p-1.5 rounded-lg text-on-surface-variant hover:text-primary hover:bg-primary/8 transition-colors">
-                  <EditOutlined style={{ fontSize: 17 }} />
-                </button>
-                <button onClick={() => onToggle(m)}
-                  className="px-3 py-1.5 rounded-lg text-label-sm text-on-surface-variant border border-outline-variant hover:bg-surface-container transition-colors">
-                  {m.active ? "Désactiver" : "Réactiver"}
-                </button>
-                <button onClick={() => onDelete(m)}
-                  className="p-1.5 rounded-lg text-on-surface-variant hover:text-error hover:bg-error/8 transition-colors">
-                  <DeleteOutlined style={{ fontSize: 17 }} />
-                </button>
-              </div>
-            )}
+            ))}
           </div>
-        ))}
+        )}
+
+        {/* Pagination */}
+        {pages > 1 && (
+          <div className="flex items-center justify-between gap-4">
+            <p className="text-body-sm text-on-surface-variant">
+              Page {page} sur {pages} · {total} résultat{total !== 1 ? "s" : ""}
+            </p>
+            <div className="flex items-center gap-1">
+              <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
+                className="p-1.5 rounded-lg text-on-surface-variant border border-outline-variant hover:bg-surface-container transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                <ChevronLeftOutlined style={{ fontSize: 18 }} />
+              </button>
+              {Array.from({ length: pages }, (_, i) => i + 1)
+                .filter((p) => p === 1 || p === pages || Math.abs(p - page) <= 1)
+                .reduce<(number | "…")[]>((acc, p, i, arr) => {
+                  if (i > 0 && p - (arr[i - 1] as number) > 1) acc.push("…");
+                  acc.push(p);
+                  return acc;
+                }, [])
+                .map((p, i) =>
+                  p === "…" ? (
+                    <span key={`ellipsis-${i}`} className="px-2 text-body-sm text-on-surface-variant">…</span>
+                  ) : (
+                    <button key={p} onClick={() => setPage(p as number)}
+                      className={`min-w-[32px] h-8 px-2 rounded-lg text-body-sm font-medium transition-colors ${page === p ? "bg-primary text-on-primary" : "text-on-surface-variant border border-outline-variant hover:bg-surface-container"}`}>
+                      {p}
+                    </button>
+                  )
+                )}
+              <button onClick={() => setPage((p) => Math.min(pages, p + 1))} disabled={page === pages}
+                className="p-1.5 rounded-lg text-on-surface-variant border border-outline-variant hover:bg-surface-container transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                <ChevronRightOutlined style={{ fontSize: 18 }} />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
-    </div>
+
+      {/* Edit drawer */}
+      {editTarget && (
+        <RightDrawer title={`${editTarget.prenom_cache} ${editTarget.nom_cache}`} onClose={cancelEdit}>
+          <form onSubmit={handleEditSubmit} className="h-full flex flex-col gap-5">
+            <div className="flex-1 space-y-5 overflow-y-auto">
+              <p className="text-body-sm text-on-surface-variant">
+                Modifiez le rôle, la spécialité et les services affectés.
+              </p>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex flex-col gap-1">
+                  <label className="text-label-md font-medium text-on-surface-variant">Rôle médical <span className="text-error">*</span></label>
+                  <select className={selectCls} value={editForm.role}
+                    onChange={(e) => setEditForm((f) => ({ ...f, role: e.target.value as StaffRole }))}>
+                    {ROLES.map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
+                  </select>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-label-md font-medium text-on-surface-variant">Spécialité</label>
+                  <input className={inputCls} value={editForm.specialite}
+                    onChange={(e) => setEditForm((f) => ({ ...f, specialite: e.target.value }))}
+                    placeholder="Ex: Cardiologie, Pédiatrie…" />
+                </div>
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-label-md font-medium text-on-surface-variant">Service(s)</label>
+                <ServiceDropdown services={services} selected={editForm.service_ids}
+                  onChange={(ids) => setEditForm((f) => ({ ...f, service_ids: ids }))} />
+              </div>
+              {editError && <p className="text-body-sm text-error">{editError}</p>}
+            </div>
+            <div className="shrink-0 flex gap-3 pt-4 border-t border-outline-variant">
+              <button type="submit" disabled={editSaving}
+                className="flex-1 py-2 rounded-xl bg-primary text-on-primary text-body-md font-medium hover:bg-primary-container transition-colors disabled:opacity-50">
+                {editSaving ? "Enregistrement…" : "Enregistrer"}
+              </button>
+              <button type="button" onClick={cancelEdit} disabled={editSaving}
+                className="px-5 py-2 rounded-xl text-body-md text-on-surface-variant border border-outline-variant hover:bg-surface-container transition-colors disabled:opacity-50">
+                Annuler
+              </button>
+            </div>
+          </form>
+        </RightDrawer>
+      )}
+    </DashboardShell>
   );
 }

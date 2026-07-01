@@ -258,12 +258,30 @@ export interface StaffCreateInput {
 }
 export interface StaffUpdateInput { role?: string; specialite?: string; service_ids?: number[]; active?: boolean }
 
-export async function listStaff(params?: { service_id?: number; role?: string; active_only?: boolean }): Promise<HostoStaff[]> {
-  const q = new URLSearchParams();
-  if (params?.service_id) q.set("service_id", String(params.service_id));
-  if (params?.role) q.set("role", params.role);
-  if (params?.active_only === false) q.set("active_only", "false");
-  return parseResponse(await apiFetch(`/api/staff${q.toString() ? `?${q}` : ""}`));
+export interface StaffPage {
+  items: HostoStaff[];
+  total: number;
+  page: number;
+  pages: number;
+}
+
+export async function listStaff(params?: {
+  q?: string;
+  service_id?: number;
+  role?: string;
+  active?: boolean | null;
+  page?: number;
+  page_size?: number;
+}): Promise<StaffPage> {
+  const qs = new URLSearchParams();
+  if (params?.q) qs.set("q", params.q);
+  if (params?.service_id) qs.set("service_id", String(params.service_id));
+  if (params?.role) qs.set("role", params.role);
+  if (params?.active === true) qs.set("active", "true");
+  if (params?.active === false) qs.set("active", "false");
+  if (params?.page && params.page > 1) qs.set("page", String(params.page));
+  if (params?.page_size) qs.set("page_size", String(params.page_size));
+  return parseResponse(await apiFetch(`/api/staff${qs.toString() ? `?${qs}` : ""}`));
 }
 
 export async function createStaff(data: StaffCreateInput): Promise<HostoStaff> {

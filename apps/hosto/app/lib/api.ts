@@ -164,6 +164,30 @@ export async function deletePatient(id: number): Promise<void> {
   }
 }
 
+// ─── HR Employees ────────────────────────────────────────────────────────────
+
+export interface HREmployee {
+  id: number;
+  first_name: string;
+  last_name: string;
+  email: string;
+  job_title: string | null;
+  group_name: string | null;
+}
+
+export async function searchHREmployees(q: string): Promise<HREmployee[]> {
+  const all: HREmployee[] = await parseResponse(await apiFetch("/api/hr-employees"));
+  if (!q.trim()) return all;
+  const lower = q.toLowerCase();
+  return all.filter(
+    (e) =>
+      e.first_name.toLowerCase().includes(lower) ||
+      e.last_name.toLowerCase().includes(lower) ||
+      e.email.toLowerCase().includes(lower) ||
+      (e.job_title ?? "").toLowerCase().includes(lower),
+  );
+}
+
 // ─── Services ────────────────────────────────────────────────────────────────
 
 export interface Service {

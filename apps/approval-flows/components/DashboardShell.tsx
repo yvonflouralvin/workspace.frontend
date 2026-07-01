@@ -2,9 +2,11 @@
 
 import { useSessionStore } from "@repo/auth/store/session.store";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
+import { apiFetch } from "@repo/network/client";
 import { AppShell } from "@repo/ui/shell/AppShell";
 import { Sidebar } from "@repo/ui/shell/Sidebar";
 import { TopBar } from "@repo/ui/shell/TopBar";
+import type { SearchSection } from "@repo/ui/shell/TopBar";
 import { UserFooter } from "@repo/ui/shell/UserFooter";
 import { WorkspaceSwitcher } from "@repo/ui/WorkspaceSwitcher";
 import { HomeOutlined, AccountTreeOutlined, AssignmentTurnedInOutlined, OutboxOutlined } from "@mui/icons-material";
@@ -40,6 +42,16 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     window.location.href = process.env.NEXT_PUBLIC_AUTH_API_AUTH_DOMAIN ?? "http://localhost:3001";
   }
 
+  async function handleSearch(q: string): Promise<SearchSection[]> {
+    try {
+      const res = await apiFetch(`/api/search?q=${encodeURIComponent(q)}`);
+      if (!res.ok) return [];
+      return res.json();
+    } catch {
+      return [];
+    }
+  }
+
   return (
     <AppShell
       sidebar={
@@ -56,6 +68,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           user={userSummary}
           preferencesUrl="/"
           onLogout={handleLogout}
+          onSearch={handleSearch}
         />
       }
     >

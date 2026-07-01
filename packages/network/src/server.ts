@@ -36,6 +36,73 @@ export async function encryptResponseBody(data: unknown, init?: { status?: numbe
   return NextResponse.json(envelope, init);
 }
 
+interface SearchDomainEntry {
+  domain_key: string;
+  label: string;
+  app_name: string;
+  search_url: string;
+  required_permission: string | null;
+}
+
+interface SearchResult {
+  id: number | string;
+  title: string;
+  subtitle: string | null;
+  url: string;
+}
+
+export interface SearchSection {
+  domain_key: string;
+  label: string;
+  app_name: string;
+  results: SearchResult[];
+}
+
+export async function globalSearchHandler(
+  q: string,
+  cookieHeader: string,
+  authApiUrl: string
+): Promise<NextResponse> {
+  if (q.length < 2) return encryptResponseBody([]);
+
+  const domainsRes = await fetch(`${authApiUrl}/auth/apps/search-domains`, {
+    headers: { cookie: cookieHeader },
+    cache: "no-store",
+  });
+
+  if (!domainsRes.ok) return encryptResponseBody([]);
+
+  const domains: SearchDomainEntry[] = await domainsRes.json();
+  if (domains.length === 0) return encryptResponseBody([]);
+
+  const sections = await Promise.all(
+    domains.map(async (domain): Promise<SearchSection | null> => {
+      try {
+        const url = new URL(domain.search_url);
+        url.searchParams.set("q", q);
+        url.searchParams.set("limit", "3");
+
+        const res = await fetch(url.toString(), {
+          headers: { cookie: cookieHeader },
+          signal: AbortSignal.timeout(3000),
+          cache: "no-store",
+        });
+
+        if (!res.ok) return null;
+
+        const results: SearchResult[] = await res.json();
+        if (results.length === 0) return null;
+
+        return { domain_key: domain.domain_key, label: domain.label, app_name: domain.app_name, results };
+      } catch {
+        return null;
+      }
+    })
+  );
+
+  return encryptResponseBody(sections.filter((s): s is SearchSection => s !== null));
+}
+
 export async function forwardToBackend(
   request: Request,
   backendUrl: string,

@@ -219,8 +219,7 @@ export interface HostoStaff {
   prenom_cache: string;
   role: StaffRole;
   specialite: string | null;
-  service_id: number | null;
-  service: Service | null;
+  services: Service[];
   active: boolean;
   created_at: string;
 }
@@ -231,9 +230,9 @@ export interface StaffCreateInput {
   prenom_cache: string;
   role: string;
   specialite?: string;
-  service_id?: number;
+  service_ids?: number[];
 }
-export interface StaffUpdateInput { role?: string; specialite?: string; service_id?: number | null; active?: boolean }
+export interface StaffUpdateInput { role?: string; specialite?: string; service_ids?: number[]; active?: boolean }
 
 export async function listStaff(params?: { service_id?: number; role?: string; active_only?: boolean }): Promise<HostoStaff[]> {
   const q = new URLSearchParams();

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { LockResetOutlined } from "@mui/icons-material";
+import { LockResetOutlined, VisibilityOutlined, VisibilityOffOutlined } from "@mui/icons-material";
 import { RightDrawer } from "@repo/ui/RightDrawer";
 import { Badge } from "@repo/ui/Badge";
 import type { Member } from "@/app/lib/types";
@@ -30,6 +30,8 @@ export function MemberDetailDrawer({
   const [resetLoading, setResetLoading] = useState(false);
   const [resetError, setResetError] = useState<string | null>(null);
   const [resetSuccess, setResetSuccess] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   async function handleResetSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -67,6 +69,8 @@ export function MemberDetailDrawer({
     setConfirmPassword("");
     setResetError(null);
     setResetSuccess(false);
+    setShowNewPassword(false);
+    setShowConfirmPassword(false);
   }
 
   return (
@@ -117,23 +121,47 @@ export function MemberDetailDrawer({
           <div className="border border-outline-variant rounded-xl p-4 space-y-3">
             <p className="text-sm font-medium text-on-surface">Nouveau mot de passe</p>
             <form onSubmit={handleResetSubmit} className="space-y-3">
-              <input
-                type="password"
-                placeholder="Nouveau mot de passe"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                className="w-full px-3 py-2 text-sm rounded-lg border border-outline-variant bg-surface focus:outline-none focus:border-primary"
-                autoFocus
-                disabled={resetLoading}
-              />
-              <input
-                type="password"
-                placeholder="Confirmer le mot de passe"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full px-3 py-2 text-sm rounded-lg border border-outline-variant bg-surface focus:outline-none focus:border-primary"
-                disabled={resetLoading}
-              />
+              <div className="relative">
+                <input
+                  type={showNewPassword ? "text" : "password"}
+                  placeholder="Nouveau mot de passe"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="w-full px-3 py-2 pr-9 text-sm rounded-lg border border-outline-variant bg-surface focus:outline-none focus:border-primary"
+                  autoFocus
+                  disabled={resetLoading}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNewPassword((v) => !v)}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface"
+                  tabIndex={-1}
+                >
+                  {showNewPassword
+                    ? <VisibilityOffOutlined style={{ fontSize: 16 }} />
+                    : <VisibilityOutlined style={{ fontSize: 16 }} />}
+                </button>
+              </div>
+              <div className="relative">
+                <input
+                  type={showConfirmPassword ? "text" : "password"}
+                  placeholder="Confirmer le mot de passe"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="w-full px-3 py-2 pr-9 text-sm rounded-lg border border-outline-variant bg-surface focus:outline-none focus:border-primary"
+                  disabled={resetLoading}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword((v) => !v)}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface"
+                  tabIndex={-1}
+                >
+                  {showConfirmPassword
+                    ? <VisibilityOffOutlined style={{ fontSize: 16 }} />
+                    : <VisibilityOutlined style={{ fontSize: 16 }} />}
+                </button>
+              </div>
               {resetError && (
                 <p className="text-xs text-error">{resetError}</p>
               )}

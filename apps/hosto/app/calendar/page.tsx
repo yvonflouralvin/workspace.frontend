@@ -10,7 +10,7 @@ import {
 } from "@/app/lib/api";
 import {
   CalendarMonthOutlined, ChevronLeftOutlined, ChevronRightOutlined,
-  FilterListOutlined, RefreshOutlined,
+  FilterListOutlined, RefreshOutlined, ScheduleOutlined,
 } from "@mui/icons-material";
 
 const PRIORITY_CONFIG: Record<AppointmentPriority, { label: string; cls: string; dot: string }> = {
@@ -119,10 +119,17 @@ export default function CalendarPage() {
               {appointments.length} rendez-vous · {dayLabel}
             </p>
           </div>
-          <button onClick={load} title="Rafraîchir"
-            className="p-2 rounded-xl text-on-surface-variant hover:bg-surface-container transition-colors">
-            <RefreshOutlined style={{ fontSize: 20 }} />
-          </button>
+          <div className="flex items-center gap-2">
+            <a href="/schedules"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-outline-variant text-body-sm text-on-surface-variant hover:bg-surface-container transition-colors">
+              <ScheduleOutlined style={{ fontSize: 16 }} />
+              Horaires
+            </a>
+            <button onClick={load} title="Rafraîchir"
+              className="p-2 rounded-xl text-on-surface-variant hover:bg-surface-container transition-colors">
+              <RefreshOutlined style={{ fontSize: 20 }} />
+            </button>
+          </div>
         </div>
 
         {/* Day nav + filters */}

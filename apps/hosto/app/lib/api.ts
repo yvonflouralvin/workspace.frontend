@@ -300,6 +300,67 @@ export async function deleteStaff(id: number): Promise<void> {
   }
 }
 
+// ─── Service Schedules ───────────────────────────────────────────────────────
+
+export interface ServiceSchedule {
+  id: number;
+  workspace_id: number;
+  service_id: number;
+  day_of_week: number; // 0=Lundi … 6=Dimanche
+  open_time: string;   // "HH:MM:SS"
+  close_time: string;
+  max_slots: number | null;
+  label: string | null;
+  active: boolean;
+  created_at: string;
+}
+
+export interface ScheduleCreateInput {
+  service_id: number;
+  day_of_week: number;
+  open_time: string;
+  close_time: string;
+  max_slots?: number;
+  label?: string;
+}
+
+export interface ScheduleUpdateInput {
+  day_of_week?: number;
+  open_time?: string;
+  close_time?: string;
+  max_slots?: number | null;
+  label?: string | null;
+  active?: boolean;
+}
+
+export async function listSchedules(params?: {
+  service_id?: number;
+  day_of_week?: number;
+  active?: boolean;
+}): Promise<ServiceSchedule[]> {
+  const qs = new URLSearchParams();
+  if (params?.service_id !== undefined) qs.set("service_id", String(params.service_id));
+  if (params?.day_of_week !== undefined) qs.set("day_of_week", String(params.day_of_week));
+  if (params?.active !== undefined) qs.set("active", String(params.active));
+  return parseResponse(await apiFetch(`/api/schedules${qs.toString() ? `?${qs}` : ""}`));
+}
+
+export async function createSchedule(data: ScheduleCreateInput): Promise<ServiceSchedule> {
+  return parseResponse(await apiFetch("/api/schedules", { method: "POST", body: data }));
+}
+
+export async function updateSchedule(id: number, data: ScheduleUpdateInput): Promise<ServiceSchedule> {
+  return parseResponse(await apiFetch(`/api/schedules/${id}`, { method: "PATCH", body: data }));
+}
+
+export async function deleteSchedule(id: number): Promise<void> {
+  const res = await apiFetch(`/api/schedules/${id}`, { method: "DELETE" });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new ApiError(data.detail ?? "Impossible de supprimer cet horaire", res.status);
+  }
+}
+
 // ─── Appointments ─────────────────────────────────────────────────────────────
 
 export type AppointmentType = "CONSULTATION" | "URGENCE" | "CONTROLE" | "CHIRURGIE";

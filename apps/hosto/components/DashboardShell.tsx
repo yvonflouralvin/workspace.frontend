@@ -15,6 +15,7 @@ import {
   LocalHospitalOutlined,
   MedicalServicesOutlined,
   PeopleAltOutlined,
+  ScheduleOutlined,
 } from "@mui/icons-material";
 import type { NavItem, AppDefinition } from "@repo/ui/types/shell";
 import { logout as logoutRequest } from "@/app/lib/api";
@@ -45,6 +46,11 @@ const NAV_ITEMS: NavItem[] = [
     label: "Calendrier",
     href: "/calendar",
     icon: <CalendarMonthOutlined style={{ fontSize: 20 }} />,
+  },
+  {
+    label: "Horaires",
+    href: "/schedules",
+    icon: <ScheduleOutlined style={{ fontSize: 20 }} />,
   },
 ];
 

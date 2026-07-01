@@ -1,16 +1,31 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import {
   SearchOutlined,
   AppsOutlined,
   NotificationsOutlined,
   SettingsOutlined,
   LogoutOutlined,
+  OpenInNewOutlined,
 } from "@mui/icons-material";
 import Link from "next/link";
 import { AppDefinition, UserSummary } from "../types/shell";
 import { AppSelector } from "./AppSelector";
+
+export interface SearchResult {
+  id: number | string;
+  title: string;
+  subtitle: string | null;
+  url: string;
+}
+
+export interface SearchSection {
+  domain_key: string;
+  label: string;
+  app_name: string;
+  results: SearchResult[];
+}
 
 interface TopBarProps {
   apps: AppDefinition[];
@@ -19,6 +34,7 @@ interface TopBarProps {
   preferencesUrl: string;
   notificationsCount?: number;
   onLogout?: () => void;
+  onSearch?: (q: string) => Promise<SearchSection[]>;
 }
 
 export function TopBar({
@@ -28,6 +44,7 @@ export function TopBar({
   preferencesUrl,
   notificationsCount = 0,
   onLogout,
+  onSearch,
 }: TopBarProps) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [appSelectorOpen, setAppSelectorOpen] = useState(false);
@@ -112,7 +129,9 @@ export function TopBar({
         </div>
       </div>
 
-      {searchOpen && <SearchModal onClose={() => setSearchOpen(false)} />}
+      {searchOpen && (
+        <SearchModal onClose={() => setSearchOpen(false)} onSearch={onSearch} />
+      )}
     </div>
   );
 }
@@ -170,27 +189,125 @@ function UserMenu({
   );
 }
 
-function SearchModal({ onClose }: { onClose: () => void }) {
+function SearchModal({
+  onClose,
+  onSearch,
+}: {
+  onClose: () => void;
+  onSearch?: (q: string) => Promise<SearchSection[]>;
+}) {
+  const [query, setQuery] = useState("");
+  const [sections, setSections] = useState<SearchSection[]>([]);
+  const [loading, setLoading] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const runSearch = useCallback(
+    async (q: string) => {
+      if (!onSearch || q.trim().length < 2) {
+        setSections([]);
+        return;
+      }
+      setLoading(true);
+      try {
+        const result = await onSearch(q.trim());
+        setSections(result);
+      } catch {
+        setSections([]);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [onSearch]
+  );
+
+  function handleInput(value: string) {
+    setQuery(value);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => runSearch(value), 300);
+  }
+
+  const hasResults = sections.length > 0;
+  const isEmpty = !loading && query.trim().length >= 2 && !hasResults;
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-start justify-center pt-24 bg-black/40 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-[32rem] bg-surface-container-lowest rounded-2xl shadow-2xl overflow-hidden"
+        className="w-full max-w-[36rem] bg-surface-container-lowest rounded-2xl shadow-2xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-3 px-4 py-3 border-b border-outline-variant">
-          <SearchOutlined className="text-on-surface-variant" style={{ fontSize: 20 }} />
+          <SearchOutlined className="text-on-surface-variant shrink-0" style={{ fontSize: 20 }} />
           <input
+            ref={inputRef}
             autoFocus
-            className="flex-1 bg-transparent text-on-surface placeholder:text-on-surface-variant text-sm outline-none"
-            placeholder="Rechercher…"
+            value={query}
+            onChange={(e) => handleInput(e.target.value)}
+            className="flex-1 bg-transparent text-on-surface placeholder:text-on-surface-variant text-body-md outline-none"
+            placeholder="Rechercher dans toutes les applications…"
           />
+          {loading && (
+            <span className="text-label-sm text-on-surface-variant shrink-0 animate-pulse">
+              Recherche…
+            </span>
+          )}
+          <kbd className="text-xs text-outline bg-surface-container rounded px-1.5 py-0.5 font-mono shrink-0">
+            Esc
+          </kbd>
         </div>
-        <div className="px-4 py-8 text-sm text-on-surface-variant text-center">
-          Tapez pour rechercher dans le workspace…
-        </div>
+
+        {!query.trim() && (
+          <div className="px-4 py-8 text-body-sm text-on-surface-variant text-center">
+            Tapez au moins 2 caractères pour lancer la recherche.
+          </div>
+        )}
+
+        {isEmpty && (
+          <div className="px-4 py-8 text-body-sm text-on-surface-variant text-center">
+            Aucun résultat pour «&nbsp;{query}&nbsp;».
+          </div>
+        )}
+
+        {hasResults && (
+          <div className="max-h-[60vh] overflow-y-auto divide-y divide-outline-variant">
+            {sections.map((section) => (
+              <div key={section.domain_key} className="py-2">
+                <div className="px-4 py-1.5 flex items-center gap-2">
+                  <span className="text-label-sm font-medium text-on-surface-variant uppercase tracking-wide">
+                    {section.label}
+                  </span>
+                  <span className="text-label-sm text-on-surface-variant/60">
+                    · {section.app_name}
+                  </span>
+                </div>
+                {section.results.map((result) => (
+                  <a
+                    key={result.id}
+                    href={result.url}
+                    onClick={onClose}
+                    className="group flex items-start gap-3 px-4 py-2.5 hover:bg-surface-container transition-colors"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="text-body-md text-on-surface truncate">{result.title}</p>
+                      {result.subtitle && (
+                        <p className="text-body-sm text-on-surface-variant truncate mt-0.5">
+                          {result.subtitle}
+                        </p>
+                      )}
+                    </div>
+                    <OpenInNewOutlined
+                      style={{ fontSize: 14 }}
+                      className="text-on-surface-variant shrink-0 mt-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                    />
+                  </a>
+                ))}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

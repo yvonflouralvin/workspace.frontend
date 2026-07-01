@@ -70,6 +70,10 @@ export interface Patient {
   adresse_ville: string | null;
   adresse_province: string | null;
   adresse_pays: string | null;
+  groupe_sanguin: string | null;
+  rhesus: string | null;
+  derniere_tension: string | null;
+  dernier_poids: string | null;
   contacts: Contact[];
   created_at: string;
   updated_at: string;
@@ -141,6 +145,10 @@ export interface PatientUpdateInput {
   adresse_ville?: string;
   adresse_province?: string;
   adresse_pays?: string;
+  groupe_sanguin?: string;
+  rhesus?: string;
+  derniere_tension?: string;
+  dernier_poids?: string;
 }
 
 export async function updatePatient(id: number, data: PatientUpdateInput): Promise<Patient> {
@@ -155,6 +163,188 @@ export async function deletePatient(id: number): Promise<void> {
     throw new ApiError(data.message ?? "Impossible de supprimer le patient", response.status);
   }
 }
+
+// ─── Services ────────────────────────────────────────────────────────────────
+
+export interface Service {
+  id: number;
+  workspace_id: number;
+  nom: string;
+  code: string;
+  description: string | null;
+  is_system: boolean;
+  active: boolean;
+  created_at: string;
+}
+
+export interface ServiceCreateInput { nom: string; code: string; description?: string }
+export interface ServiceUpdateInput { nom?: string; code?: string; description?: string; active?: boolean }
+
+export async function listServices(): Promise<Service[]> {
+  return parseResponse(await apiFetch("/api/services"));
+}
+
+export async function createService(data: ServiceCreateInput): Promise<Service> {
+  return parseResponse(await apiFetch("/api/services", { method: "POST", body: data }));
+}
+
+export async function updateService(id: number, data: ServiceUpdateInput): Promise<Service> {
+  return parseResponse(await apiFetch(`/api/services/${id}`, { method: "PATCH", body: data }));
+}
+
+export async function deleteService(id: number): Promise<void> {
+  const res = await apiFetch(`/api/services/${id}`, { method: "DELETE" });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new ApiError(data.detail ?? "Impossible de supprimer le service", res.status);
+  }
+}
+
+// ─── Staff ───────────────────────────────────────────────────────────────────
+
+export type StaffRole = "MEDECIN" | "INFIRMIER" | "AIDE_SOIGNANT" | "SECRETAIRE" | "AUTRE";
+export const ROLE_LABELS: Record<StaffRole, string> = {
+  MEDECIN: "Médecin",
+  INFIRMIER: "Infirmier(ère)",
+  AIDE_SOIGNANT: "Aide-soignant(e)",
+  SECRETAIRE: "Secrétaire médical(e)",
+  AUTRE: "Autre",
+};
+
+export interface HostoStaff {
+  id: number;
+  workspace_id: number;
+  employee_id: number;
+  nom_cache: string;
+  prenom_cache: string;
+  role: StaffRole;
+  specialite: string | null;
+  service_id: number | null;
+  service: Service | null;
+  active: boolean;
+  created_at: string;
+}
+
+export interface StaffCreateInput {
+  employee_id: number;
+  nom_cache: string;
+  prenom_cache: string;
+  role: string;
+  specialite?: string;
+  service_id?: number;
+}
+export interface StaffUpdateInput { role?: string; specialite?: string; service_id?: number | null; active?: boolean }
+
+export async function listStaff(params?: { service_id?: number; role?: string; active_only?: boolean }): Promise<HostoStaff[]> {
+  const q = new URLSearchParams();
+  if (params?.service_id) q.set("service_id", String(params.service_id));
+  if (params?.role) q.set("role", params.role);
+  if (params?.active_only === false) q.set("active_only", "false");
+  return parseResponse(await apiFetch(`/api/staff${q.toString() ? `?${q}` : ""}`));
+}
+
+export async function createStaff(data: StaffCreateInput): Promise<HostoStaff> {
+  return parseResponse(await apiFetch("/api/staff", { method: "POST", body: data }));
+}
+
+export async function updateStaff(id: number, data: StaffUpdateInput): Promise<HostoStaff> {
+  return parseResponse(await apiFetch(`/api/staff/${id}`, { method: "PATCH", body: data }));
+}
+
+export async function deleteStaff(id: number): Promise<void> {
+  const res = await apiFetch(`/api/staff/${id}`, { method: "DELETE" });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new ApiError(data.detail ?? "Impossible de supprimer ce membre", res.status);
+  }
+}
+
+// ─── Appointments ─────────────────────────────────────────────────────────────
+
+export type AppointmentType = "CONSULTATION" | "URGENCE" | "CONTROLE" | "CHIRURGIE";
+export type AppointmentStatus = "EN_ATTENTE" | "EN_COURS" | "TERMINE" | "ANNULE";
+export type AppointmentPriority = "NORMAL" | "URGENT" | "TRES_URGENT" | "CRITIQUE";
+
+export const TYPE_LABELS: Record<AppointmentType, string> = {
+  CONSULTATION: "Consultation", URGENCE: "Urgence", CONTROLE: "Contrôle", CHIRURGIE: "Chirurgie",
+};
+export const STATUS_LABELS: Record<AppointmentStatus, string> = {
+  EN_ATTENTE: "En attente", EN_COURS: "En cours", TERMINE: "Terminé", ANNULE: "Annulé",
+};
+export const PRIORITY_LABELS: Record<AppointmentPriority, string> = {
+  NORMAL: "Normal", URGENT: "Urgent", TRES_URGENT: "Très urgent", CRITIQUE: "Critique",
+};
+
+export interface PatientMini { id: number; dossier_number: string; nom: string; postnom: string; prenom: string }
+
+export interface Appointment {
+  id: number;
+  workspace_id: number;
+  patient_id: number;
+  patient: PatientMini;
+  service_id: number | null;
+  service: Service | null;
+  staff_id: number | null;
+  staff: HostoStaff | null;
+  scheduled_at: string | null;
+  type: AppointmentType;
+  status: AppointmentStatus;
+  priority: AppointmentPriority;
+  motif: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AppointmentCreateInput {
+  patient_id: number;
+  service_id?: number;
+  staff_id?: number;
+  scheduled_at?: string;
+  type?: string;
+  priority?: string;
+  motif?: string;
+  notes?: string;
+}
+export interface AppointmentUpdateInput {
+  service_id?: number | null;
+  staff_id?: number | null;
+  scheduled_at?: string | null;
+  type?: string;
+  status?: string;
+  priority?: string;
+  motif?: string;
+  notes?: string;
+}
+
+export async function listAppointments(params?: {
+  day?: string; service_id?: number; status?: string; priority?: string;
+}): Promise<Appointment[]> {
+  const q = new URLSearchParams();
+  if (params?.day) q.set("day", params.day);
+  if (params?.service_id) q.set("service_id", String(params.service_id));
+  if (params?.status) q.set("status", params.status);
+  if (params?.priority) q.set("priority", params.priority);
+  return parseResponse(await apiFetch(`/api/appointments${q.toString() ? `?${q}` : ""}`));
+}
+
+export async function createAppointment(data: AppointmentCreateInput): Promise<Appointment> {
+  return parseResponse(await apiFetch("/api/appointments", { method: "POST", body: data }));
+}
+
+export async function updateAppointment(id: number, data: AppointmentUpdateInput): Promise<Appointment> {
+  return parseResponse(await apiFetch(`/api/appointments/${id}`, { method: "PATCH", body: data }));
+}
+
+export async function deleteAppointment(id: number): Promise<void> {
+  const res = await apiFetch(`/api/appointments/${id}`, { method: "DELETE" });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new ApiError(data.detail ?? "Impossible de supprimer ce rendez-vous", res.status);
+  }
+}
+
+// ─── Logout ───────────────────────────────────────────────────────────────────
 
 export async function logout() {
   const response = await apiFetch("/api/logout", { method: "POST" });

@@ -207,6 +207,7 @@ export default function MembersPage() {
       {selectedMember && workspaceId && (
         <MemberDetailDrawer
           member={selectedMember}
+          workspaceId={workspaceId}
           canManage={can("members.manage")}
           canRemove={can("members.remove")}
           onClose={() => setSelectedMember(null)}

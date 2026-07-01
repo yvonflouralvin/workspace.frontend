@@ -80,6 +80,18 @@ export async function removeMember(workspaceId: number, membershipId: number) {
   return parseResponse(response);
 }
 
+export async function resetMemberPassword(
+  workspaceId: number,
+  membershipId: number,
+  password: string
+): Promise<void> {
+  const response = await apiFetch(
+    `/api/workspaces/${workspaceId}/members/${membershipId}/reset-password`,
+    jsonRequest("POST", { password })
+  );
+  return parseResponse(response);
+}
+
 export async function setMemberPermissions(
   workspaceId: number,
   membershipId: number,

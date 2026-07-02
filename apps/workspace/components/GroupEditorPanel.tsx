@@ -44,7 +44,9 @@ export function GroupEditorPanel({
     setError(null);
     setSubmitting(true);
     try {
-      await updateGroup(workspaceId, group.id, { name, description });
+      if (!group.is_system) {
+        await updateGroup(workspaceId, group.id, { name, description });
+      }
       const updated = await setGroupPermissions(workspaceId, group.id, permissionIds);
       onUpdated(updated);
     } catch (err) {
@@ -66,7 +68,7 @@ export function GroupEditorPanel({
     }
   }
 
-  const readOnly = group.is_system;
+  const isSystem = group.is_system;
 
   return (
     <div className="space-y-5">
@@ -76,9 +78,9 @@ export function GroupEditorPanel({
         </p>
       )}
 
-      {readOnly && (
+      {isSystem && (
         <p className="text-sm text-on-surface-variant bg-surface-container rounded-lg px-3 py-2">
-          Groupe système — protégé contre l&apos;édition et la suppression.
+          Groupe système — le nom et la description ne sont pas modifiables.
         </p>
       )}
 
@@ -87,7 +89,7 @@ export function GroupEditorPanel({
         <input
           type="text"
           value={name}
-          disabled={readOnly}
+          disabled={isSystem}
           onChange={(e) => setName(e.target.value)}
           className="w-full px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface disabled:opacity-60"
         />
@@ -97,7 +99,7 @@ export function GroupEditorPanel({
         <label className="text-sm font-medium text-on-surface">Description</label>
         <textarea
           value={description}
-          disabled={readOnly}
+          disabled={isSystem}
           onChange={(e) => setDescription(e.target.value)}
           rows={2}
           className="w-full px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface resize-none disabled:opacity-60"
@@ -113,8 +115,8 @@ export function GroupEditorPanel({
         />
       </div>
 
-      {!readOnly && (
-        <div className="flex justify-between gap-2 pt-2">
+      <div className="flex justify-between gap-2 pt-2">
+        {!isSystem && (
           <button
             onClick={handleDelete}
             disabled={submitting || hasChildren}
@@ -123,15 +125,15 @@ export function GroupEditorPanel({
           >
             Supprimer
           </button>
-          <button
-            onClick={handleSave}
-            disabled={submitting}
-            className="px-4 py-2 rounded-xl text-sm font-medium bg-primary text-on-primary disabled:opacity-50"
-          >
-            {submitting ? "Enregistrement…" : "Enregistrer"}
-          </button>
-        </div>
-      )}
+        )}
+        <button
+          onClick={handleSave}
+          disabled={submitting}
+          className="px-4 py-2 rounded-xl text-sm font-medium bg-primary text-on-primary disabled:opacity-50 ml-auto"
+        >
+          {submitting ? "Enregistrement…" : "Enregistrer"}
+        </button>
+      </div>
     </div>
   );
 }

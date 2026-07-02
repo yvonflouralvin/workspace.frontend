@@ -19,6 +19,7 @@ import {
   HomeOutlined,
   LocalHospitalOutlined,
   LockOutlined,
+  MedicalInformationOutlined,
   MonitorWeightOutlined,
   PersonOutlined,
   PhoneOutlined,
@@ -206,6 +207,7 @@ export default function PatientDetailPage() {
   const canView    = can("hosto.patients.view");
   const canManage  = can("hosto.patients.manage");
   const canMedical = can("hosto.patients.medical");
+  const canEMR     = can("hosto.emr.view");
 
   const [patient, setPatient]       = useState<Patient | null>(null);
   const [loading, setLoading]       = useState(true);
@@ -356,13 +358,24 @@ export default function PatientDetailPage() {
                     </span>
                   </div>
                 </div>
-                {canManage && !confirmDelete && (
-                  <button onClick={() => setConfirmDelete(true)}
-                    className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-body-sm text-on-surface-variant border border-outline-variant hover:border-error hover:text-error transition-colors">
-                    <DeleteOutlined style={{ fontSize: 15 }} />
-                    Supprimer
-                  </button>
-                )}
+                <div className="flex items-center gap-2 shrink-0">
+                  {canEMR && (
+                    <Link
+                      href={`/patients/${id}/emr`}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-body-sm text-primary border border-primary/30 hover:bg-primary/8 transition-colors"
+                    >
+                      <MedicalInformationOutlined style={{ fontSize: 15 }} />
+                      Dossier médical
+                    </Link>
+                  )}
+                  {canManage && !confirmDelete && (
+                    <button onClick={() => setConfirmDelete(true)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-body-sm text-on-surface-variant border border-outline-variant hover:border-error hover:text-error transition-colors">
+                      <DeleteOutlined style={{ fontSize: 15 }} />
+                      Supprimer
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* Medical quick card — RBAC gated */}

@@ -15,6 +15,7 @@ import { ConditionsTab } from "@/components/emr/ConditionsTab";
 import { HistoryTab } from "@/components/emr/HistoryTab";
 import { MedicationsTab } from "@/components/emr/MedicationsTab";
 import { VitalsTab } from "@/components/emr/VitalsTab";
+import { NotesTab } from "@/components/emr/NotesTab";
 import {
   ArrowBackOutlined,
   BadgeOutlined,
@@ -154,6 +155,7 @@ export default function EMRPage() {
 
   const canView = can("hosto.emr.view");
   const canWrite = can("hosto.emr.write");
+  const canSign = can("hosto.emr.sign");
 
   function setTab(key: TabKey) {
     const params = new URLSearchParams(searchParams.toString());
@@ -256,7 +258,12 @@ export default function EMRPage() {
             <VitalsTab patientId={Number(id)} canWrite={canWrite} onMutation={loadSummary} />
           )}
           {activeTab === "notes" && (
-            <TabPlaceholder label="Notes cliniques SOAP" />
+            <NotesTab
+              patientId={Number(id)}
+              canWrite={canWrite}
+              canSign={canSign}
+              onMutation={loadSummary}
+            />
           )}
           {activeTab === "medications" && (
             <MedicationsTab patientId={Number(id)} canWrite={canWrite} onMutation={loadSummary} />

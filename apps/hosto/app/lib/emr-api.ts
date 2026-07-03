@@ -117,7 +117,9 @@ export interface ClinicalNoteRead {
   id: number;
   workspace_id: number;
   patient_id: number;
+  patient: { id: number; dossier_number: string; nom: string; postnom: string; prenom: string };
   encounter_id: number;
+  encounter: { id: number; type: string; status: string };
   amends_note_id: number | null;
   author_id: number | null;
   subjective: string | null;
@@ -132,10 +134,29 @@ export interface ClinicalNoteRead {
   deleted_at: string | null;
 }
 
+export interface ClinicalNoteCreate {
+  patient_id: number;
+  encounter_id: number;
+  subjective?: string | null;
+  objective?: string | null;
+  assessment?: string | null;
+  plan?: string | null;
+}
+
+export interface ClinicalNoteUpdate {
+  subjective?: string | null;
+  objective?: string | null;
+  assessment?: string | null;
+  plan?: string | null;
+}
+
+export type ClinicalNoteAmendBody = ClinicalNoteUpdate;
+
 export interface EncounterRead {
   id: number;
   workspace_id: number;
   patient_id: number;
+  patient?: { id: number; nom: string; postnom: string; prenom: string };
   service_id: number | null;
   staff_id: number | null;
   appointment_id: number | null;
@@ -473,13 +494,49 @@ export async function deleteObservation(id: number): Promise<void> {
   }
 }
 
-// ─── Clinical notes (stub — 5.4) ─────────────────────────────────────────────
+// ─── Clinical notes ───────────────────────────────────────────────────────────
 
 export async function getPatientNotes(patientId: number): Promise<ClinicalNoteRead[]> {
   return parseJson<ClinicalNoteRead[]>(await apiFetch(`/api/patients/${patientId}/notes`));
 }
 
-// ─── Encounters (stub — 5.2) ─────────────────────────────────────────────────
+export async function getEncounterNotes(encounterId: number): Promise<ClinicalNoteRead[]> {
+  return parseJson<ClinicalNoteRead[]>(await apiFetch(`/api/encounters/${encounterId}/notes`));
+}
+
+export async function createNote(payload: ClinicalNoteCreate): Promise<ClinicalNoteRead> {
+  return parseJson<ClinicalNoteRead>(
+    await apiFetch("/api/notes", { method: "POST", body: payload }),
+  );
+}
+
+export async function updateNote(id: number, payload: ClinicalNoteUpdate): Promise<ClinicalNoteRead> {
+  return parseJson<ClinicalNoteRead>(
+    await apiFetch(`/api/notes/${id}`, { method: "PATCH", body: payload }),
+  );
+}
+
+export async function signNote(id: number): Promise<ClinicalNoteRead> {
+  return parseJson<ClinicalNoteRead>(
+    await apiFetch(`/api/notes/${id}/sign`, { method: "POST" }),
+  );
+}
+
+export async function amendNote(id: number, payload: ClinicalNoteAmendBody): Promise<ClinicalNoteRead> {
+  return parseJson<ClinicalNoteRead>(
+    await apiFetch(`/api/notes/${id}/amend`, { method: "POST", body: payload }),
+  );
+}
+
+export async function deleteNote(id: number): Promise<void> {
+  const res = await apiFetch(`/api/notes/${id}`, { method: "DELETE" });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new ApiError(data.detail ?? "Erreur lors de la suppression.", res.status);
+  }
+}
+
+// ─── Encounters ───────────────────────────────────────────────────────────────
 
 export async function getPatientEncounters(
   patientId: number,
@@ -487,7 +544,19 @@ export async function getPatientEncounters(
 ): Promise<{ items: EncounterRead[]; total: number; page: number; pages: number }> {
   const q = new URLSearchParams();
   if (params?.page) q.set("page", String(params.page));
+  if (params?.per_page) q.set("per_page", String(params.per_page));
   return parseJson(
     await apiFetch(`/api/patients/${patientId}/encounters${q.size ? `?${q}` : ""}`),
+  );
+}
+
+export async function createEncounter(payload: {
+  patient_id: number;
+  type?: string;
+  status?: string;
+  motif?: string | null;
+}): Promise<EncounterRead> {
+  return parseJson<EncounterRead>(
+    await apiFetch("/api/encounters", { method: "POST", body: payload }),
   );
 }

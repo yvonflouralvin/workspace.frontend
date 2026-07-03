@@ -1,14 +1,13 @@
 {
-  "name": "hosto",
+  "name": "documents",
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --port 3007",
+    "dev": "next dev --port 3008",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "vitest run",
-    "test:watch": "vitest"
+    "check-types": "tsc --noEmit"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
@@ -30,9 +29,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
     "postcss": "^8.4.31",
-    "tailwind-config": "^0.1.2",
     "tailwindcss": "^4",
-    "typescript": "^5",
-    "vitest": "^3.2.6"
+    "typescript": "^5"
   }
 }

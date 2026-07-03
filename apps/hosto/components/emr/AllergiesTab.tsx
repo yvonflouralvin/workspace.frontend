@@ -6,10 +6,12 @@ import { RightDrawer } from "@repo/ui/RightDrawer";
 import {
   AddOutlined, DeleteOutlined, EditOutlined, WarningAmberOutlined,
 } from "@mui/icons-material";
+import { SearchSelect } from "@repo/ui/SearchSelect";
 import {
   getPatientAllergies, createAllergy, updateAllergy, removeAllergy,
+  searchATCClasses,
   type AllergyRead, type AllergyCreate, type AllergyType, type AllergyCategory,
-  type AllergySeverity, type AllergyStatus,
+  type AllergySeverity, type AllergyStatus, type ATCClassResult,
 } from "@/app/lib/emr-api";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -60,6 +62,7 @@ function sortAllergies(items: AllergyRead[]): AllergyRead[] {
 
 const EMPTY_FORM = {
   substance: "",
+  substance_code: null as string | null,
   type: "ALLERGIE" as AllergyType,
   category: "MEDICAMENT" as AllergyCategory,
   severity: "MODEREE" as AllergySeverity,
@@ -130,6 +133,7 @@ export function AllergiesTab({
   function openEdit(item: AllergyRead) {
     setForm({
       substance: item.substance,
+      substance_code: item.substance_code ?? null,
       type: item.type,
       category: item.category,
       severity: item.severity,
@@ -154,6 +158,7 @@ export function AllergiesTab({
       const payload: AllergyCreate = {
         patient_id: patientId,
         substance: form.substance.trim(),
+        substance_code: form.category === "MEDICAMENT" ? (form.substance_code || null) : null,
         type: form.type,
         category: form.category,
         severity: form.severity,
@@ -246,6 +251,11 @@ export function AllergiesTab({
                   <span className={`text-label-sm px-2 py-0.5 rounded-full ${STATUS_CLS[item.clinical_status]}`}>
                     {STATUS_LABEL[item.clinical_status]}
                   </span>
+                  {item.category === "MEDICAMENT" && item.substance_code && (
+                    <span className="text-label-sm px-2 py-0.5 rounded-full bg-tertiary/10 text-tertiary font-mono">
+                      {item.substance_code}
+                    </span>
+                  )}
                 </div>
                 <div className="mt-1 flex items-center gap-3 flex-wrap text-body-sm text-on-surface-variant">
                   <span>{item.type === "ALLERGIE" ? "Allergie" : "Intolérance"}</span>
@@ -315,6 +325,33 @@ export function AllergiesTab({
                 />
               </div>
 
+              {form.category === "MEDICAMENT" && (
+                <div className="flex flex-col gap-1">
+                  <label className={labelCls}>
+                    Classe ATC{" "}
+                    <span className="text-on-surface-variant/50 text-label-sm font-normal">(optionnel — active la détection croisée fiable)</span>
+                  </label>
+                  <SearchSelect<ATCClassResult>
+                    fetchOptions={searchATCClasses}
+                    value={form.substance_code}
+                    onChange={(val) => setField("substance_code", val as string | null)}
+                    getOptionLabel={(r) => `${r.code} · ${r.label_fr}`}
+                    getOptionValue={(r) => r.code}
+                    placeholder="Rechercher une classe ATC…"
+                    initialLabel={form.substance_code ?? undefined}
+                  />
+                  {form.substance_code && (
+                    <button
+                      type="button"
+                      onClick={() => setField("substance_code", null)}
+                      className="text-label-sm text-on-surface-variant hover:text-error transition-colors text-left mt-0.5"
+                    >
+                      Retirer le code ATC
+                    </button>
+                  )}
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="flex flex-col gap-1">
                   <label className={labelCls}>Type</label>
@@ -327,7 +364,10 @@ export function AllergiesTab({
                 <div className="flex flex-col gap-1">
                   <label className={labelCls}>Catégorie</label>
                   <select className={selectCls} value={form.category}
-                    onChange={(e) => setField("category", e.target.value as AllergyCategory)}>
+                    onChange={(e) => {
+                      const cat = e.target.value as AllergyCategory;
+                      setForm((f) => ({ ...f, category: cat, substance_code: cat === "MEDICAMENT" ? f.substance_code : null }));
+                    }}>
                     <option value="MEDICAMENT">Médicament</option>
                     <option value="ALIMENT">Aliment</option>
                     <option value="ENVIRONNEMENT">Environnement</option>

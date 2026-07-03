@@ -14,6 +14,7 @@ import { AllergiesTab } from "@/components/emr/AllergiesTab";
 import { ConditionsTab } from "@/components/emr/ConditionsTab";
 import { HistoryTab } from "@/components/emr/HistoryTab";
 import { MedicationsTab } from "@/components/emr/MedicationsTab";
+import { VitalsTab } from "@/components/emr/VitalsTab";
 import {
   ArrowBackOutlined,
   BadgeOutlined,
@@ -252,7 +253,7 @@ export default function EMRPage() {
             <ConditionsTab patientId={Number(id)} canWrite={canWrite} onMutation={loadSummary} />
           )}
           {activeTab === "observations" && (
-            <TabPlaceholder label="Constantes vitales et paramètres" />
+            <VitalsTab patientId={Number(id)} canWrite={canWrite} onMutation={loadSummary} />
           )}
           {activeTab === "notes" && (
             <TabPlaceholder label="Notes cliniques SOAP" />

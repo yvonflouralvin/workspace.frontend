@@ -417,7 +417,16 @@ export async function removeMedication(id: number): Promise<void> {
   }
 }
 
-// ─── Observations (stub — 5.3) ───────────────────────────────────────────────
+// ─── Observations ────────────────────────────────────────────────────────────
+
+export interface ObservationBatchItem {
+  patient_id: number;
+  encounter_id?: number | null;
+  code: ObservationCode;
+  value: number;
+  unit: string;
+  measured_at: string;
+}
 
 export async function getPatientObservations(
   patientId: number,
@@ -436,6 +445,32 @@ export async function getLatestObservations(patientId: number): Promise<Observat
   return parseJson<ObservationRead[]>(
     await apiFetch(`/api/patients/${patientId}/observations/latest`),
   );
+}
+
+export async function createObservationsBatch(
+  observations: ObservationBatchItem[],
+): Promise<ObservationRead[]> {
+  return parseJson<ObservationRead[]>(
+    await apiFetch("/api/observations/batch", { method: "POST", body: { observations } }),
+  );
+}
+
+export async function computeAndStoreIMC(body: {
+  patient_id: number;
+  measured_at: string;
+  encounter_id?: number | null;
+}): Promise<ObservationRead> {
+  return parseJson<ObservationRead>(
+    await apiFetch("/api/observations/imc", { method: "POST", body }),
+  );
+}
+
+export async function deleteObservation(id: number): Promise<void> {
+  const res = await apiFetch(`/api/observations/${id}`, { method: "DELETE" });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new ApiError(data.detail ?? "Erreur lors de la suppression.", res.status);
+  }
 }
 
 // ─── Clinical notes (stub — 5.4) ─────────────────────────────────────────────

@@ -332,7 +332,7 @@ export function AllergiesTab({
                     <span className="text-on-surface-variant/50 text-label-sm font-normal">(optionnel — active la détection croisée fiable)</span>
                   </label>
                   <SearchSelect<ATCClassResult>
-                    fetchOptions={(q) => searchATCClasses(q)}
+                    fetchOptions={searchATCClasses}
                     value={form.substance_code}
                     onChange={(val) => setField("substance_code", val as string | null)}
                     getOptionLabel={(r) => `${r.code} · ${r.label_fr}`}

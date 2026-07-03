@@ -16,6 +16,7 @@ import { HistoryTab } from "@/components/emr/HistoryTab";
 import { MedicationsTab } from "@/components/emr/MedicationsTab";
 import { VitalsTab } from "@/components/emr/VitalsTab";
 import { NotesTab } from "@/components/emr/NotesTab";
+import { TimelineTab } from "@/components/emr/TimelineTab";
 import {
   ArrowBackOutlined,
   BadgeOutlined,
@@ -269,7 +270,7 @@ export default function EMRPage() {
             <MedicationsTab patientId={Number(id)} canWrite={canWrite} onMutation={loadSummary} />
           )}
           {activeTab === "timeline" && (
-            <TabPlaceholder label="Chronologie du dossier" />
+            <TimelineTab patientId={Number(id)} />
           )}
         </div>
 

@@ -285,11 +285,19 @@ export interface AllergyCreate {
   patient_id: number;
   encounter_id?: null;
   substance: string;
+  substance_code?: string | null;
   type: AllergyType;
   category: AllergyCategory;
   severity: AllergySeverity;
   reaction?: string | null;
   clinical_status: AllergyStatus;
+}
+
+export interface ATCClassResult {
+  code: string;
+  label_fr: string;
+  level: number;
+  parent_code: string | null;
 }
 
 export async function getPatientAllergies(patientId: number): Promise<AllergyRead[]> {
@@ -307,6 +315,12 @@ export async function createAllergy(data: AllergyCreate): Promise<AllergyRead> {
 export async function updateAllergy(id: number, data: Partial<Omit<AllergyCreate, "patient_id">>): Promise<AllergyRead> {
   return parseJson<AllergyRead>(
     await apiFetch(`/api/allergies/${id}`, { method: "PATCH", body: data }),
+  );
+}
+
+export async function searchATCClasses(q: string): Promise<ATCClassResult[]> {
+  return parseJson<ATCClassResult[]>(
+    await apiFetch(`/api/atc/search?q=${encodeURIComponent(q)}`),
   );
 }
 

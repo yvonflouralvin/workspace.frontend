@@ -11,6 +11,7 @@ services:
     volumes:
       - ../../:/app
       - ../../node_modules:/app/node_modules
+      - swc_cache:/root/.cache/next-swc
     env_file: ./.env
     environment:
       PORT: "3007"
@@ -24,6 +25,9 @@ services:
           npm install --prefix /app lightningcss-linux-arm64-musl@$(node -p \"require('/app/node_modules/lightningcss/package.json').version\") --no-save --ignore-scripts &&
           rm -rf /app/apps/hosto/.next;
         fi;
+        if [ ! -f /app/node_modules/@next/swc-linux-arm64-musl/next-swc.linux-arm64-musl.node ]; then
+          npm install --prefix /app @next/swc-linux-arm64-musl@$(node -p \"require('/app/apps/hosto/node_modules/next/package.json').version\") --no-save --ignore-scripts;
+        fi;
         cd apps/hosto && exec npx next dev --port 3007
       "
     ports:
@@ -35,3 +39,6 @@ networks:
   workspace_dev:
     name: workspace_dev
     external: true
+
+volumes:
+  swc_cache:

@@ -63,6 +63,7 @@ function sortAllergies(items: AllergyRead[]): AllergyRead[] {
 const EMPTY_FORM = {
   substance: "",
   substance_code: null as string | null,
+  substance_label: null as string | null,
   type: "ALLERGIE" as AllergyType,
   category: "MEDICAMENT" as AllergyCategory,
   severity: "MODEREE" as AllergySeverity,
@@ -134,6 +135,7 @@ export function AllergiesTab({
     setForm({
       substance: item.substance,
       substance_code: item.substance_code ?? null,
+      substance_label: item.substance_label ?? null,
       type: item.type,
       category: item.category,
       severity: item.severity,
@@ -159,6 +161,7 @@ export function AllergiesTab({
         patient_id: patientId,
         substance: form.substance.trim(),
         substance_code: form.category === "MEDICAMENT" ? (form.substance_code || null) : null,
+        substance_label: form.category === "MEDICAMENT" ? (form.substance_label || null) : null,
         type: form.type,
         category: form.category,
         severity: form.severity,
@@ -252,8 +255,11 @@ export function AllergiesTab({
                     {STATUS_LABEL[item.clinical_status]}
                   </span>
                   {item.category === "MEDICAMENT" && item.substance_code && (
-                    <span className="text-label-sm px-2 py-0.5 rounded-full bg-tertiary/10 text-tertiary font-mono">
-                      {item.substance_code}
+                    <span className="text-label-sm px-2 py-0.5 rounded-full bg-tertiary/10 text-tertiary">
+                      <span className="font-mono">{item.substance_code}</span>
+                      {item.substance_label && (
+                        <span className="font-normal"> · {item.substance_label}</span>
+                      )}
                     </span>
                   )}
                 </div>
@@ -334,16 +340,19 @@ export function AllergiesTab({
                   <SearchSelect<ATCClassResult>
                     fetchOptions={searchATCClasses}
                     value={form.substance_code}
-                    onChange={(val) => setField("substance_code", val as string | null)}
+                    onChange={(val, record) => {
+                      setField("substance_code", val as string | null);
+                      setField("substance_label", record?.label_fr ?? null);
+                    }}
                     getOptionLabel={(r) => `${r.code} · ${r.label_fr}`}
                     getOptionValue={(r) => r.code}
                     placeholder="Rechercher une classe ATC…"
-                    initialLabel={form.substance_code ?? undefined}
+                    initialLabel={form.substance_label ?? form.substance_code ?? undefined}
                   />
                   {form.substance_code && (
                     <button
                       type="button"
-                      onClick={() => setField("substance_code", null)}
+                      onClick={() => { setField("substance_code", null); setField("substance_label", null); }}
                       className="text-label-sm text-on-surface-variant hover:text-error transition-colors text-left mt-0.5"
                     >
                       Retirer le code ATC
@@ -366,7 +375,7 @@ export function AllergiesTab({
                   <select className={selectCls} value={form.category}
                     onChange={(e) => {
                       const cat = e.target.value as AllergyCategory;
-                      setForm((f) => ({ ...f, category: cat, substance_code: cat === "MEDICAMENT" ? f.substance_code : null }));
+                      setForm((f) => ({ ...f, category: cat, substance_code: cat === "MEDICAMENT" ? f.substance_code : null, substance_label: cat === "MEDICAMENT" ? f.substance_label : null }));
                     }}>
                     <option value="MEDICAMENT">Médicament</option>
                     <option value="ALIMENT">Aliment</option>

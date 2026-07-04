@@ -5,6 +5,7 @@ import { RightDrawer } from "@repo/ui/RightDrawer";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
 import {
   AddOutlined,
+  EditOutlined,
   MedicationOutlined,
   WarningAmberOutlined,
   LockOutlined,
@@ -18,6 +19,7 @@ import {
   type PrescriptionRead,
   type PrescriptionStatus,
 } from "@/app/lib/prescriptions-api";
+import { PrescriptionEditor } from "./PrescriptionEditor";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -88,64 +90,81 @@ function Skeleton() {
 function PrescriptionCard({
   prx,
   onClick,
+  onEdit,
 }: {
   prx: PrescriptionRead;
   onClick: () => void;
+  onEdit?: () => void;
 }) {
   const hasAllergyAlert = prx.items.some((i) => i.allergy_alert_raised);
   const hasOverride = prx.items.some((i) => i.allergy_overridden);
   const dateLabel = prx.prescribed_at ? fmtDate(prx.prescribed_at) : fmtDate(prx.created_at);
 
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="w-full text-left rounded-2xl border border-outline-variant bg-surface-container-lowest px-5 py-4 hover:border-primary/40 hover:bg-primary/4 transition-all group"
-    >
-      <div className="flex items-start gap-4">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap mb-1">
-            <span className={`inline-flex items-center gap-1 text-label-sm px-2 py-0.5 rounded-full font-medium ${STATUS_CLS[prx.status]}`}>
-              {STATUS_ICON[prx.status]}
-              {STATUS_LABEL[prx.status]}
-            </span>
-            {hasAllergyAlert && !hasOverride && (
-              <span className="inline-flex items-center gap-1 text-label-sm px-2 py-0.5 rounded-full bg-error-container text-error font-medium">
-                <WarningAmberOutlined style={{ fontSize: 13 }} />
-                Alerte allergie
+    <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest hover:border-primary/40 transition-all">
+      <button
+        type="button"
+        onClick={onClick}
+        className="w-full text-left px-5 py-4 group"
+      >
+        <div className="flex items-start gap-4">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap mb-1">
+              <span className={`inline-flex items-center gap-1 text-label-sm px-2 py-0.5 rounded-full font-medium ${STATUS_CLS[prx.status]}`}>
+                {STATUS_ICON[prx.status]}
+                {STATUS_LABEL[prx.status]}
               </span>
-            )}
-            {hasOverride && (
-              <span className="inline-flex items-center gap-1 text-label-sm px-2 py-0.5 rounded-full bg-error-container text-error font-medium">
-                <LockOutlined style={{ fontSize: 13 }} />
-                Conflit forcé
-              </span>
-            )}
+              {hasAllergyAlert && !hasOverride && (
+                <span className="inline-flex items-center gap-1 text-label-sm px-2 py-0.5 rounded-full bg-error-container text-error font-medium">
+                  <WarningAmberOutlined style={{ fontSize: 13 }} />
+                  Alerte allergie
+                </span>
+              )}
+              {hasOverride && (
+                <span className="inline-flex items-center gap-1 text-label-sm px-2 py-0.5 rounded-full bg-error-container text-error font-medium">
+                  <LockOutlined style={{ fontSize: 13 }} />
+                  Conflit forcé
+                </span>
+              )}
+            </div>
+
+            <p className="text-body-sm text-on-surface-variant mt-1">
+              {dateLabel}
+              {prx.prescriber_id && (
+                <span className="ml-2 text-on-surface-variant/60">· Prescripteur #{prx.prescriber_id}</span>
+              )}
+            </p>
+
+            <p className="text-body-sm text-on-surface-variant mt-0.5">
+              {prx.items.length} médicament{prx.items.length !== 1 ? "s" : ""}
+              {prx.notes && (
+                <span className="ml-2 italic text-on-surface-variant/70 truncate max-w-xs inline-block align-bottom">
+                  · {prx.notes}
+                </span>
+              )}
+            </p>
           </div>
 
-          <p className="text-body-sm text-on-surface-variant mt-1">
-            {dateLabel}
-            {prx.prescriber_id && (
-              <span className="ml-2 text-on-surface-variant/60">· Prescripteur #{prx.prescriber_id}</span>
-            )}
-          </p>
-
-          <p className="text-body-sm text-on-surface-variant mt-0.5">
-            {prx.items.length} médicament{prx.items.length !== 1 ? "s" : ""}
-            {prx.notes && (
-              <span className="ml-2 italic text-on-surface-variant/70 truncate max-w-xs inline-block align-bottom">
-                · {prx.notes}
-              </span>
-            )}
-          </p>
+          <MedicationOutlined
+            style={{ fontSize: 20 }}
+            className="text-on-surface-variant/30 group-hover:text-primary/50 transition-colors shrink-0 mt-0.5"
+          />
         </div>
+      </button>
 
-        <MedicationOutlined
-          style={{ fontSize: 20 }}
-          className="text-on-surface-variant/30 group-hover:text-primary/50 transition-colors shrink-0 mt-0.5"
-        />
-      </div>
-    </button>
+      {onEdit && prx.status === "BROUILLON" && (
+        <div className="px-5 pb-3 flex justify-end">
+          <button
+            type="button"
+            onClick={onEdit}
+            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-body-sm text-on-surface-variant hover:text-primary hover:bg-primary/8 transition-colors"
+          >
+            <EditOutlined style={{ fontSize: 15 }} />
+            Modifier
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -285,7 +304,7 @@ function PrescriptionDetailDrawer({
               )}
             </div>
 
-            {/* ── Actions (stubs P5.3 / P5.4) ── */}
+            {/* ── Actions ── */}
             {prx.status === "SIGNEE" && (
               <div className="pt-2">
                 <button
@@ -323,6 +342,7 @@ export function PrescriptionsPanel({
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterStatus>("all");
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [editorState, setEditorState] = useState<{ prescriptionId?: number } | null>(null);
 
   const load = useCallback(() => {
     if (!canView) return;
@@ -343,6 +363,21 @@ export function PrescriptionsPanel({
   }, [patientId, encounterId, canView]);
 
   useEffect(() => { load(); }, [load]);
+
+  function openNewEditor() {
+    setSelectedId(null);
+    setEditorState({});
+  }
+
+  function openEditEditor(prescriptionId: number) {
+    setSelectedId(null);
+    setEditorState({ prescriptionId });
+  }
+
+  function onEditorSaved() {
+    setEditorState(null);
+    load();
+  }
 
   if (!canView) {
     return (
@@ -391,9 +426,8 @@ export function PrescriptionsPanel({
           {canWrite && (
             <button
               type="button"
-              disabled
-              title="Création de prescription — disponible dans une prochaine version"
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-on-primary text-body-md font-medium opacity-50 cursor-not-allowed"
+              onClick={openNewEditor}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-on-primary text-body-md font-medium hover:bg-primary-container transition-colors"
             >
               <AddOutlined style={{ fontSize: 18 }} />
               Nouvelle
@@ -419,6 +453,15 @@ export function PrescriptionsPanel({
               ? "Aucune prescription enregistrée."
               : `Aucune prescription « ${STATUS_LABEL[filter as PrescriptionStatus]} ».`}
           </p>
+          {canWrite && filter === "all" && (
+            <button
+              type="button"
+              onClick={openNewEditor}
+              className="text-body-sm text-primary underline underline-offset-2 hover:opacity-70 transition-opacity"
+            >
+              Créer une prescription
+            </button>
+          )}
         </div>
       ) : (
         <div className="space-y-3">
@@ -427,16 +470,28 @@ export function PrescriptionsPanel({
               key={prx.id}
               prx={prx}
               onClick={() => setSelectedId(prx.id)}
+              onEdit={canWrite ? () => openEditEditor(prx.id) : undefined}
             />
           ))}
         </div>
       )}
 
       {/* ── Detail drawer ── */}
-      {selectedId !== null && (
+      {selectedId !== null && editorState === null && (
         <PrescriptionDetailDrawer
           prxId={selectedId}
           onClose={() => setSelectedId(null)}
+        />
+      )}
+
+      {/* ── Editor ── */}
+      {editorState !== null && (
+        <PrescriptionEditor
+          patientId={Number(patientId)}
+          encounterId={encounterId !== undefined ? Number(encounterId) : undefined}
+          prescriptionId={editorState.prescriptionId}
+          onClose={() => setEditorState(null)}
+          onSaved={onEditorSaved}
         />
       )}
     </>

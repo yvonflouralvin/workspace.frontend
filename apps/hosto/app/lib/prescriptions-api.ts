@@ -183,3 +183,15 @@ export async function searchDrugs(q: string): Promise<DrugSearchResult[]> {
     await apiFetch(`/api/drug-catalog/search?q=${encodeURIComponent(q)}`),
   );
 }
+
+export async function checkAllergiesInstant(
+  patientId: number | string,
+  medicationIds: number[],
+): Promise<AllergyCheckResult> {
+  return parseJson<AllergyCheckResult>(
+    await apiFetch("/api/allergy-check", {
+      method: "POST",
+      body: { patient_id: Number(patientId), medication_ids: medicationIds },
+    }),
+  );
+}

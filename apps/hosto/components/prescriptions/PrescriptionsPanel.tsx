@@ -5,15 +5,19 @@ import { RightDrawer } from "@repo/ui/RightDrawer";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
 import {
   AddOutlined,
-  EditOutlined,
-  MedicationOutlined,
-  WarningAmberOutlined,
-  LockOutlined,
-  CheckCircleOutlined,
+  BlockOutlined,
   CancelOutlined,
+  CheckCircleOutlined,
   EditNoteOutlined,
+  EditOutlined,
+  LockOutlined,
+  MedicationOutlined,
+  PrintOutlined,
+  WarningAmberOutlined,
 } from "@mui/icons-material";
 import {
+  cancelPrescription,
+  downloadPrescriptionPdf,
   getPatientPrescriptions,
   getPrescription,
   type PrescriptionRead,
@@ -173,13 +177,25 @@ function PrescriptionCard({
 function PrescriptionDetailDrawer({
   prxId,
   onClose,
+  canWrite,
+  onRefresh,
 }: {
   prxId: number;
   onClose: () => void;
+  canWrite: boolean;
+  onRefresh: () => void;
 }) {
   const [prx, setPrx] = useState<PrescriptionRead | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const [pdfError, setPdfError] = useState<string | null>(null);
+
+  const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -190,137 +206,255 @@ function PrescriptionDetailDrawer({
       .finally(() => setLoading(false));
   }, [prxId]);
 
+  async function handlePdf() {
+    if (!prx) return;
+    setDownloadingPdf(true);
+    setPdfError(null);
+    try {
+      await downloadPrescriptionPdf(prx.id);
+    } catch {
+      setPdfError("Impossible de générer le PDF. Le service est peut-être indisponible.");
+    } finally {
+      setDownloadingPdf(false);
+    }
+  }
+
+  async function handleCancel() {
+    if (!cancelReason.trim()) return;
+    setCancelling(true);
+    setCancelError(null);
+    try {
+      const updated = await cancelPrescription(prxId, cancelReason.trim());
+      setPrx(updated);
+      setCancelModalOpen(false);
+      setCancelReason("");
+      onRefresh();
+    } catch (err) {
+      setCancelError(err instanceof Error ? err.message : "Erreur lors de l'annulation.");
+    } finally {
+      setCancelling(false);
+    }
+  }
+
   const title = prx
     ? `Prescription #${prx.id} — ${STATUS_LABEL[prx.status]}`
     : "Prescription";
 
   return (
-    <RightDrawer title={title} onClose={onClose}>
-      <div className="h-full overflow-y-auto space-y-5">
-        {error && (
-          <p className="text-body-sm text-error bg-error-container/40 rounded-xl px-4 py-3">{error}</p>
-        )}
+    <>
+      <RightDrawer title={title} onClose={onClose}>
+        <div className="h-full overflow-y-auto space-y-5">
+          {error && (
+            <p className="text-body-sm text-error bg-error-container/40 rounded-xl px-4 py-3">{error}</p>
+          )}
 
-        {loading && (
-          <div className="space-y-3 animate-pulse">
-            <div className="h-4 w-48 rounded bg-surface-container" />
-            <div className="h-3 w-32 rounded bg-surface-container" />
-            <div className="h-24 rounded-xl bg-surface-container mt-4" />
-          </div>
-        )}
-
-        {prx && (
-          <>
-            {/* ── En-tête ── */}
-            <div className="rounded-xl bg-surface-container-lowest border border-outline-variant p-4 space-y-2">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className={`inline-flex items-center gap-1 text-label-sm px-2 py-0.5 rounded-full font-medium ${STATUS_CLS[prx.status]}`}>
-                  {STATUS_ICON[prx.status]}
-                  {STATUS_LABEL[prx.status]}
-                </span>
-              </div>
-
-              <div className="text-body-sm text-on-surface-variant space-y-1 mt-2">
-                <p>
-                  <span className="font-medium text-on-surface">Date :</span>{" "}
-                  {prx.prescribed_at ? fmtDateTime(prx.prescribed_at) : fmtDateTime(prx.created_at)}
-                </p>
-                {prx.prescriber_id && (
-                  <p>
-                    <span className="font-medium text-on-surface">Prescripteur :</span>{" "}
-                    #{prx.prescriber_id}
-                  </p>
-                )}
-                {prx.signed && prx.signed_at && (
-                  <p>
-                    <span className="font-medium text-on-surface">Signée le :</span>{" "}
-                    {fmtDateTime(prx.signed_at)}
-                  </p>
-                )}
-                {prx.status === "ANNULEE" && prx.cancel_reason && (
-                  <p>
-                    <span className="font-medium text-on-surface">Motif d&apos;annulation :</span>{" "}
-                    {prx.cancel_reason}
-                  </p>
-                )}
-                {prx.notes && (
-                  <p>
-                    <span className="font-medium text-on-surface">Notes :</span>{" "}
-                    {prx.notes}
-                  </p>
-                )}
-              </div>
+          {loading && (
+            <div className="space-y-3 animate-pulse">
+              <div className="h-4 w-48 rounded bg-surface-container" />
+              <div className="h-3 w-32 rounded bg-surface-container" />
+              <div className="h-24 rounded-xl bg-surface-container mt-4" />
             </div>
+          )}
 
-            {/* ── Lignes médicaments ── */}
-            <div>
-              <h3 className="text-label-md font-medium text-on-surface-variant mb-2 uppercase tracking-wide">
-                Médicaments ({prx.items.length})
-              </h3>
-              {prx.items.length === 0 ? (
-                <p className="text-body-sm text-on-surface-variant italic">Aucun médicament.</p>
-              ) : (
-                <div className="rounded-xl border border-outline-variant overflow-hidden divide-y divide-outline-variant">
-                  {prx.items.map((item) => (
-                    <div key={item.id} className="px-4 py-3 bg-surface-container-lowest">
-                      <div className="flex items-start gap-3">
-                        <div className="flex-1 min-w-0">
-                          <p className="text-body-md font-semibold text-on-surface">
-                            {item.medication_name_cache}
-                          </p>
-                          <p className="text-body-sm text-on-surface-variant mt-0.5">
-                            {[item.dosage, item.frequency, item.route].filter(Boolean).join(" · ")}
-                            {item.duration && (
-                              <span className="ml-2 text-on-surface-variant/70">
-                                · {item.duration}
+          {prx && (
+            <>
+              {/* ── En-tête ── */}
+              <div className="rounded-xl bg-surface-container-lowest border border-outline-variant p-4 space-y-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className={`inline-flex items-center gap-1 text-label-sm px-2 py-0.5 rounded-full font-medium ${STATUS_CLS[prx.status]}`}>
+                    {STATUS_ICON[prx.status]}
+                    {STATUS_LABEL[prx.status]}
+                  </span>
+                  {prx.status === "SIGNEE" && (
+                    <span className="inline-flex items-center gap-1 text-label-sm text-on-surface-variant/60">
+                      <LockOutlined style={{ fontSize: 13 }} />
+                      Immuable
+                    </span>
+                  )}
+                </div>
+
+                <div className="text-body-sm text-on-surface-variant space-y-1 mt-2">
+                  <p>
+                    <span className="font-medium text-on-surface">Date :</span>{" "}
+                    {prx.prescribed_at ? fmtDateTime(prx.prescribed_at) : fmtDateTime(prx.created_at)}
+                  </p>
+                  {prx.prescriber_id && (
+                    <p>
+                      <span className="font-medium text-on-surface">Prescripteur :</span>{" "}
+                      #{prx.prescriber_id}
+                    </p>
+                  )}
+                  {prx.signed && prx.signed_at && (
+                    <p>
+                      <span className="font-medium text-on-surface">Signée le :</span>{" "}
+                      {fmtDateTime(prx.signed_at)}
+                    </p>
+                  )}
+                  {prx.status === "ANNULEE" && prx.cancel_reason && (
+                    <p>
+                      <span className="font-medium text-on-surface">Motif d&apos;annulation :</span>{" "}
+                      {prx.cancel_reason}
+                    </p>
+                  )}
+                  {prx.notes && (
+                    <p>
+                      <span className="font-medium text-on-surface">Notes :</span>{" "}
+                      {prx.notes}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* ── Médicaments ── */}
+              <div>
+                <h3 className="text-label-md font-medium text-on-surface-variant mb-2 uppercase tracking-wide">
+                  Médicaments ({prx.items.length})
+                </h3>
+                {prx.items.length === 0 ? (
+                  <p className="text-body-sm text-on-surface-variant italic">Aucun médicament.</p>
+                ) : (
+                  <div className="rounded-xl border border-outline-variant overflow-hidden divide-y divide-outline-variant">
+                    {prx.items.map((item) => (
+                      <div key={item.id} className="px-4 py-3 bg-surface-container-lowest">
+                        <div className="flex items-start gap-3">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-body-md font-semibold text-on-surface">
+                              {item.medication_name_cache}
+                            </p>
+                            <p className="text-body-sm text-on-surface-variant mt-0.5">
+                              {[item.dosage, item.frequency, item.route].filter(Boolean).join(" · ")}
+                              {item.duration && (
+                                <span className="ml-2 text-on-surface-variant/70">
+                                  · {item.duration}
+                                </span>
+                              )}
+                            </p>
+                            {item.instructions && (
+                              <p className="text-body-sm text-on-surface-variant/70 italic mt-0.5">
+                                {item.instructions}
+                              </p>
+                            )}
+                          </div>
+
+                          <div className="flex flex-col gap-1 items-end shrink-0">
+                            {item.allergy_overridden && (
+                              <span className="inline-flex items-center gap-1 text-label-sm px-2 py-0.5 rounded-full bg-error-container text-error font-medium">
+                                <LockOutlined style={{ fontSize: 12 }} />
+                                Conflit forcé
                               </span>
                             )}
-                          </p>
-                          {item.instructions && (
-                            <p className="text-body-sm text-on-surface-variant/70 italic mt-0.5">
-                              {item.instructions}
-                            </p>
-                          )}
-                        </div>
-
-                        <div className="flex flex-col gap-1 items-end shrink-0">
-                          {item.allergy_overridden && (
-                            <span className="inline-flex items-center gap-1 text-label-sm px-2 py-0.5 rounded-full bg-error-container text-error font-medium">
-                              <LockOutlined style={{ fontSize: 12 }} />
-                              Conflit forcé
-                            </span>
-                          )}
-                          {item.allergy_alert_raised && !item.allergy_overridden && (
-                            <span className="inline-flex items-center gap-1 text-label-sm px-2 py-0.5 rounded-full bg-error-container text-error font-medium">
-                              <WarningAmberOutlined style={{ fontSize: 12 }} />
-                              Alerte
-                            </span>
-                          )}
+                            {item.allergy_alert_raised && !item.allergy_overridden && (
+                              <span className="inline-flex items-center gap-1 text-label-sm px-2 py-0.5 rounded-full bg-error-container text-error font-medium">
+                                <WarningAmberOutlined style={{ fontSize: 12 }} />
+                                Alerte
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* ── Actions ── */}
+              <div className="space-y-3 pt-1">
+                {prx.status === "SIGNEE" && (
+                  <button
+                    type="button"
+                    onClick={handlePdf}
+                    disabled={downloadingPdf}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-secondary text-on-secondary text-body-md font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+                  >
+                    <PrintOutlined style={{ fontSize: 18 }} />
+                    {downloadingPdf ? "Génération du PDF…" : "Imprimer / Télécharger l'ordonnance"}
+                  </button>
+                )}
+
+                {pdfError && (
+                  <p className="text-body-sm text-error bg-error-container/40 rounded-xl px-4 py-3" role="alert">
+                    {pdfError}
+                  </p>
+                )}
+
+                {prx.status === "SIGNEE" && canWrite && (
+                  <button
+                    type="button"
+                    onClick={() => setCancelModalOpen(true)}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-error/50 text-error text-body-md hover:bg-error/8 transition-colors"
+                  >
+                    <BlockOutlined style={{ fontSize: 18 }} />
+                    Annuler la prescription
+                  </button>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      </RightDrawer>
+
+      {/* ── Modal annulation ── */}
+      {cancelModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
+          <div className="bg-surface rounded-2xl shadow-2xl p-6 w-full max-w-md">
+            <div className="flex items-start gap-3 mb-4">
+              <BlockOutlined className="text-error shrink-0 mt-0.5" style={{ fontSize: 22 }} />
+              <div>
+                <h2 className="text-title-sm font-semibold text-on-surface">
+                  Annuler la prescription
+                </h2>
+                <p className="text-body-sm text-on-surface-variant mt-1">
+                  La prescription sera marquée comme annulée. Cette action ne supprime pas la prescription — elle reste consultable.
+                </p>
+              </div>
             </div>
 
-            {/* ── Actions ── */}
-            {prx.status === "SIGNEE" && (
-              <div className="pt-2">
-                <button
-                  type="button"
-                  disabled
-                  title="Disponible dans une prochaine version"
-                  className="w-full py-2 rounded-xl border border-outline-variant text-body-md text-on-surface-variant opacity-50 cursor-not-allowed"
-                >
-                  Télécharger le PDF
-                </button>
-              </div>
+            <div className="flex flex-col gap-1 mb-4">
+              <label className="text-label-md font-medium text-on-surface-variant">
+                Motif d&apos;annulation <span className="text-error">*</span>
+              </label>
+              <textarea
+                className="w-full rounded-xl border border-outline-variant bg-surface-container-lowest px-3 py-2 text-body-md text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-error resize-none transition-colors"
+                rows={3}
+                placeholder="Ex : Erreur de prescription, changement de traitement…"
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                autoFocus
+              />
+            </div>
+
+            {cancelError && (
+              <p className="text-body-sm text-error bg-error-container/40 rounded-xl px-4 py-3 mb-4" role="alert">
+                {cancelError}
+              </p>
             )}
-          </>
-        )}
-      </div>
-    </RightDrawer>
+
+            <div className="flex gap-3 justify-end">
+              <button
+                type="button"
+                onClick={() => {
+                  setCancelModalOpen(false);
+                  setCancelReason("");
+                  setCancelError(null);
+                }}
+                disabled={cancelling}
+                className="px-4 py-2 rounded-xl text-body-md text-on-surface-variant border border-outline-variant hover:bg-surface-container transition-colors disabled:opacity-50"
+              >
+                Fermer
+              </button>
+              <button
+                type="button"
+                onClick={handleCancel}
+                disabled={cancelling || !cancelReason.trim()}
+                className="px-4 py-2 rounded-xl text-body-md bg-error text-on-error hover:opacity-90 transition-opacity disabled:opacity-50"
+              >
+                {cancelling ? "Annulation…" : "Confirmer l'annulation"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -442,7 +576,7 @@ export function PrescriptionsPanel({
         </p>
       )}
 
-      {/* ── List ── */}
+      {/* ── Liste ── */}
       {loading ? (
         <Skeleton />
       ) : visible.length === 0 ? (
@@ -476,15 +610,17 @@ export function PrescriptionsPanel({
         </div>
       )}
 
-      {/* ── Detail drawer ── */}
+      {/* ── Détail ── */}
       {selectedId !== null && editorState === null && (
         <PrescriptionDetailDrawer
           prxId={selectedId}
           onClose={() => setSelectedId(null)}
+          canWrite={canWrite}
+          onRefresh={load}
         />
       )}
 
-      {/* ── Editor ── */}
+      {/* ── Éditeur ── */}
       {editorState !== null && (
         <PrescriptionEditor
           patientId={Number(patientId)}

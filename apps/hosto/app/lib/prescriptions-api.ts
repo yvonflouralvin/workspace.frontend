@@ -1,6 +1,16 @@
 import { apiFetch } from "@repo/network/client";
 import { ApiError } from "./api";
 
+export class SignBlockedError extends Error {
+  blockingMedications: string[];
+  constructor(medications: string[]) {
+    super(
+      `Signature refusée — justification requise pour : ${medications.join(", ")}`,
+    );
+    this.blockingMedications = medications;
+  }
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type PrescriptionStatus = "BROUILLON" | "SIGNEE" | "ANNULEE";
@@ -50,6 +60,16 @@ export interface PrescriptionCreate {
   encounter_id: number;
   notes?: string | null;
   items: PrescriptionItemCreate[];
+}
+
+export interface PrescriptionItemPatch {
+  dosage?: string;
+  frequency?: string;
+  route?: string | null;
+  duration?: string | null;
+  instructions?: string | null;
+  allergy_overridden?: boolean;
+  override_reason?: string;
 }
 
 export interface PrescriptionItemUpdate {
@@ -143,6 +163,19 @@ export async function updatePrescription(
   );
 }
 
+export async function updatePrescriptionItem(
+  prescriptionId: number | string,
+  itemId: number,
+  data: PrescriptionItemPatch,
+): Promise<PrescriptionRead> {
+  return parseJson<PrescriptionRead>(
+    await apiFetch(`/api/prescriptions/${prescriptionId}/items/${itemId}`, {
+      method: "PATCH",
+      body: data,
+    }),
+  );
+}
+
 export async function deletePrescription(id: number | string): Promise<void> {
   const res = await apiFetch(`/api/prescriptions/${id}`, { method: "DELETE" });
   if (!res.ok) {
@@ -163,16 +196,34 @@ export async function checkPrescriptionAllergies(
   );
 }
 
-export async function signPrescription(
-  id: number | string,
-  pin?: string,
-): Promise<PrescriptionRead> {
-  return parseJson<PrescriptionRead>(
-    await apiFetch(`/api/prescriptions/${id}/sign`, {
-      method: "POST",
-      body: pin ? { pin } : {},
-    }),
-  );
+export async function signPrescription(id: number | string): Promise<PrescriptionRead> {
+  const res = await apiFetch(`/api/prescriptions/${id}/sign`, { method: "POST", body: {} });
+  if (res.status === 409) {
+    const raw: unknown = await res.json().catch(() => null);
+    const err = raw as Record<string, unknown> | null;
+    const detail = err?.detail as Record<string, unknown> | string | null | undefined;
+    const blocking = typeof detail === "object" && detail !== null && Array.isArray(detail.blocking_medications)
+      ? (detail.blocking_medications as string[])
+      : null;
+    if (blocking) throw new SignBlockedError(blocking);
+    const msg =
+      typeof detail === "string"
+        ? detail
+        : typeof detail === "object" && detail !== null
+          ? String(detail.message ?? "Signature refusée")
+          : "Signature refusée";
+    throw new ApiError(msg, 409);
+  }
+  return parseJson<PrescriptionRead>(res);
+}
+
+export async function downloadPrescriptionPdf(id: number | string): Promise<void> {
+  const res = await fetch(`/api/prescriptions/${id}/pdf`, { credentials: "include" });
+  if (!res.ok) throw new Error("Impossible de générer l'ordonnance PDF.");
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  window.open(url, "_blank");
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
 export async function cancelPrescription(

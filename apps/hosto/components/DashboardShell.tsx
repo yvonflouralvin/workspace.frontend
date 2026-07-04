@@ -16,6 +16,7 @@ import {
   MedicalServicesOutlined,
   PeopleAltOutlined,
   ScheduleOutlined,
+  SensorDoorOutlined,
 } from "@mui/icons-material";
 import type { NavItem, AppDefinition } from "@repo/ui/types/shell";
 import { logout as logoutRequest } from "@/app/lib/api";
@@ -41,6 +42,11 @@ const NAV_ITEMS: NavItem[] = [
     label: "Personnel",
     href: "/staff",
     icon: <MedicalServicesOutlined style={{ fontSize: 20 }} />,
+  },
+  {
+    label: "Réception",
+    href: "/reception",
+    icon: <SensorDoorOutlined style={{ fontSize: 20 }} />,
   },
   {
     label: "Calendrier",

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { RightDrawer } from "@repo/ui/RightDrawer";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
 import {
@@ -393,10 +394,10 @@ function PrescriptionDetailDrawer({
         </div>
       </RightDrawer>
 
-      {/* ── Modal annulation ── */}
-      {cancelModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
-          <div className="bg-surface rounded-2xl shadow-2xl p-6 w-full max-w-md">
+      {/* ── Modal annulation ── portal → document.body pour échapper au z-50 du RightDrawer */}
+      {cancelModalOpen && createPortal(
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/40">
+          <div className="bg-surface rounded-2xl shadow-2xl p-6 w-full max-w-[28rem]">
             <div className="flex items-start gap-3 mb-4">
               <BlockOutlined className="text-error shrink-0 mt-0.5" style={{ fontSize: 22 }} />
               <div>
@@ -452,7 +453,8 @@ function PrescriptionDetailDrawer({
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </>
   );

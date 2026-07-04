@@ -17,6 +17,8 @@ import {
   type ConsultationAggregate,
 } from "@/app/lib/consultation-api";
 import { EMRDrawer } from "@/components/emr/EMRDrawer";
+import { EMRPanel } from "@/components/emr/EMRPanel";
+import { SplitWorkspace } from "@repo/ui/SplitWorkspace";
 import {
   ArrowBackOutlined,
   PersonOutlineOutlined,
@@ -79,6 +81,11 @@ export default function ConsultationPage() {
   const [error, setError] = useState<string | null>(null);
   const [closing, setClosing] = useState(false);
   const [emrOpen, setEmrOpen] = useState(false);
+  const [splitState, setSplitState] = useState<{ title: string; content: React.ReactNode } | null>(null);
+
+  function openSplit(title: string, content: React.ReactNode) {
+    setSplitState({ title, content });
+  }
 
   const load = useCallback(async () => {
     try {
@@ -249,6 +256,8 @@ export default function ConsultationPage() {
               canSign={canSign}
               encounterId={encounterId}
               onMutation={load}
+              onSplit={canWrite && !isClosed ? openSplit : undefined}
+              onCloseSplit={() => setSplitState(null)}
             />
           )}
           {activeTab === "diagnostics" && (
@@ -257,12 +266,16 @@ export default function ConsultationPage() {
               canWrite={canWrite && !isClosed}
               encounterId={encounterId}
               onMutation={load}
+              onSplit={canWrite && !isClosed ? openSplit : undefined}
+              onCloseSplit={() => setSplitState(null)}
             />
           )}
           {activeTab === "prescriptions" && (
             <PrescriptionsPanel
               patientId={patient.id}
               encounterId={encounterId}
+              onSplit={canWrite && !isClosed ? openSplit : undefined}
+              onCloseSplit={() => setSplitState(null)}
             />
           )}
         </div>
@@ -274,6 +287,15 @@ export default function ConsultationPage() {
         patientId={patient.id}
         patientName={fullName}
         onClose={() => setEmrOpen(false)}
+      />
+    )}
+
+    {splitState && patient && (
+      <SplitWorkspace
+        title={splitState.title}
+        onClose={() => setSplitState(null)}
+        left={<EMRPanel patientId={patient.id} patientName={fullName} />}
+        right={splitState.content}
       />
     )}
     </>

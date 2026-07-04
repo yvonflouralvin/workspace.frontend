@@ -26,6 +26,7 @@ import {
   type ClinicalNoteUpdate,
   type EncounterRead,
 } from "@/app/lib/emr-api";
+import { NoteForm } from "./NoteForm";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -326,12 +327,16 @@ export function NotesTab({
   canSign,
   onMutation,
   encounterId,
+  onSplit,
+  onCloseSplit,
 }: {
   patientId: number;
   canWrite: boolean;
   canSign: boolean;
   onMutation?: () => void;
   encounterId?: number;
+  onSplit?: (title: string, content: React.ReactNode) => void;
+  onCloseSplit?: () => void;
 }) {
   // ── Data state ──
   const [notes, setNotes] = useState<ClinicalNoteRead[]>([]);
@@ -420,10 +425,21 @@ export function NotesTab({
     try {
       let enc: EncounterRead;
       if (encounterId !== undefined) {
-        // Consultation contextuelle : on connaît l'encounter — pas besoin de résolution
         enc = await getEncounterById(encounterId);
       } else {
         enc = await resolveEncounter();
+      }
+      if (onSplit) {
+        onSplit("Nouvelle note", (
+          <NoteForm
+            patientId={patientId}
+            encounterId={enc.id}
+            mode="create"
+            onSaved={() => { loadNotes(); onMutation?.(); onCloseSplit?.(); }}
+            onClose={() => onCloseSplit?.()}
+          />
+        ));
+        return;
       }
       setActiveEncounter(enc);
       setDrawerMode("create");
@@ -439,6 +455,19 @@ export function NotesTab({
 
   // ── Open edit drawer ──
   function openEdit(note: ClinicalNoteRead) {
+    if (onSplit) {
+      onSplit("Modifier la note", (
+        <NoteForm
+          patientId={patientId}
+          encounterId={encounterId}
+          mode="edit"
+          initialData={note}
+          onSaved={() => { loadNotes(); onMutation?.(); onCloseSplit?.(); }}
+          onClose={() => onCloseSplit?.()}
+        />
+      ));
+      return;
+    }
     setActiveEncounter(null);
     setDrawerMode("edit");
     setEditTarget(note);
@@ -455,6 +484,19 @@ export function NotesTab({
 
   // ── Open amend drawer ──
   function openAmend(note: ClinicalNoteRead) {
+    if (onSplit) {
+      onSplit("Addendum", (
+        <NoteForm
+          patientId={patientId}
+          encounterId={encounterId}
+          mode="amend"
+          initialData={note}
+          onSaved={() => { loadNotes(); onMutation?.(); onCloseSplit?.(); }}
+          onClose={() => onCloseSplit?.()}
+        />
+      ));
+      return;
+    }
     setActiveEncounter(null);
     setDrawerMode("amend");
     setEditTarget(note);

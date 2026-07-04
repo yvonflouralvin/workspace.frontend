@@ -223,9 +223,11 @@ function AllergyOverrideSection({
 function SignedView({
   prx,
   onClose,
+  bare,
 }: {
   prx: PrescriptionRead;
   onClose: () => void;
+  bare?: boolean;
 }) {
   const [downloading, setDownloading] = useState(false);
   const [pdfError, setPdfError] = useState<string | null>(null);
@@ -252,10 +254,9 @@ function SignedView({
       })
     : null;
 
-  return (
-    <RightDrawer title="Prescription signée" onClose={onClose} width="w-[800px] max-w-full">
-      <div className="h-full overflow-y-auto space-y-5 pr-1">
-        {/* Succès */}
+  const signedContent = (
+    <div className="h-full overflow-y-auto space-y-5 pr-1">
+      {/* Succès */}
         <div className="flex items-start gap-3 rounded-xl border border-secondary/40 bg-secondary/8 px-4 py-3">
           <CheckCircleOutlined className="text-secondary shrink-0 mt-0.5" style={{ fontSize: 20 }} />
           <div>
@@ -326,6 +327,12 @@ function SignedView({
           Fermer
         </button>
       </div>
+  );
+
+  if (bare) return signedContent;
+  return (
+    <RightDrawer title="Prescription signée" onClose={onClose} width="w-[800px] max-w-full">
+      {signedContent}
     </RightDrawer>
   );
 }
@@ -338,12 +345,14 @@ export function PrescriptionEditor({
   prescriptionId,
   onClose,
   onSaved,
+  bare = false,
 }: {
   patientId: number;
   encounterId?: number;
   prescriptionId?: number;
   onClose: () => void;
   onSaved: () => void;
+  bare?: boolean;
 }) {
   const { can } = usePermissions();
   const canWrite = can("hosto.prescriptions.create");
@@ -637,30 +646,31 @@ export function PrescriptionEditor({
   // ── Signed view ───────────────────────────────────────────────────────────
 
   if (signedPrx) {
-    return <SignedView prx={signedPrx} onClose={onSaved} />;
+    return <SignedView prx={signedPrx} onClose={onSaved} bare={bare} />;
   }
 
   // ── Permission guard ──────────────────────────────────────────────────────
 
   if (!canWrite) {
+    const guardContent = (
+      <div className="flex flex-col items-center gap-3 py-16 text-center">
+        <LockOutlined style={{ fontSize: 32 }} className="text-on-surface-variant/30" />
+        <p className="text-body-md text-on-surface-variant">
+          Vous n&apos;avez pas la permission de créer des prescriptions.
+        </p>
+      </div>
+    );
+    if (bare) return guardContent;
     return (
       <RightDrawer title={title} onClose={onClose} width="w-[800px] max-w-full">
-        <div className="flex flex-col items-center gap-3 py-16 text-center">
-          <LockOutlined style={{ fontSize: 32 }} className="text-on-surface-variant/30" />
-          <p className="text-body-md text-on-surface-variant">
-            Vous n&apos;avez pas la permission de créer des prescriptions.
-          </p>
-        </div>
+        {guardContent}
       </RightDrawer>
     );
   }
 
   // ── Main editor ───────────────────────────────────────────────────────────
 
-  return (
-    <>
-      <RightDrawer title={title} onClose={onClose} width="w-[800px] max-w-full">
-        {loadingPrescription ? (
+  const editorFormContent = loadingPrescription ? (
           <div className="space-y-4 animate-pulse">
             {[1, 2, 3].map((i) => (
               <div key={i} className="h-16 rounded-xl bg-surface-container" />
@@ -910,8 +920,19 @@ export function PrescriptionEditor({
               </button>
             </div>
           </form>
-        )}
-      </RightDrawer>
+        );
+
+  return (
+    <>
+      {bare ? (
+        <div className="h-full flex flex-col overflow-hidden">
+          {editorFormContent}
+        </div>
+      ) : (
+        <RightDrawer title={title} onClose={onClose} width="w-[800px] max-w-full">
+          {editorFormContent}
+        </RightDrawer>
+      )}
 
       {/* ── Modal confirmation signature ── */}
       {signModalOpen && typeof document !== "undefined" && createPortal(

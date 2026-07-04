@@ -11,6 +11,7 @@ import {
   getPatientConditions, createCondition, updateCondition, removeCondition, searchICD10,
   type ConditionRead, type ConditionCreate, type ConditionStatus, type ICD10Result,
 } from "@/app/lib/emr-api";
+import { ConditionForm } from "./ConditionForm";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -40,7 +41,7 @@ const EMPTY_FORM = {
   notes: "",
 };
 
-type ConditionForm = typeof EMPTY_FORM;
+type ConditionFormState = typeof EMPTY_FORM;
 
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
 
@@ -73,11 +74,15 @@ export function ConditionsTab({
   canWrite,
   onMutation,
   encounterId,
+  onSplit,
+  onCloseSplit,
 }: {
   patientId: number;
   canWrite: boolean;
   onMutation?: () => void;
   encounterId?: number;
+  onSplit?: (title: string, content: React.ReactNode) => void;
+  onCloseSplit?: () => void;
 }) {
   const [items, setItems] = useState<ConditionRead[]>([]);
   const [loading, setLoading] = useState(true);
@@ -85,7 +90,7 @@ export function ConditionsTab({
   const [filter, setFilter] = useState<FilterStatus>("ACTIF");
 
   const [drawer, setDrawer] = useState<null | { mode: "create" } | { mode: "edit"; item: ConditionRead }>(null);
-  const [form, setForm] = useState<ConditionForm>(EMPTY_FORM);
+  const [form, setForm] = useState<ConditionFormState>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -106,12 +111,35 @@ export function ConditionsTab({
   const visible = filter === "all" ? items : items.filter((c) => c.clinical_status === filter);
 
   function openCreate() {
+    if (onSplit) {
+      onSplit("Nouveau problème", (
+        <ConditionForm
+          patientId={patientId}
+          encounterId={encounterId}
+          onSaved={() => { load(); onMutation?.(); onCloseSplit?.(); }}
+          onClose={() => onCloseSplit?.()}
+        />
+      ));
+      return;
+    }
     setForm(EMPTY_FORM);
     setFormError(null);
     setDrawer({ mode: "create" });
   }
 
   function openEdit(item: ConditionRead) {
+    if (onSplit) {
+      onSplit(item.label, (
+        <ConditionForm
+          patientId={patientId}
+          encounterId={encounterId}
+          initialData={item}
+          onSaved={() => { load(); onMutation?.(); onCloseSplit?.(); }}
+          onClose={() => onCloseSplit?.()}
+        />
+      ));
+      return;
+    }
     setForm({
       label: item.label,
       icd10_code: item.icd10_code ?? null,
@@ -127,7 +155,7 @@ export function ConditionsTab({
 
   function closeDrawer() { setDrawer(null); setFormError(null); }
 
-  function setField<K extends keyof ConditionForm>(key: K, value: ConditionForm[K]) {
+  function setField<K extends keyof ConditionFormState>(key: K, value: ConditionFormState[K]) {
     setForm((f) => ({ ...f, [key]: value }));
   }
 
@@ -299,7 +327,7 @@ export function ConditionsTab({
         </Modal>
       )}
 
-      {/* ── Drawer ── */}
+      {/* ── Drawer (fallback when onSplit not provided) ── */}
       {drawer && (
         <RightDrawer
           title={drawer.mode === "create" ? "Nouveau problème" : drawer.mode === "edit" ? drawer.item.label : ""}

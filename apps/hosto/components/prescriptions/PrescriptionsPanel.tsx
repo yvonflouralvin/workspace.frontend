@@ -126,11 +126,13 @@ function PrescriptionAccordion({
   prx,
   canWrite,
   onEdit,
+  onEditSplit,
   onRefresh,
 }: {
   prx: PrescriptionRead;
   canWrite: boolean;
   onEdit: () => void;
+  onEditSplit?: () => void;
   onRefresh: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
@@ -221,7 +223,7 @@ function PrescriptionAccordion({
           {canWrite && prx.status === "BROUILLON" && (
             <button
               type="button"
-              onClick={(e) => { e.stopPropagation(); onEdit(); }}
+              onClick={(e) => { e.stopPropagation(); onEditSplit ? onEditSplit() : onEdit(); }}
               className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-label-sm text-on-surface-variant hover:text-primary hover:bg-primary/8 transition-colors shrink-0"
             >
               <EditOutlined style={{ fontSize: 14 }} />
@@ -381,9 +383,13 @@ function PrescriptionAccordion({
 export function PrescriptionsPanel({
   patientId,
   encounterId,
+  onSplit,
+  onCloseSplit,
 }: {
   patientId: number | string;
   encounterId?: number | string;
+  onSplit?: (title: string, content: React.ReactNode) => void;
+  onCloseSplit?: () => void;
 }) {
   const { can } = usePermissions();
   const canView  = can("hosto.prescriptions.view");
@@ -461,7 +467,21 @@ export function PrescriptionsPanel({
           {canWrite && (
             <button
               type="button"
-              onClick={() => setEditorState({})}
+              onClick={() => {
+                if (onSplit) {
+                  onSplit("Nouvelle prescription", (
+                    <PrescriptionEditor
+                      patientId={Number(patientId)}
+                      encounterId={encounterId !== undefined ? Number(encounterId) : undefined}
+                      bare
+                      onClose={() => onCloseSplit?.()}
+                      onSaved={() => { load(); onCloseSplit?.(); }}
+                    />
+                  ));
+                } else {
+                  setEditorState({});
+                }
+              }}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-on-primary text-body-md font-medium hover:bg-primary-container transition-colors"
             >
               <AddOutlined style={{ fontSize: 18 }} />
@@ -489,7 +509,21 @@ export function PrescriptionsPanel({
           {canWrite && filter === "all" && (
             <button
               type="button"
-              onClick={() => setEditorState({})}
+              onClick={() => {
+                if (onSplit) {
+                  onSplit("Nouvelle prescription", (
+                    <PrescriptionEditor
+                      patientId={Number(patientId)}
+                      encounterId={encounterId !== undefined ? Number(encounterId) : undefined}
+                      bare
+                      onClose={() => onCloseSplit?.()}
+                      onSaved={() => { load(); onCloseSplit?.(); }}
+                    />
+                  ));
+                } else {
+                  setEditorState({});
+                }
+              }}
               className="text-body-sm text-primary underline underline-offset-2 hover:opacity-70 transition-opacity"
             >
               Créer une prescription
@@ -504,6 +538,16 @@ export function PrescriptionsPanel({
               prx={prx}
               canWrite={canWrite}
               onEdit={() => setEditorState({ prescriptionId: prx.id })}
+              onEditSplit={onSplit ? () => onSplit("Modifier la prescription", (
+                <PrescriptionEditor
+                  patientId={Number(patientId)}
+                  encounterId={encounterId !== undefined ? Number(encounterId) : undefined}
+                  prescriptionId={prx.id}
+                  bare
+                  onClose={() => onCloseSplit?.()}
+                  onSaved={() => { load(); onCloseSplit?.(); }}
+                />
+              )) : undefined}
               onRefresh={load}
             />
           ))}

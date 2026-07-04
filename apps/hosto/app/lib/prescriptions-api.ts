@@ -102,9 +102,14 @@ export interface AllergyCheckResult {
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 async function parseJson<T>(response: Response): Promise<T> {
-  const data = await response.json();
+  const data: unknown = await response.json().catch(() => null);
   if (!response.ok) {
-    throw new ApiError(data.detail ?? data.message ?? "Une erreur est survenue", response.status);
+    const err = data as Record<string, unknown> | null;
+    const message =
+      err != null
+        ? String(err.detail ?? err.message ?? "Une erreur est survenue")
+        : "Une erreur est survenue";
+    throw new ApiError(message, response.status);
   }
   return data as T;
 }
@@ -141,8 +146,12 @@ export async function updatePrescription(
 export async function deletePrescription(id: number | string): Promise<void> {
   const res = await apiFetch(`/api/prescriptions/${id}`, { method: "DELETE" });
   if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new ApiError(data.detail ?? "Erreur lors de la suppression.", res.status);
+    const data: unknown = await res.json().catch(() => null);
+    const err = data as Record<string, unknown> | null;
+    throw new ApiError(
+      String(err?.detail ?? err?.message ?? "Erreur lors de la suppression."),
+      res.status,
+    );
   }
 }
 

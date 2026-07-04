@@ -236,9 +236,14 @@ export interface MedicationPage {
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 async function parseJson<T>(response: Response): Promise<T> {
-  const data = await response.json();
+  const data: unknown = await response.json().catch(() => null);
   if (!response.ok) {
-    throw new ApiError(data.detail ?? data.message ?? "Une erreur est survenue", response.status);
+    const err = data as Record<string, unknown> | null;
+    const message =
+      err != null
+        ? String(err.detail ?? err.message ?? "Une erreur est survenue")
+        : "Une erreur est survenue";
+    throw new ApiError(message, response.status);
   }
   return data as T;
 }

@@ -174,6 +174,7 @@ export function PrescriptionEditor({
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const allergyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prescriptionDeletedRef = useRef(false);
   const isEditing = !!prescriptionId;
 
   // ── Load existing prescription (edit mode) ────────────────────────────────
@@ -296,8 +297,9 @@ export function PrescriptionEditor({
     setSaveError(null);
     try {
       const enc = await resolveEncounter();
-      if (isEditing && prescriptionId) {
+      if (isEditing && prescriptionId && !prescriptionDeletedRef.current) {
         await deletePrescription(prescriptionId);
+        prescriptionDeletedRef.current = true;
       }
       await createPrescription({
         patient_id: patientId,

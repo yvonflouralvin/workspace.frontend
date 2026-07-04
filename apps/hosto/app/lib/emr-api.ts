@@ -156,7 +156,7 @@ export interface EncounterRead {
   id: number;
   workspace_id: number;
   patient_id: number;
-  patient?: { id: number; nom: string; postnom: string; prenom: string };
+  patient?: { id: number; dossier_number: string; nom: string; postnom: string; prenom: string };
   service_id: number | null;
   staff_id: number | null;
   appointment_id: number | null;
@@ -582,4 +582,20 @@ export async function createEncounter(payload: {
 
 export async function getEncounterById(encounterId: number): Promise<EncounterRead> {
   return parseJson<EncounterRead>(await apiFetch(`/api/encounters/${encounterId}`));
+}
+
+export async function getMyEncounters(params?: {
+  q?: string;
+  from_date?: string;
+  to_date?: string;
+  page?: number;
+  per_page?: number;
+}): Promise<{ items: EncounterRead[]; total: number; page: number; pages: number }> {
+  const qs = new URLSearchParams();
+  if (params?.q) qs.set("q", params.q);
+  if (params?.from_date) qs.set("from_date", params.from_date);
+  if (params?.to_date) qs.set("to_date", params.to_date);
+  if (params?.page) qs.set("page", String(params.page));
+  if (params?.per_page) qs.set("per_page", String(params.per_page));
+  return parseJson(await apiFetch(`/api/encounters/mine${qs.size ? `?${qs}` : ""}`));
 }

@@ -13,6 +13,7 @@ import {
   CalendarMonthOutlined,
   HomeOutlined,
   LocalHospitalOutlined,
+  MedicalInformationOutlined,
   MedicalServicesOutlined,
   PeopleAltOutlined,
   ScheduleOutlined,
@@ -47,6 +48,11 @@ const NAV_ITEMS: NavItem[] = [
     label: "Réception",
     href: "/reception",
     icon: <SensorDoorOutlined style={{ fontSize: 20 }} />,
+  },
+  {
+    label: "Consultations",
+    href: "/consultations",
+    icon: <MedicalInformationOutlined style={{ fontSize: 20 }} />,
   },
   {
     label: "Calendrier",

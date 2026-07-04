@@ -16,13 +16,13 @@ import {
   closeConsultation,
   type ConsultationAggregate,
 } from "@/app/lib/consultation-api";
+import { EMRDrawer } from "@/components/emr/EMRDrawer";
 import {
   ArrowBackOutlined,
   PersonOutlineOutlined,
   MedicalServicesOutlined,
   CheckCircleOutlined,
 } from "@mui/icons-material";
-import Link from "next/link";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -78,6 +78,7 @@ export default function ConsultationPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [closing, setClosing] = useState(false);
+  const [emrOpen, setEmrOpen] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -143,6 +144,7 @@ export default function ConsultationPage() {
   const isClosed = encounter.status === "CLOS";
 
   return (
+    <>
     <DashboardShell>
       <div className="max-w-5xl mx-auto px-4 py-6 space-y-5">
 
@@ -185,12 +187,12 @@ export default function ConsultationPage() {
                 </p>
               </div>
             </div>
-            <Link
-              href={`/patients/${patient.id}/emr`}
+            <button
+              onClick={() => setEmrOpen(true)}
               className="flex items-center gap-1.5 text-primary text-body-sm hover:underline shrink-0">
               <MedicalServicesOutlined style={{ fontSize: 15 }} />
-              Dossier complet
-            </Link>
+              Dossier médical
+            </button>
           </div>
 
           {/* motif + service + timing */}
@@ -266,5 +268,14 @@ export default function ConsultationPage() {
         </div>
       </div>
     </DashboardShell>
+
+    {emrOpen && patient && (
+      <EMRDrawer
+        patientId={patient.id}
+        patientName={fullName}
+        onClose={() => setEmrOpen(false)}
+      />
+    )}
+    </>
   );
 }

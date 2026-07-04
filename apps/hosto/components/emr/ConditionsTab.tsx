@@ -72,10 +72,12 @@ export function ConditionsTab({
   patientId,
   canWrite,
   onMutation,
+  encounterId,
 }: {
   patientId: number;
   canWrite: boolean;
   onMutation?: () => void;
+  encounterId?: number;
 }) {
   const [items, setItems] = useState<ConditionRead[]>([]);
   const [loading, setLoading] = useState(true);
@@ -142,6 +144,7 @@ export function ConditionsTab({
         onset_date: form.onset_date || null,
         resolved_date: form.resolved_date || null,
         notes: form.notes.trim() || null,
+        ...(encounterId !== undefined ? { encounter_id: encounterId } : {}),
       };
       if (drawer?.mode === "create") {
         await createCondition(payload);

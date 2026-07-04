@@ -339,10 +339,12 @@ export function VitalsTab({
   patientId,
   canWrite,
   onMutation,
+  encounterId,
 }: {
   patientId: number;
   canWrite: boolean;
   onMutation?: () => void;
+  encounterId?: number;
 }) {
   const [latest, setLatest] = useState<ObservationRead[]>([]);
   const [series, setSeries] = useState<SeriesMap>({});
@@ -425,6 +427,7 @@ export function VitalsTab({
         value: v,
         unit: UNITS[code],
         measured_at: new Date(measuredAt).toISOString(),
+        ...(encounterId !== undefined ? { encounter_id: encounterId } : {}),
       });
     }
 

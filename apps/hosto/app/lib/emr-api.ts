@@ -341,7 +341,7 @@ export async function removeAllergy(id: number): Promise<void> {
 
 export interface ConditionCreate {
   patient_id: number;
-  encounter_id?: null;
+  encounter_id?: number | null;
   label: string;
   icd10_code?: string | null;
   clinical_status: ConditionStatus;
@@ -578,4 +578,8 @@ export async function createEncounter(payload: {
   return parseJson<EncounterRead>(
     await apiFetch("/api/encounters", { method: "POST", body: payload }),
   );
+}
+
+export async function getEncounterById(encounterId: number): Promise<EncounterRead> {
+  return parseJson<EncounterRead>(await apiFetch(`/api/encounters/${encounterId}`));
 }

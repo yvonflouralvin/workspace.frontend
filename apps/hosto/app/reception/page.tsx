@@ -25,8 +25,18 @@ import {
 } from "@/app/lib/reception-api";
 import { listPatients, listServices, type PatientSummary, type Service } from "@/app/lib/api";
 import { ApiError } from "@/app/lib/api";
+import { takeVisite } from "@/app/lib/consultation-api";
+import { useRouter } from "next/navigation";
+import {
+  createObservationsBatch,
+  getLatestObservations,
+  type ObservationCode,
+  type ObservationRead,
+} from "@/app/lib/emr-api";
+import { isAbnormal, validateField, computeIMC, UNITS } from "@/components/emr/vitals-utils";
 import {
   AddOutlined,
+  FavoriteBorderOutlined,
   MedicalServicesOutlined,
   RefreshOutlined,
   SearchOutlined,
@@ -80,13 +90,478 @@ function waitMinutes(arrivedAt: string): number {
   return Math.floor((Date.now() - new Date(arrivedAt).getTime()) / 60_000);
 }
 
+// ─── ConstantesDrawer ────────────────────────────────────────────────────────
+
+const VITAL_LABELS: Record<ObservationCode, string> = {
+  TEMPERATURE:    "Température",
+  TA_SYSTOLIQUE:  "TA systolique",
+  TA_DIASTOLIQUE: "TA diastolique",
+  FC:             "Fréq. cardiaque",
+  FR:             "Fréq. respiratoire",
+  SPO2:           "SpO₂",
+  POIDS:          "Poids",
+  TAILLE:         "Taille",
+  DOULEUR_EVA:    "Douleur (EVA)",
+  IMC:            "IMC",
+};
+
+const FORM_CODES: ObservationCode[] = [
+  "TEMPERATURE", "TA_SYSTOLIQUE", "TA_DIASTOLIQUE", "FC", "FR", "SPO2", "POIDS", "TAILLE", "DOULEUR_EVA",
+];
+
+function nowLocal(): string {
+  const d = new Date();
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+  return d.toISOString().slice(0, 16);
+}
+
+function ConstantesDrawer({
+  patientId,
+  patientName,
+  canWrite,
+  encounterId,
+  onClose,
+}: {
+  patientId: number;
+  patientName: string;
+  canWrite: boolean;
+  encounterId?: number;
+  onClose: () => void;
+}) {
+  const [latest, setLatest] = useState<ObservationRead[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [values, setValues] = useState<Partial<Record<ObservationCode, string>>>({});
+  const [measuredAt, setMeasuredAt] = useState(nowLocal());
+  const [errors, setErrors] = useState<Partial<Record<ObservationCode, string>>>({});
+  const [globalError, setGlobalError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  const load = useCallback(() => {
+    setLoading(true);
+    getLatestObservations(patientId)
+      .then(setLatest)
+      .finally(() => setLoading(false));
+  }, [patientId]);
+
+  useEffect(() => { load(); }, [load]);
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault();
+    const fieldErrors: Partial<Record<ObservationCode, string>> = {};
+    const items: { patient_id: number; code: ObservationCode; value: number; unit: string; measured_at: string; encounter_id?: number }[] = [];
+
+    for (const code of FORM_CODES) {
+      const raw = values[code]?.trim();
+      if (!raw) continue;
+      const err = validateField(code, raw);
+      if (err) { fieldErrors[code] = err; continue; }
+      items.push({
+        patient_id: patientId,
+        code,
+        value: parseFloat(raw),
+        unit: UNITS[code],
+        measured_at: new Date(measuredAt).toISOString(),
+        ...(encounterId !== undefined ? { encounter_id: encounterId } : {}),
+      });
+    }
+
+    if (Object.keys(fieldErrors).length) { setErrors(fieldErrors); return; }
+    if (items.length === 0) { setGlobalError("Renseignez au moins une constante."); return; }
+
+    setSaving(true);
+    setGlobalError(null);
+    setErrors({});
+    try {
+      await createObservationsBatch(items);
+      setValues({});
+      setShowForm(false);
+      setSaved(true);
+      load();
+      setTimeout(() => setSaved(false), 3000);
+    } catch (err) {
+      setGlobalError(err instanceof Error ? err.message : "Erreur lors de l'enregistrement.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const byCode = Object.fromEntries(latest.map((o) => [o.code, o])) as Partial<Record<ObservationCode, ObservationRead>>;
+  const imc = computeIMC(latest);
+
+  return (
+    <RightDrawer
+      title={`Constantes — ${patientName}`}
+      onClose={onClose}
+      width="w-[480px] max-w-full"
+      contentClassName="px-6 py-5 overflow-y-auto"
+    >
+      {/* ── Dernières constantes ── */}
+      <div className="mb-5">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-body-sm font-semibold text-on-surface-variant uppercase tracking-wide">
+            Dernières valeurs
+          </h3>
+          {saved && (
+            <span className="text-label-sm text-secondary">✓ Enregistré</span>
+          )}
+        </div>
+
+        {loading ? (
+          <div className="grid grid-cols-3 gap-2">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="h-16 rounded-xl bg-surface-container animate-pulse" />
+            ))}
+          </div>
+        ) : latest.length === 0 ? (
+          <div className="flex flex-col items-center gap-2 py-8 text-center rounded-xl border border-outline-variant bg-surface-container-lowest">
+            <FavoriteBorderOutlined style={{ fontSize: 28 }} className="text-on-surface-variant/30" />
+            <p className="text-body-sm text-on-surface-variant">Aucune constante enregistrée.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-3 gap-2">
+            {FORM_CODES.filter((c) => byCode[c]).map((code) => {
+              const obs = byCode[code]!;
+              const abnormal = isAbnormal(code, obs.value);
+              return (
+                <div
+                  key={code}
+                  className={`rounded-xl border p-2.5 flex flex-col gap-0.5 ${
+                    abnormal ? "border-error/40 bg-error-container/20" : "border-outline-variant bg-surface-container-lowest"
+                  }`}>
+                  <span className="text-label-xs text-on-surface-variant truncate">{VITAL_LABELS[code]}</span>
+                  <span className={`text-body-md font-semibold tabular-nums ${abnormal ? "text-error" : "text-on-surface"}`}>
+                    {obs.value}
+                    <span className="text-label-xs font-normal text-on-surface-variant ml-0.5">{UNITS[code]}</span>
+                  </span>
+                </div>
+              );
+            })}
+            {imc !== null && (
+              <div className={`rounded-xl border p-2.5 flex flex-col gap-0.5 ${
+                imc < 18.5 || imc > 25 ? "border-error/40 bg-error-container/20" : "border-outline-variant bg-surface-container-lowest"
+              }`}>
+                <span className="text-label-xs text-on-surface-variant">IMC</span>
+                <span className={`text-body-md font-semibold tabular-nums ${imc < 18.5 || imc > 25 ? "text-error" : "text-on-surface"}`}>
+                  {imc}
+                  <span className="text-label-xs font-normal text-on-surface-variant ml-0.5">kg/m²</span>
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* ── Bouton Nouvelle prise / Formulaire inline ── */}
+      {canWrite && !showForm && (
+        <button
+          onClick={() => { setShowForm(true); setMeasuredAt(nowLocal()); }}
+          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border-2 border-dashed border-primary/40 text-primary text-body-sm font-medium hover:bg-primary/5 transition-colors">
+          <AddOutlined style={{ fontSize: 18 }} />
+          Nouvelle prise de constantes
+        </button>
+      )}
+
+      {canWrite && showForm && (
+        <form onSubmit={handleSave} className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-body-sm font-semibold text-on-surface">Nouvelle prise</h3>
+            <button
+              type="button"
+              onClick={() => { setShowForm(false); setValues({}); setErrors({}); setGlobalError(null); }}
+              className="text-label-sm text-on-surface-variant hover:text-on-surface transition-colors">
+              Annuler
+            </button>
+          </div>
+
+          <div>
+            <label className="text-label-md font-medium text-on-surface-variant block mb-1">Date et heure</label>
+            <input
+              type="datetime-local"
+              value={measuredAt}
+              onChange={(e) => setMeasuredAt(e.target.value)}
+              className="w-full rounded-xl border border-outline-variant bg-surface px-3 py-2 text-body-md text-on-surface focus:outline-none focus:border-primary" />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            {FORM_CODES.map((code) => (
+              <div key={code}>
+                <label className="text-label-md font-medium text-on-surface-variant block mb-1">
+                  {VITAL_LABELS[code]}
+                  <span className="font-normal text-on-surface-variant/60 ml-1">({UNITS[code]})</span>
+                </label>
+                <input
+                  type="number"
+                  step="any"
+                  value={values[code] ?? ""}
+                  onChange={(e) => {
+                    setValues((v) => ({ ...v, [code]: e.target.value }));
+                    setErrors((er) => { const n = { ...er }; delete n[code]; return n; });
+                  }}
+                  placeholder="—"
+                  className={`w-full rounded-xl border px-3 py-2 text-body-md text-on-surface focus:outline-none transition-colors ${
+                    errors[code] ? "border-error focus:border-error" : "border-outline-variant focus:border-primary"
+                  } bg-surface`} />
+                {errors[code] && <p className="text-label-sm text-error mt-0.5">{errors[code]}</p>}
+              </div>
+            ))}
+          </div>
+
+          {globalError && (
+            <p className="text-body-sm text-error bg-error-container/40 rounded-xl px-3 py-2">{globalError}</p>
+          )}
+
+          <button
+            type="submit"
+            disabled={saving}
+            className="w-full py-2.5 rounded-xl bg-primary text-on-primary text-body-sm font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors">
+            {saving ? "Enregistrement…" : "Enregistrer les constantes"}
+          </button>
+        </form>
+      )}
+    </RightDrawer>
+  );
+}
+
+// ─── VisiteActionsMenu ────────────────────────────────────────────────────────
+
+type VisiteActionsMenuProps = {
+  visite: Visite;
+  isActive: boolean;
+  canConsult: boolean;
+  canTriage: boolean;
+  canManage: boolean;
+  canWriteVitals: boolean;
+  isLeaving: boolean;
+  onTake: () => void;
+  onTriage: () => void;
+  onOrient: () => void;
+  onLeave: () => void;
+  onConstantes: () => void;
+};
+
+function VisiteActionsMenu({
+  visite,
+  isActive,
+  canConsult,
+  canTriage,
+  canManage,
+  canWriteVitals,
+  isLeaving,
+  onTake,
+  onTriage,
+  onOrient,
+  onLeave,
+  onConstantes,
+}: VisiteActionsMenuProps) {
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState<
+    | { top: number; right: number; bottom?: undefined }
+    | { bottom: number; right: number; top?: undefined }
+    | null
+  >(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onOutside(e: MouseEvent) {
+      const t = e.target as Node;
+      if (
+        btnRef.current && !btnRef.current.contains(t) &&
+        menuRef.current && !menuRef.current.contains(t)
+      ) setOpen(false);
+    }
+    function onScroll() { setOpen(false); }
+    document.addEventListener("mousedown", onOutside);
+    document.addEventListener("scroll", onScroll, true);
+    return () => {
+      document.removeEventListener("mousedown", onOutside);
+      document.removeEventListener("scroll", onScroll, true);
+    };
+  }, [open]);
+
+  function toggle() {
+    if (!btnRef.current) return;
+    const rect = btnRef.current.getBoundingClientRect();
+    const MENU_HEIGHT = 280;
+    const right = window.innerWidth - rect.right;
+    if (window.innerHeight - rect.bottom < MENU_HEIGHT) {
+      setPos({ bottom: window.innerHeight - rect.top + 4, right });
+    } else {
+      setPos({ top: rect.bottom + 4, right });
+    }
+    setOpen((v) => !v);
+  }
+
+  function act(fn: () => void) {
+    setOpen(false);
+    fn();
+  }
+
+  const patientId = visite.patient.id;
+  const dossierBase = `/patients/${patientId}/emr`;
+
+  return (
+    <>
+      <button
+        ref={btnRef}
+        onClick={toggle}
+        className="w-8 h-8 flex items-center justify-center rounded-lg border border-outline-variant text-on-surface-variant hover:bg-surface-container transition-colors text-base leading-none">
+        ···
+      </button>
+
+      {open && pos && (
+        <div
+          ref={menuRef}
+          style={{ position: "fixed", top: pos.top, bottom: pos.bottom, right: pos.right, zIndex: 9999 }}
+          className="min-w-[210px] max-h-[280px] overflow-y-auto rounded-xl border border-outline-variant bg-surface shadow-xl py-1">
+
+          {/* ── Dossier ───────────────────────────────────── */}
+          <p className="px-3 pt-2 pb-1 text-label-xs text-on-surface-variant uppercase tracking-wide">Dossier</p>
+
+          <button
+            onClick={() => act(onConstantes)}
+            className="flex items-center gap-2.5 w-full px-3 py-2 text-body-sm text-on-surface hover:bg-surface-container transition-colors">
+            <span className="text-base">📊</span>
+            Constantes
+          </button>
+
+          <a
+            href={dossierBase}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => setOpen(false)}
+            className="flex items-center gap-2.5 w-full px-3 py-2 text-body-sm text-on-surface hover:bg-surface-container transition-colors">
+            <span className="text-base">📁</span>
+            Dossier complet
+          </a>
+
+          {/* ── Consultation ──────────────────────────────── */}
+          {(canConsult || canTriage || canManage) && isActive && (
+            <>
+              <div className="my-1 border-t border-outline-variant/50" />
+              <p className="px-3 pt-2 pb-1 text-label-xs text-on-surface-variant uppercase tracking-wide">Consultation</p>
+            </>
+          )}
+
+          {canConsult && isActive && visite.status === "EN_ATTENTE" && (
+            <button
+              onClick={() => act(onTake)}
+              className="flex items-center gap-2.5 w-full px-3 py-2 text-body-sm text-primary font-medium hover:bg-primary/5 transition-colors">
+              <span className="text-base">▶</span>
+              Prendre en charge
+            </button>
+          )}
+
+          {canTriage && isActive && (
+            <button
+              onClick={() => act(onTriage)}
+              className="flex items-center gap-2.5 w-full px-3 py-2 text-body-sm text-on-surface hover:bg-surface-container transition-colors">
+              <span className="text-base">🩺</span>
+              Triage
+            </button>
+          )}
+
+          {canManage && isActive && (
+            <>
+              <button
+                onClick={() => act(onOrient)}
+                className="flex items-center gap-2.5 w-full px-3 py-2 text-body-sm text-on-surface hover:bg-surface-container transition-colors">
+                <span className="text-base">↗</span>
+                Réorienter
+              </button>
+              <button
+                onClick={() => act(onLeave)}
+                disabled={isLeaving}
+                className="flex items-center gap-2.5 w-full px-3 py-2 text-body-sm text-error hover:bg-error/5 transition-colors disabled:opacity-40">
+                <span className="text-base">✕</span>
+                {isLeaving ? "…" : "Marquer parti"}
+              </button>
+            </>
+          )}
+        </div>
+      )}
+    </>
+  );
+}
+
+// ─── StatusFilterDropdown ────────────────────────────────────────────────────
+
+function StatusFilterDropdown({
+  statuses,
+  selected,
+  onToggle,
+}: {
+  statuses: VisiteStatus[];
+  selected: VisiteStatus[];
+  onToggle: (s: VisiteStatus) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function onOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    if (open) document.addEventListener("mousedown", onOutside);
+    return () => document.removeEventListener("mousedown", onOutside);
+  }, [open]);
+
+  const label =
+    selected.length === 0
+      ? "Aucun statut"
+      : selected.length === statuses.length
+        ? "Tous les statuts"
+        : selected.length === 1
+          ? VISITE_STATUS_LABELS[selected[0]]
+          : `${selected.length} statuts`;
+
+  return (
+    <div ref={ref} className="relative shrink-0">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-2 px-3 py-2 rounded-xl border border-outline-variant bg-surface text-body-sm text-on-surface hover:bg-surface-container transition-colors whitespace-nowrap">
+        <span>{label}</span>
+        <span className={`text-on-surface-variant text-xs transition-transform ${open ? "rotate-180" : ""}`}>▾</span>
+      </button>
+
+      {open && (
+        <div className="absolute left-0 top-full mt-1 z-30 min-w-[180px] rounded-xl border border-outline-variant bg-surface shadow-lg py-1">
+          {statuses.map((s) => {
+            const checked = selected.includes(s);
+            return (
+              <button
+                key={s}
+                onClick={() => onToggle(s)}
+                className="flex items-center gap-2.5 w-full px-3 py-2 text-body-sm text-on-surface hover:bg-surface-container transition-colors text-left">
+                <span className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors ${
+                  checked ? "bg-primary border-primary" : "border-outline-variant"
+                }`}>
+                  {checked && <span className="text-on-primary text-[10px] leading-none">✓</span>}
+                </span>
+                <span className={`px-1.5 py-0.5 rounded-full text-label-xs font-medium ${STATUS_CONFIG[s].badge}`}>
+                  {VISITE_STATUS_LABELS[s]}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Page principale ──────────────────────────────────────────────────────────
 
 export default function ReceptionPage() {
+  const router = useRouter();
   const { can } = usePermissions();
-  const canView   = can("hosto.reception.view");
-  const canManage = can("hosto.reception.manage");
-  const canTriage = can("hosto.appointments.triage");
+  const canView    = can("hosto.reception.view");
+  const canManage  = can("hosto.reception.manage");
+  const canTriage  = can("hosto.appointments.triage");
+  const canConsult = can("hosto.consultations.manage");
 
   const [activeTab, setActiveTab] = useState<ActiveTab>("visites");
 
@@ -101,7 +576,10 @@ export default function ReceptionPage() {
   // ── Services tab state ─────────────────────────────────────────────────────
   const [overview, setOverview]       = useState<OverviewEntry[]>([]);
   const [svcSearch, setSvcSearch]     = useState("");
+  const [svcPage, setSvcPage]         = useState(1);
   const [loadingOverview, setLoadingOverview] = useState(true);
+
+  const SVC_PER_PAGE = 10;
 
   // ── Shared ─────────────────────────────────────────────────────────────────
   const [services, setServices]       = useState<Service[]>([]);
@@ -129,6 +607,13 @@ export default function ReceptionPage() {
 
   // ── Leave ──────────────────────────────────────────────────────────────────
   const [leavingId, setLeavingId]     = useState<number | null>(null);
+
+  // ── Constantes drawer ──────────────────────────────────────────────────────
+  const [constantesTarget, setConstantesTarget] = useState<{
+    patientId: number;
+    patientName: string;
+    encounterId?: number;
+  } | null>(null);
 
   const pollTimerRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -291,6 +776,13 @@ export default function ReceptionPage() {
     finally { setLeavingId(null); }
   }
 
+  async function handleTakeVisite(id: number) {
+    try {
+      const result = await takeVisite(id);
+      router.push(`/consultations/${result.encounter_id}`);
+    } catch { /* no-op — visite peut déjà être prise */ }
+  }
+
   async function searchPatients(q: string): Promise<PatientSummary[]> {
     const page = await listPatients({ q, pageSize: 10 });
     return page.items;
@@ -311,6 +803,8 @@ export default function ReceptionPage() {
         e.service.code.toLowerCase().includes(svcSearch.toLowerCase())
       : true,
   );
+  const svcTotalPages  = Math.max(1, Math.ceil(filteredOverview.length / SVC_PER_PAGE));
+  const pagedOverview  = filteredOverview.slice((svcPage - 1) * SVC_PER_PAGE, svcPage * SVC_PER_PAGE);
 
   return (
     <DashboardShell>
@@ -377,9 +871,9 @@ export default function ReceptionPage() {
           <div className="space-y-4">
 
             {/* Toolbar */}
-            <div className="flex flex-wrap gap-3 items-start">
-              {/* Search */}
-              <div className="relative flex-1 min-w-[200px] max-w-xs">
+            <div className="flex flex-wrap gap-3 items-center">
+              {/* Search — prend tout l'espace disponible */}
+              <div className="relative flex-1 min-w-[180px]">
                 <SearchOutlined
                   style={{ fontSize: 18 }}
                   className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none" />
@@ -391,27 +885,18 @@ export default function ReceptionPage() {
                   className="w-full pl-9 pr-3 py-2 rounded-xl border border-outline-variant bg-surface text-body-md text-on-surface focus:outline-none focus:border-primary" />
               </div>
 
-              {/* Status chips */}
-              <div className="flex flex-wrap gap-1.5">
-                {ALL_STATUSES.map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => toggleStatus(s)}
-                    className={`px-2.5 py-1 rounded-full text-label-sm font-medium transition-colors border ${
-                      statusFilter.includes(s)
-                        ? `${STATUS_CONFIG[s].badge} border-current`
-                        : "border-outline-variant text-on-surface-variant hover:bg-surface-container"
-                    }`}>
-                    {VISITE_STATUS_LABELS[s]}
-                  </button>
-                ))}
-              </div>
+              {/* Statut — dropdown multi-select custom */}
+              <StatusFilterDropdown
+                statuses={ALL_STATUSES}
+                selected={statusFilter}
+                onToggle={toggleStatus}
+              />
 
               {/* Service dropdown */}
               <select
                 value={serviceFilter ?? ""}
                 onChange={(e) => setServiceFilter(e.target.value ? Number(e.target.value) : null)}
-                className="rounded-xl border border-outline-variant bg-surface px-3 py-2 text-body-sm text-on-surface focus:outline-none focus:border-primary">
+                className="rounded-xl border border-outline-variant bg-surface px-3 py-2 text-body-sm text-on-surface focus:outline-none focus:border-primary shrink-0">
                 <option value="">Tous les services</option>
                 {services.filter((s) => s.active).map((s) => (
                   <option key={s.id} value={s.id}>{s.nom}</option>
@@ -428,7 +913,7 @@ export default function ReceptionPage() {
                 <p className="text-body-md text-on-surface-variant">Aucune visite trouvée.</p>
               </div>
             ) : (
-              <div className="overflow-x-auto rounded-2xl border border-outline-variant">
+              <div className="overflow-auto rounded-2xl border border-outline-variant min-h-[calc(100vh-320px)]">
                 <table className="w-full text-body-sm text-on-surface">
                   <thead>
                     <tr className="border-b border-outline-variant bg-surface-container/50">
@@ -473,37 +958,25 @@ export default function ReceptionPage() {
                           <td className="px-4 py-3">
                             {mins !== null ? <WaitBadge minutes={mins} /> : <span className="text-on-surface-variant/50">—</span>}
                           </td>
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-1.5 justify-end flex-wrap">
-                              <button
-                                disabled
-                                title="Disponible en C3"
-                                className="px-2.5 py-1 rounded-lg text-label-sm border border-primary/30 text-primary/40 cursor-not-allowed whitespace-nowrap">
-                                Prendre en charge
-                              </button>
-                              {canTriage && isActive && (
-                                <button
-                                  onClick={() => openTriage(v)}
-                                  className="px-2.5 py-1 rounded-lg text-label-sm border border-outline-variant text-on-surface-variant hover:bg-surface-container transition-colors whitespace-nowrap">
-                                  Triage
-                                </button>
-                              )}
-                              {canManage && isActive && (
-                                <>
-                                  <button
-                                    onClick={() => openOrient(v)}
-                                    className="px-2.5 py-1 rounded-lg text-label-sm border border-outline-variant text-on-surface-variant hover:bg-surface-container transition-colors whitespace-nowrap">
-                                    Réorienter
-                                  </button>
-                                  <button
-                                    onClick={() => handleLeave(v.id)}
-                                    disabled={leavingId === v.id}
-                                    className="px-2.5 py-1 rounded-lg text-label-sm border border-error/30 text-error hover:bg-error/5 transition-colors disabled:opacity-40 whitespace-nowrap">
-                                    {leavingId === v.id ? "…" : "Parti"}
-                                  </button>
-                                </>
-                              )}
-                            </div>
+                          <td className="px-4 py-3 text-right">
+                            <VisiteActionsMenu
+                              visite={v}
+                              isActive={isActive}
+                              canConsult={canConsult}
+                              canTriage={canTriage}
+                              canManage={canManage}
+                              canWriteVitals={canManage || canTriage || canConsult}
+                              isLeaving={leavingId === v.id}
+                              onTake={() => handleTakeVisite(v.id)}
+                              onTriage={() => openTriage(v)}
+                              onOrient={() => openOrient(v)}
+                              onLeave={() => handleLeave(v.id)}
+                              onConstantes={() => setConstantesTarget({
+                                patientId: v.patient.id,
+                                patientName: `${v.patient.prenom} ${v.patient.nom}`,
+                                encounterId: v.encounter_id ?? undefined,
+                              })}
+                            />
                           </td>
                         </tr>
                       );
@@ -565,14 +1038,14 @@ export default function ReceptionPage() {
         {activeTab === "services" && (
           <div className="space-y-4">
             {/* Search */}
-            <div className="relative max-w-xs">
+            <div className="relative">
               <SearchOutlined
                 style={{ fontSize: 18 }}
                 className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none" />
               <input
                 type="text"
                 value={svcSearch}
-                onChange={(e) => setSvcSearch(e.target.value)}
+                onChange={(e) => { setSvcSearch(e.target.value); setSvcPage(1); }}
                 placeholder="Nom ou code…"
                 className="w-full pl-9 pr-3 py-2 rounded-xl border border-outline-variant bg-surface text-body-md text-on-surface focus:outline-none focus:border-primary" />
             </div>
@@ -587,11 +1060,98 @@ export default function ReceptionPage() {
                 </p>
               </div>
             ) : (
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {filteredOverview.map((entry) => (
-                  <ServiceCard key={entry.service.id} entry={entry} />
-                ))}
-              </div>
+              <>
+                <div className="overflow-auto rounded-2xl border border-outline-variant min-h-[calc(100vh-320px)]">
+                  <table className="w-full text-body-sm text-on-surface">
+                    <thead>
+                      <tr className="border-b border-outline-variant bg-surface-container/50">
+                        <th className="text-left px-4 py-3 text-label-sm text-on-surface-variant font-medium">Service</th>
+                        <th className="text-left px-4 py-3 text-label-sm text-on-surface-variant font-medium">Code</th>
+                        <th className="text-left px-4 py-3 text-label-sm text-on-surface-variant font-medium">File</th>
+                        <th className="text-right px-4 py-3 text-label-sm text-on-surface-variant font-medium">En attente</th>
+                        <th className="text-left px-4 py-3 text-label-sm text-on-surface-variant font-medium">Prochain patient</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-outline-variant/50">
+                      {pagedOverview.map((entry) => {
+                        const { service, waiting_count, next_patient } = entry;
+                        return (
+                          <tr key={service.id} className="bg-surface hover:bg-surface-container/30 transition-colors">
+                            <td className="px-4 py-3 font-medium text-on-surface">{service.nom}</td>
+                            <td className="px-4 py-3">
+                              <span className="text-label-xs px-2 py-0.5 rounded-full bg-surface-container text-on-surface-variant">
+                                {service.code}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              {service.queue_mode === "TRIAGE" ? (
+                                <span className="text-label-xs px-2 py-0.5 rounded-full bg-error/10 text-error font-medium">Triage</span>
+                              ) : (
+                                <span className="text-label-xs px-2 py-0.5 rounded-full bg-surface-container text-on-surface-variant">FIFO</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              <span className={`text-body-md font-bold tabular-nums ${waiting_count > 0 ? "text-primary" : "text-on-surface-variant"}`}>
+                                {waiting_count}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              {next_patient ? (
+                                <div className="flex items-center gap-1.5">
+                                  <span className={`w-2 h-2 rounded-full shrink-0 ${PRIORITY_CONFIG[next_patient.priority].dot}`} />
+                                  <span className="text-on-surface font-medium">
+                                    {next_patient.patient.prenom} {next_patient.patient.nom}
+                                  </span>
+                                  <span className="text-on-surface-variant tabular-nums">
+                                    · {next_patient.wait_minutes} min
+                                  </span>
+                                </div>
+                              ) : (
+                                <span className="italic text-on-surface-variant/60">File vide</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Pagination services */}
+                {svcTotalPages > 1 && (
+                  <div className="flex items-center justify-between gap-4 pt-1">
+                    <p className="text-body-sm text-on-surface-variant">
+                      Page {svcPage} / {svcTotalPages} · {filteredOverview.length} service{filteredOverview.length !== 1 ? "s" : ""}
+                    </p>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => setSvcPage((p) => Math.max(1, p - 1))}
+                        disabled={svcPage === 1}
+                        className="px-3 py-1.5 rounded-xl border border-outline-variant text-body-sm text-on-surface-variant hover:bg-surface-container disabled:opacity-40 transition-colors">
+                        ←
+                      </button>
+                      {Array.from({ length: svcTotalPages }, (_, i) => i + 1).map((p) => (
+                        <button
+                          key={p}
+                          onClick={() => setSvcPage(p)}
+                          className={`px-3 py-1.5 rounded-xl text-body-sm transition-colors ${
+                            svcPage === p
+                              ? "bg-primary text-on-primary"
+                              : "border border-outline-variant text-on-surface-variant hover:bg-surface-container"
+                          }`}>
+                          {p}
+                        </button>
+                      ))}
+                      <button
+                        onClick={() => setSvcPage((p) => Math.min(svcTotalPages, p + 1))}
+                        disabled={svcPage === svcTotalPages}
+                        className="px-3 py-1.5 rounded-xl border border-outline-variant text-body-sm text-on-surface-variant hover:bg-surface-container disabled:opacity-40 transition-colors">
+                        →
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}
@@ -668,6 +1228,17 @@ export default function ReceptionPage() {
             </div>
           </form>
         </RightDrawer>
+      )}
+
+      {/* ── Drawer Constantes ───────────────────────────────────────────────── */}
+      {constantesTarget && (
+        <ConstantesDrawer
+          patientId={constantesTarget.patientId}
+          patientName={constantesTarget.patientName}
+          canWrite={canManage || canTriage || canConsult}
+          encounterId={constantesTarget.encounterId}
+          onClose={() => setConstantesTarget(null)}
+        />
       )}
 
       {/* ── Modal triage ────────────────────────────────────────────────────── */}
@@ -756,51 +1327,3 @@ export default function ReceptionPage() {
   );
 }
 
-// ─── Service Card (tab Services) ──────────────────────────────────────────────
-
-function ServiceCard({ entry }: { entry: OverviewEntry }) {
-  const { service, waiting_count, next_patient } = entry;
-  const isTriage = service.queue_mode === "TRIAGE";
-
-  return (
-    <div className="p-4 rounded-2xl border border-outline-variant bg-surface space-y-3">
-      <div className="flex items-start justify-between gap-2">
-        <div>
-          <span className="text-body-md font-semibold text-on-surface">{service.nom}</span>
-          <div className="flex items-center gap-1.5 mt-0.5">
-            {isTriage && (
-              <span className="text-label-xs px-1.5 py-0.5 rounded-full bg-error/10 text-error font-medium">
-                Triage
-              </span>
-            )}
-            <span className="text-label-xs px-1.5 py-0.5 rounded-full bg-surface-container text-on-surface-variant">
-              {service.code}
-            </span>
-          </div>
-        </div>
-        <div className="text-right shrink-0">
-          <span className={`text-headline-xs font-bold ${waiting_count > 0 ? "text-primary" : "text-on-surface-variant"}`}>
-            {waiting_count}
-          </span>
-          <p className="text-label-xs text-on-surface-variant">en attente</p>
-        </div>
-      </div>
-
-      {next_patient ? (
-        <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-surface-container-lowest border border-outline-variant/50">
-          <span className={`w-2 h-2 rounded-full shrink-0 ${PRIORITY_CONFIG[next_patient.priority].dot}`} />
-          <div className="min-w-0">
-            <p className="text-body-sm font-medium text-on-surface truncate">
-              {next_patient.patient.prenom} {next_patient.patient.nom}
-            </p>
-            <span className="text-body-sm text-on-surface-variant tabular-nums">
-              {next_patient.wait_minutes} min
-            </span>
-          </div>
-        </div>
-      ) : (
-        <p className="text-body-sm text-on-surface-variant italic px-1">File vide</p>
-      )}
-    </div>
-  );
-}

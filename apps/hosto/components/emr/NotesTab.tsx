@@ -21,6 +21,7 @@ import {
   deleteNote,
   getPatientEncounters,
   createEncounter,
+  getEncounterById,
   type ClinicalNoteRead,
   type ClinicalNoteUpdate,
   type EncounterRead,
@@ -324,11 +325,13 @@ export function NotesTab({
   canWrite,
   canSign,
   onMutation,
+  encounterId,
 }: {
   patientId: number;
   canWrite: boolean;
   canSign: boolean;
   onMutation?: () => void;
+  encounterId?: number;
 }) {
   // ── Data state ──
   const [notes, setNotes] = useState<ClinicalNoteRead[]>([]);
@@ -415,7 +418,13 @@ export function NotesTab({
   // ── Open create drawer ──
   async function openCreate() {
     try {
-      const enc = await resolveEncounter();
+      let enc: EncounterRead;
+      if (encounterId !== undefined) {
+        // Consultation contextuelle : on connaît l'encounter — pas besoin de résolution
+        enc = await getEncounterById(encounterId);
+      } else {
+        enc = await resolveEncounter();
+      }
       setActiveEncounter(enc);
       setDrawerMode("create");
       setEditTarget(null);

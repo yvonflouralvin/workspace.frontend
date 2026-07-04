@@ -44,6 +44,7 @@ export interface Visite {
   priority: VisitePriority;
   reason: string | null;
   notes: string | null;
+  triage_note: string | null;
   arrived_at: string;
   taken_at: string | null;
   ended_at: string | null;
@@ -79,6 +80,7 @@ export async function listVisites(params?: {
   status?: VisiteStatus[];
   service_id?: number;
   priority?: VisitePriority;
+  q?: string;
   page?: number;
   per_page?: number;
 }): Promise<VisitePage> {
@@ -86,6 +88,7 @@ export async function listVisites(params?: {
   params?.status?.forEach((s) => qs.append("status", s));
   if (params?.service_id) qs.set("service_id", String(params.service_id));
   if (params?.priority) qs.set("priority", params.priority);
+  if (params?.q?.trim()) qs.set("q", params.q.trim());
   if (params?.page) qs.set("page", String(params.page));
   if (params?.per_page) qs.set("per_page", String(params.per_page));
   const q = qs.toString();

@@ -1,0 +1,36 @@
+# docker-compose.yml — app hosto seule, build + start production
+# Usage : docker compose up --build
+name: ft_hosto
+
+services:
+  workspace_uat_ft_hosto:
+    image: node:24-alpine
+    container_name: workspace_uat_ft_hosto
+    restart: unless-stopped
+    working_dir: /app
+    volumes:
+      - ../../:/app
+      - ft_hosto_node_modules:/app/node_modules
+      - ft_hosto_hosto_node_modules:/app/apps/hosto/node_modules
+    env_file: ./.env
+    environment:
+      PORT: "3000"
+      HOSTNAME: "0.0.0.0"
+    command: >-
+      sh -c "npm ci &&
+      npx turbo run build --filter=hosto &&
+      cp -r apps/hosto/.next/static apps/hosto/.next/standalone/apps/hosto/.next/static &&
+      (cp -r apps/hosto/public apps/hosto/.next/standalone/apps/hosto/public 2>/dev/null || true) &&
+      exec node apps/hosto/.next/standalone/apps/hosto/server.js"
+    expose:
+      - "3000"
+    networks:
+      - dokploy-network
+
+volumes:
+  ft_hosto_node_modules:
+  ft_hosto_hosto_node_modules:
+
+networks:
+  dokploy-network:
+    external: true

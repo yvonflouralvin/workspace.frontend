@@ -357,7 +357,7 @@ export default function ConsultationPage() {
     {/* ── Modal Terminer ──────────────────────────────────────────────────── */}
     {showCloseModal && (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
-        <div className="bg-surface-container-lowest rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-5">
+        <div className="bg-surface-container-lowest rounded-2xl shadow-2xl w-full max-w-[448px] p-6 space-y-5">
           <div className="space-y-1">
             <h2 className="text-headline-sm font-semibold text-on-surface">Terminer la consultation</h2>
             <p className="text-body-sm text-on-surface-variant">
@@ -424,7 +424,7 @@ export default function ConsultationPage() {
     {/* ── Modal Réorienter ────────────────────────────────────────────────── */}
     {showRedirectModal && (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
-        <div className="bg-surface-container-lowest rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-5">
+        <div className="bg-surface-container-lowest rounded-2xl shadow-2xl w-full max-w-[448px] p-6 space-y-5">
           <div className="space-y-1">
             <h2 className="text-headline-sm font-semibold text-on-surface">Réorienter le patient</h2>
             <p className="text-body-sm text-on-surface-variant">
@@ -465,7 +465,7 @@ export default function ConsultationPage() {
     {/* ── Modal Interrompre ────────────────────────────────────────────────── */}
     {showCancelModal && (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
-        <div className="bg-surface-container-lowest rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-5">
+        <div className="bg-surface-container-lowest rounded-2xl shadow-2xl w-full max-w-[448px] p-6 space-y-5">
           <div className="space-y-1">
             <h2 className="text-headline-sm font-semibold text-on-surface">Interrompre la consultation</h2>
             <p className="text-body-sm text-on-surface-variant">

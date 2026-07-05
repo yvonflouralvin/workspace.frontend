@@ -10,6 +10,7 @@ import type { SearchSection } from "@repo/ui/shell/TopBar";
 import { UserFooter } from "@repo/ui/shell/UserFooter";
 import { WorkspaceSwitcher } from "@repo/ui/WorkspaceSwitcher";
 import {
+  BiotechOutlined,
   CalendarMonthOutlined,
   HomeOutlined,
   LocalHospitalOutlined,
@@ -63,6 +64,11 @@ const NAV_ITEMS: NavItem[] = [
     label: "Horaires",
     href: "/schedules",
     icon: <ScheduleOutlined style={{ fontSize: 20 }} />,
+  },
+  {
+    label: "Laboratoire",
+    href: "/lab",
+    icon: <BiotechOutlined style={{ fontSize: 20 }} />,
   },
 ];
 

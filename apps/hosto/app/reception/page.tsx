@@ -326,8 +326,18 @@ function ConstantesDrawer({
 
 // ─── VisiteActionsMenu ────────────────────────────────────────────────────────
 
+interface VisiteForMenu {
+  id: number;
+  status: string;
+  priority: VisitePriority;
+  triage_note: string | null;
+  service_id: number | null;
+  encounter_id?: number | null;
+  patient: { id: number; prenom: string; nom: string };
+}
+
 type VisiteActionsMenuProps = {
-  visite: Visite;
+  visite: VisiteForMenu;
   isActive: boolean;
   canConsult: boolean;
   canTriage: boolean;
@@ -1070,6 +1080,7 @@ export default function ReceptionPage() {
                         <th className="text-left px-4 py-3 text-label-sm text-on-surface-variant font-medium">File</th>
                         <th className="text-right px-4 py-3 text-label-sm text-on-surface-variant font-medium">En attente</th>
                         <th className="text-left px-4 py-3 text-label-sm text-on-surface-variant font-medium">Prochain patient</th>
+                        <th className="text-right px-4 py-3 text-label-sm text-on-surface-variant font-medium">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-outline-variant/50">
@@ -1109,6 +1120,27 @@ export default function ReceptionPage() {
                               ) : (
                                 <span className="italic text-on-surface-variant/60">File vide</span>
                               )}
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              {next_patient ? (
+                                <VisiteActionsMenu
+                                  visite={{ ...next_patient, service_id: next_patient.service_id }}
+                                  isActive={true}
+                                  canConsult={canConsult}
+                                  canTriage={canTriage}
+                                  canManage={canManage}
+                                  canWriteVitals={canManage || canTriage || canConsult}
+                                  isLeaving={leavingId === next_patient.id}
+                                  onTake={() => handleTakeVisite(next_patient.id)}
+                                  onTriage={() => openTriage(next_patient)}
+                                  onOrient={() => openOrient(next_patient)}
+                                  onLeave={() => handleLeave(next_patient.id)}
+                                  onConstantes={() => setConstantesTarget({
+                                    patientId: next_patient.patient.id,
+                                    patientName: `${next_patient.patient.prenom} ${next_patient.patient.nom}`,
+                                  })}
+                                />
+                              ) : null}
                             </td>
                           </tr>
                         );

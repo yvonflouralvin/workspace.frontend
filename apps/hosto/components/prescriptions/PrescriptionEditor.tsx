@@ -937,7 +937,7 @@ export function PrescriptionEditor({
       {/* ── Modal confirmation signature ── */}
       {signModalOpen && typeof document !== "undefined" && createPortal(
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60">
-          <div className="bg-surface rounded-2xl shadow-2xl p-6 w-full max-w-md">
+          <div className="bg-surface rounded-2xl shadow-2xl p-6 w-full max-w-[448px]">
             <div className="flex items-start gap-3 mb-4">
               <LockOutlined className="text-secondary shrink-0 mt-0.5" style={{ fontSize: 22 }} />
               <div>

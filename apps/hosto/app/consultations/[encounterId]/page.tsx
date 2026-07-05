@@ -148,15 +148,9 @@ export default function ConsultationPage() {
     }
   }
 
-  async function handleCloseForce() {
-    if (closePending) return;
-    setClosePending(true);
-    try {
-      await closeConsultation(encounterId, { addendum: closeAddendum || undefined });
-      router.push("/reception");
-    } catch {
-      setClosePending(false);
-    }
+  function handleCloseForce() {
+    // La clôture a déjà eu lieu (warnings non-bloquants) — on redirige simplement.
+    router.push("/reception");
   }
 
   async function handleRedirectConfirm() {

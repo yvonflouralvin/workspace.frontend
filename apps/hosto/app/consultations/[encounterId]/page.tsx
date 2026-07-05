@@ -20,6 +20,7 @@ import {
 } from "@/app/lib/consultation-api";
 import { EMRDrawer } from "@/components/emr/EMRDrawer";
 import { EMRPanel } from "@/components/emr/EMRPanel";
+import { SummaryTab } from "@/components/consultation/SummaryTab";
 import { SplitWorkspace } from "@repo/ui/SplitWorkspace";
 import {
   ArrowBackOutlined,
@@ -57,13 +58,14 @@ function formatDateTime(iso: string): string {
 
 // ─── Tab types ────────────────────────────────────────────────────────────────
 
-type ConsultTab = "constantes" | "notes" | "diagnostics" | "prescriptions";
+type ConsultTab = "constantes" | "notes" | "diagnostics" | "prescriptions" | "resume";
 
-const TABS: { id: ConsultTab; label: string }[] = [
+const TABS: { id: ConsultTab; label: string; closedOnly?: boolean }[] = [
   { id: "constantes", label: "Constantes" },
   { id: "notes", label: "Notes cliniques" },
   { id: "diagnostics", label: "Diagnostics" },
   { id: "prescriptions", label: "Ordonnances" },
+  { id: "resume", label: "Résumé", closedOnly: true },
 ];
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -90,7 +92,7 @@ export default function ConsultationPage() {
 
   // ── Modal state ──
   const [showCloseModal, setShowCloseModal]       = useState(false);
-  const [closeSummary, setCloseSummary]           = useState("");
+  const [closeAddendum, setCloseAddendum]         = useState("");
   const [closeWarnings, setCloseWarnings]         = useState<string[]>([]);
   const [closePending, setClosePending]           = useState(false);
 
@@ -134,7 +136,7 @@ export default function ConsultationPage() {
     if (closePending) return;
     setClosePending(true);
     try {
-      const res = await closeConsultation(encounterId, { closure_summary: closeSummary || undefined });
+      const res = await closeConsultation(encounterId, { addendum: closeAddendum || undefined });
       if (res.warnings.length > 0) {
         setCloseWarnings(res.warnings);
         setClosePending(false);
@@ -150,7 +152,7 @@ export default function ConsultationPage() {
     if (closePending) return;
     setClosePending(true);
     try {
-      await closeConsultation(encounterId, { closure_summary: closeSummary || undefined });
+      await closeConsultation(encounterId, { addendum: closeAddendum || undefined });
       router.push("/reception");
     } catch {
       setClosePending(false);
@@ -240,7 +242,7 @@ export default function ConsultationPage() {
                 Réorienter
               </button>
               <button
-                onClick={() => { setShowCloseModal(true); setCloseSummary(""); setCloseWarnings([]); }}
+                onClick={() => { setShowCloseModal(true); setCloseAddendum(""); setCloseWarnings([]); }}
                 className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-secondary text-on-primary text-body-sm font-medium hover:bg-secondary/90 transition-colors">
                 <CheckCircleOutlined style={{ fontSize: 16 }} />
                 Terminer
@@ -296,7 +298,7 @@ export default function ConsultationPage() {
 
         {/* ── Onglets ───────────────────────────────────────────────────── */}
         <div className="flex gap-1 border-b border-outline-variant">
-          {TABS.map((tab) => (
+          {TABS.filter((tab) => !tab.closedOnly || isClosed).map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
@@ -350,6 +352,16 @@ export default function ConsultationPage() {
               onCloseSplit={() => setSplitState(null)}
             />
           )}
+          {activeTab === "resume" && encounter.closure_report && (
+            <div className="py-4 px-1">
+              <SummaryTab report={encounter.closure_report} />
+            </div>
+          )}
+          {activeTab === "resume" && !encounter.closure_report && (
+            <div className="py-8 text-center text-body-sm text-on-surface-variant">
+              Aucun rapport de clôture disponible.
+            </div>
+          )}
         </div>
       </div>
     </DashboardShell>
@@ -384,20 +396,23 @@ export default function ConsultationPage() {
 
           <div className="space-y-1.5">
             <label className="text-label-md text-on-surface-variant">
-              Résumé de clôture <span className="text-label-sm">(optionnel)</span>
+              Notes complémentaires <span className="text-label-sm">(optionnel)</span>
             </label>
+            <p className="text-label-sm text-on-surface-variant/70">
+              Le rapport sera automatiquement compilé depuis les constantes, notes signées, diagnostics et ordonnances.
+            </p>
             <textarea
-              value={closeSummary}
-              onChange={(e) => setCloseSummary(e.target.value)}
-              rows={4}
-              placeholder="Synthèse de la consultation, consignes de suivi…"
+              value={closeAddendum}
+              onChange={(e) => setCloseAddendum(e.target.value)}
+              rows={3}
+              placeholder="Consignes de suivi, observations particulières…"
               className="w-full rounded-xl border border-outline-variant bg-surface px-3 py-2.5 text-body-sm text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary resize-none"
             />
           </div>
 
           <div className="flex justify-end gap-2 pt-1">
             <button
-              onClick={() => { setShowCloseModal(false); setCloseWarnings([]); }}
+              onClick={() => { setShowCloseModal(false); setCloseWarnings([]); setCloseAddendum(""); }}
               className="px-4 py-2 rounded-xl border border-outline-variant text-body-sm text-on-surface-variant hover:bg-surface-container transition-colors">
               Annuler
             </button>

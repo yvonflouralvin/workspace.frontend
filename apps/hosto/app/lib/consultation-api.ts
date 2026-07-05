@@ -58,7 +58,7 @@ export async function getConsultation(encounterId: number): Promise<Consultation
 // ─── C4 — Clôture, réorientation, annulation ─────────────────────────────────
 
 export interface CloseConsultationBody {
-  closure_summary?: string;
+  addendum?: string;
 }
 
 export interface CloseConsultationResponse {

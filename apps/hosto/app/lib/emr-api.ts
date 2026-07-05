@@ -152,6 +152,55 @@ export interface ClinicalNoteUpdate {
 
 export type ClinicalNoteAmendBody = ClinicalNoteUpdate;
 
+export interface ClosureReportVital {
+  code: string;
+  value: number;
+  unit: string;
+  measured_at: string;
+}
+
+export interface ClosureReportNote {
+  id: number;
+  subjective: string | null;
+  objective: string | null;
+  assessment: string | null;
+  plan: string | null;
+  signed_at: string;
+}
+
+export interface ClosureReportCondition {
+  id: number;
+  label: string;
+  icd10_code: string | null;
+  clinical_status: string;
+  onset_date: string | null;
+}
+
+export interface ClosureReportPrescriptionItem {
+  medication_name: string;
+  dosage: string;
+  frequency: string;
+  route: string | null;
+  duration: string | null;
+  instructions: string | null;
+}
+
+export interface ClosureReportPrescription {
+  id: number;
+  signed_at: string | null;
+  notes: string | null;
+  items: ClosureReportPrescriptionItem[];
+}
+
+export interface ClosureReport {
+  generated_at: string;
+  addendum: string | null;
+  vitals: ClosureReportVital[];
+  notes: ClosureReportNote[];
+  conditions: ClosureReportCondition[];
+  prescriptions: ClosureReportPrescription[];
+}
+
 export interface EncounterRead {
   id: number;
   workspace_id: number;
@@ -165,6 +214,8 @@ export interface EncounterRead {
   started_at: string | null;
   ended_at: string | null;
   motif: string | null;
+  closure_summary: string | null;
+  closure_report: ClosureReport | null;
   created_at: string;
   updated_at: string;
   deleted_at: string | null;

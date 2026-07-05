@@ -9,6 +9,7 @@ import { VitalsTab } from "@/components/emr/VitalsTab";
 import { NotesTab } from "@/components/emr/NotesTab";
 import { ConditionsTab } from "@/components/emr/ConditionsTab";
 import { PrescriptionsPanel } from "@/components/prescriptions/PrescriptionsPanel";
+import { LabRequestsPanel } from "@/components/lab/LabRequestsPanel";
 import { getPatient, listServices, type Patient, type Service } from "@/app/lib/api";
 import { getPatientAllergies, type AllergyRead } from "@/app/lib/emr-api";
 import {
@@ -58,14 +59,15 @@ function formatDateTime(iso: string): string {
 
 // ─── Tab types ────────────────────────────────────────────────────────────────
 
-type ConsultTab = "constantes" | "notes" | "diagnostics" | "prescriptions" | "resume";
+type ConsultTab = "constantes" | "notes" | "diagnostics" | "prescriptions" | "examens" | "resume";
 
 const TABS: { id: ConsultTab; label: string; closedOnly?: boolean }[] = [
-  { id: "constantes", label: "Constantes" },
-  { id: "notes", label: "Notes cliniques" },
-  { id: "diagnostics", label: "Diagnostics" },
+  { id: "constantes",   label: "Constantes" },
+  { id: "notes",        label: "Notes cliniques" },
+  { id: "diagnostics",  label: "Diagnostics" },
   { id: "prescriptions", label: "Ordonnances" },
-  { id: "resume", label: "Résumé", closedOnly: true },
+  { id: "examens",      label: "Examens" },
+  { id: "resume",       label: "Résumé", closedOnly: true },
 ];
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -344,6 +346,12 @@ export default function ConsultationPage() {
               encounterId={encounterId}
               onSplit={canWrite && !isClosed ? openSplit : undefined}
               onCloseSplit={() => setSplitState(null)}
+            />
+          )}
+          {activeTab === "examens" && (
+            <LabRequestsPanel
+              patientId={patient.id}
+              encounterId={encounterId}
             />
           )}
           {activeTab === "resume" && encounter.closure_report && (

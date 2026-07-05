@@ -156,6 +156,29 @@ export interface ResultValueInput {
   value_text?: string;
 }
 
+// ─── Catalogue summary ────────────────────────────────────────────────────────
+
+export interface LabTestSummary {
+  id: number;
+  loinc_code: string | null;
+  name: string;
+  short_name: string | null;
+  category: string | null;
+  specimen: string | null;
+  active: boolean;
+  parameter_count: number;
+}
+
+// ─── Création demande ────────────────────────────────────────────────────────
+
+export interface CreateLabRequestInput {
+  patient_id: number;
+  encounter_id: number;
+  priority?: LabPriority;
+  clinical_info?: string;
+  items: { lab_test_id: number; notes?: string }[];
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 async function parseResponse<T>(res: Response): Promise<T> {
@@ -243,4 +266,33 @@ export async function reviseResult(
 
 export async function getLabTestDetail(id: number): Promise<LabTestDetail> {
   return parseResponse(await apiFetch(`/api/lab-catalog/${id}`));
+}
+
+export async function searchLabTests(q: string): Promise<LabTestSummary[]> {
+  return parseResponse(await apiFetch(`/api/lab-catalog/search?q=${encodeURIComponent(q)}`));
+}
+
+export async function createLabRequest(data: CreateLabRequestInput): Promise<LabRequest> {
+  return parseResponse(await apiFetch("/api/lab-requests", { method: "POST", body: data }));
+}
+
+export async function getPatientLabRequests(
+  patientId: number | string,
+  opts?: { include_cancelled?: boolean; per_page?: number },
+): Promise<LabRequestListResponse> {
+  const qs = new URLSearchParams();
+  if (opts?.include_cancelled) qs.set("include_cancelled", "true");
+  if (opts?.per_page) qs.set("per_page", String(opts.per_page));
+  const q = qs.toString();
+  return parseResponse(await apiFetch(`/api/patients/${patientId}/lab-requests${q ? `?${q}` : ""}`));
+}
+
+export async function getEncounterLabRequests(encounterId: number | string): Promise<LabRequestListResponse> {
+  return parseResponse(await apiFetch(`/api/encounters/${encounterId}/lab-requests?per_page=50`));
+}
+
+export async function cancelLabRequest(id: number, reason?: string): Promise<LabRequest> {
+  return parseResponse(
+    await apiFetch(`/api/lab-requests/${id}/cancel`, { method: "POST", body: { reason: reason ?? null } }),
+  );
 }

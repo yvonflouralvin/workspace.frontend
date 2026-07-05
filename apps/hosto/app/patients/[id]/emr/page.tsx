@@ -18,6 +18,7 @@ import { VitalsTab } from "@/components/emr/VitalsTab";
 import { NotesTab } from "@/components/emr/NotesTab";
 import { TimelineTab } from "@/components/emr/TimelineTab";
 import { PrescriptionsPanel } from "@/components/prescriptions/PrescriptionsPanel";
+import { LabRequestsPanel } from "@/components/lab/LabRequestsPanel";
 import {
   ArrowBackOutlined,
   BadgeOutlined,
@@ -45,15 +46,16 @@ function calcAge(dob: string): number {
 // ─── Tab definitions ─────────────────────────────────────────────────────────
 
 const EMR_TABS = [
-  { key: "summary",      label: "Résumé" },
-  { key: "history",      label: "Antécédents" },
-  { key: "allergies",    label: "Allergies" },
-  { key: "conditions",   label: "Problèmes" },
-  { key: "observations", label: "Constantes" },
-  { key: "notes",        label: "Notes" },
-  { key: "medications",      label: "Traitements" },
-  { key: "prescriptions",    label: "Prescriptions" },
-  { key: "timeline",         label: "Timeline" },
+  { key: "summary",       label: "Résumé" },
+  { key: "history",       label: "Antécédents" },
+  { key: "allergies",     label: "Allergies" },
+  { key: "conditions",    label: "Problèmes" },
+  { key: "observations",  label: "Constantes" },
+  { key: "notes",         label: "Notes" },
+  { key: "medications",   label: "Traitements" },
+  { key: "prescriptions", label: "Prescriptions" },
+  { key: "examens",       label: "Examens" },
+  { key: "timeline",      label: "Timeline" },
 ] as const;
 
 type TabKey = (typeof EMR_TABS)[number]["key"];
@@ -273,6 +275,9 @@ export default function EMRPage() {
           )}
           {activeTab === "prescriptions" && (
             <PrescriptionsPanel patientId={Number(id)} />
+          )}
+          {activeTab === "examens" && (
+            <LabRequestsPanel patientId={Number(id)} />
           )}
           {activeTab === "timeline" && (
             <TimelineTab patientId={Number(id)} />

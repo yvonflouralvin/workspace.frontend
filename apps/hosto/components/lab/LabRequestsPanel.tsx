@@ -16,8 +16,10 @@ import {
 } from "@mui/icons-material";
 import {
   type LabRequest,
+  type LabRequestItem,
   type LabRequestStatus,
   type LabResult,
+  type LabResultValue,
   type LabTestSummary,
   getPatientLabRequests,
   getEncounterLabRequests,
@@ -67,6 +69,13 @@ function fmtDate(iso: string): string {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function formatValue(v: LabResultValue): string {
+  if (v.value_numeric !== null && v.value_numeric !== undefined) {
+    return v.unit_cache ? `${v.value_numeric} ${v.unit_cache}` : String(v.value_numeric);
+  }
+  return v.value_text ?? "–";
 }
 
 // ─── StatusStepper ────────────────────────────────────────────────────────────
@@ -159,55 +168,102 @@ function AbnormalSummary({ results }: { results: LabResult[] }) {
   );
 }
 
-// ─── ResultsSection ───────────────────────────────────────────────────────────
+// ─── ExamTable ────────────────────────────────────────────────────────────────
 
-function ResultsSection({ req }: { req: LabRequest }) {
-  const [results, setResults]   = useState<LabResult[] | null>(null);
-  const [loading, setLoading]   = useState(true);
-  const [error, setError]       = useState<string | null>(null);
+function ExamTable({ item, result }: { item: LabRequestItem; result: LabResult | null }) {
+  return (
+    <div className="rounded-xl border border-outline-variant overflow-hidden">
+      <div className="px-4 py-2.5 bg-surface-container-low border-b border-outline-variant/50 flex items-center gap-2">
+        <BiotechOutlined style={{ fontSize: 15 }} className="text-primary shrink-0" />
+        <span className="text-body-sm font-semibold text-on-surface">{item.lab_test_name_cache}</span>
+        {result?.status === "VALIDE" && result.validated_at && (
+          <span className="ml-auto flex items-center gap-1 text-label-sm text-secondary">
+            <CheckCircleOutlined style={{ fontSize: 12 }} />
+            Validé {fmtDate(result.validated_at)}
+          </span>
+        )}
+      </div>
+
+      {result && result.values.length > 0 ? (
+        <>
+          <table className="w-full text-body-sm">
+            <thead>
+              <tr className="bg-surface-container border-b border-outline-variant/50">
+                <th className="text-left py-2 px-4 text-label-md font-medium text-on-surface-variant">Paramètre</th>
+                <th className="text-left py-2 px-4 text-label-md font-medium text-on-surface-variant">Valeur</th>
+                <th className="text-left py-2 px-4 text-label-md font-medium text-on-surface-variant">Valeurs de référence</th>
+                <th className="text-left py-2 px-4 text-label-md font-medium text-on-surface-variant">Observation</th>
+              </tr>
+            </thead>
+            <tbody>
+              {result.values.map((v) => (
+                <tr key={v.id} className={`border-t border-outline-variant/30 ${v.abnormal ? "bg-error-container/10" : ""}`}>
+                  <td className="py-2 px-4 text-on-surface">{v.parameter_name_cache}</td>
+                  <td className={`py-2 px-4 font-mono ${v.abnormal ? "text-error font-semibold" : "text-on-surface"}`}>
+                    {formatValue(v)}
+                  </td>
+                  <td className="py-2 px-4 text-on-surface-variant/70 text-label-sm">{v.reference_used ?? "–"}</td>
+                  <td className="py-2 px-4">
+                    {v.interpretation === "NORMAL"
+                      ? <span className="text-secondary text-label-sm">Normal</span>
+                      : <FlagBadge flag={v.interpretation} />
+                    }
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {result.conclusion && (
+            <div className="px-4 py-2.5 border-t border-outline-variant/40 text-body-sm text-on-surface-variant italic bg-surface-container-lowest">
+              <span className="font-medium not-italic text-on-surface">Avis biologiste : </span>
+              {result.conclusion}
+            </div>
+          )}
+        </>
+      ) : result ? (
+        <div className="px-4 py-3 text-body-sm text-on-surface-variant/60 italic">Aucune valeur enregistrée.</div>
+      ) : (
+        <div className="px-4 py-3 flex items-center gap-2 text-body-sm text-on-surface-variant">
+          <div className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse shrink-0" />
+          En attente des résultats
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── ExamSections ─────────────────────────────────────────────────────────────
+
+function ExamSections({ req }: { req: LabRequest }) {
+  const [results, setResults] = useState<LabResult[] | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (req.status === "DEMANDE" || req.status === "ANNULE") {
+      setResults([]);
+      setLoading(false);
+      return;
+    }
     getRequestResults(req.id)
       .then(setResults)
-      .catch(() => setError("Impossible de charger les résultats."))
+      .catch(() => setResults([]))
       .finally(() => setLoading(false));
-  }, [req.id]);
+  }, [req.id, req.status]);
 
-  if (loading) return <div className="h-10 rounded-xl bg-surface-container animate-pulse mt-2" />;
-  if (error)   return <p className="text-body-sm text-error mt-2">{error}</p>;
-  if (!results || results.length === 0) {
-    return <p className="text-body-sm text-on-surface-variant/60 italic mt-2">Aucun résultat disponible.</p>;
+  if (loading) {
+    return <div className="h-16 rounded-xl bg-surface-container animate-pulse" />;
   }
 
-  return (
-    <div className="space-y-4 mt-3">
-      <AbnormalSummary results={results} />
-      <ContextSnapshotCard req={req} />
+  const allValues = results?.flatMap((r) => r.values) ?? [];
+  const hasAbnormals = allValues.some((v) => v.abnormal);
 
-      {results.map((result) => {
-        const itemName = req.items.find((i) => i.id === result.lab_request_item_id)?.lab_test_name_cache ?? "Examen";
-        return (
-          <div key={result.id} className="rounded-xl border border-outline-variant bg-surface">
-            <div className="px-4 py-3 flex items-center justify-between border-b border-outline-variant/50">
-              <span className="text-body-sm font-semibold text-on-surface">{itemName}</span>
-              {result.status === "VALIDE" && (
-                <div className="flex items-center gap-1.5 text-secondary text-label-sm">
-                  <CheckCircleOutlined style={{ fontSize: 14 }} />
-                  Validé {result.validated_at ? fmtDate(result.validated_at) : ""}
-                </div>
-              )}
-            </div>
-            <div className="px-4 py-3 space-y-1.5">
-              {result.values.map((v) => <ResultValueRow key={v.id} v={v} />)}
-              {result.conclusion && (
-                <p className="text-body-sm text-on-surface-variant italic pt-2 border-t border-outline-variant/40 mt-2">
-                  <span className="font-medium not-italic">Avis biologiste : </span>
-                  {result.conclusion}
-                </p>
-              )}
-            </div>
-          </div>
-        );
+  return (
+    <div className="space-y-3">
+      {hasAbnormals && results && <AbnormalSummary results={results} />}
+      {req.status === "VALIDE" && <ContextSnapshotCard req={req} />}
+      {req.items.map((item) => {
+        const result = results?.find((r) => r.lab_request_item_id === item.id) ?? null;
+        return <ExamTable key={item.id} item={item} result={result} />;
       })}
     </div>
   );
@@ -230,10 +286,8 @@ function LabRequestAccordion({
   const [cancelling, setCancelling]       = useState(false);
   const [cancelError, setCancelError]     = useState<string | null>(null);
 
-  const isUrgent   = req.priority === "URGENT";
-  const canCancel  = canWrite && req.status !== "VALIDE" && req.status !== "ANNULE";
-  const hasResults = req.status === "VALIDE" || req.status === "EN_ANALYSE" || req.status === "PRELEVE";
-  const showResults = expanded && req.status === "VALIDE";
+  const isUrgent  = req.priority === "URGENT";
+  const canCancel = canWrite && req.status !== "VALIDE" && req.status !== "ANNULE";
 
   async function handleCancel() {
     if (!cancelReason.trim()) return;
@@ -299,16 +353,8 @@ function LabRequestAccordion({
               </div>
             )}
 
-            {/* Résultats si validés */}
-            {showResults && <ResultsSection req={req} />}
-
-            {/* En attente de résultats */}
-            {req.status !== "VALIDE" && req.status !== "ANNULE" && (
-              <div className="flex items-center gap-2 text-body-sm text-on-surface-variant">
-                <div className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse shrink-0" />
-                En attente des résultats
-              </div>
-            )}
+            {/* Examens avec tableaux de résultats */}
+            <ExamSections req={req} />
 
             {/* Action annulation */}
             {canCancel && (

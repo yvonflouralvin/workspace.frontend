@@ -291,9 +291,6 @@ function LabRequestAccordion({
         {/* Corps dépliable */}
         {expanded && (
           <div className="border-t border-outline-variant px-5 py-4 space-y-4">
-            {/* Stepper de statut */}
-            <StatusStepper status={req.status} />
-
             {/* Renseignement clinique */}
             {req.clinical_info && (
               <div>
@@ -306,10 +303,11 @@ function LabRequestAccordion({
             {showResults && <ResultsSection req={req} />}
 
             {/* En attente de résultats */}
-            {expanded && req.status !== "VALIDE" && req.status !== "ANNULE" && (
-              <p className="text-body-sm text-on-surface-variant/60 italic">
-                Résultats disponibles une fois la demande validée par le biologiste.
-              </p>
+            {req.status !== "VALIDE" && req.status !== "ANNULE" && (
+              <div className="flex items-center gap-2 text-body-sm text-on-surface-variant">
+                <div className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse shrink-0" />
+                En attente des résultats
+              </div>
             )}
 
             {/* Action annulation */}
@@ -440,7 +438,7 @@ function LabRequestEditor({
 
   function addTest(test: LabTestSummary) {
     setSelectedTests((prev) => [...prev, test]);
-    setSearchResults((prev) => prev.filter((r) => r.id !== test.id));
+    setSearchResults([]);
     setSearchQuery("");
   }
 

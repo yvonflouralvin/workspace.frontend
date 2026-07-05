@@ -9,11 +9,13 @@ import { VitalsTab } from "@/components/emr/VitalsTab";
 import { NotesTab } from "@/components/emr/NotesTab";
 import { ConditionsTab } from "@/components/emr/ConditionsTab";
 import { PrescriptionsPanel } from "@/components/prescriptions/PrescriptionsPanel";
-import { getPatient, type Patient } from "@/app/lib/api";
+import { getPatient, listServices, type Patient, type Service } from "@/app/lib/api";
 import { getPatientAllergies, type AllergyRead } from "@/app/lib/emr-api";
 import {
   getConsultation,
   closeConsultation,
+  redirectConsultation,
+  cancelConsultation,
   type ConsultationAggregate,
 } from "@/app/lib/consultation-api";
 import { EMRDrawer } from "@/components/emr/EMRDrawer";
@@ -24,6 +26,9 @@ import {
   PersonOutlineOutlined,
   MedicalServicesOutlined,
   CheckCircleOutlined,
+  CallSplitOutlined,
+  CancelOutlined,
+  WarningAmberOutlined,
 } from "@mui/icons-material";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -76,12 +81,26 @@ export default function ConsultationPage() {
   const [aggregate, setAggregate] = useState<ConsultationAggregate | null>(null);
   const [patient, setPatient] = useState<Patient | null>(null);
   const [allergies, setAllergies] = useState<AllergyRead[]>([]);
+  const [services, setServices] = useState<Service[]>([]);
   const [activeTab, setActiveTab] = useState<ConsultTab>("constantes");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [closing, setClosing] = useState(false);
   const [emrOpen, setEmrOpen] = useState(false);
   const [splitState, setSplitState] = useState<{ title: string; content: React.ReactNode } | null>(null);
+
+  // ── Modal state ──
+  const [showCloseModal, setShowCloseModal]       = useState(false);
+  const [closeSummary, setCloseSummary]           = useState("");
+  const [closeWarnings, setCloseWarnings]         = useState<string[]>([]);
+  const [closePending, setClosePending]           = useState(false);
+
+  const [showRedirectModal, setShowRedirectModal] = useState(false);
+  const [redirectServiceId, setRedirectServiceId] = useState<number | "">("");
+  const [redirectPending, setRedirectPending]     = useState(false);
+
+  const [showCancelModal, setShowCancelModal]     = useState(false);
+  const [cancelReason, setCancelReason]           = useState("");
+  const [cancelPending, setCancelPending]         = useState(false);
 
   function openSplit(title: string, content: React.ReactNode) {
     setSplitState({ title, content });
@@ -92,12 +111,14 @@ export default function ConsultationPage() {
       const agg = await getConsultation(encounterId);
       setAggregate(agg);
 
-      const [p, alg] = await Promise.all([
+      const [p, alg, svcs] = await Promise.all([
         getPatient(agg.encounter.patient_id),
         getPatientAllergies(agg.encounter.patient_id),
+        listServices(),
       ]);
       setPatient(p);
       setAllergies(alg);
+      setServices(svcs);
     } catch {
       setError("Impossible de charger la consultation.");
     } finally {
@@ -107,18 +128,58 @@ export default function ConsultationPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  async function handleClose() {
-    if (!aggregate || closing) return;
-    const visiteId = aggregate.visite?.id;
-    if (!visiteId) return;
-    setClosing(true);
+  // ── Action handlers ───────────────────────────────────────────────────────
+
+  async function handleCloseConfirm() {
+    if (closePending) return;
+    setClosePending(true);
     try {
-      await closeConsultation(encounterId, visiteId);
+      const res = await closeConsultation(encounterId, { closure_summary: closeSummary || undefined });
+      if (res.warnings.length > 0) {
+        setCloseWarnings(res.warnings);
+        setClosePending(false);
+        return;
+      }
       router.push("/reception");
     } catch {
-      setClosing(false);
+      setClosePending(false);
     }
   }
+
+  async function handleCloseForce() {
+    if (closePending) return;
+    setClosePending(true);
+    try {
+      await closeConsultation(encounterId, { closure_summary: closeSummary || undefined });
+      router.push("/reception");
+    } catch {
+      setClosePending(false);
+    }
+  }
+
+  async function handleRedirectConfirm() {
+    if (redirectPending || !redirectServiceId) return;
+    setRedirectPending(true);
+    try {
+      await redirectConsultation(encounterId, { service_id: Number(redirectServiceId) });
+      router.push("/reception");
+    } catch {
+      setRedirectPending(false);
+    }
+  }
+
+  async function handleCancelConfirm() {
+    if (cancelPending) return;
+    setCancelPending(true);
+    try {
+      await cancelConsultation(encounterId, { reason: cancelReason || undefined });
+      router.push("/reception");
+    } catch {
+      setCancelPending(false);
+    }
+  }
+
+  // ── Render guards ─────────────────────────────────────────────────────────
 
   if (loading) {
     return (
@@ -155,23 +216,36 @@ export default function ConsultationPage() {
     <DashboardShell>
       <div className="max-w-5xl mx-auto px-4 py-6 space-y-5">
 
-        {/* ── Back + Terminer ───────────────────────────────────────────── */}
-        <div className="flex items-center justify-between">
+        {/* ── Back + Actions ────────────────────────────────────────────── */}
+        <div className="flex items-center justify-between gap-3 flex-wrap">
           <button
-            onClick={() => router.push("/reception")}
+            onClick={() => router.push("/consultations")}
             className="flex items-center gap-1.5 text-on-surface-variant hover:text-on-surface text-body-sm transition-colors">
             <ArrowBackOutlined style={{ fontSize: 16 }} />
             Réception
           </button>
 
-          {!isClosed && canWrite && visite && (
-            <button
-              onClick={handleClose}
-              disabled={closing}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-secondary text-on-primary text-body-sm font-medium hover:bg-secondary/90 disabled:opacity-50 transition-colors">
-              <CheckCircleOutlined style={{ fontSize: 16 }} />
-              {closing ? "Clôture…" : "Terminer la consultation"}
-            </button>
+          {!isClosed && canWrite && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowCancelModal(true)}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-outline-variant text-on-surface-variant text-body-sm hover:text-error hover:border-error transition-colors">
+                <CancelOutlined style={{ fontSize: 15 }} />
+                Interrompre
+              </button>
+              <button
+                onClick={() => { setShowRedirectModal(true); setRedirectServiceId(""); }}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-outline-variant text-on-surface-variant text-body-sm hover:text-primary hover:border-primary transition-colors">
+                <CallSplitOutlined style={{ fontSize: 15 }} />
+                Réorienter
+              </button>
+              <button
+                onClick={() => { setShowCloseModal(true); setCloseSummary(""); setCloseWarnings([]); }}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-secondary text-on-primary text-body-sm font-medium hover:bg-secondary/90 transition-colors">
+                <CheckCircleOutlined style={{ fontSize: 16 }} />
+                Terminer
+              </button>
+            </div>
           )}
           {isClosed && (
             <span className="text-label-sm text-on-surface-variant bg-surface-container px-3 py-1 rounded-full">
@@ -202,7 +276,6 @@ export default function ConsultationPage() {
             </button>
           </div>
 
-          {/* motif + service + timing */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-body-sm">
             <div>
               <p className="text-label-sm text-on-surface-variant mb-0.5">Motif</p>
@@ -218,7 +291,6 @@ export default function ConsultationPage() {
             </div>
           </div>
 
-          {/* allergies */}
           <AllergyBanner allergies={allergies} />
         </div>
 
@@ -281,6 +353,155 @@ export default function ConsultationPage() {
         </div>
       </div>
     </DashboardShell>
+
+    {/* ── Modal Terminer ──────────────────────────────────────────────────── */}
+    {showCloseModal && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
+        <div className="bg-surface-container-lowest rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-5">
+          <div className="space-y-1">
+            <h2 className="text-headline-sm font-semibold text-on-surface">Terminer la consultation</h2>
+            <p className="text-body-sm text-on-surface-variant">
+              La consultation sera clôturée et le patient marqué comme sorti.
+            </p>
+          </div>
+
+          {closeWarnings.length > 0 && (
+            <div className="rounded-xl bg-error-container p-4 space-y-2">
+              <div className="flex items-center gap-2 text-error text-body-sm font-medium">
+                <WarningAmberOutlined style={{ fontSize: 16 }} />
+                Points d&apos;attention
+              </div>
+              <ul className="space-y-1">
+                {closeWarnings.map((w, i) => (
+                  <li key={i} className="text-body-sm text-error">· {w}</li>
+                ))}
+              </ul>
+              <p className="text-label-sm text-on-surface-variant">
+                Vous pouvez quand même clôturer la consultation.
+              </p>
+            </div>
+          )}
+
+          <div className="space-y-1.5">
+            <label className="text-label-md text-on-surface-variant">
+              Résumé de clôture <span className="text-label-sm">(optionnel)</span>
+            </label>
+            <textarea
+              value={closeSummary}
+              onChange={(e) => setCloseSummary(e.target.value)}
+              rows={4}
+              placeholder="Synthèse de la consultation, consignes de suivi…"
+              className="w-full rounded-xl border border-outline-variant bg-surface px-3 py-2.5 text-body-sm text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary resize-none"
+            />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-1">
+            <button
+              onClick={() => { setShowCloseModal(false); setCloseWarnings([]); }}
+              className="px-4 py-2 rounded-xl border border-outline-variant text-body-sm text-on-surface-variant hover:bg-surface-container transition-colors">
+              Annuler
+            </button>
+            {closeWarnings.length > 0 ? (
+              <button
+                onClick={handleCloseForce}
+                disabled={closePending}
+                className="px-4 py-2 rounded-xl bg-error text-on-primary text-body-sm font-medium hover:bg-error/90 disabled:opacity-50 transition-colors">
+                {closePending ? "Clôture…" : "Clôturer quand même"}
+              </button>
+            ) : (
+              <button
+                onClick={handleCloseConfirm}
+                disabled={closePending}
+                className="px-4 py-2 rounded-xl bg-secondary text-on-primary text-body-sm font-medium hover:bg-secondary/90 disabled:opacity-50 transition-colors">
+                {closePending ? "Clôture…" : "Terminer"}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* ── Modal Réorienter ────────────────────────────────────────────────── */}
+    {showRedirectModal && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
+        <div className="bg-surface-container-lowest rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-5">
+          <div className="space-y-1">
+            <h2 className="text-headline-sm font-semibold text-on-surface">Réorienter le patient</h2>
+            <p className="text-body-sm text-on-surface-variant">
+              La consultation sera clôturée et le patient replacé en attente dans le service sélectionné.
+            </p>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-label-md text-on-surface-variant">Service de destination</label>
+            <select
+              value={redirectServiceId}
+              onChange={(e) => setRedirectServiceId(e.target.value ? Number(e.target.value) : "")}
+              className="w-full rounded-xl border border-outline-variant bg-surface px-3 py-2.5 text-body-sm text-on-surface focus:outline-none focus:border-primary">
+              <option value="">Sélectionner un service…</option>
+              {services.filter(s => s.active).map((s) => (
+                <option key={s.id} value={s.id}>{s.nom}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-1">
+            <button
+              onClick={() => setShowRedirectModal(false)}
+              className="px-4 py-2 rounded-xl border border-outline-variant text-body-sm text-on-surface-variant hover:bg-surface-container transition-colors">
+              Annuler
+            </button>
+            <button
+              onClick={handleRedirectConfirm}
+              disabled={redirectPending || !redirectServiceId}
+              className="px-4 py-2 rounded-xl bg-primary text-on-primary text-body-sm font-medium hover:bg-primary-container disabled:opacity-50 transition-colors">
+              {redirectPending ? "Réorientation…" : "Confirmer"}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* ── Modal Interrompre ────────────────────────────────────────────────── */}
+    {showCancelModal && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
+        <div className="bg-surface-container-lowest rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-5">
+          <div className="space-y-1">
+            <h2 className="text-headline-sm font-semibold text-on-surface">Interrompre la consultation</h2>
+            <p className="text-body-sm text-on-surface-variant">
+              La consultation sera clôturée et le patient marqué comme <strong>parti</strong>.
+            </p>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-label-md text-on-surface-variant">
+              Motif <span className="text-label-sm">(optionnel)</span>
+            </label>
+            <textarea
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+              rows={3}
+              placeholder="Patient a quitté sans attendre, refus de soins…"
+              className="w-full rounded-xl border border-outline-variant bg-surface px-3 py-2.5 text-body-sm text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary resize-none"
+            />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-1">
+            <button
+              onClick={() => setShowCancelModal(false)}
+              className="px-4 py-2 rounded-xl border border-outline-variant text-body-sm text-on-surface-variant hover:bg-surface-container transition-colors">
+              Annuler
+            </button>
+            <button
+              onClick={handleCancelConfirm}
+              disabled={cancelPending}
+              className="px-4 py-2 rounded-xl bg-error text-on-primary text-body-sm font-medium hover:bg-error/90 disabled:opacity-50 transition-colors">
+              {cancelPending ? "Interruption…" : "Interrompre"}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
 
     {emrOpen && patient && (
       <EMRDrawer

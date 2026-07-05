@@ -55,14 +55,66 @@ export async function getConsultation(encounterId: number): Promise<Consultation
   return parseResponse(await apiFetch(`/api/encounters/${encounterId}/consultation`));
 }
 
-export async function closeConsultation(encounterId: number, visiteId: number): Promise<void> {
-  await parseResponse(
-    await apiFetch(`/api/encounters/${encounterId}`, {
-      method: "PATCH",
-      body: { status: "CLOS", ended_at: new Date().toISOString() },
+// ─── C4 — Clôture, réorientation, annulation ─────────────────────────────────
+
+export interface CloseConsultationBody {
+  closure_summary?: string;
+}
+
+export interface CloseConsultationResponse {
+  encounter: EncounterRead;
+  visite_id: number | null;
+  warnings: string[];
+}
+
+export interface RedirectBody {
+  service_id: number;
+}
+
+export interface RedirectResponse {
+  encounter: EncounterRead;
+  visite_id: number | null;
+}
+
+export interface CancelBody {
+  reason?: string;
+}
+
+export interface CancelResponse {
+  encounter_id: number;
+  status: string;
+  visite_id: number | null;
+}
+
+export async function closeConsultation(
+  encounterId: number,
+  body: CloseConsultationBody = {},
+): Promise<CloseConsultationResponse> {
+  return parseResponse(
+    await apiFetch(`/api/encounters/${encounterId}/close-consultation`, {
+      method: "POST",
+      body,
     }),
   );
-  await parseResponse(
-    await apiFetch(`/api/visites/${visiteId}/leave`, { method: "POST", body: {} }),
+}
+
+export async function redirectConsultation(
+  encounterId: number,
+  body: RedirectBody,
+): Promise<RedirectResponse> {
+  return parseResponse(
+    await apiFetch(`/api/encounters/${encounterId}/redirect`, { method: "POST", body }),
+  );
+}
+
+export async function cancelConsultation(
+  encounterId: number,
+  body: CancelBody = {},
+): Promise<CancelResponse> {
+  return parseResponse(
+    await apiFetch(`/api/encounters/${encounterId}/cancel-consultation`, {
+      method: "POST",
+      body,
+    }),
   );
 }

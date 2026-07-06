@@ -10,12 +10,15 @@ import type { SearchSection } from "@repo/ui/shell/TopBar";
 import { UserFooter } from "@repo/ui/shell/UserFooter";
 import { WorkspaceSwitcher } from "@repo/ui/WorkspaceSwitcher";
 import {
+  BiotechOutlined,
   CalendarMonthOutlined,
   HomeOutlined,
   LocalHospitalOutlined,
+  MedicalInformationOutlined,
   MedicalServicesOutlined,
   PeopleAltOutlined,
   ScheduleOutlined,
+  SensorDoorOutlined,
 } from "@mui/icons-material";
 import type { NavItem, AppDefinition } from "@repo/ui/types/shell";
 import { logout as logoutRequest } from "@/app/lib/api";
@@ -43,6 +46,16 @@ const NAV_ITEMS: NavItem[] = [
     icon: <MedicalServicesOutlined style={{ fontSize: 20 }} />,
   },
   {
+    label: "Réception",
+    href: "/reception",
+    icon: <SensorDoorOutlined style={{ fontSize: 20 }} />,
+  },
+  {
+    label: "Consultations",
+    href: "/consultations",
+    icon: <MedicalInformationOutlined style={{ fontSize: 20 }} />,
+  },
+  {
     label: "Calendrier",
     href: "/calendar",
     icon: <CalendarMonthOutlined style={{ fontSize: 20 }} />,
@@ -51,6 +64,11 @@ const NAV_ITEMS: NavItem[] = [
     label: "Horaires",
     href: "/schedules",
     icon: <ScheduleOutlined style={{ fontSize: 20 }} />,
+  },
+  {
+    label: "Laboratoire",
+    href: "/lab",
+    icon: <BiotechOutlined style={{ fontSize: 20 }} />,
   },
 ];
 

@@ -48,6 +48,7 @@ frontends/
 | `approval-flows` | 3006 | Création/gestion libre de workflows d'approbation + console des tâches | `docs/apps/approval-flows/APPROVAL_FLOWS.md` |
 | `hosto`     | 3007 | Gestion hospitalière — patients, contacts                            | —                                      |
 | `documents` | 3008 | Templates PDF — liste, éditeur layout JSON WeasyPrint, prévisualisation, paramètres workspace | — |
+| `tiers`     | 3009 | Répertoire des clients et fournisseurs (backend `tiers` port 5008)   | —                                      |
 | `web`       | —    | Landing page publique                              | —                                      |
 | `docs`      | —    | Documentation produit                              | —                                      |
 

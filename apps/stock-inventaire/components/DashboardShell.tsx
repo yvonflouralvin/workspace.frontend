@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import { useSessionStore } from "@repo/auth/store/session.store";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
 import { AppShell } from "@repo/ui/shell/AppShell";
@@ -8,7 +9,6 @@ import { TopBar } from "@repo/ui/shell/TopBar";
 import { UserFooter } from "@repo/ui/shell/UserFooter";
 import { WorkspaceSwitcher } from "@repo/ui/WorkspaceSwitcher";
 import {
-  HomeOutlined,
   Inventory2Outlined,
   CategoryOutlined,
 } from "@mui/icons-material";
@@ -16,12 +16,6 @@ import type { NavItem, AppDefinition } from "@repo/ui/types/shell";
 import { logout as logoutRequest } from "@/lib/stock-api";
 
 const NAV_ITEMS: NavItem[] = [
-  {
-    label: "Accueil",
-    href: process.env.NEXT_PUBLIC_WORKSPACE_DOMAIN ?? "http://localhost:3005",
-    icon: <HomeOutlined style={{ fontSize: 20 }} />,
-    exact: true,
-  },
   {
     label: "Articles",
     href: "/items",
@@ -33,6 +27,16 @@ const NAV_ITEMS: NavItem[] = [
     icon: <CategoryOutlined style={{ fontSize: 20 }} />,
   },
 ];
+
+const ROUTE_LABELS: Record<string, string> = {
+  "/items": "Articles",
+  "/categories": "Catégories",
+};
+
+const ROUTE_ICONS: Record<string, React.ReactNode> = {
+  "/items":      <Inventory2Outlined style={{ fontSize: 15 }} />,
+  "/categories": <CategoryOutlined style={{ fontSize: 15 }} />,
+};
 
 const APPS: AppDefinition[] = [
   {
@@ -86,6 +90,10 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           user={userSummary}
           preferencesUrl="/"
           onLogout={handleLogout}
+          appName="Stock"
+          appHref="/items"
+          routeLabels={ROUTE_LABELS}
+          routeIcons={ROUTE_ICONS}
         />
       }
     >

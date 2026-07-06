@@ -21,6 +21,8 @@ services:
       npx turbo run build --filter=hosto &&
       cp -r apps/hosto/.next/static apps/hosto/.next/standalone/apps/hosto/.next/static &&
       (cp -r apps/hosto/public apps/hosto/.next/standalone/apps/hosto/public 2>/dev/null || true) &&
+      mkdir -p apps/hosto/.next/standalone/apps/hosto/node_modules/next/dist/compiled &&
+      (cp -r apps/hosto/node_modules/next/dist/compiled/cookie apps/hosto/.next/standalone/apps/hosto/node_modules/next/dist/compiled/ 2>/dev/null || cp -r node_modules/next/dist/compiled/cookie apps/hosto/.next/standalone/apps/hosto/node_modules/next/dist/compiled/) &&
       exec node apps/hosto/.next/standalone/apps/hosto/server.js"
     expose:
       - "3000"

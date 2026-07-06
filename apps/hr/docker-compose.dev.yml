@@ -24,11 +24,11 @@ services:
     ports:
       - "3003:3003"
     networks:
-      - dev
+      - workspace_dev
 
 networks:
-  dev:
-    name: dev
+  workspace_dev:
+    name: workspace_dev
     external: true
 
 volumes:

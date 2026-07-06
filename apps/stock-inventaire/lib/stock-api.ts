@@ -21,6 +21,9 @@ export const TYPE_MOUVEMENT_LABELS: Record<TypeMouvement, string> = {
 
 export const UNITES = [
   { value: "pcs", label: "Pièce (pcs)" },
+  { value: "boîte", label: "Boîte" },
+  { value: "rouleau", label: "Rouleau" },
+  { value: "ramette", label: "Ramette" },
   { value: "kg", label: "Kilogramme (kg)" },
   { value: "g", label: "Gramme (g)" },
   { value: "L", label: "Litre (L)" },
@@ -72,6 +75,13 @@ export interface ItemDetail extends ItemSummary {
   updated_at: string;
 }
 
+export interface CategoriePage {
+  items: CategorieDetail[];
+  total: number;
+  page: number;
+  pages: number;
+}
+
 export interface ItemPage {
   items: ItemSummary[];
   total: number;
@@ -119,8 +129,26 @@ export interface MouvementCreateInput {
 // ── Categories ──
 
 export async function listCategories(actif?: boolean): Promise<CategorieDetail[]> {
-  const qs = actif !== undefined ? `?actif=${actif}` : "";
-  const res = await apiFetch(`/api/categories${qs}`);
+  const qs = new URLSearchParams({ page_size: "200" });
+  if (actif !== undefined) qs.set("actif", String(actif));
+  const res = await apiFetch(`/api/categories?${qs}`);
+  if (!res.ok) throw new Error("Erreur lors du chargement des catégories");
+  const data: CategoriePage = await res.json();
+  return data.items;
+}
+
+export async function searchCategories(params?: {
+  q?: string;
+  actif?: boolean;
+  page?: number;
+  page_size?: number;
+}): Promise<CategoriePage> {
+  const qs = new URLSearchParams();
+  if (params?.q) qs.set("q", params.q);
+  if (params?.actif !== undefined) qs.set("actif", String(params.actif));
+  if (params?.page) qs.set("page", String(params.page));
+  if (params?.page_size) qs.set("page_size", String(params.page_size));
+  const res = await apiFetch(`/api/categories?${qs}`);
   if (!res.ok) throw new Error("Erreur lors du chargement des catégories");
   return res.json();
 }

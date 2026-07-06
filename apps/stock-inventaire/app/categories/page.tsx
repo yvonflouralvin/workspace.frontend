@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
 import { DashboardShell } from "@/components/DashboardShell";
+import { RightDrawer } from "@repo/ui/RightDrawer";
 import {
-  listCategories,
+  searchCategories,
   createCategorie,
   updateCategorie,
   type CategorieDetail,
@@ -13,14 +14,16 @@ import {
   AddOutlined,
   EditOutlined,
   BlockOutlined,
-  CheckCircleOutlineOutlined,
+  SearchOutlined,
   CategoryOutlined,
 } from "@mui/icons-material";
+
+const PAGE_SIZE = 20;
 
 const inputCls =
   "w-full rounded-xl border border-outline-variant bg-surface-container-lowest px-3 py-2 text-body-md text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary transition-colors";
 
-type EditState = { id: number; nom: string; description: string } | null;
+type DrawerState = { mode: "create" } | { mode: "edit"; cat: CategorieDetail } | null;
 
 export default function CategoriesPage() {
   const { can } = usePermissions();
@@ -28,78 +31,90 @@ export default function CategoriesPage() {
   const canManage = can("stock.categories.manage");
 
   const [categories, setCategories] = useState<CategorieDetail[]>([]);
+  const [total, setTotal] = useState(0);
+  const [pages, setPages] = useState(1);
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [showCreate, setShowCreate] = useState(false);
-  const [createForm, setCreateForm] = useState({ nom: "", description: "" });
-  const [creating, setCreating] = useState(false);
-  const [createError, setCreateError] = useState<string | null>(null);
+  const [drawer, setDrawer] = useState<DrawerState>(null);
+  const [form, setForm] = useState({ nom: "", description: "" });
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
-  const [editState, setEditState] = useState<EditState>(null);
-  const [editSaving, setEditSaving] = useState(false);
-  const [editError, setEditError] = useState<string | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const fetchData = useCallback((q: string, p: number) => {
+    setLoading(true);
+    setError(null);
+    searchCategories({ q: q || undefined, actif: true, page: p, page_size: PAGE_SIZE })
+      .then((data) => {
+        setCategories(data.items);
+        setTotal(data.total);
+        setPages(data.pages);
+      })
+      .catch(() => setError("Impossible de charger les catégories."))
+      .finally(() => setLoading(false));
+  }, []);
 
   useEffect(() => {
     if (!canView) { setLoading(false); return; }
-    loadCategories();
-  }, [canView]);
+    fetchData(search, page);
+  }, [page, canView, fetchData]);
 
-  function loadCategories() {
-    setLoading(true);
-    setError(null);
-    listCategories()
-      .then(setCategories)
-      .catch(() => setError("Impossible de charger les catégories."))
-      .finally(() => setLoading(false));
+  function handleSearch(val: string) {
+    setSearch(val);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      setPage(1);
+      fetchData(val, 1);
+    }, 300);
   }
 
-  async function handleCreate(e: React.FormEvent) {
-    e.preventDefault();
-    if (!createForm.nom.trim()) { setCreateError("Le nom est obligatoire."); return; }
-    setCreating(true);
-    setCreateError(null);
-    try {
-      await createCategorie({ nom: createForm.nom.trim(), description: createForm.description || undefined });
-      setCreateForm({ nom: "", description: "" });
-      setShowCreate(false);
-      loadCategories();
-    } catch (err) {
-      setCreateError(err instanceof Error ? err.message : "Erreur inattendue");
-      setCreating(false);
-    }
+  function openCreate() {
+    setForm({ nom: "", description: "" });
+    setFormError(null);
+    setDrawer({ mode: "create" });
   }
 
-  async function handleSaveEdit(e: React.FormEvent) {
+  function openEdit(cat: CategorieDetail) {
+    setForm({ nom: cat.nom, description: cat.description ?? "" });
+    setFormError(null);
+    setDrawer({ mode: "edit", cat });
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!editState) return;
-    if (!editState.nom.trim()) { setEditError("Le nom est obligatoire."); return; }
-    setEditSaving(true);
-    setEditError(null);
+    if (!form.nom.trim()) { setFormError("Le nom est obligatoire."); return; }
+    setSaving(true);
+    setFormError(null);
     try {
-      await updateCategorie(editState.id, { nom: editState.nom.trim(), description: editState.description || undefined });
-      setEditState(null);
-      loadCategories();
+      if (drawer?.mode === "create") {
+        await createCategorie({ nom: form.nom.trim(), description: form.description || undefined });
+      } else if (drawer?.mode === "edit") {
+        await updateCategorie(drawer.cat.id, { nom: form.nom.trim(), description: form.description || undefined });
+      }
+      setDrawer(null);
+      setPage(1);
+      fetchData(search, 1);
     } catch (err) {
-      setEditError(err instanceof Error ? err.message : "Erreur inattendue");
-      setEditSaving(false);
+      setFormError(err instanceof Error ? err.message : "Erreur inattendue");
+    } finally {
+      setSaving(false);
     }
   }
 
   async function handleToggleActive(cat: CategorieDetail) {
     try {
       await updateCategorie(cat.id, { is_active: !cat.is_active });
-      loadCategories();
+      fetchData(search, page);
     } catch { /* silent */ }
   }
 
-  const active = categories.filter((c) => c.is_active);
-  const inactive = categories.filter((c) => !c.is_active);
-
   return (
     <DashboardShell>
-      <div className="p-6 space-y-6">
-        {/* Header */}
+      <div className="p-6 space-y-4">
         <div className="flex items-center justify-between gap-4">
           <div>
             <h1 className="text-headline-md font-display text-on-surface">Catégories</h1>
@@ -107,9 +122,9 @@ export default function CategoriesPage() {
               Regroupez vos articles par catégorie.
             </p>
           </div>
-          {canManage && !showCreate && (
+          {canManage && (
             <button
-              onClick={() => { setShowCreate(true); setCreateError(null); }}
+              onClick={openCreate}
               className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-on-primary text-body-md font-medium hover:bg-primary-container transition-colors shrink-0"
             >
               <AddOutlined style={{ fontSize: 18 }} />
@@ -118,55 +133,20 @@ export default function CategoriesPage() {
           )}
         </div>
 
-        {/* Create form */}
-        {showCreate && canManage && (
-          <form onSubmit={handleCreate} className="bg-surface-container-lowest border border-outline-variant rounded-xl p-5 space-y-4 max-w-xl">
-            <h2 className="text-body-md font-semibold text-on-surface">Nouvelle catégorie</h2>
-            {createError && <p className="text-body-sm text-error">{createError}</p>}
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-label-md text-on-surface-variant">Nom *</label>
-                <input
-                  type="text"
-                  value={createForm.nom}
-                  onChange={(e) => setCreateForm((f) => ({ ...f, nom: e.target.value }))}
-                  placeholder="Ex : Fournitures de bureau"
-                  className={inputCls}
-                  autoFocus
-                  required
-                />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-label-md text-on-surface-variant">Description</label>
-                <input
-                  type="text"
-                  value={createForm.description}
-                  onChange={(e) => setCreateForm((f) => ({ ...f, description: e.target.value }))}
-                  placeholder="Optionnel"
-                  className={inputCls}
-                />
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                type="submit"
-                disabled={creating}
-                className="px-4 py-2 bg-primary text-on-primary text-body-sm rounded-xl font-medium disabled:opacity-60 transition-colors"
-              >
-                {creating ? "Enregistrement…" : "Créer"}
-              </button>
-              <button
-                type="button"
-                onClick={() => { setShowCreate(false); setCreateError(null); }}
-                className="px-4 py-2 text-body-sm border border-outline-variant rounded-xl hover:bg-surface-container transition-colors"
-              >
-                Annuler
-              </button>
-            </div>
-          </form>
-        )}
+        <div className="relative max-w-sm">
+          <SearchOutlined
+            style={{ fontSize: 18 }}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none"
+          />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => handleSearch(e.target.value)}
+            placeholder="Rechercher une catégorie…"
+            className={`${inputCls} pl-9`}
+          />
+        </div>
 
-        {/* Content */}
         {!canView ? (
           <p className="text-body-sm text-on-surface-variant text-center py-8">Accès non autorisé.</p>
         ) : error ? (
@@ -176,157 +156,132 @@ export default function CategoriesPage() {
         ) : categories.length === 0 ? (
           <div className="flex flex-col items-center gap-3 py-16 text-on-surface-variant">
             <CategoryOutlined style={{ fontSize: 48 }} className="opacity-30" />
-            <p className="text-body-md">Aucune catégorie créée.</p>
+            <p className="text-body-md">{search ? "Aucune catégorie trouvée." : "Aucune catégorie créée."}</p>
           </div>
         ) : (
-          <div className="space-y-6">
-            {/* Active */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <h2 className="text-body-md font-semibold text-on-surface">Actives</h2>
-                <span className="px-2 py-0.5 rounded-full bg-surface-container text-label-md text-on-surface-variant">{active.length}</span>
-              </div>
-              {active.length === 0 ? (
-                <p className="text-body-sm text-on-surface-variant">Aucune catégorie active.</p>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {active.map((cat) => (
-                    <CatCard
-                      key={cat.id}
-                      cat={cat}
-                      canManage={canManage}
-                      editState={editState}
-                      editSaving={editSaving}
-                      editError={editError}
-                      inputCls={inputCls}
-                      onEdit={() => setEditState({ id: cat.id, nom: cat.nom, description: cat.description ?? "" })}
-                      onCancelEdit={() => { setEditState(null); setEditError(null); }}
-                      onSaveEdit={handleSaveEdit}
-                      onEditChange={(field, val) => setEditState((s) => s ? { ...s, [field]: val } : s)}
-                      onToggle={() => handleToggleActive(cat)}
-                    />
+          <>
+            <div className="bg-surface-container-lowest rounded-xl border border-outline-variant overflow-hidden">
+              <table className="w-full text-body-md">
+                <thead>
+                  <tr className="border-b border-outline-variant bg-surface-container-low">
+                    <th className="text-left px-4 py-3 text-label-md font-semibold text-on-surface-variant">Nom</th>
+                    <th className="text-left px-4 py-3 text-label-md font-semibold text-on-surface-variant">Description</th>
+                    <th className="px-4 py-3 w-20" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {categories.map((cat) => (
+                    <tr key={cat.id} className="border-b border-outline-variant/50 last:border-0 hover:bg-surface-container-low transition-colors group">
+                      <td className="px-4 py-3 font-medium text-on-surface">{cat.nom}</td>
+                      <td className="px-4 py-3 text-on-surface-variant">{cat.description ?? "—"}</td>
+                      <td className="px-4 py-3">
+                        {canManage && (
+                          <div className="flex items-center gap-0.5 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button
+                              onClick={() => openEdit(cat)}
+                              title="Modifier"
+                              className="p-1.5 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors"
+                            >
+                              <EditOutlined style={{ fontSize: 16 }} />
+                            </button>
+                            <button
+                              onClick={() => handleToggleActive(cat)}
+                              title="Désactiver"
+                              className="p-1.5 rounded-lg text-on-surface-variant hover:text-error hover:bg-error/5 transition-colors"
+                            >
+                              <BlockOutlined style={{ fontSize: 16 }} />
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
                   ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <p className="text-body-sm text-on-surface-variant">
+                {total} catégorie{total > 1 ? "s" : ""}
+              </p>
+              {pages > 1 && (
+                <div className="flex gap-2">
+                  <button
+                    disabled={page <= 1}
+                    onClick={() => setPage((p) => p - 1)}
+                    className="px-3 py-1.5 rounded-lg text-body-sm border border-outline-variant disabled:opacity-40 hover:bg-surface-container transition-colors"
+                  >
+                    Précédent
+                  </button>
+                  <span className="px-3 py-1.5 text-body-sm text-on-surface-variant">
+                    {page} / {pages}
+                  </span>
+                  <button
+                    disabled={page >= pages}
+                    onClick={() => setPage((p) => p + 1)}
+                    className="px-3 py-1.5 rounded-lg text-body-sm border border-outline-variant disabled:opacity-40 hover:bg-surface-container transition-colors"
+                  >
+                    Suivant
+                  </button>
                 </div>
               )}
             </div>
+          </>
+        )}
+      </div>
 
-            {/* Inactive */}
-            {inactive.length > 0 && (
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <h2 className="text-body-md font-semibold text-on-surface-variant">Inactives</h2>
-                  <span className="px-2 py-0.5 rounded-full bg-surface-container text-label-md text-on-surface-variant">{inactive.length}</span>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 opacity-60">
-                  {inactive.map((cat) => (
-                    <CatCard
-                      key={cat.id}
-                      cat={cat}
-                      canManage={canManage}
-                      editState={editState}
-                      editSaving={editSaving}
-                      editError={editError}
-                      inputCls={inputCls}
-                      onEdit={() => setEditState({ id: cat.id, nom: cat.nom, description: cat.description ?? "" })}
-                      onCancelEdit={() => { setEditState(null); setEditError(null); }}
-                      onSaveEdit={handleSaveEdit}
-                      onEditChange={(field, val) => setEditState((s) => s ? { ...s, [field]: val } : s)}
-                      onToggle={() => handleToggleActive(cat)}
-                    />
-                  ))}
-                </div>
-              </div>
+      {drawer && (
+        <RightDrawer
+          title={drawer.mode === "create" ? "Nouvelle catégorie" : "Modifier la catégorie"}
+          onClose={() => setDrawer(null)}
+          width="w-[420px] max-w-full"
+          contentClassName="px-6 py-5 overflow-y-auto"
+        >
+          <form onSubmit={handleSubmit} className="flex flex-col gap-5 h-full">
+            {formError && (
+              <p className="text-body-sm text-error bg-error-container/40 rounded-xl px-4 py-3">{formError}</p>
             )}
-          </div>
-        )}
-      </div>
-    </DashboardShell>
-  );
-}
-
-function CatCard({
-  cat, canManage, editState, editSaving, editError, inputCls,
-  onEdit, onCancelEdit, onSaveEdit, onEditChange, onToggle,
-}: {
-  cat: CategorieDetail;
-  canManage: boolean;
-  editState: EditState;
-  editSaving: boolean;
-  editError: string | null;
-  inputCls: string;
-  onEdit: () => void;
-  onCancelEdit: () => void;
-  onSaveEdit: (e: React.FormEvent) => void;
-  onEditChange: (field: "nom" | "description", val: string) => void;
-  onToggle: () => void;
-}) {
-  const isEditing = editState?.id === cat.id;
-
-  if (isEditing && editState) {
-    return (
-      <form onSubmit={onSaveEdit} className="bg-surface-container-lowest border border-primary/40 rounded-xl p-4 space-y-3">
-        {editError && <p className="text-body-sm text-error">{editError}</p>}
-        <div className="flex flex-col gap-1">
-          <label className="text-label-md text-on-surface-variant">Nom *</label>
-          <input
-            type="text"
-            value={editState.nom}
-            onChange={(e) => onEditChange("nom", e.target.value)}
-            className={inputCls}
-            autoFocus
-            required
-          />
-        </div>
-        <div className="flex flex-col gap-1">
-          <label className="text-label-md text-on-surface-variant">Description</label>
-          <input
-            type="text"
-            value={editState.description}
-            onChange={(e) => onEditChange("description", e.target.value)}
-            className={inputCls}
-          />
-        </div>
-        <div className="flex items-center gap-2">
-          <button type="submit" disabled={editSaving} className="px-3 py-1.5 bg-primary text-on-primary text-body-sm rounded-lg font-medium disabled:opacity-60 transition-colors">
-            {editSaving ? "…" : "Enregistrer"}
-          </button>
-          <button type="button" onClick={onCancelEdit} className="px-3 py-1.5 text-body-sm border border-outline-variant rounded-lg hover:bg-surface-container transition-colors">
-            Annuler
-          </button>
-        </div>
-      </form>
-    );
-  }
-
-  return (
-    <div className="group bg-surface-container-lowest border border-outline-variant rounded-xl p-4 flex flex-col gap-2 hover:border-outline transition-colors">
-      <div className="flex items-start justify-between gap-2">
-        <p className="text-body-md font-semibold text-on-surface leading-tight">{cat.nom}</p>
-        {canManage && (
-          <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button
-              onClick={onEdit}
-              title="Modifier"
-              className="p-1.5 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors"
-            >
-              <EditOutlined style={{ fontSize: 15 }} />
-            </button>
-            <button
-              onClick={onToggle}
-              title={cat.is_active ? "Désactiver" : "Réactiver"}
-              className={`p-1.5 rounded-lg transition-colors ${cat.is_active ? "text-on-surface-variant hover:text-error hover:bg-error/5" : "text-secondary hover:bg-secondary/5"}`}
-            >
-              {cat.is_active
-                ? <BlockOutlined style={{ fontSize: 15 }} />
-                : <CheckCircleOutlineOutlined style={{ fontSize: 15 }} />
-              }
-            </button>
-          </div>
-        )}
-      </div>
-      {cat.description && (
-        <p className="text-body-sm text-on-surface-variant line-clamp-2">{cat.description}</p>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-label-md text-on-surface-variant">Nom *</label>
+              <input
+                type="text"
+                value={form.nom}
+                onChange={(e) => setForm((f) => ({ ...f, nom: e.target.value }))}
+                placeholder="Ex : Fournitures de bureau"
+                className={inputCls}
+                autoFocus
+                required
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-label-md text-on-surface-variant">Description</label>
+              <textarea
+                value={form.description}
+                onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                placeholder="Optionnel"
+                rows={3}
+                className={`${inputCls} resize-none`}
+              />
+            </div>
+            <div className="mt-auto flex items-center gap-2">
+              <button
+                type="submit"
+                disabled={saving}
+                className="px-4 py-2 bg-primary text-on-primary text-body-sm rounded-xl font-medium disabled:opacity-60 transition-colors"
+              >
+                {saving ? "Enregistrement…" : drawer.mode === "create" ? "Créer" : "Enregistrer"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setDrawer(null)}
+                className="px-4 py-2 text-body-sm border border-outline-variant rounded-xl hover:bg-surface-container transition-colors"
+              >
+                Annuler
+              </button>
+            </div>
+          </form>
+        </RightDrawer>
       )}
-    </div>
+    </DashboardShell>
   );
 }

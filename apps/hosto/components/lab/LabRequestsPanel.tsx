@@ -433,11 +433,13 @@ function LabRequestAccordion({
 function LabRequestEditor({
   patientId,
   encounterId: encounterIdProp,
+  bare,
   onClose,
   onSaved,
 }: {
   patientId: number;
   encounterId?: number;
+  bare?: boolean;
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -513,6 +515,151 @@ function LabRequestEditor({
     }
   }
 
+  const formContent = (
+    <form onSubmit={handleSubmit} className="space-y-5">
+      {/* Priorité */}
+      <div>
+        <p className="text-label-md font-medium text-on-surface-variant uppercase tracking-wide mb-2">Priorité</p>
+        <div className="flex gap-2">
+          {(["ROUTINE", "URGENT"] as const).map((p) => (
+            <button
+              key={p}
+              type="button"
+              onClick={() => setPriority(p)}
+              className={`px-4 py-2 rounded-xl text-body-sm font-medium border transition-colors ${
+                priority === p
+                  ? p === "URGENT"
+                    ? "bg-error/10 border-error/40 text-error"
+                    : "bg-primary/10 border-primary/40 text-primary"
+                  : "border-outline-variant text-on-surface-variant hover:bg-surface-container"
+              }`}
+            >
+              {p === "ROUTINE" ? "Routine" : "⚡ Urgent"}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Renseignement clinique */}
+      <div>
+        <label className="text-label-md font-medium text-on-surface-variant uppercase tracking-wide block mb-1">
+          Renseignement clinique <span className="text-label-sm normal-case">(optionnel)</span>
+        </label>
+        <textarea
+          value={clinicalInfo}
+          onChange={(e) => setClinicalInfo(e.target.value)}
+          rows={2}
+          placeholder="Ex : suspicion d'anémie, suivi traitement…"
+          className="w-full rounded-xl border border-outline-variant bg-surface px-3 py-2 text-body-md text-on-surface focus:outline-none focus:border-primary resize-none"
+        />
+      </div>
+
+      {/* Picker d'examens */}
+      <div>
+        <p className="text-label-md font-medium text-on-surface-variant uppercase tracking-wide mb-2">Examens</p>
+
+        {/* Examens sélectionnés */}
+        {selectedTests.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-3">
+            {selectedTests.map((test) => (
+              <div key={test.id} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary/10 border border-primary/30 text-body-sm text-primary">
+                <BiotechOutlined style={{ fontSize: 14 }} />
+                <span className="font-medium">{test.short_name ?? test.name}</span>
+                {test.parameter_count > 0 && (
+                  <span className="text-label-xs text-primary/60">({test.parameter_count} params)</span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => removeTest(test.id)}
+                  className="ml-1 text-primary/60 hover:text-error transition-colors"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Champ de recherche */}
+        <div className="relative">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            placeholder="Rechercher un examen (nom, code LOINC)…"
+            className="w-full rounded-xl border border-outline-variant bg-surface px-3 py-2 text-body-md text-on-surface focus:outline-none focus:border-primary"
+          />
+          {searchLoading && (
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+          )}
+        </div>
+
+        {/* Résultats de recherche */}
+        {searchResults.length > 0 && (
+          <div className="mt-1 rounded-xl border border-outline-variant bg-surface shadow-md overflow-hidden">
+            {searchResults.map((test) => (
+              <button
+                key={test.id}
+                type="button"
+                onClick={() => addTest(test)}
+                className="w-full flex items-start gap-3 px-4 py-3 text-left hover:bg-surface-container transition-colors border-b border-outline-variant/50 last:border-0"
+              >
+                <BiotechOutlined style={{ fontSize: 18 }} className="text-primary shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-body-sm font-medium text-on-surface">{test.name}</p>
+                  <p className="text-label-sm text-on-surface-variant/60">
+                    {[test.category, test.specimen, test.parameter_count > 0 ? `${test.parameter_count} paramètres` : null]
+                      .filter(Boolean).join(" · ")}
+                  </p>
+                </div>
+                {test.loinc_code && (
+                  <span className="text-label-xs text-on-surface-variant/50 font-mono shrink-0">{test.loinc_code}</span>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {selectedTests.length === 0 && (
+          <p className="text-body-sm text-on-surface-variant/60 italic mt-2">
+            Aucun examen ajouté. Recherchez ci-dessus pour ajouter des examens à la demande.
+          </p>
+        )}
+      </div>
+
+      {error && (
+        <p className="text-body-sm text-error bg-error-container/40 rounded-xl px-4 py-3">{error}</p>
+      )}
+
+      <div className="flex gap-3 pt-2">
+        <button
+          type="button"
+          onClick={onClose}
+          className="flex-1 px-4 py-2.5 rounded-xl border border-outline-variant text-body-sm text-on-surface-variant hover:bg-surface-container transition-colors"
+        >
+          Annuler
+        </button>
+        <button
+          type="submit"
+          disabled={saving || selectedTests.length === 0 || encounterLoading}
+          className="flex-1 px-4 py-2.5 rounded-xl bg-primary text-on-primary text-body-sm font-medium hover:bg-primary-container transition-colors disabled:opacity-40"
+        >
+          {saving || encounterLoading ? "Envoi…" : `Envoyer la demande (${selectedTests.length})`}
+        </button>
+      </div>
+    </form>
+  );
+
+  if (bare) {
+    return (
+      <div className="h-full flex flex-col overflow-hidden">
+        <div className="flex-1 overflow-y-auto px-6 py-5">
+          {formContent}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <RightDrawer
       title="Demander des examens"
@@ -520,138 +667,7 @@ function LabRequestEditor({
       width="w-[520px] max-w-full"
       contentClassName="px-6 py-5 overflow-y-auto space-y-5"
     >
-      <form onSubmit={handleSubmit} className="space-y-5">
-        {/* Priorité */}
-        <div>
-          <p className="text-label-md font-medium text-on-surface-variant uppercase tracking-wide mb-2">Priorité</p>
-          <div className="flex gap-2">
-            {(["ROUTINE", "URGENT"] as const).map((p) => (
-              <button
-                key={p}
-                type="button"
-                onClick={() => setPriority(p)}
-                className={`px-4 py-2 rounded-xl text-body-sm font-medium border transition-colors ${
-                  priority === p
-                    ? p === "URGENT"
-                      ? "bg-error/10 border-error/40 text-error"
-                      : "bg-primary/10 border-primary/40 text-primary"
-                    : "border-outline-variant text-on-surface-variant hover:bg-surface-container"
-                }`}
-              >
-                {p === "ROUTINE" ? "Routine" : "⚡ Urgent"}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Renseignement clinique */}
-        <div>
-          <label className="text-label-md font-medium text-on-surface-variant uppercase tracking-wide block mb-1">
-            Renseignement clinique <span className="text-label-sm normal-case">(optionnel)</span>
-          </label>
-          <textarea
-            value={clinicalInfo}
-            onChange={(e) => setClinicalInfo(e.target.value)}
-            rows={2}
-            placeholder="Ex : suspicion d'anémie, suivi traitement…"
-            className="w-full rounded-xl border border-outline-variant bg-surface px-3 py-2 text-body-md text-on-surface focus:outline-none focus:border-primary resize-none"
-          />
-        </div>
-
-        {/* Picker d'examens */}
-        <div>
-          <p className="text-label-md font-medium text-on-surface-variant uppercase tracking-wide mb-2">Examens</p>
-
-          {/* Examens sélectionnés */}
-          {selectedTests.length > 0 && (
-            <div className="flex flex-wrap gap-2 mb-3">
-              {selectedTests.map((test) => (
-                <div key={test.id} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary/10 border border-primary/30 text-body-sm text-primary">
-                  <BiotechOutlined style={{ fontSize: 14 }} />
-                  <span className="font-medium">{test.short_name ?? test.name}</span>
-                  {test.parameter_count > 0 && (
-                    <span className="text-label-xs text-primary/60">({test.parameter_count} params)</span>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => removeTest(test.id)}
-                    className="ml-1 text-primary/60 hover:text-error transition-colors"
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Champ de recherche */}
-          <div className="relative">
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => handleSearchChange(e.target.value)}
-              placeholder="Rechercher un examen (nom, code LOINC)…"
-              className="w-full rounded-xl border border-outline-variant bg-surface px-3 py-2 text-body-md text-on-surface focus:outline-none focus:border-primary"
-            />
-            {searchLoading && (
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-2 border-primary border-t-transparent animate-spin" />
-            )}
-          </div>
-
-          {/* Résultats de recherche */}
-          {searchResults.length > 0 && (
-            <div className="mt-1 rounded-xl border border-outline-variant bg-surface shadow-md overflow-hidden">
-              {searchResults.map((test) => (
-                <button
-                  key={test.id}
-                  type="button"
-                  onClick={() => addTest(test)}
-                  className="w-full flex items-start gap-3 px-4 py-3 text-left hover:bg-surface-container transition-colors border-b border-outline-variant/50 last:border-0"
-                >
-                  <BiotechOutlined style={{ fontSize: 18 }} className="text-primary shrink-0 mt-0.5" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-body-sm font-medium text-on-surface">{test.name}</p>
-                    <p className="text-label-sm text-on-surface-variant/60">
-                      {[test.category, test.specimen, test.parameter_count > 0 ? `${test.parameter_count} paramètres` : null]
-                        .filter(Boolean).join(" · ")}
-                    </p>
-                  </div>
-                  {test.loinc_code && (
-                    <span className="text-label-xs text-on-surface-variant/50 font-mono shrink-0">{test.loinc_code}</span>
-                  )}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {selectedTests.length === 0 && (
-            <p className="text-body-sm text-on-surface-variant/60 italic mt-2">
-              Aucun examen ajouté. Recherchez ci-dessus pour ajouter des examens à la demande.
-            </p>
-          )}
-        </div>
-
-        {error && (
-          <p className="text-body-sm text-error bg-error-container/40 rounded-xl px-4 py-3">{error}</p>
-        )}
-
-        <div className="flex gap-3 pt-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex-1 px-4 py-2.5 rounded-xl border border-outline-variant text-body-sm text-on-surface-variant hover:bg-surface-container transition-colors"
-          >
-            Annuler
-          </button>
-          <button
-            type="submit"
-            disabled={saving || selectedTests.length === 0 || encounterLoading}
-            className="flex-1 px-4 py-2.5 rounded-xl bg-primary text-on-primary text-body-sm font-medium hover:bg-primary-container transition-colors disabled:opacity-40"
-          >
-            {saving || encounterLoading ? "Envoi…" : `Envoyer la demande (${selectedTests.length})`}
-          </button>
-        </div>
-      </form>
+      {formContent}
     </RightDrawer>
   );
 }
@@ -678,9 +694,13 @@ function Skeleton() {
 export function LabRequestsPanel({
   patientId,
   encounterId,
+  onSplit,
+  onCloseSplit,
 }: {
   patientId: number | string;
   encounterId?: number | string;
+  onSplit?: (title: string, content: React.ReactNode) => void;
+  onCloseSplit?: () => void;
 }) {
   const { can } = usePermissions();
   const canView  = can("hosto.emr.view");
@@ -761,7 +781,21 @@ export function LabRequestsPanel({
         {canWrite && (
           <button
             type="button"
-            onClick={() => setShowEditor(true)}
+            onClick={() => {
+              if (onSplit) {
+                onSplit("Demander des examens", (
+                  <LabRequestEditor
+                    patientId={Number(patientId)}
+                    encounterId={encounterId !== undefined ? Number(encounterId) : undefined}
+                    bare
+                    onClose={() => onCloseSplit?.()}
+                    onSaved={() => { load(); onCloseSplit?.(); }}
+                  />
+                ));
+              } else {
+                setShowEditor(true);
+              }
+            }}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-on-primary text-body-md font-medium hover:bg-primary-container transition-colors"
           >
             <AddOutlined style={{ fontSize: 18 }} />
@@ -784,7 +818,21 @@ export function LabRequestsPanel({
           {canWrite && (
             <button
               type="button"
-              onClick={() => setShowEditor(true)}
+              onClick={() => {
+                if (onSplit) {
+                  onSplit("Demander des examens", (
+                    <LabRequestEditor
+                      patientId={Number(patientId)}
+                      encounterId={encounterId !== undefined ? Number(encounterId) : undefined}
+                      bare
+                      onClose={() => onCloseSplit?.()}
+                      onSaved={() => { load(); onCloseSplit?.(); }}
+                    />
+                  ));
+                } else {
+                  setShowEditor(true);
+                }
+              }}
               className="text-body-sm text-primary underline underline-offset-2 hover:opacity-70 transition-opacity"
             >
               Demander un examen

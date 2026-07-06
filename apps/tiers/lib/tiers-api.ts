@@ -80,7 +80,7 @@ export async function getTiers(id: number): Promise<TiersDetail> {
 }
 
 export async function createTiers(input: TiersCreateInput): Promise<TiersDetail> {
-  const res = await apiFetch("/api/tiers", { method: "POST", body: JSON.stringify(input) });
+  const res = await apiFetch("/api/tiers", { method: "POST", body: input });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.detail ?? "Erreur lors de la création");
@@ -89,7 +89,7 @@ export async function createTiers(input: TiersCreateInput): Promise<TiersDetail>
 }
 
 export async function updateTiers(id: number, input: TiersUpdateInput): Promise<TiersDetail> {
-  const res = await apiFetch(`/api/tiers/${id}`, { method: "PUT", body: JSON.stringify(input) });
+  const res = await apiFetch(`/api/tiers/${id}`, { method: "PUT", body: input });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.detail ?? "Erreur lors de la mise à jour");

@@ -1,0 +1,36 @@
+# docker-compose.dev.yml — app stock-inventaire seule, hot reload (next dev)
+# Usage : docker compose -f docker-compose.dev.yml up
+name: ft_stock
+
+services:
+  ft_stock:
+    image: node:22-alpine
+    container_name: dev_ft_stock
+    restart: unless-stopped
+    working_dir: /app
+    volumes:
+      - ../../:/app
+      - ../../node_modules:/app/node_modules
+    env_file: ./.env
+    environment:
+      PORT: "3010"
+      HOSTNAME: "0.0.0.0"
+      AUTH_API_URL: http://dev_auth:4999
+      STOCK_API_URL: http://dev_stock:5009
+    command: >
+      sh -c "
+        if [ ! -d /app/node_modules/lightningcss-linux-arm64-musl ]; then
+          npm install --prefix /app lightningcss-linux-arm64-musl@$(node -p \"require('/app/node_modules/lightningcss/package.json').version\") --no-save --ignore-scripts &&
+          rm -rf /app/apps/stock-inventaire/.next;
+        fi;
+        cd apps/stock-inventaire && exec npx next dev --port 3010
+      "
+    ports:
+      - "3010:3010"
+    networks:
+      - workspace_dev
+
+networks:
+  workspace_dev:
+    name: workspace_dev
+    external: true

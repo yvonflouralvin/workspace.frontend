@@ -91,7 +91,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           preferencesUrl="/"
           onLogout={handleLogout}
           appName="Stock"
-          appHref="/items"
+          appHref="/"
           routeLabels={ROUTE_LABELS}
           routeIcons={ROUTE_ICONS}
         />

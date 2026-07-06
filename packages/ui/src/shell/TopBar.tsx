@@ -72,7 +72,11 @@ function Breadcrumbs({
     ? { label: appName, href: appHref }
     : null;
 
-  const all: BreadcrumbSegment[] = appSegment ? [appSegment, ...pathSegments] : pathSegments;
+  // Deduplicate: if the first path segment matches appHref, it would duplicate the app name
+  const dedupedSegments = appSegment
+    ? pathSegments.filter(seg => seg.href !== appHref)
+    : pathSegments;
+  const all: BreadcrumbSegment[] = appSegment ? [appSegment, ...dedupedSegments] : pathSegments;
 
   useEffect(() => {
     if (!ellipsisOpen) return;

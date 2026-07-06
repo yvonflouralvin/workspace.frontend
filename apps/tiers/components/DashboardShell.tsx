@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import { useSessionStore } from "@repo/auth/store/session.store";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
 import { AppShell } from "@repo/ui/shell/AppShell";
@@ -15,6 +16,14 @@ import {
 } from "@mui/icons-material";
 import type { NavItem, AppDefinition } from "@repo/ui/types/shell";
 import { logout as logoutRequest } from "@/lib/tiers-api";
+
+const ROUTE_LABELS: Record<string, string> = {
+  "/tiers": "Tiers",
+};
+
+const ROUTE_ICONS: Record<string, React.ReactNode> = {
+  "/tiers": <GroupsOutlined style={{ fontSize: 15 }} />,
+};
 
 const NAV_ITEMS: NavItem[] = [
   {
@@ -93,6 +102,10 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           user={userSummary}
           preferencesUrl="/"
           onLogout={handleLogout}
+          appName="Tiers"
+          appHref="/tiers"
+          routeLabels={ROUTE_LABELS}
+          routeIcons={ROUTE_ICONS}
         />
       }
     >

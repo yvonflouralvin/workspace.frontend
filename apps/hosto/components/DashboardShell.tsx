@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import { useSessionStore } from "@repo/auth/store/session.store";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
 import { apiFetch } from "@repo/network/client";
@@ -22,6 +23,28 @@ import {
 } from "@mui/icons-material";
 import type { NavItem, AppDefinition } from "@repo/ui/types/shell";
 import { logout as logoutRequest } from "@/app/lib/api";
+
+const ROUTE_LABELS: Record<string, string> = {
+  "/patients":      "Patients",
+  "/services":      "Services",
+  "/staff":         "Personnel",
+  "/reception":     "Réception",
+  "/consultations": "Consultations",
+  "/calendar":      "Calendrier",
+  "/schedules":     "Horaires",
+  "/lab":           "Laboratoire",
+};
+
+const ROUTE_ICONS: Record<string, React.ReactNode> = {
+  "/patients":      <PeopleAltOutlined style={{ fontSize: 15 }} />,
+  "/services":      <LocalHospitalOutlined style={{ fontSize: 15 }} />,
+  "/staff":         <MedicalServicesOutlined style={{ fontSize: 15 }} />,
+  "/reception":     <SensorDoorOutlined style={{ fontSize: 15 }} />,
+  "/consultations": <MedicalInformationOutlined style={{ fontSize: 15 }} />,
+  "/calendar":      <CalendarMonthOutlined style={{ fontSize: 15 }} />,
+  "/schedules":     <ScheduleOutlined style={{ fontSize: 15 }} />,
+  "/lab":           <BiotechOutlined style={{ fontSize: 15 }} />,
+};
 
 const NAV_ITEMS: NavItem[] = [
   {
@@ -143,6 +166,10 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           preferencesUrl="/"
           onLogout={handleLogout}
           onSearch={handleSearch}
+          appName="Hosto"
+          appHref="/"
+          routeLabels={ROUTE_LABELS}
+          routeIcons={ROUTE_ICONS}
         />
       }
     >

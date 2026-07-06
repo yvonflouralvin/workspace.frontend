@@ -21,6 +21,8 @@ services:
       npx turbo run build --filter=auth &&
       cp -r apps/auth/.next/static apps/auth/.next/standalone/apps/auth/.next/static &&
       cp -r apps/auth/public apps/auth/.next/standalone/apps/auth/public &&
+      mkdir -p apps/auth/.next/standalone/apps/auth/.next/server/chunks &&
+      cp -r apps/auth/.next/server/chunks/. apps/auth/.next/standalone/apps/auth/.next/server/chunks/ &&
       exec node apps/auth/.next/standalone/apps/auth/server.js"
     expose:
       - "3000"

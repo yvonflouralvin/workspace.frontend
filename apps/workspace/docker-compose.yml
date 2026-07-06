@@ -21,6 +21,8 @@ services:
       npx turbo run build --filter=workspace &&
       cp -r apps/workspace/.next/static apps/workspace/.next/standalone/apps/workspace/.next/static &&
       cp -r apps/workspace/public apps/workspace/.next/standalone/apps/workspace/public &&
+      mkdir -p apps/workspace/.next/standalone/apps/workspace/.next/server/chunks &&
+      cp -r apps/workspace/.next/server/chunks/. apps/workspace/.next/standalone/apps/workspace/.next/server/chunks/ &&
       exec node apps/workspace/.next/standalone/apps/workspace/server.js"
     expose:
       - "3000"

@@ -21,6 +21,8 @@ services:
       npx turbo run build --filter=hr &&
       cp -r apps/hr/.next/static apps/hr/.next/standalone/apps/hr/.next/static &&
       cp -r apps/hr/public apps/hr/.next/standalone/apps/hr/public &&
+      mkdir -p apps/hr/.next/standalone/apps/hr/.next/server/chunks &&
+      cp -r apps/hr/.next/server/chunks/. apps/hr/.next/standalone/apps/hr/.next/server/chunks/ &&
       exec node apps/hr/.next/standalone/apps/hr/server.js"
     expose:
       - "3000"

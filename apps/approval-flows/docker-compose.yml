@@ -21,6 +21,8 @@ services:
       npx turbo run build --filter=approval-flows &&
       cp -r apps/approval-flows/.next/static apps/approval-flows/.next/standalone/apps/approval-flows/.next/static &&
       cp -r apps/approval-flows/public apps/approval-flows/.next/standalone/apps/approval-flows/public &&
+      mkdir -p apps/approval-flows/.next/standalone/apps/approval-flows/.next/server/chunks &&
+      cp -r apps/approval-flows/.next/server/chunks/. apps/approval-flows/.next/standalone/apps/approval-flows/.next/server/chunks/ &&
       exec node apps/approval-flows/.next/standalone/apps/approval-flows/server.js"
     expose:
       - "3000"

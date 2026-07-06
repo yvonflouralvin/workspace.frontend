@@ -11,6 +11,7 @@ services:
     volumes:
       - ../../:/app
       - ../../node_modules:/app/node_modules
+      - workspace_next:/app/apps/workspace/.next
     env_file: ./.env
     environment:
       PORT: "3005"
@@ -27,3 +28,6 @@ networks:
   dev:
     name: dev
     external: true
+
+volumes:
+  workspace_next:

@@ -11,6 +11,7 @@ services:
     volumes:
       - ../../:/app
       - ../../node_modules:/app/node_modules
+      - hr_next:/app/apps/hr/.next
     env_file: ./.env
     environment:
       PORT: "3003"
@@ -29,3 +30,6 @@ networks:
   dev:
     name: dev
     external: true
+
+volumes:
+  hr_next:

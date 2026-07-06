@@ -11,6 +11,7 @@ services:
     volumes:
       - ../../:/app
       - ../../node_modules:/app/node_modules
+      - auth_next:/app/apps/auth/.next
     env_file: ./.env
     environment:
       PORT: "3001"
@@ -27,3 +28,6 @@ networks:
   dev:
     name: dev
     external: true
+
+volumes:
+  auth_next:

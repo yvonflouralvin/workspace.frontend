@@ -4,7 +4,7 @@ name: ft_stock
 
 services:
   ft_stock:
-    image: node:22-alpine
+    image: node:24-alpine
     container_name: dev_ft_stock
     restart: unless-stopped
     working_dir: /app

@@ -66,6 +66,22 @@ const APPS: AppDefinition[] = [
     color: "#0e7490",
     description: "Gestion des dossiers des patients",
   },
+  {
+    id: "tiers",
+    name: "Tiers",
+    icon: "T",
+    url: process.env.NEXT_PUBLIC_AUTH_API_TIERS_DOMAIN ?? "http://localhost:3009",
+    color: "#b45309",
+    description: "Clients et fournisseurs",
+  },
+  {
+    id: "stock",
+    name: "Stock",
+    icon: "S",
+    url: process.env.NEXT_PUBLIC_AUTH_API_STOCK_DOMAIN ?? "http://localhost:3010",
+    color: "#006c49",
+    description: "Gestion des stocks et inventaires",
+  },
 ];
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {

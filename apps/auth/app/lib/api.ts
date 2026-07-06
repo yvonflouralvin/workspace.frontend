@@ -10,10 +10,11 @@ export class ApiError extends Error {
 }
 
 async function parseResponse(response: Response) {
-  const data = await response.json();
+  const text = await response.text();
+  const data = text ? JSON.parse(text) : null;
 
   if (!response.ok) {
-    throw new ApiError(data.message ?? "Une erreur est survenue", response.status);
+    throw new ApiError(data?.message ?? "Une erreur est survenue", response.status);
   }
 
   return data;

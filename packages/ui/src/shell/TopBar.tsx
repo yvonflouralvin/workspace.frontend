@@ -74,9 +74,6 @@ function Breadcrumbs({
 
   const all: BreadcrumbSegment[] = appSegment ? [appSegment, ...pathSegments] : pathSegments;
 
-  // The "root" = first path segment (the section), OR appName if on home
-  const rootHref = pathSegments[0]?.href ?? appSegment?.href;
-
   useEffect(() => {
     if (!ellipsisOpen) return;
     function onDown(e: MouseEvent) {
@@ -136,12 +133,12 @@ function Breadcrumbs({
               )}
             </div>
           ) : (() => {
-            const isRoot = item.href === rootHref;
+            const isAppName = appSegment !== null && item.href === appSegment.href;
             const isLast = item.href === all[all.length - 1]?.href;
             const icon = routeIcons[item.href];
             const content = (
-              <span className={`flex items-center gap-1 ${isRoot ? "font-semibold text-on-surface" : ""}`}>
-                {isRoot && icon && (
+              <span className={`flex items-center gap-1 ${isAppName ? "font-semibold text-on-surface" : ""}`}>
+                {icon && (
                   <span className="shrink-0 flex items-center" style={{ fontSize: 14 }}>{icon}</span>
                 )}
                 <span className="truncate max-w-40">
@@ -150,16 +147,14 @@ function Breadcrumbs({
               </span>
             );
             return isLast ? (
-              <span
-                className={`shrink flex items-center ${isRoot ? "text-on-surface" : "text-on-surface-variant"}`}
-              >
+              <span className={`shrink flex items-center ${isAppName ? "text-on-surface" : "text-on-surface-variant"}`}>
                 {content}
               </span>
             ) : (
               <Link
                 href={item.href}
                 className={`shrink flex items-center transition-colors ${
-                  isRoot
+                  isAppName
                     ? "text-on-surface hover:text-primary"
                     : "text-on-surface-variant hover:text-on-surface"
                 }`}

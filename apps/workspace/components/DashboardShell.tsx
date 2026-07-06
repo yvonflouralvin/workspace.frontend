@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import { useSessionStore } from "@repo/auth/store/session.store";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
 import { apiFetch } from "@repo/network/client";
@@ -84,6 +85,16 @@ const APPS: AppDefinition[] = [
   },
 ];
 
+const ROUTE_ICONS: Record<string, React.ReactNode> = {
+  "/":          <HomeOutlined style={{ fontSize: 15 }} />,
+  "/projects":  <FolderOpenOutlined style={{ fontSize: 15 }} />,
+  "/members":   <GroupOutlined style={{ fontSize: 15 }} />,
+  "/inbox":     <InboxOutlined style={{ fontSize: 15 }} />,
+  "/audit-logs":<HistoryOutlined style={{ fontSize: 15 }} />,
+  "/settings":  <SettingsOutlined style={{ fontSize: 15 }} />,
+  "/help":      <HelpOutlineOutlined style={{ fontSize: 15 }} />,
+};
+
 const ROUTE_LABELS: Record<string, string> = {
   "/": "Accueil",
   "/projects": "Projets",
@@ -143,6 +154,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           appName="Workspace"
           appHref="/"
           routeLabels={ROUTE_LABELS}
+          routeIcons={ROUTE_ICONS}
         />
       }
     >

@@ -39,6 +39,7 @@ interface TopBarProps {
   appName?: string;
   appHref?: string;
   routeLabels?: Record<string, string>;
+  routeIcons?: Record<string, React.ReactNode>;
 }
 
 interface BreadcrumbSegment {
@@ -50,10 +51,12 @@ function Breadcrumbs({
   appName,
   appHref = "/",
   routeLabels = {},
+  routeIcons = {},
 }: {
   appName?: string;
   appHref?: string;
   routeLabels?: Record<string, string>;
+  routeIcons?: Record<string, React.ReactNode>;
 }) {
   const pathname = usePathname();
   const [ellipsisOpen, setEllipsisOpen] = useState(false);
@@ -70,6 +73,9 @@ function Breadcrumbs({
     : null;
 
   const all: BreadcrumbSegment[] = appSegment ? [appSegment, ...pathSegments] : pathSegments;
+
+  // The "root" = first path segment (the section), OR appName if on home
+  const rootHref = pathSegments[0]?.href ?? appSegment?.href;
 
   useEffect(() => {
     if (!ellipsisOpen) return;
@@ -129,18 +135,39 @@ function Breadcrumbs({
                 </div>
               )}
             </div>
-          ) : (
-            <Link
-              href={item.href}
-              className={`shrink truncate max-w-40 transition-colors ${
-                index === visible.length - 1
-                  ? "text-on-surface font-medium pointer-events-none"
-                  : "text-on-surface-variant hover:text-on-surface"
-              }`}
-            >
-              {item.label}
-            </Link>
-          )}
+          ) : (() => {
+            const isRoot = item.href === rootHref;
+            const isLast = item.href === all[all.length - 1]?.href;
+            const icon = routeIcons[item.href];
+            const content = (
+              <span className={`flex items-center gap-1 ${isRoot ? "font-semibold text-on-surface" : ""}`}>
+                {isRoot && icon && (
+                  <span className="shrink-0 flex items-center" style={{ fontSize: 14 }}>{icon}</span>
+                )}
+                <span className="truncate max-w-40">
+                  {item.label.charAt(0).toUpperCase() + item.label.slice(1)}
+                </span>
+              </span>
+            );
+            return isLast ? (
+              <span
+                className={`shrink flex items-center ${isRoot ? "text-on-surface" : "text-on-surface-variant"}`}
+              >
+                {content}
+              </span>
+            ) : (
+              <Link
+                href={item.href}
+                className={`shrink flex items-center transition-colors ${
+                  isRoot
+                    ? "text-on-surface hover:text-primary"
+                    : "text-on-surface-variant hover:text-on-surface"
+                }`}
+              >
+                {content}
+              </Link>
+            );
+          })()}
         </Fragment>
       ))}
     </nav>
@@ -158,6 +185,7 @@ export function TopBar({
   appName,
   appHref,
   routeLabels,
+  routeIcons,
 }: TopBarProps) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [appSelectorOpen, setAppSelectorOpen] = useState(false);
@@ -184,7 +212,7 @@ export function TopBar({
   return (
     <div className="flex items-center w-full px-4 gap-3 h-full">
       <div className="flex-1 min-w-0">
-        <Breadcrumbs appName={appName} appHref={appHref} routeLabels={routeLabels} />
+        <Breadcrumbs appName={appName} appHref={appHref} routeLabels={routeLabels} routeIcons={routeIcons} />
       </div>
 
       <div className="flex items-center gap-1 shrink-0">

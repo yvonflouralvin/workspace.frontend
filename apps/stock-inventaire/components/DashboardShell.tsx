@@ -11,11 +11,6 @@ import {
   HomeOutlined,
   Inventory2Outlined,
   CategoryOutlined,
-  WidgetsOutlined,
-  ConstructionOutlined,
-  MiscellaneousServicesOutlined,
-  DownloadOutlined,
-  HandymanOutlined,
 } from "@mui/icons-material";
 import type { NavItem, AppDefinition } from "@repo/ui/types/shell";
 import { logout as logoutRequest } from "@/lib/stock-api";
@@ -28,35 +23,9 @@ const NAV_ITEMS: NavItem[] = [
     exact: true,
   },
   {
-    label: "Tous les articles",
+    label: "Articles",
     href: "/items",
     icon: <Inventory2Outlined style={{ fontSize: 20 }} />,
-    exact: true,
-  },
-  {
-    label: "Produits",
-    href: "/items?type=PRODUIT",
-    icon: <WidgetsOutlined style={{ fontSize: 20 }} />,
-  },
-  {
-    label: "Matériels",
-    href: "/items?type=MATERIEL",
-    icon: <ConstructionOutlined style={{ fontSize: 20 }} />,
-  },
-  {
-    label: "Services",
-    href: "/items?type=SERVICE",
-    icon: <MiscellaneousServicesOutlined style={{ fontSize: 20 }} />,
-  },
-  {
-    label: "Prestations",
-    href: "/items?type=PRESTATION",
-    icon: <HandymanOutlined style={{ fontSize: 20 }} />,
-  },
-  {
-    label: "Téléchargeables",
-    href: "/items?type=TELECHARGEABLE",
-    icon: <DownloadOutlined style={{ fontSize: 20 }} />,
   },
   {
     label: "Catégories",

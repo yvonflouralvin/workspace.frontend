@@ -16,6 +16,7 @@ import {
   SearchOutlined,
   Inventory2Outlined,
   WarningAmberOutlined,
+  FilterListOutlined,
 } from "@mui/icons-material";
 
 const PAGE_SIZE = 20;
@@ -30,8 +31,8 @@ const TYPE_COLORS: Record<TypeItem, string> = {
 
 type FilterType = "TOUS" | TypeItem;
 
-const TABS: { label: string; value: FilterType }[] = [
-  { label: "Tous", value: "TOUS" },
+const TYPE_OPTIONS: { label: string; value: FilterType }[] = [
+  { label: "Tous les types", value: "TOUS" },
   { label: "Produits", value: "PRODUIT" },
   { label: "Matériels", value: "MATERIEL" },
   { label: "Services", value: "SERVICE" },
@@ -47,7 +48,7 @@ export default function ItemsPage() {
   const canCreate = can("stock.items.create");
 
   const initialType = (searchParams.get("type") as FilterType) ?? "TOUS";
-  const [activeTab, setActiveTab] = useState<FilterType>(initialType);
+  const [filterType, setFilterType] = useState<FilterType>(initialType);
   const [items, setItems] = useState<ItemSummary[]>([]);
   const [total, setTotal] = useState(0);
   const [pages, setPages] = useState(1);
@@ -79,24 +80,21 @@ export default function ItemsPage() {
 
   useEffect(() => {
     if (!canView) { setLoading(false); return; }
-    fetchData(search, page, activeTab);
-  }, [page, activeTab, canView]);
+    fetchData(search, page, filterType);
+  }, [page, filterType, canView]);
 
   function handleSearch(val: string) {
     setSearch(val);
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       setPage(1);
-      fetchData(val, 1, activeTab);
+      fetchData(val, 1, filterType);
     }, 300);
   }
 
-  function handleTab(tab: FilterType) {
-    setActiveTab(tab);
+  function handleFilterType(type: FilterType) {
+    setFilterType(type);
     setPage(1);
-    const url = tab !== "TOUS" ? `/items?type=${tab}` : "/items";
-    router.push(url, { scroll: false });
-    fetchData(search, 1, tab);
   }
 
   const inputCls =
@@ -137,22 +135,21 @@ export default function ItemsPage() {
               className={`${inputCls} pl-9`}
             />
           </div>
-        </div>
-
-        <div className="flex gap-1 border-b border-outline-variant">
-          {TABS.map((tab) => (
-            <button
-              key={tab.value}
-              onClick={() => handleTab(tab.value)}
-              className={`px-4 py-2 text-body-md font-medium border-b-2 transition-colors -mb-px ${
-                activeTab === tab.value
-                  ? "border-primary text-primary"
-                  : "border-transparent text-on-surface-variant hover:text-on-surface"
-              }`}
+          <div className="relative">
+            <FilterListOutlined
+              style={{ fontSize: 18 }}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none"
+            />
+            <select
+              value={filterType}
+              onChange={(e) => handleFilterType(e.target.value as FilterType)}
+              className="appearance-none rounded-xl border border-outline-variant bg-surface-container-lowest pl-9 pr-8 py-2 text-body-md text-on-surface focus:outline-none focus:border-primary transition-colors cursor-pointer"
             >
-              {tab.label}
-            </button>
-          ))}
+              {TYPE_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
         </div>
 
         {!canView ? (

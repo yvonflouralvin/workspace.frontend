@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { Fragment, useState, useRef, useEffect, useCallback } from "react";
+import { usePathname } from "next/navigation";
 import {
   SearchOutlined,
   AppsOutlined,
@@ -35,6 +36,115 @@ interface TopBarProps {
   notificationsCount?: number;
   onLogout?: () => void;
   onSearch?: (q: string) => Promise<SearchSection[]>;
+  appName?: string;
+  appHref?: string;
+  routeLabels?: Record<string, string>;
+}
+
+interface BreadcrumbSegment {
+  label: string;
+  href: string;
+}
+
+function Breadcrumbs({
+  appName,
+  appHref = "/",
+  routeLabels = {},
+}: {
+  appName?: string;
+  appHref?: string;
+  routeLabels?: Record<string, string>;
+}) {
+  const pathname = usePathname();
+  const [ellipsisOpen, setEllipsisOpen] = useState(false);
+  const ellipsisRef = useRef<HTMLDivElement>(null);
+
+  const rawSegments = pathname.split("/").filter(Boolean);
+  const pathSegments: BreadcrumbSegment[] = rawSegments.map((seg, i) => {
+    const href = "/" + rawSegments.slice(0, i + 1).join("/");
+    return { label: routeLabels[href] ?? seg, href };
+  });
+
+  const appSegment: BreadcrumbSegment | null = appName
+    ? { label: appName, href: appHref }
+    : null;
+
+  const all: BreadcrumbSegment[] = appSegment ? [appSegment, ...pathSegments] : pathSegments;
+
+  useEffect(() => {
+    if (!ellipsisOpen) return;
+    function onDown(e: MouseEvent) {
+      if (ellipsisRef.current && !ellipsisRef.current.contains(e.target as Node)) {
+        setEllipsisOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [ellipsisOpen]);
+
+  if (all.length === 0) return null;
+
+  const MAX_VISIBLE = 4;
+
+  let visible: (BreadcrumbSegment | "ellipsis")[];
+  let collapsed: BreadcrumbSegment[];
+
+  if (all.length <= MAX_VISIBLE) {
+    visible = all;
+    collapsed = [];
+  } else {
+    const tail = all.slice(-(MAX_VISIBLE - 2));
+    collapsed = all.slice(1, all.length - (MAX_VISIBLE - 2));
+    visible = [all[0]!, "ellipsis", ...tail];
+  }
+
+  return (
+    <nav className="flex items-center gap-0.5 text-body-sm min-w-0" aria-label="Fil d'Ariane">
+      {visible.map((item, index) => (
+        <Fragment key={index}>
+          {index > 0 && (
+            <span className="text-outline mx-0.5 shrink-0 select-none">/</span>
+          )}
+          {item === "ellipsis" ? (
+            <div ref={ellipsisRef} className="relative shrink-0">
+              <button
+                onClick={() => setEllipsisOpen((v) => !v)}
+                className="px-1.5 py-0.5 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors leading-none"
+                aria-label="Afficher les éléments cachés"
+              >
+                …
+              </button>
+              {ellipsisOpen && (
+                <div className="absolute left-0 top-full mt-1 z-50 bg-surface-container-lowest border border-outline-variant rounded-xl shadow-lg py-1 min-w-36">
+                  {collapsed.map((seg) => (
+                    <Link
+                      key={seg.href}
+                      href={seg.href}
+                      onClick={() => setEllipsisOpen(false)}
+                      className="block px-3 py-2 text-body-sm text-on-surface hover:bg-surface-container transition-colors truncate max-w-48"
+                    >
+                      {seg.label}
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            <Link
+              href={item.href}
+              className={`shrink truncate max-w-40 transition-colors ${
+                index === visible.length - 1
+                  ? "text-on-surface font-medium pointer-events-none"
+                  : "text-on-surface-variant hover:text-on-surface"
+              }`}
+            >
+              {item.label}
+            </Link>
+          )}
+        </Fragment>
+      ))}
+    </nav>
+  );
 }
 
 export function TopBar({
@@ -45,6 +155,9 @@ export function TopBar({
   notificationsCount = 0,
   onLogout,
   onSearch,
+  appName,
+  appHref,
+  routeLabels,
 }: TopBarProps) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [appSelectorOpen, setAppSelectorOpen] = useState(false);
@@ -70,19 +183,25 @@ export function TopBar({
 
   return (
     <div className="flex items-center w-full px-4 gap-3 h-full">
-      <button
-        onClick={() => setSearchOpen(true)}
-        className="flex items-center gap-2 px-3 h-9 rounded-xl bg-surface-container text-on-surface-variant text-sm hover:bg-surface-container-high transition-colors"
-        style={{ minWidth: "220px" }}
-      >
-        <SearchOutlined style={{ fontSize: 18 }} />
-        <span className="flex-1 text-left">Rechercher…</span>
-        <kbd className="text-xs text-outline bg-surface-container-high rounded px-1.5 py-0.5 font-mono">
-          ⌘K
-        </kbd>
-      </button>
+      <div className="flex-1 min-w-0">
+        <Breadcrumbs appName={appName} appHref={appHref} routeLabels={routeLabels} />
+      </div>
 
-      <div className="ml-auto flex items-center gap-1">
+      <div className="flex items-center gap-1 shrink-0">
+        {onSearch && (
+          <button
+            onClick={() => setSearchOpen(true)}
+            className="flex items-center gap-2 px-3 h-9 rounded-xl bg-surface-container text-on-surface-variant text-sm hover:bg-surface-container-low transition-colors"
+            style={{ minWidth: "200px" }}
+          >
+            <SearchOutlined style={{ fontSize: 18 }} />
+            <span className="flex-1 text-left">Rechercher…</span>
+            <kbd className="text-xs text-outline bg-surface-container-low rounded px-1.5 py-0.5 font-mono">
+              ⌘K
+            </kbd>
+          </button>
+        )}
+
         <div className="relative">
           <button
             onClick={() => setAppSelectorOpen((v) => !v)}

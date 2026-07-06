@@ -84,6 +84,18 @@ const APPS: AppDefinition[] = [
   },
 ];
 
+const ROUTE_LABELS: Record<string, string> = {
+  "/": "Accueil",
+  "/projects": "Projets",
+  "/members": "Membres",
+  "/inbox": "Inbox",
+  "/audit-logs": "Journal d'activité",
+  "/settings": "Paramètres",
+  "/help": "Aide",
+  "/apps": "Applications",
+  "/preferences": "Préférences",
+};
+
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const { user, logout } = useSessionStore();
   const { can } = usePermissions();
@@ -128,6 +140,9 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           preferencesUrl="/preferences"
           onLogout={handleLogout}
           onSearch={handleSearch}
+          appName="Workspace"
+          appHref="/"
+          routeLabels={ROUTE_LABELS}
         />
       }
     >

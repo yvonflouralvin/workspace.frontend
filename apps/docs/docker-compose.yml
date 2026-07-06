@@ -1,9 +1,9 @@
 services:
-  app:
+  wd_ft_docs:
     build:
       context: ../..
       dockerfile: apps/docs/Dockerfile
-    container_name: workspace_uat_ft_docs
+    container_name: wd_ft_docs
     restart: unless-stopped
     expose:
       - "3002"

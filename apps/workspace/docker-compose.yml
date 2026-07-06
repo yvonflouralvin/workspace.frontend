@@ -1,11 +1,11 @@
 # docker-compose.yml — app workspace seule, build + start production
 # Usage : docker compose up --build
-name: ft_workspace
+name: wd_ft_workspace
 
 services:
-  workspace_uat_ft_workspace:
+  wd_ft_workspace:
     image: node:24-alpine
-    container_name: workspace_uat_ft_workspace
+    container_name: wd_ft_workspace
     restart: unless-stopped
     working_dir: /app
     volumes:

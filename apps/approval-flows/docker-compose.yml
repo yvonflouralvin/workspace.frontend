@@ -1,11 +1,11 @@
 # docker-compose.yml — app approval-flows seule, build + start production
 # Usage : docker compose up --build
-name: ft_approval-flows
+name: wd_ft_approval_flows
 
 services:
-  approval-flows_uat_ft_approval_flows:
+  wd_ft_approval_flows:
     image: node:24-alpine
-    container_name: approval-flows_uat_ft_approval_flows
+    container_name: wd_ft_approval_flows
     restart: unless-stopped
     working_dir: /app
     volumes:

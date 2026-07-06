@@ -1,9 +1,9 @@
 services:
-  app:
+  wd_ft_web:
     build:
       context: ../..
       dockerfile: apps/web/Dockerfile
-    container_name: workspace_uat_ft_web
+    container_name: wd_ft_web
     restart: unless-stopped
     expose:
       - "3004"

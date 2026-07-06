@@ -1,11 +1,11 @@
 # docker-compose.yml — app hr seule, build + start production
 # Usage : docker compose up --build
-name: ft_hr
+name: wd_ft_hr
 
 services:
-  hr_uat_ft_hr:
+  wd_ft_hr:
     image: node:24-alpine
-    container_name: hr_uat_ft_hr
+    container_name: wd_ft_hr
     restart: unless-stopped
     working_dir: /app
     volumes:

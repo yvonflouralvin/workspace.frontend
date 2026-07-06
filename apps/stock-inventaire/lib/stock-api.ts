@@ -152,7 +152,7 @@ export async function deleteCategorie(id: number): Promise<void> {
 
 export async function listItems(params?: {
   q?: string;
-  type?: TypeItem;
+  types?: TypeItem[];
   categorie_id?: number;
   est_vendu?: boolean;
   gestion_stock?: boolean;
@@ -162,7 +162,7 @@ export async function listItems(params?: {
 }): Promise<ItemPage> {
   const qs = new URLSearchParams();
   if (params?.q) qs.set("q", params.q);
-  if (params?.type) qs.set("type", params.type);
+  if (params?.types?.length) params.types.forEach((t) => qs.append("type", t));
   if (params?.categorie_id != null) qs.set("categorie_id", String(params.categorie_id));
   if (params?.est_vendu !== undefined) qs.set("est_vendu", String(params.est_vendu));
   if (params?.gestion_stock !== undefined) qs.set("gestion_stock", String(params.gestion_stock));

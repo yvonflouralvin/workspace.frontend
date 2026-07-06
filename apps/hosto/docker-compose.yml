@@ -23,6 +23,8 @@ services:
       (cp -r apps/hosto/public apps/hosto/.next/standalone/apps/hosto/public 2>/dev/null || true) &&
       mkdir -p apps/hosto/.next/standalone/apps/hosto/node_modules/next/dist/compiled &&
       (cp -r apps/hosto/node_modules/next/dist/compiled/cookie apps/hosto/.next/standalone/apps/hosto/node_modules/next/dist/compiled/ 2>/dev/null || cp -r node_modules/next/dist/compiled/cookie apps/hosto/.next/standalone/apps/hosto/node_modules/next/dist/compiled/) &&
+      mkdir -p apps/hosto/.next/standalone/apps/hosto/.next/server/chunks &&
+      cp -r apps/hosto/.next/server/chunks/. apps/hosto/.next/standalone/apps/hosto/.next/server/chunks/ &&
       exec node apps/hosto/.next/standalone/apps/hosto/server.js"
     expose:
       - "3000"

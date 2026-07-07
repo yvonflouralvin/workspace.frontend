@@ -20,6 +20,7 @@ import {
   PeopleAltOutlined,
   ScheduleOutlined,
   SensorDoorOutlined,
+  SettingsOutlined,
 } from "@mui/icons-material";
 import type { NavItem } from "@repo/ui/types/shell";
 
@@ -52,12 +53,16 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
   const visibleApps = PLATFORM_APPS.filter((app) => can(`${app.id}.access`));
 
+  const navItems = can("hosto.settings.manage")
+    ? [...NAV_ITEMS, { label: "Paramètres", href: "/settings", icon: <SettingsOutlined style={{ fontSize: 20 }} /> }]
+    : NAV_ITEMS;
+
   return (
     <AppShell
       sidebar={
         <Sidebar
           topSlot={<WorkspaceSwitcher filterPermission="hosto.access" />}
-          navItems={NAV_ITEMS}
+          navItems={navItems}
           bottomSlot={<UserFooter user={userSummary} onLogout={handleLogout} />}
         />
       }

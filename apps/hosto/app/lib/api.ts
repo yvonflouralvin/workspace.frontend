@@ -208,6 +208,10 @@ export async function listServices(): Promise<Service[]> {
   return parseResponse(await apiFetch("/api/services"));
 }
 
+export async function syncStockInventory(): Promise<{ synced: number; pending: number; total: number }> {
+  return parseResponse(await apiFetch("/api/services/sync-stock", { method: "POST" }));
+}
+
 export async function createService(data: ServiceCreateInput): Promise<Service> {
   return parseResponse(await apiFetch("/api/services", { method: "POST", body: data }));
 }

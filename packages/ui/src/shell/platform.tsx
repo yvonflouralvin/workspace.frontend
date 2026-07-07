@@ -124,6 +124,7 @@ export const HOSTO_SHELL: AppShellConfig = {
     "/calendar":      "Calendrier",
     "/schedules":     "Horaires",
     "/lab":           "Laboratoire",
+    "/settings":      "Paramètres",
   },
   routeIcons: {
     "/patients":      <PeopleAltOutlined style={s(15)} />,
@@ -134,6 +135,7 @@ export const HOSTO_SHELL: AppShellConfig = {
     "/calendar":      <CalendarMonthOutlined style={s(15)} />,
     "/schedules":     <ScheduleOutlined style={s(15)} />,
     "/lab":           <BiotechOutlined style={s(15)} />,
+    "/settings":      <SettingsOutlined style={s(15)} />,
   },
 };
 

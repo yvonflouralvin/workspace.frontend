@@ -47,6 +47,9 @@ export interface CategorieDetail extends CategorieSummary {
   workspace_id: number;
   description: string | null;
   created_at: string;
+  owner_app_key: string | null;
+  locked_fields: string[] | null;
+  locked_delete: boolean;
 }
 
 export interface ItemSummary {

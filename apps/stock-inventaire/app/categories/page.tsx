@@ -16,6 +16,7 @@ import {
   BlockOutlined,
   SearchOutlined,
   CategoryOutlined,
+  LockOutlined,
 } from "@mui/icons-material";
 
 const PAGE_SIZE = 20;
@@ -175,7 +176,17 @@ export default function CategoriesPage() {
                       <td className="px-4 py-3 font-medium text-on-surface">{cat.nom}</td>
                       <td className="px-4 py-3 text-on-surface-variant">{cat.description ?? "—"}</td>
                       <td className="px-4 py-3">
-                        {canManage && (
+                        {cat.owner_app_key ? (
+                          <div className="flex items-center justify-end">
+                            <span
+                              title={`Catégorie gérée par « ${cat.owner_app_key} » — verrouillée`}
+                              className="inline-flex items-center gap-1 text-on-surface-variant/60 text-label-sm"
+                            >
+                              <LockOutlined style={{ fontSize: 15 }} />
+                              {cat.owner_app_key}
+                            </span>
+                          </div>
+                        ) : canManage ? (
                           <div className="flex items-center gap-0.5 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
                             <button
                               onClick={() => openEdit(cat)}
@@ -192,7 +203,7 @@ export default function CategoriesPage() {
                               <BlockOutlined style={{ fontSize: 16 }} />
                             </button>
                           </div>
-                        )}
+                        ) : null}
                       </td>
                     </tr>
                   ))}

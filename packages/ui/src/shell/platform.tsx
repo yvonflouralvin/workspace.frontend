@@ -18,6 +18,12 @@ import {
   Inventory2Outlined,
   CategoryOutlined,
   GroupsOutlined,
+  FolderOutlined,
+  FactCheckOutlined,
+  AssignmentTurnedInOutlined,
+  AccountTreeOutlined,
+  OutboxOutlined,
+  DescriptionOutlined,
 } from "@mui/icons-material";
 import type { AppDefinition } from "../types/shell";
 
@@ -152,5 +158,46 @@ export const TIERS_SHELL: AppShellConfig = {
   },
   routeIcons: {
     "/tiers": <GroupsOutlined style={s(15)} />,
+  },
+};
+
+export const HR_SHELL: AppShellConfig = {
+  appName: "RH",
+  appHref: "/",
+  routeLabels: {
+    "/employees":    "Employés",
+    "/groups":       "Groupes/Départements",
+    "/demo-approval":"Démo approbation",
+  },
+  routeIcons: {
+    "/employees":    <PeopleAltOutlined style={s(15)} />,
+    "/groups":       <FolderOutlined style={s(15)} />,
+    "/demo-approval":<FactCheckOutlined style={s(15)} />,
+  },
+};
+
+export const APPROVAL_FLOWS_SHELL: AppShellConfig = {
+  appName: "Workflows d'approbation",
+  appHref: "/",
+  routeLabels: {
+    "/requests":    "Requests",
+    "/flows":       "Flows",
+    "/submissions": "Submission",
+  },
+  routeIcons: {
+    "/requests":    <AssignmentTurnedInOutlined style={s(15)} />,
+    "/flows":       <AccountTreeOutlined style={s(15)} />,
+    "/submissions": <OutboxOutlined style={s(15)} />,
+  },
+};
+
+export const DOCUMENTS_SHELL: AppShellConfig = {
+  appName: "Documents",
+  appHref: "/",
+  routeLabels: {
+    "/": "Templates PDF",
+  },
+  routeIcons: {
+    "/": <DescriptionOutlined style={s(15)} />,
   },
 };

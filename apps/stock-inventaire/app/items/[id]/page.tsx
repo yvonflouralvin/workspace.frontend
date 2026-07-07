@@ -132,7 +132,7 @@ export default function ItemDetailPage() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  const [infoField, setInfoField] = useState<GeneralField | null>(null);
+  const [infoField, setInfoField] = useState<{ label: string; info: string } | null>(null);
   const [editField, setEditField] = useState<GeneralField | null>(null);
   const [fieldValue, setFieldValue] = useState<string | number | boolean | null>(null);
   const [fieldSaving, setFieldSaving] = useState(false);
@@ -306,6 +306,40 @@ export default function ItemDetailPage() {
 
   const generalTab = (
     <div className="rounded-xl border border-outline-variant bg-surface-container-lowest divide-y divide-outline-variant">
+      <div className="flex items-center gap-4 px-4 py-3">
+        <span className="text-label-md text-on-surface-variant w-40 shrink-0">Application</span>
+        <span className="text-body-md text-on-surface flex-1 min-w-0">
+          {item.owner_app_key ? (
+            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-label-md font-medium bg-tertiary/10 text-tertiary">
+              <LockOutlined style={{ fontSize: 14 }} /> {item.owner_app_key}
+            </span>
+          ) : (
+            <span className="text-on-surface-variant">Créé librement</span>
+          )}
+        </span>
+        <div className="flex items-center gap-0.5 shrink-0">
+          <button
+            onClick={() =>
+              setInfoField({
+                label: "Application",
+                info: item.owner_app_key
+                  ? `Cet article est géré par l'application « ${item.owner_app_key} ». Il y a été créé automatiquement ; certains champs sont verrouillés et ne peuvent être modifiés que depuis cette application.`
+                  : "Cet article a été créé manuellement dans Stock. Tous ses champs sont librement modifiables.",
+              })
+            }
+            title="Informations"
+            className="p-1.5 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors"
+          >
+            <InfoOutlined style={{ fontSize: 16 }} />
+          </button>
+          <span
+            title="Source de l'article — information verrouillée"
+            className="p-1.5 flex items-center text-on-surface-variant/50"
+          >
+            <LockOutlined style={{ fontSize: 16 }} />
+          </span>
+        </div>
+      </div>
       {GENERAL_FIELDS.map((field) => {
         const locked =
           !!item.owner_app_key && !!field.lockKey && (item.locked_fields ?? []).includes(field.lockKey);
@@ -317,7 +351,7 @@ export default function ItemDetailPage() {
             </span>
             <div className="flex items-center gap-0.5 shrink-0">
               <button
-                onClick={() => setInfoField(field)}
+                onClick={() => setInfoField({ label: field.label, info: field.info })}
                 title="Informations"
                 className="p-1.5 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors"
               >
@@ -529,6 +563,16 @@ export default function ItemDetailPage() {
                 <span className={`px-2 py-0.5 rounded-full text-label-md font-medium ${TYPE_COLORS[item.type]}`}>
                   {TYPE_ITEM_LABELS[item.type]}
                 </span>
+                {item.owner_app_key ? (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-label-md font-medium bg-tertiary/10 text-tertiary">
+                    <LockOutlined style={{ fontSize: 13 }} />
+                    Géré par {item.owner_app_key}
+                  </span>
+                ) : (
+                  <span className="px-2 py-0.5 rounded-full text-label-md font-medium bg-secondary/10 text-secondary">
+                    Créé librement
+                  </span>
+                )}
                 {!item.is_active && (
                   <span className="px-2 py-0.5 rounded-full text-label-md font-medium bg-error/10 text-error">
                     Inactif

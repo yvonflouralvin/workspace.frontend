@@ -133,7 +133,7 @@ export default function CategoriesPage() {
           )}
         </div>
 
-        <div className="relative max-w-sm">
+        <div className="relative">
           <SearchOutlined
             style={{ fontSize: 18 }}
             className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none"

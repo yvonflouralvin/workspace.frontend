@@ -11,7 +11,8 @@ services:
     volumes:
       - ../../:/app
       - ../../node_modules:/app/node_modules
-      - stock_inventaire_next:/app/apps/stock-inventaire/.next
+    tmpfs:
+      - /app/apps/stock-inventaire/.next:size=1g
     env_file: ./.env
     environment:
       PORT: "3010"
@@ -28,6 +29,3 @@ networks:
   workspace_dev:
     name: workspace_dev
     external: true
-
-volumes:
-  stock_inventaire_next:

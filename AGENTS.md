@@ -214,6 +214,20 @@ Familles : `font-display` → Geist, `font-body-*` → Inter.
 - **Server Components par défaut** — ne pas mettre `"use client"` inutilement.
 - **IMPORTANT :** Next.js 16 a des breaking changes. Avant d'écrire du code Next.js, lire le guide dans `node_modules/next/dist/docs/` de l'app concernée.
 - Route Groups : `(dashboard)` pour grouper sans affecter l'URL.
+- **`allowedDevOrigins` (⚠️ obligatoire derrière nginx/Dokploy).** En dev, Next 16
+  **bloque silencieusement** les ressources internes (RSC/HMR/chunks) servies à une
+  origine absente de `allowedDevOrigins`. Servie sur son domaine public
+  (`auth-dev.saas.cd`…), l'app rend le HTML SSR mais **le composant client n'hydrate
+  jamais** → un `<form>` part en soumission native GET, les handlers `onClick`/`onSubmit`
+  ne s'exécutent pas. Chaque `apps/*/next.config.ts` doit ajouter le host de son domaine
+  public, piloté par sa variable `<APP>_APP_URL` :
+  ```ts
+  const allowedDevOrigins = ["127.0.0.1", "localhost"];
+  if (process.env.AUTH_APP_URL) {
+    try { allowedDevOrigins.push(new URL(process.env.AUTH_APP_URL).host); } catch {}
+  }
+  ```
+  Un changement de `next.config` impose un redémarrage du conteneur `next dev`.
 
 ---
 
@@ -223,6 +237,22 @@ Chaque app a son propre `.env` (`apps/<app>/.env`) — Next.js charge l'env depu
 répertoire de l'app, pas depuis la racine du monorepo. Le `.env` à la racine de
 `frontends/` existe mais n'est **pas** chargé automatiquement par les apps ; garder
 les 3 `.env` par app synchronisés pour les variables communes.
+
+> **Stack docker (`docker-compose.dev.yml`).** Là, toute la config vit dans le `.env`
+> **racine du workspace** (chargé par chaque conteneur via `env_file: ./.env`) — cf.
+> `AGENTS.md` racine. Chaque app y attend en plus sa variable **`<APP>_APP_URL`**
+> (domaine public, ex. `AUTH_APP_URL=https://auth-dev.saas.cd`) consommée par
+> `allowedDevOrigins` (voir section Next.js 16). Les backends n'ont pas de domaine :
+> le navigateur ne les joint jamais (BFF), seul le serveur Next les appelle via
+> résolution docker (`<SVC>_API_URL=http://wd_bk_<svc>:5000`).
+>
+> **Piège chiffrement → `decrypt_failed`.** `NETWORK_ENCRYPTION_KEY` doit être un
+> **base64 valide décodant vers 16/24/32 octets** (générer : `openssl rand -base64 32` —
+> **pas** du hex), et `NEXT_PUBLIC_NETWORK_ENCRYPTION_KEY` (navigateur) doit valoir
+> **exactement** la même chose que `NETWORK_ENCRYPTION_KEY` (serveur BFF). Sinon le BFF
+> ne peut pas déchiffrer ce que le navigateur a chiffré → `{"error":"decrypt_failed"}`.
+> Après un changement de clé : rebuild du bundle + **vider le cache du navigateur**
+> (l'ancienne clé `NEXT_PUBLIC_*` reste inlinée dans le JS chargé précédemment).
 
 | Variable                          | Valeur dev             | Portée         |
 |-----------------------------------|------------------------|----------------|

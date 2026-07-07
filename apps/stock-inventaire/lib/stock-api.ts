@@ -67,6 +67,9 @@ export interface ItemSummary {
   est_vendu: boolean;
   prix_vente: number | null;
   is_active: boolean;
+  owner_app_key: string | null;
+  locked_fields: string[] | null;
+  locked_delete: boolean;
 }
 
 export interface ItemDetail extends ItemSummary {

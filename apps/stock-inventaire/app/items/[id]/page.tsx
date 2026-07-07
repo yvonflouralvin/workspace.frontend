@@ -30,6 +30,8 @@ import {
   BlockOutlined,
   WarningAmberOutlined,
   AddOutlined,
+  InfoOutlined,
+  LockOutlined,
 } from "@mui/icons-material";
 
 const inputCls =
@@ -58,6 +60,48 @@ function ReadField({ label, value }: { label: string; value: React.ReactNode }) 
   );
 }
 
+type GeneralFieldKey = "type" | "categorie_id" | "reference" | "unite" | "description" | "notes";
+type EditKind = "type" | "categorie" | "unite" | "text" | "textarea";
+
+interface GeneralField {
+  key: GeneralFieldKey;
+  label: string;
+  lockKey?: string;
+  editKind: EditKind;
+  info: string;
+}
+
+const GENERAL_FIELDS: GeneralField[] = [
+  { key: "type", label: "Type", lockKey: "type", editKind: "type",
+    info: "Nature de l'article : produit, matériel, service, prestation ou téléchargeable. Détermine la gestion de stock et la facturation." },
+  { key: "categorie_id", label: "Catégorie", lockKey: "categorie_id", editKind: "categorie",
+    info: "Regroupe les articles similaires pour l'organisation et les filtres du catalogue." },
+  { key: "reference", label: "Référence / SKU", editKind: "text",
+    info: "Code de référence interne ou SKU fournisseur, pour identifier l'article de façon unique." },
+  { key: "unite", label: "Unité", editKind: "unite",
+    info: "Unité de mesure (pièce, kg, litre, heure…), utilisée pour les quantités et les mouvements de stock." },
+  { key: "description", label: "Description", editKind: "textarea",
+    info: "Description libre de l'article, visible sur le catalogue et les documents." },
+  { key: "notes", label: "Notes", editKind: "textarea",
+    info: "Notes internes sur l'article, non visibles par les clients." },
+];
+
+function fieldDisplay(item: ItemDetail, key: GeneralFieldKey): React.ReactNode {
+  switch (key) {
+    case "type":
+      return (
+        <span className={`inline-flex px-2 py-0.5 rounded-full text-label-md font-medium ${TYPE_COLORS[item.type]}`}>
+          {TYPE_ITEM_LABELS[item.type]}
+        </span>
+      );
+    case "categorie_id": return item.categorie_nom ?? "—";
+    case "reference": return item.reference ?? "—";
+    case "unite": return item.unite;
+    case "description": return item.description ?? "—";
+    case "notes": return item.notes ? <span className="whitespace-pre-line">{item.notes}</span> : "—";
+  }
+}
+
 export default function ItemDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
@@ -76,6 +120,12 @@ export default function ItemDetailPage() {
   const [form, setForm] = useState<ItemUpdateInput>({});
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+
+  const [infoField, setInfoField] = useState<GeneralField | null>(null);
+  const [editField, setEditField] = useState<GeneralField | null>(null);
+  const [fieldValue, setFieldValue] = useState<string | number | null>(null);
+  const [fieldSaving, setFieldSaving] = useState(false);
+  const [fieldError, setFieldError] = useState<string | null>(null);
 
   const [showMouvModal, setShowMouvModal] = useState(false);
   const [mouvForm, setMouvForm] = useState<{
@@ -151,6 +201,37 @@ export default function ItemDetailPage() {
     }
   }
 
+  function openFieldEdit(field: GeneralField) {
+    if (!item) return;
+    const current =
+      field.key === "categorie_id" ? item.categorie_id
+      : field.key === "type" ? item.type
+      : ((item[field.key] as string | null) ?? "");
+    setFieldValue(current);
+    setFieldError(null);
+    setEditField(field);
+  }
+
+  async function saveField() {
+    if (!item || !editField) return;
+    setFieldSaving(true);
+    setFieldError(null);
+    try {
+      const k = editField.key;
+      let payload: ItemUpdateInput;
+      if (k === "categorie_id") payload = { categorie_id: fieldValue != null && fieldValue !== "" ? Number(fieldValue) : null };
+      else if (k === "type") payload = { type: fieldValue as TypeItem };
+      else payload = { [k]: (fieldValue as string) || undefined } as ItemUpdateInput;
+      const updated = await updateItem(item.id, payload);
+      setItem(updated);
+      setEditField(null);
+    } catch (err) {
+      setFieldError(err instanceof Error ? err.message : "Erreur inattendue");
+    } finally {
+      setFieldSaving(false);
+    }
+  }
+
   async function handleDeactivate() {
     if (!item) return;
     setDeactivating(true);
@@ -211,24 +292,46 @@ export default function ItemDetailPage() {
     item.gestion_stock && item.stock_minimum != null && item.stock_actuel <= item.stock_minimum;
 
   const generalTab = (
-    <div className="space-y-5">
-      <div className="grid grid-cols-2 gap-4">
-        <ReadField
-          label="Type"
-          value={
-            <span className={`inline-flex px-2 py-0.5 rounded-full text-label-md font-medium ${TYPE_COLORS[item.type]}`}>
-              {TYPE_ITEM_LABELS[item.type]}
+    <div className="rounded-xl border border-outline-variant bg-surface-container-lowest divide-y divide-outline-variant">
+      {GENERAL_FIELDS.map((field) => {
+        const locked =
+          !!item.owner_app_key && !!field.lockKey && (item.locked_fields ?? []).includes(field.lockKey);
+        return (
+          <div key={field.key} className="flex items-center gap-4 px-4 py-3">
+            <span className="text-label-md text-on-surface-variant w-40 shrink-0">{field.label}</span>
+            <span className="text-body-md text-on-surface flex-1 min-w-0 break-words">
+              {fieldDisplay(item, field.key)}
             </span>
-          }
-        />
-        <ReadField label="Catégorie" value={item.categorie_nom} />
-        <ReadField label="Référence / SKU" value={item.reference} />
-        <ReadField label="Unité" value={item.unite} />
-      </div>
-      {item.description && <ReadField label="Description" value={item.description} />}
-      {item.notes && (
-        <ReadField label="Notes" value={<span className="whitespace-pre-line">{item.notes}</span>} />
-      )}
+            <div className="flex items-center gap-0.5 shrink-0">
+              <button
+                onClick={() => setInfoField(field)}
+                title="Informations"
+                className="p-1.5 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors"
+              >
+                <InfoOutlined style={{ fontSize: 16 }} />
+              </button>
+              {canManage && item.is_active && (
+                locked ? (
+                  <span
+                    title={`Champ géré par « ${item.owner_app_key} » — verrouillé`}
+                    className="p-1.5 flex items-center text-on-surface-variant/50"
+                  >
+                    <LockOutlined style={{ fontSize: 16 }} />
+                  </span>
+                ) : (
+                  <button
+                    onClick={() => openFieldEdit(field)}
+                    title="Modifier"
+                    className="p-1.5 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-container transition-colors"
+                  >
+                    <EditOutlined style={{ fontSize: 16 }} />
+                  </button>
+                )
+              )}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 
@@ -676,6 +779,88 @@ export default function ItemDetailPage() {
               </button>
             </div>
           </form>
+        </RightDrawer>
+      )}
+
+      {infoField && (
+        <RightDrawer
+          title={infoField.label}
+          onClose={() => setInfoField(null)}
+          contentClassName="px-6 py-5"
+        >
+          <p className="text-body-md text-on-surface-variant leading-relaxed">{infoField.info}</p>
+        </RightDrawer>
+      )}
+
+      {editField && (
+        <RightDrawer
+          title={`Modifier — ${editField.label}`}
+          onClose={() => setEditField(null)}
+          contentClassName="px-6 py-5"
+        >
+          <div className="space-y-4">
+            {fieldError && (
+              <p className="text-body-sm text-error bg-error-container/40 rounded-xl px-4 py-3">{fieldError}</p>
+            )}
+            <div className="flex flex-col gap-1">
+              <label className="text-label-md text-on-surface-variant">{editField.label}</label>
+              {editField.editKind === "type" ? (
+                <select value={String(fieldValue ?? "")} onChange={(e) => setFieldValue(e.target.value)} className={inputCls}>
+                  <option value="PRODUIT">Produit</option>
+                  <option value="MATERIEL">Matériel</option>
+                  <option value="SERVICE">Service</option>
+                  <option value="PRESTATION">Prestation</option>
+                  <option value="TELECHARGEABLE">Téléchargeable</option>
+                </select>
+              ) : editField.editKind === "categorie" ? (
+                <select
+                  value={fieldValue ?? ""}
+                  onChange={(e) => setFieldValue(e.target.value ? Number(e.target.value) : null)}
+                  className={inputCls}
+                >
+                  <option value="">— Aucune —</option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>{c.nom}</option>
+                  ))}
+                </select>
+              ) : editField.editKind === "unite" ? (
+                <select value={String(fieldValue ?? "")} onChange={(e) => setFieldValue(e.target.value)} className={inputCls}>
+                  {UNITES.map((u) => (
+                    <option key={u.value} value={u.value}>{u.label}</option>
+                  ))}
+                </select>
+              ) : editField.editKind === "textarea" ? (
+                <textarea
+                  value={String(fieldValue ?? "")}
+                  onChange={(e) => setFieldValue(e.target.value)}
+                  rows={4}
+                  className={`${inputCls} resize-none`}
+                />
+              ) : (
+                <input
+                  type="text"
+                  value={String(fieldValue ?? "")}
+                  onChange={(e) => setFieldValue(e.target.value)}
+                  className={inputCls}
+                />
+              )}
+            </div>
+            <div className="flex items-center justify-end gap-2">
+              <button
+                onClick={() => setEditField(null)}
+                className="px-4 py-2 rounded-xl text-body-md text-on-surface-variant border border-outline-variant hover:bg-surface-container transition-colors"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={saveField}
+                disabled={fieldSaving}
+                className="px-5 py-2 rounded-xl bg-primary text-on-primary text-body-md font-medium hover:bg-primary-container disabled:opacity-60 transition-colors"
+              >
+                {fieldSaving ? "Enregistrement…" : "Enregistrer"}
+              </button>
+            </div>
+          </div>
         </RightDrawer>
       )}
     </DashboardShell>

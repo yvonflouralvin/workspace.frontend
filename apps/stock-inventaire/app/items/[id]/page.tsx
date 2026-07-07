@@ -60,8 +60,8 @@ function ReadField({ label, value }: { label: string; value: React.ReactNode }) 
   );
 }
 
-type GeneralFieldKey = "type" | "categorie_id" | "reference" | "unite" | "description" | "notes";
-type EditKind = "type" | "categorie" | "unite" | "text" | "textarea";
+type GeneralFieldKey = "nom" | "type" | "categorie_id" | "reference" | "unite" | "gestion_stock" | "description" | "notes";
+type EditKind = "type" | "categorie" | "unite" | "boolean" | "text" | "textarea";
 
 interface GeneralField {
   key: GeneralFieldKey;
@@ -72,6 +72,8 @@ interface GeneralField {
 }
 
 const GENERAL_FIELDS: GeneralField[] = [
+  { key: "nom", label: "Nom", lockKey: "nom", editKind: "text",
+    info: "Le libellé de l'article tel qu'il apparaît dans le catalogue, les documents et les recherches." },
   { key: "type", label: "Type", lockKey: "type", editKind: "type",
     info: "Nature de l'article : produit, matériel, service, prestation ou téléchargeable. Détermine la gestion de stock et la facturation." },
   { key: "categorie_id", label: "Catégorie", lockKey: "categorie_id", editKind: "categorie",
@@ -80,6 +82,8 @@ const GENERAL_FIELDS: GeneralField[] = [
     info: "Code de référence interne ou SKU fournisseur, pour identifier l'article de façon unique." },
   { key: "unite", label: "Unité", editKind: "unite",
     info: "Unité de mesure (pièce, kg, litre, heure…), utilisée pour les quantités et les mouvements de stock." },
+  { key: "gestion_stock", label: "Gestion de stock", editKind: "boolean",
+    info: "Si activée, l'article suit un stock (entrées, sorties, seuil d'alerte). Désactivée pour les services et prestations sans inventaire." },
   { key: "description", label: "Description", editKind: "textarea",
     info: "Description libre de l'article, visible sur le catalogue et les documents." },
   { key: "notes", label: "Notes", editKind: "textarea",
@@ -94,9 +98,16 @@ function fieldDisplay(item: ItemDetail, key: GeneralFieldKey): React.ReactNode {
           {TYPE_ITEM_LABELS[item.type]}
         </span>
       );
+    case "nom": return item.nom;
     case "categorie_id": return item.categorie_nom ?? "—";
     case "reference": return item.reference ?? "—";
     case "unite": return item.unite;
+    case "gestion_stock":
+      return (
+        <span className={`inline-flex px-2 py-0.5 rounded-full text-label-md font-medium ${item.gestion_stock ? "bg-secondary/10 text-secondary" : "bg-outline/10 text-on-surface-variant"}`}>
+          {item.gestion_stock ? "Activée" : "Désactivée"}
+        </span>
+      );
     case "description": return item.description ?? "—";
     case "notes": return item.notes ? <span className="whitespace-pre-line">{item.notes}</span> : "—";
   }
@@ -123,7 +134,7 @@ export default function ItemDetailPage() {
 
   const [infoField, setInfoField] = useState<GeneralField | null>(null);
   const [editField, setEditField] = useState<GeneralField | null>(null);
-  const [fieldValue, setFieldValue] = useState<string | number | null>(null);
+  const [fieldValue, setFieldValue] = useState<string | number | boolean | null>(null);
   const [fieldSaving, setFieldSaving] = useState(false);
   const [fieldError, setFieldError] = useState<string | null>(null);
 
@@ -206,6 +217,7 @@ export default function ItemDetailPage() {
     const current =
       field.key === "categorie_id" ? item.categorie_id
       : field.key === "type" ? item.type
+      : field.key === "gestion_stock" ? item.gestion_stock
       : ((item[field.key] as string | null) ?? "");
     setFieldValue(current);
     setFieldError(null);
@@ -221,6 +233,7 @@ export default function ItemDetailPage() {
       let payload: ItemUpdateInput;
       if (k === "categorie_id") payload = { categorie_id: fieldValue != null && fieldValue !== "" ? Number(fieldValue) : null };
       else if (k === "type") payload = { type: fieldValue as TypeItem };
+      else if (k === "gestion_stock") payload = { gestion_stock: Boolean(fieldValue) };
       else payload = { [k]: (fieldValue as string) || undefined } as ItemUpdateInput;
       const updated = await updateItem(item.id, payload);
       setItem(updated);
@@ -525,49 +538,7 @@ export default function ItemDetailPage() {
               <p className="text-body-sm text-on-surface-variant font-mono mt-0.5">{item.code}</p>
             </div>
           </div>
-          {canManage && item.is_active && (
-            <div className="flex gap-2 shrink-0">
-              <button
-                onClick={openEdit}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-body-md border border-outline-variant hover:bg-surface-container transition-colors"
-              >
-                <EditOutlined style={{ fontSize: 16 }} />
-                Modifier
-              </button>
-              <button
-                onClick={() => setConfirmDeactivate(true)}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-body-md text-error border border-error/30 hover:bg-error/5 transition-colors"
-              >
-                <BlockOutlined style={{ fontSize: 16 }} />
-                Désactiver
-              </button>
-            </div>
-          )}
         </div>
-
-        {confirmDeactivate && (
-          <div className="bg-error-container/30 border border-error/20 rounded-xl p-4 space-y-3">
-            <p className="text-body-md text-on-surface font-medium">Désactiver cet article ?</p>
-            <p className="text-body-sm text-on-surface-variant">
-              L&apos;article sera masqué du catalogue mais les données seront conservées.
-            </p>
-            <div className="flex gap-2">
-              <button
-                onClick={handleDeactivate}
-                disabled={deactivating}
-                className="px-4 py-2 rounded-xl bg-error text-on-error text-body-sm font-medium disabled:opacity-60 transition-colors"
-              >
-                {deactivating ? "En cours…" : "Confirmer"}
-              </button>
-              <button
-                onClick={() => setConfirmDeactivate(false)}
-                className="px-4 py-2 rounded-xl text-body-sm border border-outline-variant hover:bg-surface-container transition-colors"
-              >
-                Annuler
-              </button>
-            </div>
-          </div>
-        )}
 
         <Tabs
           tabs={[
@@ -814,7 +785,7 @@ export default function ItemDetailPage() {
                 </select>
               ) : editField.editKind === "categorie" ? (
                 <select
-                  value={fieldValue ?? ""}
+                  value={typeof fieldValue === "number" || typeof fieldValue === "string" ? fieldValue : ""}
                   onChange={(e) => setFieldValue(e.target.value ? Number(e.target.value) : null)}
                   className={inputCls}
                 >
@@ -829,6 +800,18 @@ export default function ItemDetailPage() {
                     <option key={u.value} value={u.value}>{u.label}</option>
                   ))}
                 </select>
+              ) : editField.editKind === "boolean" ? (
+                <label className="flex items-center gap-3 cursor-pointer py-1">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(fieldValue)}
+                    onChange={(e) => setFieldValue(e.target.checked)}
+                    className="h-4 w-4 rounded border-outline-variant text-primary"
+                  />
+                  <span className="text-body-md text-on-surface">
+                    {fieldValue ? "Activée" : "Désactivée"}
+                  </span>
+                </label>
               ) : editField.editKind === "textarea" ? (
                 <textarea
                   value={String(fieldValue ?? "")}

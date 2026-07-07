@@ -1,11 +1,11 @@
 # docker-compose.dev.yml — app workspace seule, hot reload (next dev)
 # Usage : docker compose -f docker-compose.dev.yml up
-name: ft_workspace
+name: wd_ft_workspace
 
 services:
-  ft_workspace:
+  wd_ft_workspace:
     image: node:24-alpine
-    container_name: dev_ft_workspace
+    container_name: wd_ft_workspace
     restart: unless-stopped
     working_dir: /app
     volumes:
@@ -16,8 +16,8 @@ services:
     environment:
       PORT: "3005"
       HOSTNAME: "0.0.0.0"
-      AUTH_API_URL: http://dev_auth:4999
-      AUDIT_LOGS_API_URL: http://dev_audit_logs:5006
+      AUTH_API_URL: http://wd_bk_auth:4999
+      AUDIT_LOGS_API_URL: http://wd_bk_audit_logs:5006
     command: sh -c "[ ! -d node_modules/.bin ] && npm ci; cd apps/workspace && exec npx next dev --port 3005"
     ports:
       - "3005:3005"

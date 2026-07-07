@@ -1,11 +1,11 @@
 # docker-compose.dev.yml — app tiers seule, hot reload (next dev)
 # Usage : docker compose -f docker-compose.dev.yml up
-name: ft_tiers
+name: wd_ft_tiers
 
 services:
-  ft_tiers:
+  wd_ft_tiers:
     image: node:24-alpine
-    container_name: dev_ft_tiers
+    container_name: wd_ft_tiers
     restart: unless-stopped
     working_dir: /app
     volumes:
@@ -16,8 +16,8 @@ services:
     environment:
       PORT: "3009"
       HOSTNAME: "0.0.0.0"
-      AUTH_API_URL: http://dev_auth:4999
-      TIERS_API_URL: http://dev_tiers:5008
+      AUTH_API_URL: http://wd_bk_auth:4999
+      TIERS_API_URL: http://wd_bk_tiers:5008
     command: sh -c "[ ! -d node_modules/.bin ] && npm ci; cd apps/tiers && exec npx next dev --port 3009"
     ports:
       - "3009:3009"

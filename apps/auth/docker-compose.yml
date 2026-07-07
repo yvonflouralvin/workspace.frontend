@@ -1,11 +1,11 @@
 # docker-compose.yml — app auth seule, build + start production
 # Usage : docker compose up --build
-name: ft_auth
+name: wd_ft_auth
 
 services:
-  workspace_uat_ft_auth:
+  wd_ft_auth:
     image: node:24-alpine
-    container_name: workspace_uat_ft_auth
+    container_name: wd_ft_auth
     restart: unless-stopped
     working_dir: /app
     volumes:

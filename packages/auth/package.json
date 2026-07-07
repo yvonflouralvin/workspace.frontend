@@ -25,6 +25,10 @@
     "./hooks/usePermissions": {
       "types": "./src/hooks/usePermissions.ts",
       "default": "./dist/hooks/usePermissions.js"
+    },
+    "./hooks/useLogout": {
+      "types": "./src/hooks/useLogout.ts",
+      "default": "./dist/hooks/useLogout.js"
     }
   },
   "devDependencies": {

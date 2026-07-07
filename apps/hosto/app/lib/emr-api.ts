@@ -42,6 +42,7 @@ export interface AllergyRead {
   encounter_id: number | null;
   substance: string;
   substance_code: string | null;
+  substance_label: string | null;
   type: AllergyType;
   category: AllergyCategory;
   severity: AllergySeverity;
@@ -342,6 +343,7 @@ export interface AllergyCreate {
   encounter_id?: null;
   substance: string;
   substance_code?: string | null;
+  substance_label?: string | null;
   type: AllergyType;
   category: AllergyCategory;
   severity: AllergySeverity;

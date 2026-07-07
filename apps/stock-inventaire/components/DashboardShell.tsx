@@ -9,13 +9,16 @@ import { TopBar } from "@repo/ui/shell/TopBar";
 import { UserFooter } from "@repo/ui/shell/UserFooter";
 import { WorkspaceSwitcher } from "@repo/ui/WorkspaceSwitcher";
 import { PLATFORM_APPS, STOCK_SHELL } from "@repo/ui/shell/platform";
+import { useSearch } from "@repo/ui/shell/useSearch";
 import {
+  HomeOutlined,
   Inventory2Outlined,
   CategoryOutlined,
 } from "@mui/icons-material";
 import type { NavItem } from "@repo/ui/types/shell";
 
 const NAV_ITEMS: NavItem[] = [
+  { label: "Accueil",    href: process.env.NEXT_PUBLIC_WORKSPACE_DOMAIN ?? "http://localhost:3005", icon: <HomeOutlined style={{ fontSize: 20 }} />, exact: true },
   { label: "Articles",   href: "/items",      icon: <Inventory2Outlined style={{ fontSize: 20 }} /> },
   { label: "Catégories", href: "/categories", icon: <CategoryOutlined style={{ fontSize: 20 }} /> },
 ];
@@ -24,6 +27,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const { user } = useSessionStore();
   const { can } = usePermissions();
   const handleLogout = useLogout("/api/auth/logout");
+  const handleSearch = useSearch();
 
   const userSummary = user
     ? { id: user.id, username: user.username, email: user.email }
@@ -47,6 +51,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           user={userSummary}
           preferencesUrl="/"
           onLogout={handleLogout}
+          onSearch={handleSearch}
           {...STOCK_SHELL}
         />
       }

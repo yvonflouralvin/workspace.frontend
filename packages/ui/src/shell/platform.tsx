@@ -30,6 +30,8 @@ import type { AppDefinition } from "../types/shell";
 export interface AppShellConfig {
   appName: string;
   appHref: string;
+  appIcon?: string;
+  appColor?: string;
   routeLabels: Record<string, string>;
   routeIcons: Record<string, React.ReactNode>;
 }
@@ -83,6 +85,14 @@ export const PLATFORM_APPS: AppDefinition[] = [
     color: "#006c49",
     description: "Gestion des stocks et inventaires",
   },
+  {
+    id: "documents",
+    name: "Documents",
+    icon: "D",
+    url: process.env.NEXT_PUBLIC_AUTH_API_DOCUMENTS_DOMAIN ?? "http://localhost:3008",
+    color: "#7c3aed",
+    description: "Modèles et génération de documents PDF",
+  },
 ];
 
 const s = (fontSize: number) => ({ fontSize });
@@ -90,6 +100,8 @@ const s = (fontSize: number) => ({ fontSize });
 export const WORKSPACE_SHELL: AppShellConfig = {
   appName: "Workspace",
   appHref: "/",
+  appIcon: "W",
+  appColor: "#3525cd",
   routeLabels: {
     "/":           "Accueil",
     "/projects":   "Projets",
@@ -115,6 +127,8 @@ export const WORKSPACE_SHELL: AppShellConfig = {
 export const HOSTO_SHELL: AppShellConfig = {
   appName: "Hosto",
   appHref: "/",
+  appIcon: "P",
+  appColor: "#0e7490",
   routeLabels: {
     "/patients":      "Patients",
     "/services":      "Services",
@@ -142,6 +156,8 @@ export const HOSTO_SHELL: AppShellConfig = {
 export const STOCK_SHELL: AppShellConfig = {
   appName: "Stock",
   appHref: "/",
+  appIcon: "S",
+  appColor: "#006c49",
   routeLabels: {
     "/items":      "Articles",
     "/categories": "Catégories",
@@ -155,6 +171,8 @@ export const STOCK_SHELL: AppShellConfig = {
 export const TIERS_SHELL: AppShellConfig = {
   appName: "Tiers",
   appHref: "/tiers",
+  appIcon: "T",
+  appColor: "#b45309",
   routeLabels: {
     "/tiers": "Tiers",
   },
@@ -166,6 +184,8 @@ export const TIERS_SHELL: AppShellConfig = {
 export const HR_SHELL: AppShellConfig = {
   appName: "RH",
   appHref: "/",
+  appIcon: "H",
+  appColor: "#006c49",
   routeLabels: {
     "/employees":    "Employés",
     "/groups":       "Groupes/Départements",
@@ -181,6 +201,8 @@ export const HR_SHELL: AppShellConfig = {
 export const APPROVAL_FLOWS_SHELL: AppShellConfig = {
   appName: "Workflows d'approbation",
   appHref: "/",
+  appIcon: "A",
+  appColor: "#004598",
   routeLabels: {
     "/requests":    "Requests",
     "/flows":       "Flows",
@@ -196,6 +218,8 @@ export const APPROVAL_FLOWS_SHELL: AppShellConfig = {
 export const DOCUMENTS_SHELL: AppShellConfig = {
   appName: "Documents",
   appHref: "/",
+  appIcon: "D",
+  appColor: "#7c3aed",
   routeLabels: {
     "/": "Templates PDF",
   },

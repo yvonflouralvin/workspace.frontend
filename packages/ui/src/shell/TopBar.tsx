@@ -38,6 +38,8 @@ interface TopBarProps {
   onSearch?: (q: string) => Promise<SearchSection[]>;
   appName?: string;
   appHref?: string;
+  appIcon?: string;
+  appColor?: string;
   routeLabels?: Record<string, string>;
   routeIcons?: Record<string, React.ReactNode>;
 }
@@ -50,11 +52,15 @@ interface BreadcrumbSegment {
 function Breadcrumbs({
   appName,
   appHref = "/",
+  appIcon,
+  appColor,
   routeLabels = {},
   routeIcons = {},
 }: {
   appName?: string;
   appHref?: string;
+  appIcon?: string;
+  appColor?: string;
   routeLabels?: Record<string, string>;
   routeIcons?: Record<string, React.ReactNode>;
 }) {
@@ -139,7 +145,15 @@ function Breadcrumbs({
           ) : (() => {
             const isAppName = appSegment !== null && item.href === appSegment.href;
             const isLast = item.href === all[all.length - 1]?.href;
-            const icon = routeIcons[item.href];
+            const appBadge = isAppName && appIcon ? (
+              <span
+                className="shrink-0 flex items-center justify-center rounded-md text-white font-bold leading-none"
+                style={{ width: 18, height: 18, fontSize: 10, backgroundColor: appColor ?? "#6b7280" }}
+              >
+                {appIcon}
+              </span>
+            ) : null;
+            const icon = appBadge ?? routeIcons[item.href];
             const content = (
               <span className={`flex items-center gap-1 ${isAppName ? "font-semibold text-on-surface" : ""}`}>
                 {icon && (
@@ -183,6 +197,8 @@ export function TopBar({
   onSearch,
   appName,
   appHref,
+  appIcon,
+  appColor,
   routeLabels,
   routeIcons,
 }: TopBarProps) {
@@ -211,7 +227,7 @@ export function TopBar({
   return (
     <div className="flex items-center w-full px-4 gap-3 h-full">
       <div className="flex-1 min-w-0">
-        <Breadcrumbs appName={appName} appHref={appHref} routeLabels={routeLabels} routeIcons={routeIcons} />
+        <Breadcrumbs appName={appName} appHref={appHref} appIcon={appIcon} appColor={appColor} routeLabels={routeLabels} routeIcons={routeIcons} />
       </div>
 
       <div className="flex items-center gap-1 shrink-0">

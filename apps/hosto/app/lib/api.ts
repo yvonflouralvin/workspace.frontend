@@ -212,6 +212,18 @@ export async function syncStockInventory(): Promise<{ synced: number; pending: n
   return parseResponse(await apiFetch("/api/services/sync-stock", { method: "POST" }));
 }
 
+export interface Parametre {
+  id: number;
+  cle: string;
+  nom: string;
+  description: string | null;
+  valeur: Record<string, unknown>;
+}
+
+export async function listParametres(): Promise<Parametre[]> {
+  return parseResponse(await apiFetch("/api/parametres"));
+}
+
 export async function createService(data: ServiceCreateInput): Promise<Service> {
   return parseResponse(await apiFetch("/api/services", { method: "POST", body: data }));
 }

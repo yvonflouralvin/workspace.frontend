@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { SearchOutlined } from "@mui/icons-material";
+import { SearchOutlined, AddOutlined } from "@mui/icons-material";
 import { useSearchOptions } from "./hooks/useSearchOptions";
 
 interface SearchSelectProps<T> {
@@ -16,6 +16,10 @@ interface SearchSelectProps<T> {
   // disponible côté appelant.
   initialLabel?: string;
   disabled?: boolean;
+  // Si fourni, quand aucun résultat ne correspond à la recherche, une action
+  // « créer » est proposée dans le dropdown avec le texte saisi.
+  onCreate?: (query: string) => void | Promise<void>;
+  createLabel?: (query: string) => string;
 }
 
 function defaultGetOptionValue(record: unknown): string | number {
@@ -31,6 +35,8 @@ export function SearchSelect<T = Record<string, unknown>>({
   placeholder = "Rechercher…",
   initialLabel,
   disabled = false,
+  onCreate,
+  createLabel,
 }: SearchSelectProps<T>) {
   const [isOpen, setIsOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(0);
@@ -113,9 +119,23 @@ export function SearchSelect<T = Record<string, unknown>>({
           {loading && (
             <div className="px-3 py-2 text-sm text-on-surface-variant">Chargement…</div>
           )}
-          {!loading && items.length === 0 && (
-            <div className="px-3 py-2 text-sm text-on-surface-variant">Aucun résultat.</div>
-          )}
+          {!loading && items.length === 0 &&
+            (onCreate && query.trim() ? (
+              <button
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => {
+                  setIsOpen(false);
+                  onCreate(query.trim());
+                }}
+                className="w-full text-left px-3 py-2 text-sm text-primary hover:bg-surface-container transition-colors flex items-center gap-2"
+              >
+                <AddOutlined style={{ fontSize: 16 }} />
+                {createLabel ? createLabel(query.trim()) : `Créer « ${query.trim()} »`}
+              </button>
+            ) : (
+              <div className="px-3 py-2 text-sm text-on-surface-variant">Aucun résultat.</div>
+            ))}
           {!loading &&
             items.map((record, i) => (
               <button

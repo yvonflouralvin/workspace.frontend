@@ -3,9 +3,10 @@ import { ApiError } from "./api";
 
 // ─── Enums ────────────────────────────────────────────────────────────────────
 
-export type LabRequestStatus = "DEMANDE" | "PRELEVE" | "EN_ANALYSE" | "VALIDE" | "ANNULE";
+export type LabRequestStatus = "DEMANDE" | "PARTIELLEMENT_PRELEVE" | "PRELEVE" | "EN_ANALYSE" | "VALIDE" | "ANNULE";
 export type LabPriority = "ROUTINE" | "URGENT";
-export type LabItemStatus = "EN_ATTENTE" | "RESULTAT_SAISI" | "VALIDE";
+export type LabItemStatus = "EN_ATTENTE" | "PRELEVE" | "RESULTAT_SAISI" | "VALIDE";
+export type LabPaiementStatus = "EN_ATTENTE_PAIEMENT" | "PARTIEL" | "PAYE";
 export type LabResultStatus = "SAISI" | "VALIDE" | "REVISE";
 export type ResultFlag = "NORMAL" | "BAS" | "HAUT" | "CRITIQUE" | "INDETERMINE";
 export type LabValueType = "NUMERIC" | "TEXT" | "QUALITATIVE";
@@ -54,6 +55,11 @@ export interface LabRequestItem {
   lab_test_id: number;
   lab_test_name_cache: string;
   status: LabItemStatus;
+  paiement_status: LabPaiementStatus | null;
+  collected_at: string | null;
+  collected_by: number | null;
+  validated_at: string | null;
+  validated_by: number | null;
   notes: string | null;
 }
 
@@ -182,8 +188,8 @@ export interface CreateLabRequestInput {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 async function parseResponse<T>(res: Response): Promise<T> {
-  const data = await res.json();
-  if (!res.ok) throw new ApiError(data.detail ?? "Une erreur est survenue", res.status);
+  const data = await res.json().catch(() => null);
+  if (!res.ok) throw new ApiError((data && data.detail) || "Une erreur est survenue", res.status);
   return data as T;
 }
 
@@ -211,6 +217,12 @@ export async function getLabRequest(id: number): Promise<LabRequest> {
 export async function collectSample(id: number, context?: CollectContextValues): Promise<LabRequest> {
   return parseResponse(
     await apiFetch(`/api/lab-requests/${id}/collect`, { method: "POST", body: context ?? {} }),
+  );
+}
+
+export async function collectLabItem(itemId: number, context?: CollectContextValues): Promise<LabRequest> {
+  return parseResponse(
+    await apiFetch(`/api/lab-request-items/${itemId}/collect`, { method: "POST", body: context ?? {} }),
   );
 }
 
@@ -294,5 +306,73 @@ export async function getEncounterLabRequests(encounterId: number | string): Pro
 export async function cancelLabRequest(id: number, reason?: string): Promise<LabRequest> {
   return parseResponse(
     await apiFetch(`/api/lab-requests/${id}/cancel`, { method: "POST", body: { reason: reason ?? null } }),
+  );
+}
+
+// ─── Tendances longitudinales (L6) ─────────────────────────────────────────────
+export interface LabParameterSummary {
+  parameter_code: string;
+  loinc_code: string | null;
+  name: string;
+  unit: string | null;
+  value_type: string;
+  count: number;
+  last_date: string | null;
+}
+
+export interface LabTrendContext {
+  age_years: number | null;
+  sex: string | null;
+  weight: number | null;
+  height: number | null;
+  systolic: number | null;
+  diastolic: number | null;
+  temperature: number | null;
+}
+
+export interface LabTrendPoint {
+  date: string | null;
+  value_numeric: number | null;
+  unit: string | null;
+  interpretation: string;
+  abnormal: boolean;
+  reference_used: string | null;
+  context: LabTrendContext;
+  lab_result_id: number;
+}
+
+export interface ReferenceBand {
+  low: number | null;
+  high: number | null;
+  label: string | null;
+}
+
+export interface LabTrendSeries {
+  parameter_code: string;
+  loinc_code: string | null;
+  name: string;
+  unit: string | null;
+  reference_band: ReferenceBand | null;
+  points: LabTrendPoint[];
+}
+
+export async function getPatientLabParameters(patientId: number | string): Promise<LabParameterSummary[]> {
+  return parseResponse(await apiFetch(`/api/patients/${patientId}/lab-parameters`));
+}
+
+export async function getLabParameterSeries(
+  patientId: number | string,
+  parameterCode: string,
+  from?: string,
+  to?: string,
+): Promise<LabTrendSeries> {
+  const sp = new URLSearchParams();
+  if (from) sp.set("from", from);
+  if (to) sp.set("to", to);
+  const qs = sp.toString();
+  return parseResponse(
+    await apiFetch(
+      `/api/patients/${patientId}/lab-parameters/${encodeURIComponent(parameterCode)}/series${qs ? `?${qs}` : ""}`,
+    ),
   );
 }

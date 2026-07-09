@@ -352,6 +352,8 @@ export default function ConsultationPage() {
             <LabRequestsPanel
               patientId={patient.id}
               encounterId={encounterId}
+              onSplit={canWrite && !isClosed ? openSplit : undefined}
+              onCloseSplit={() => setSplitState(null)}
             />
           )}
           {activeTab === "resume" && encounter.closure_report && (

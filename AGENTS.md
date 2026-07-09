@@ -20,6 +20,7 @@ frontends/
     workspace/    → port 3005  (app principale SAAS)
     hr/           → port 3003  (module RH)
     approval-flows/ → port 3006  (création/gestion libre de workflows d'approbation)
+    ventes/       → port 3011  (Facturation — nom d'affichage ; dossier/id restent "ventes")
     web/                       (landing page)
     docs/                      (documentation)
   packages/
@@ -49,7 +50,8 @@ frontends/
 | `hosto`     | 3007 | Gestion hospitalière — patients, contacts                            | —                                      |
 | `documents` | 3008 | Templates PDF — liste, éditeur layout JSON WeasyPrint, prévisualisation, paramètres workspace | — |
 | `tiers`     | 3009 | Répertoire des clients et fournisseurs (backend `tiers` port 5008)   | —                                      |
-| `stock-inventaire` | 3010 | Gestion des stocks et inventaires — articles, catégories, mouvements (backend `stock` port 5009) | — |
+| `stock-inventaire` | 3010 | Gestion des stocks et inventaires — articles, catégories, mouvements (backend `stock` port 5009) |
+| `ventes`    | 3011 | **Facturation** (nom d'affichage ; id/backend restent `ventes`) — Clients, Produits (catégories, prix, TVA), Commandes, Factures, Paramètres. Produits/clients locaux, lien optionnel vers Stock/Tiers. Auto-enregistrement de produits par d'autres apps (ex. hosto) avec champs verrouillés. | — |
 | `web`       | —    | Landing page publique                              | —                                      |
 | `docs`      | —    | Documentation produit                              | —                                      |
 

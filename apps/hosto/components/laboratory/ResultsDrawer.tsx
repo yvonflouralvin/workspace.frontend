@@ -116,6 +116,7 @@ export function ResultsDrawer({
             const currentResult = savedResults[item.id] ?? existingResult;
             const isValide = currentResult?.status === "VALIDE";
             const hasSaisi = currentResult?.status === "SAISI" || currentResult?.status === "REVISE";
+            const collected = item.status !== "EN_ATTENTE";
             const isOpen = activeItemId === item.id;
 
             return (
@@ -127,6 +128,7 @@ export function ResultsDrawer({
                   <div className="flex items-center gap-2">
                     {isValide && <CheckCircleOutlined style={{ fontSize: 16 }} className="text-secondary" />}
                     {hasSaisi && !isValide && <span className="text-label-xs px-1.5 py-0.5 rounded-full bg-yellow-100 text-yellow-800">Saisi</span>}
+                    {!collected && <span className="text-label-xs px-1.5 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant">Non prélevé</span>}
                     <span className="text-on-surface-variant text-xs">{isOpen ? "▲" : "▼"}</span>
                   </div>
                 </button>
@@ -139,7 +141,13 @@ export function ResultsDrawer({
                       </div>
                     )}
 
-                    {canTechnician && !isValide && testDetail && (
+                    {!collected && (
+                      <p className="text-body-sm text-on-surface-variant/70 italic">
+                        Cet examen n&apos;a pas encore été prélevé — la saisie des résultats n&apos;est pas possible.
+                      </p>
+                    )}
+
+                    {canTechnician && !isValide && collected && testDetail && (
                       <div className="space-y-3 pt-2">
                         <p className="text-label-md font-medium text-on-surface-variant uppercase tracking-wide">
                           {currentResult ? "Corriger les valeurs" : "Saisir les valeurs"}

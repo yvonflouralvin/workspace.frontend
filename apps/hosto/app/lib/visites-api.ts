@@ -3,6 +3,7 @@ import { ApiError } from "./api";
 
 export type VisiteStatus = "ARRIVE" | "EN_ATTENTE" | "EN_CONSULTATION" | "TERMINE" | "PARTI";
 export type VisitePriority = "NORMAL" | "URGENT" | "TRES_URGENT" | "CRITIQUE";
+export type PaiementStatus = "EN_ATTENTE_PAIEMENT" | "PARTIEL" | "PAYE";
 
 export const VISITE_STATUS_LABELS: Record<VisiteStatus, string> = {
   ARRIVE:          "Arrivé",
@@ -42,6 +43,7 @@ export interface Visite {
   encounter_id: number | null;
   status: VisiteStatus;
   priority: VisitePriority;
+  paiement_status: PaiementStatus | null;
   reason: string | null;
   notes: string | null;
   triage_note: string | null;

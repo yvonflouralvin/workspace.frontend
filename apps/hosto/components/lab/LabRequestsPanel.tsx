@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
 import { RightDrawer } from "@repo/ui/RightDrawer";
+import { LabTrends } from "./LabTrends";
 import {
   AddOutlined,
   BiotechOutlined,
@@ -45,6 +46,7 @@ const STATUS_STEPS: LabRequestStatus[] = ["DEMANDE", "PRELEVE", "EN_ANALYSE", "V
 
 const STATUS_LABEL: Record<LabRequestStatus, string> = {
   DEMANDE:    "Demandé",
+  PARTIELLEMENT_PRELEVE: "Part. prélevé",
   PRELEVE:    "Prélevé",
   EN_ANALYSE: "En analyse",
   VALIDE:     "Validé",
@@ -53,6 +55,7 @@ const STATUS_LABEL: Record<LabRequestStatus, string> = {
 
 const STATUS_CLS: Record<LabRequestStatus, string> = {
   DEMANDE:    "bg-blue-100 text-blue-700",
+  PARTIELLEMENT_PRELEVE: "bg-amber-100 text-amber-800",
   PRELEVE:    "bg-yellow-100 text-yellow-800",
   EN_ANALYSE: "bg-orange-100 text-orange-800",
   VALIDE:     "bg-secondary/10 text-secondary",
@@ -435,11 +438,13 @@ function LabRequestEditor({
   encounterId: encounterIdProp,
   onClose,
   onSaved,
+  bare = false,
 }: {
   patientId: number;
   encounterId?: number;
   onClose: () => void;
   onSaved: () => void;
+  bare?: boolean;
 }) {
   const [searchQuery, setSearchQuery]       = useState("");
   const [searchResults, setSearchResults]   = useState<LabTestSummary[]>([]);
@@ -513,14 +518,8 @@ function LabRequestEditor({
     }
   }
 
-  return (
-    <RightDrawer
-      title="Demander des examens"
-      onClose={onClose}
-      width="w-[520px] max-w-full"
-      contentClassName="px-6 py-5 overflow-y-auto space-y-5"
-    >
-      <form onSubmit={handleSubmit} className="space-y-5">
+  const content = (
+    <form onSubmit={handleSubmit} className="space-y-5">
         {/* Priorité */}
         <div>
           <p className="text-label-md font-medium text-on-surface-variant uppercase tracking-wide mb-2">Priorité</p>
@@ -651,7 +650,20 @@ function LabRequestEditor({
             {saving || encounterLoading ? "Envoi…" : `Envoyer la demande (${selectedTests.length})`}
           </button>
         </div>
-      </form>
+    </form>
+  );
+
+  if (bare) {
+    return <div className="h-full overflow-y-auto px-6 py-5">{content}</div>;
+  }
+  return (
+    <RightDrawer
+      title="Demander des examens"
+      onClose={onClose}
+      width="w-[520px] max-w-full"
+      contentClassName="px-6 py-5 overflow-y-auto space-y-5"
+    >
+      {content}
     </RightDrawer>
   );
 }
@@ -678,9 +690,13 @@ function Skeleton() {
 export function LabRequestsPanel({
   patientId,
   encounterId,
+  onSplit,
+  onCloseSplit,
 }: {
   patientId: number | string;
   encounterId?: number | string;
+  onSplit?: (title: string, content: React.ReactNode) => void;
+  onCloseSplit?: () => void;
 }) {
   const { can } = usePermissions();
   const canView  = can("hosto.emr.view");
@@ -691,6 +707,7 @@ export function LabRequestsPanel({
   const [error, setError]             = useState<string | null>(null);
   const [showEditor, setShowEditor]   = useState(false);
   const [showCancelled, setShowCancelled] = useState(false);
+  const [view, setView]               = useState<"demandes" | "evolution">("demandes");
 
   const load = useCallback(() => {
     if (!canView) return;
@@ -713,6 +730,22 @@ export function LabRequestsPanel({
   }, [patientId, encounterId, canView]);
 
   useEffect(() => { load(); }, [load]);
+
+  function openEditor() {
+    if (onSplit) {
+      onSplit("Demander des examens", (
+        <LabRequestEditor
+          patientId={Number(patientId)}
+          encounterId={encounterId !== undefined ? Number(encounterId) : undefined}
+          bare
+          onClose={() => onCloseSplit?.()}
+          onSaved={() => { load(); onCloseSplit?.(); }}
+        />
+      ));
+    } else {
+      setShowEditor(true);
+    }
+  }
 
   if (!canView) {
     return (
@@ -758,10 +791,10 @@ export function LabRequestsPanel({
           )}
         </div>
 
-        {canWrite && (
+        {canWrite && view === "demandes" && (
           <button
             type="button"
-            onClick={() => setShowEditor(true)}
+            onClick={openEditor}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-on-primary text-body-md font-medium hover:bg-primary-container transition-colors"
           >
             <AddOutlined style={{ fontSize: 18 }} />
@@ -770,12 +803,30 @@ export function LabRequestsPanel({
         )}
       </div>
 
-      {error && (
+      {/* Sous-onglets */}
+      <div className="flex gap-1 border-b border-outline-variant mb-4">
+        {([["demandes", "Demandes"], ["evolution", "Évolution"]] as const).map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setView(key)}
+            className={`px-4 py-2 text-body-sm font-medium border-b-2 -mb-px transition-colors ${
+              view === key ? "border-primary text-primary" : "border-transparent text-on-surface-variant hover:text-on-surface"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {view === "evolution" && <LabTrends patientId={patientId} />}
+
+      {view === "demandes" && error && (
         <p className="text-body-sm text-error bg-error-container/40 rounded-xl px-4 py-3 mb-4">{error}</p>
       )}
 
       {/* ── Liste ── */}
-      {loading ? (
+      {view === "demandes" && (loading ? (
         <Skeleton />
       ) : visible.length === 0 ? (
         <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-12 flex flex-col items-center gap-3 text-center">
@@ -784,7 +835,7 @@ export function LabRequestsPanel({
           {canWrite && (
             <button
               type="button"
-              onClick={() => setShowEditor(true)}
+              onClick={openEditor}
               className="text-body-sm text-primary underline underline-offset-2 hover:opacity-70 transition-opacity"
             >
               Demander un examen
@@ -802,7 +853,7 @@ export function LabRequestsPanel({
             />
           ))}
         </div>
-      )}
+      ))}
 
       {/* ── Éditeur ── */}
       {showEditor && (

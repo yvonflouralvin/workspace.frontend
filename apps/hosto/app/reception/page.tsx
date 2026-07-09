@@ -60,6 +60,12 @@ const STATUS_CONFIG: Record<VisiteStatus, { badge: string }> = {
   PARTI:           { badge: "bg-surface-container text-on-surface-variant" },
 };
 
+const PAIEMENT_CONFIG: Record<string, { label: string; badge: string }> = {
+  EN_ATTENTE_PAIEMENT: { label: "En attente de paiement", badge: "bg-red-100 text-red-700" },
+  PARTIEL:             { label: "Paiement partiel",       badge: "bg-amber-100 text-amber-800" },
+  PAYE:                { label: "Payé",                   badge: "bg-green-100 text-green-800" },
+};
+
 const PRIORITIES: VisitePriority[] = ["NORMAL", "URGENT", "TRES_URGENT", "CRITIQUE"];
 const ALL_STATUSES: VisiteStatus[] = ["ARRIVE", "EN_ATTENTE", "EN_CONSULTATION", "TERMINE", "PARTI"];
 const ACTIVE_STATUSES: VisiteStatus[] = ["ARRIVE", "EN_ATTENTE", "EN_CONSULTATION"];
@@ -950,9 +956,16 @@ export default function ReceptionPage() {
                             <div className="text-label-sm text-on-surface-variant">{v.patient.dossier_number}</div>
                           </td>
                           <td className="px-4 py-3">
-                            <span className={`text-label-xs px-2 py-0.5 rounded-full font-medium ${STATUS_CONFIG[v.status].badge}`}>
-                              {VISITE_STATUS_LABELS[v.status]}
-                            </span>
+                            <div className="flex flex-col items-start gap-1">
+                              <span className={`text-label-xs px-2 py-0.5 rounded-full font-medium ${STATUS_CONFIG[v.status].badge}`}>
+                                {VISITE_STATUS_LABELS[v.status]}
+                              </span>
+                              {v.paiement_status && PAIEMENT_CONFIG[v.paiement_status] && (
+                                <span className={`text-label-xs px-2 py-0.5 rounded-full font-medium ${PAIEMENT_CONFIG[v.paiement_status].badge}`}>
+                                  {PAIEMENT_CONFIG[v.paiement_status].label}
+                                </span>
+                              )}
+                            </div>
                           </td>
                           <td className="px-4 py-3">
                             <span className={`text-label-xs px-2 py-0.5 rounded-full font-semibold ${pcfg.badge}`}>

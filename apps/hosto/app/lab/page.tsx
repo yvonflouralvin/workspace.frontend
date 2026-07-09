@@ -8,17 +8,25 @@ import {
   type LabRequestStatus,
   getLabQueue,
 } from "@/app/lib/lab-api";
-import { RequestCard } from "@/components/laboratory/RequestCard";
+import { RequestTable } from "@/components/laboratory/RequestTable";
 import { CollectDrawer } from "@/components/laboratory/CollectDrawer";
 import { ResultsDrawer } from "@/components/laboratory/ResultsDrawer";
 import { ValidationDrawer } from "@/components/laboratory/ValidationDrawer";
-import { BiotechOutlined, RefreshOutlined } from "@mui/icons-material";
+import { BiotechOutlined, RefreshOutlined, SearchOutlined } from "@mui/icons-material";
 
 const POLL_MS = 20_000;
 
 type WorkTab = "prelever" | "resulter" | "valider";
 
-const ACTIVE_STATUSES: LabRequestStatus[] = ["DEMANDE", "PRELEVE", "EN_ANALYSE"];
+const ACTIVE_STATUSES: LabRequestStatus[] = ["DEMANDE", "PARTIELLEMENT_PRELEVE", "PRELEVE", "EN_ANALYSE"];
+
+function matchesSearch(req: LabRequest, term: string): boolean {
+  const t = term.trim().toLowerCase();
+  if (!t) return true;
+  const patient = `${req.patient?.prenom ?? ""} ${req.patient?.nom ?? ""} ${req.patient?.dossier_number ?? ""}`.toLowerCase();
+  const exams = req.items.map((i) => i.lab_test_name_cache).join(" ").toLowerCase();
+  return patient.includes(t) || exams.includes(t);
+}
 
 export default function LaboratoryPage() {
   const { can } = usePermissions();
@@ -32,6 +40,7 @@ export default function LaboratoryPage() {
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState<string | null>(null);
   const [urgentOnly, setUrgentOnly] = useState(false);
+  const [search, setSearch]         = useState("");
 
   const [collectTarget, setCollectTarget]     = useState<LabRequest | null>(null);
   const [resultsTarget, setResultsTarget]     = useState<LabRequest | null>(null);
@@ -49,8 +58,8 @@ export default function LaboratoryPage() {
         priority: urgentOnly ? "URGENT" : undefined,
         per_page: 100,
       });
-      setDemande(res.items.filter((r) => r.status === "DEMANDE"));
-      setAnalyse(res.items.filter((r) => r.status === "PRELEVE" || r.status === "EN_ANALYSE"));
+      setDemande(res.items.filter((r) => r.status === "DEMANDE" || r.status === "PARTIELLEMENT_PRELEVE"));
+      setAnalyse(res.items.filter((r) => r.status === "PARTIELLEMENT_PRELEVE" || r.status === "PRELEVE" || r.status === "EN_ANALYSE"));
     } catch {
       if (!silent) setError("Impossible de charger la file laboratoire.");
     } finally {
@@ -74,6 +83,10 @@ export default function LaboratoryPage() {
   const valider = analyse.filter((r) =>
     r.items.some((i) => i.status === "RESULTAT_SAISI"),
   );
+
+  const demandeF = demande.filter((r) => matchesSearch(r, search));
+  const analyseF = analyse.filter((r) => matchesSearch(r, search));
+  const validerF = valider.filter((r) => matchesSearch(r, search));
 
   const tabCounts: Record<WorkTab, number> = {
     prelever: demande.length,
@@ -167,6 +180,21 @@ export default function LaboratoryPage() {
           })}
         </div>
 
+        {/* Recherche */}
+        <div className="relative">
+          <SearchOutlined
+            style={{ fontSize: 18 }}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none"
+          />
+          <input
+            type="search"
+            placeholder="Rechercher un patient ou un examen…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-9 pr-3 py-2 rounded-xl border border-outline-variant bg-surface-container-lowest text-body-md text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary transition-colors"
+          />
+        </div>
+
         {/* Contenu */}
         {loading ? (
           <div className="space-y-3">
@@ -176,60 +204,33 @@ export default function LaboratoryPage() {
           </div>
         ) : (
           <>
-            {/* À prélever */}
             {tab === "prelever" && (
-              <div className="space-y-3">
-                {demande.length === 0 ? (
-                  <EmptyState message="Aucune demande à prélever." />
-                ) : (
-                  demande.map((req) => (
-                    <RequestCard
-                      key={req.id}
-                      req={req}
-                      actionLabel="Prélever"
-                      actionDisabled={!canTechnician}
-                      onAction={() => setCollectTarget(req)}
-                    />
-                  ))
-                )}
-              </div>
+              <RequestTable
+                rows={demandeF}
+                actionLabel="Prélever"
+                actionDisabled={!canTechnician}
+                onAction={(r) => setCollectTarget(r)}
+                emptyMessage={search ? "Aucun résultat pour cette recherche." : "Aucune demande à prélever."}
+              />
             )}
 
-            {/* À résulter */}
             {tab === "resulter" && (
-              <div className="space-y-3">
-                {analyse.length === 0 ? (
-                  <EmptyState message="Aucune demande à résulter." />
-                ) : (
-                  analyse.map((req) => (
-                    <RequestCard
-                      key={req.id}
-                      req={req}
-                      actionLabel="Saisir les résultats"
-                      actionDisabled={!canTechnician}
-                      onAction={() => setResultsTarget(req)}
-                    />
-                  ))
-                )}
-              </div>
+              <RequestTable
+                rows={analyseF}
+                actionLabel="Saisir les résultats"
+                actionDisabled={!canTechnician}
+                onAction={(r) => setResultsTarget(r)}
+                emptyMessage={search ? "Aucun résultat pour cette recherche." : "Aucune demande à résulter."}
+              />
             )}
 
-            {/* À valider */}
             {tab === "valider" && (
-              <div className="space-y-3">
-                {valider.length === 0 ? (
-                  <EmptyState message="Aucun résultat en attente de validation." />
-                ) : (
-                  valider.map((req) => (
-                    <RequestCard
-                      key={req.id}
-                      req={req}
-                      actionLabel={canValidate ? "Valider" : "Voir les résultats"}
-                      onAction={() => setValidationTarget(req)}
-                    />
-                  ))
-                )}
-              </div>
+              <RequestTable
+                rows={validerF}
+                actionLabel={canValidate ? "Valider" : "Voir les résultats"}
+                onAction={(r) => setValidationTarget(r)}
+                emptyMessage={search ? "Aucun résultat pour cette recherche." : "Aucun résultat en attente de validation."}
+              />
             )}
           </>
         )}

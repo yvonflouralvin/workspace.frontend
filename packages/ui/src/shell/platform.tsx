@@ -24,6 +24,9 @@ import {
   AccountTreeOutlined,
   OutboxOutlined,
   DescriptionOutlined,
+  ShoppingCartOutlined,
+  ReceiptLongOutlined,
+  SyncOutlined,
 } from "@mui/icons-material";
 import type { AppDefinition } from "../types/shell";
 
@@ -93,6 +96,14 @@ export const PLATFORM_APPS: AppDefinition[] = [
     color: "#7c3aed",
     description: "Modèles et génération de documents PDF",
   },
+  {
+    id: "ventes",
+    name: "Facturation",
+    icon: "F",
+    url: process.env.NEXT_PUBLIC_AUTH_API_VENTES_DOMAIN ?? "http://localhost:3011",
+    color: "#e11d48",
+    description: "Facturation",
+  },
 ];
 
 const s = (fontSize: number) => ({ fontSize });
@@ -138,7 +149,8 @@ export const HOSTO_SHELL: AppShellConfig = {
     "/calendar":      "Calendrier",
     "/schedules":     "Horaires",
     "/lab":           "Laboratoire",
-    "/settings":      "Paramètres",
+    "/parametres":            "Paramètres",
+    "/parametres/synchro":    "Synchronisation",
   },
   routeIcons: {
     "/patients":      <PeopleAltOutlined style={s(15)} />,
@@ -149,7 +161,8 @@ export const HOSTO_SHELL: AppShellConfig = {
     "/calendar":      <CalendarMonthOutlined style={s(15)} />,
     "/schedules":     <ScheduleOutlined style={s(15)} />,
     "/lab":           <BiotechOutlined style={s(15)} />,
-    "/settings":      <SettingsOutlined style={s(15)} />,
+    "/parametres":            <SettingsOutlined style={s(15)} />,
+    "/parametres/synchro":    <SyncOutlined style={s(15)} />,
   },
 };
 
@@ -212,6 +225,27 @@ export const APPROVAL_FLOWS_SHELL: AppShellConfig = {
     "/requests":    <AssignmentTurnedInOutlined style={s(15)} />,
     "/flows":       <AccountTreeOutlined style={s(15)} />,
     "/submissions": <OutboxOutlined style={s(15)} />,
+  },
+};
+
+export const VENTES_SHELL: AppShellConfig = {
+  appName: "Facturation",
+  appHref: "/clients",
+  appIcon: "F",
+  appColor: "#e11d48",
+  routeLabels: {
+    "/clients":    "Clients",
+    "/produits":   "Produits",
+    "/commandes":  "Commandes",
+    "/factures":   "Factures",
+    "/parametres": "Paramètres",
+  },
+  routeIcons: {
+    "/clients":    <PeopleAltOutlined style={s(15)} />,
+    "/produits":   <Inventory2Outlined style={s(15)} />,
+    "/commandes":  <ShoppingCartOutlined style={s(15)} />,
+    "/factures":   <ReceiptLongOutlined style={s(15)} />,
+    "/parametres": <SettingsOutlined style={s(15)} />,
   },
 };
 

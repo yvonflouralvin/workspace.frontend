@@ -54,7 +54,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const visibleApps = PLATFORM_APPS.filter((app) => can(`${app.id}.access`));
 
   const navItems = can("hosto.settings.manage")
-    ? [...NAV_ITEMS, { label: "Paramètres", href: "/settings", icon: <SettingsOutlined style={{ fontSize: 20 }} /> }]
+    ? [...NAV_ITEMS, { label: "Paramètres", href: "/parametres", icon: <SettingsOutlined style={{ fontSize: 20 }} /> }]
     : NAV_ITEMS;
 
   return (

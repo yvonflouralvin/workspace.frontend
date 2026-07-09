@@ -44,6 +44,10 @@ const APP_META: Record<string, { color: string; url: string }> = {
     color: "#006c49",
     url: process.env.NEXT_PUBLIC_AUTH_API_STOCK_DOMAIN ?? "http://localhost:3010",
   },
+  ventes: {
+    color: "#e11d48",
+    url: process.env.NEXT_PUBLIC_AUTH_API_VENTES_DOMAIN ?? "http://localhost:3011",
+  },
 };
 
 function appInitial(name: string) {

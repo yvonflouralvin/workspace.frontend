@@ -51,27 +51,20 @@ const MOUVEMENT_COLORS: Record<TypeMouvement, string> = {
   AJUSTEMENT: "text-tertiary",
 };
 
-function ReadField({ label, value }: { label: string; value: React.ReactNode }) {
-  return (
-    <div className="flex flex-col gap-0.5">
-      <span className="text-label-md text-on-surface-variant">{label}</span>
-      <span className="text-body-md text-on-surface">{value ?? "—"}</span>
-    </div>
-  );
-}
+type FieldKey =
+  | "nom" | "type" | "categorie_id" | "reference" | "unite" | "gestion_stock" | "description" | "notes"
+  | "est_vendu" | "prix_vente" | "tva_taux" | "stock_actuel" | "stock_minimum";
+type EditKind = "type" | "categorie" | "unite" | "boolean" | "text" | "textarea" | "number" | "readonly";
 
-type GeneralFieldKey = "nom" | "type" | "categorie_id" | "reference" | "unite" | "gestion_stock" | "description" | "notes";
-type EditKind = "type" | "categorie" | "unite" | "boolean" | "text" | "textarea";
-
-interface GeneralField {
-  key: GeneralFieldKey;
+interface DetailField {
+  key: FieldKey;
   label: string;
   lockKey?: string;
   editKind: EditKind;
   info: string;
 }
 
-const GENERAL_FIELDS: GeneralField[] = [
+const GENERAL_FIELDS: DetailField[] = [
   { key: "nom", label: "Nom", lockKey: "nom", editKind: "text",
     info: "Le libellé de l'article tel qu'il apparaît dans le catalogue, les documents et les recherches." },
   { key: "type", label: "Type", lockKey: "type", editKind: "type",
@@ -80,7 +73,7 @@ const GENERAL_FIELDS: GeneralField[] = [
     info: "Regroupe les articles similaires pour l'organisation et les filtres du catalogue." },
   { key: "reference", label: "Référence / SKU", editKind: "text",
     info: "Code de référence interne ou SKU fournisseur, pour identifier l'article de façon unique." },
-  { key: "unite", label: "Unité", editKind: "unite",
+  { key: "unite", label: "Unité", lockKey: "unite", editKind: "unite",
     info: "Unité de mesure (pièce, kg, litre, heure…), utilisée pour les quantités et les mouvements de stock." },
   { key: "gestion_stock", label: "Gestion de stock", editKind: "boolean",
     info: "Si activée, l'article suit un stock (entrées, sorties, seuil d'alerte). Désactivée pour les services et prestations sans inventaire." },
@@ -90,7 +83,23 @@ const GENERAL_FIELDS: GeneralField[] = [
     info: "Notes internes sur l'article, non visibles par les clients." },
 ];
 
-function fieldDisplay(item: ItemDetail, key: GeneralFieldKey): React.ReactNode {
+const STOCK_FIELDS: DetailField[] = [
+  { key: "stock_actuel", label: "Stock actuel", editKind: "readonly",
+    info: "Quantité actuellement en stock, calculée à partir des mouvements. Elle ne se modifie pas directement — enregistrez un mouvement d'entrée, de sortie ou d'ajustement." },
+  { key: "stock_minimum", label: "Seuil d'alerte", lockKey: "stock_minimum", editKind: "number",
+    info: "Quantité en dessous de laquelle l'article est signalé en alerte de stock bas." },
+];
+
+const VENTE_FIELDS: DetailField[] = [
+  { key: "est_vendu", label: "Vendu aux clients", lockKey: "est_vendu", editKind: "boolean",
+    info: "Indique si l'article peut être ajouté aux devis et factures. S'il est vendu, un prix de vente est requis." },
+  { key: "prix_vente", label: "Prix de vente", lockKey: "prix_vente", editKind: "number",
+    info: "Prix unitaire de vente hors taxes, en francs congolais (CDF)." },
+  { key: "tva_taux", label: "Taux TVA", lockKey: "tva_taux", editKind: "number",
+    info: "Taux de TVA appliqué à la vente de l'article, en pourcentage." },
+];
+
+function fieldDisplay(item: ItemDetail, key: FieldKey): React.ReactNode {
   switch (key) {
     case "type":
       return (
@@ -110,6 +119,27 @@ function fieldDisplay(item: ItemDetail, key: GeneralFieldKey): React.ReactNode {
       );
     case "description": return item.description ?? "—";
     case "notes": return item.notes ? <span className="whitespace-pre-line">{item.notes}</span> : "—";
+    case "est_vendu":
+      return (
+        <span className={`inline-flex px-2 py-0.5 rounded-full text-label-md font-medium ${item.est_vendu ? "bg-secondary/10 text-secondary" : "bg-outline/10 text-on-surface-variant"}`}>
+          {item.est_vendu ? "Oui" : "Non"}
+        </span>
+      );
+    case "prix_vente":
+      return item.prix_vente != null ? `${Number(item.prix_vente).toLocaleString("fr-CD")} CDF` : "—";
+    case "tva_taux":
+      return item.tva_taux != null ? `${Number(item.tva_taux)}%` : "—";
+    case "stock_minimum":
+      return item.stock_minimum != null ? `${Number(item.stock_minimum)} ${item.unite}` : "—";
+    case "stock_actuel": {
+      const alert = item.gestion_stock && item.stock_minimum != null && item.stock_actuel <= item.stock_minimum;
+      return (
+        <span className={`inline-flex items-center gap-1 font-semibold ${alert ? "text-error" : "text-on-surface"}`}>
+          {alert && <WarningAmberOutlined style={{ fontSize: 14 }} />}
+          {Number(item.stock_actuel)} {item.unite}
+        </span>
+      );
+    }
   }
 }
 
@@ -133,7 +163,7 @@ export default function ItemDetailPage() {
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const [infoField, setInfoField] = useState<{ label: string; info: string } | null>(null);
-  const [editField, setEditField] = useState<GeneralField | null>(null);
+  const [editField, setEditField] = useState<DetailField | null>(null);
   const [fieldValue, setFieldValue] = useState<string | number | boolean | null>(null);
   const [fieldSaving, setFieldSaving] = useState(false);
   const [fieldError, setFieldError] = useState<string | null>(null);
@@ -212,12 +242,16 @@ export default function ItemDetailPage() {
     }
   }
 
-  function openFieldEdit(field: GeneralField) {
+  function openFieldEdit(field: DetailField) {
     if (!item) return;
     const current =
       field.key === "categorie_id" ? item.categorie_id
       : field.key === "type" ? item.type
       : field.key === "gestion_stock" ? item.gestion_stock
+      : field.key === "est_vendu" ? item.est_vendu
+      : field.key === "prix_vente" ? (item.prix_vente ?? "")
+      : field.key === "tva_taux" ? (item.tva_taux ?? "")
+      : field.key === "stock_minimum" ? (item.stock_minimum ?? "")
       : ((item[field.key] as string | null) ?? "");
     setFieldValue(current);
     setFieldError(null);
@@ -230,10 +264,19 @@ export default function ItemDetailPage() {
     setFieldError(null);
     try {
       const k = editField.key;
+      if (k === "prix_vente" && item.est_vendu && (fieldValue === "" || fieldValue == null || Number(fieldValue) <= 0)) {
+        throw new Error("Un prix de vente valide est obligatoire pour un article vendu.");
+      }
+      if (k === "est_vendu" && Boolean(fieldValue) && (item.prix_vente == null || Number(item.prix_vente) <= 0)) {
+        throw new Error("Renseignez d'abord un prix de vente avant de marquer l'article comme vendu.");
+      }
       let payload: ItemUpdateInput;
       if (k === "categorie_id") payload = { categorie_id: fieldValue != null && fieldValue !== "" ? Number(fieldValue) : null };
       else if (k === "type") payload = { type: fieldValue as TypeItem };
       else if (k === "gestion_stock") payload = { gestion_stock: Boolean(fieldValue) };
+      else if (k === "est_vendu") payload = { est_vendu: Boolean(fieldValue) };
+      else if (k === "prix_vente" || k === "tva_taux" || k === "stock_minimum")
+        payload = { [k]: fieldValue === "" || fieldValue == null ? null : Number(fieldValue) } as ItemUpdateInput;
       else payload = { [k]: (fieldValue as string) || undefined } as ItemUpdateInput;
       const updated = await updateItem(item.id, payload);
       setItem(updated);
@@ -301,8 +344,45 @@ export default function ItemDetailPage() {
     );
   }
 
-  const stockAlert =
-    item.gestion_stock && item.stock_minimum != null && item.stock_actuel <= item.stock_minimum;
+  const renderFieldRow = (field: DetailField) => {
+    const locked =
+      !!item.owner_app_key && !!field.lockKey && (item.locked_fields ?? []).includes(field.lockKey);
+    return (
+      <div key={field.key} className="flex items-center gap-4 px-4 py-3">
+        <span className="text-label-md text-on-surface-variant w-40 shrink-0">{field.label}</span>
+        <span className="text-body-md text-on-surface flex-1 min-w-0 break-words">
+          {fieldDisplay(item, field.key)}
+        </span>
+        <div className="flex items-center gap-0.5 shrink-0">
+          <button
+            onClick={() => setInfoField({ label: field.label, info: field.info })}
+            title="Informations"
+            className="p-1.5 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors"
+          >
+            <InfoOutlined style={{ fontSize: 16 }} />
+          </button>
+          {canManage && item.is_active && field.editKind !== "readonly" && (
+            locked ? (
+              <span
+                title={`Champ géré par « ${item.owner_app_key} » — verrouillé`}
+                className="p-1.5 flex items-center text-on-surface-variant/50"
+              >
+                <LockOutlined style={{ fontSize: 16 }} />
+              </span>
+            ) : (
+              <button
+                onClick={() => openFieldEdit(field)}
+                title="Modifier"
+                className="p-1.5 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-container transition-colors"
+              >
+                <EditOutlined style={{ fontSize: 16 }} />
+              </button>
+            )
+          )}
+        </div>
+      </div>
+    );
+  };
 
   const generalTab = (
     <div className="rounded-xl border border-outline-variant bg-surface-container-lowest divide-y divide-outline-variant">
@@ -340,45 +420,7 @@ export default function ItemDetailPage() {
           </span>
         </div>
       </div>
-      {GENERAL_FIELDS.map((field) => {
-        const locked =
-          !!item.owner_app_key && !!field.lockKey && (item.locked_fields ?? []).includes(field.lockKey);
-        return (
-          <div key={field.key} className="flex items-center gap-4 px-4 py-3">
-            <span className="text-label-md text-on-surface-variant w-40 shrink-0">{field.label}</span>
-            <span className="text-body-md text-on-surface flex-1 min-w-0 break-words">
-              {fieldDisplay(item, field.key)}
-            </span>
-            <div className="flex items-center gap-0.5 shrink-0">
-              <button
-                onClick={() => setInfoField({ label: field.label, info: field.info })}
-                title="Informations"
-                className="p-1.5 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors"
-              >
-                <InfoOutlined style={{ fontSize: 16 }} />
-              </button>
-              {canManage && item.is_active && (
-                locked ? (
-                  <span
-                    title={`Champ géré par « ${item.owner_app_key} » — verrouillé`}
-                    className="p-1.5 flex items-center text-on-surface-variant/50"
-                  >
-                    <LockOutlined style={{ fontSize: 16 }} />
-                  </span>
-                ) : (
-                  <button
-                    onClick={() => openFieldEdit(field)}
-                    title="Modifier"
-                    className="p-1.5 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-container transition-colors"
-                  >
-                    <EditOutlined style={{ fontSize: 16 }} />
-                  </button>
-                )
-              )}
-            </div>
-          </div>
-        );
-      })}
+      {GENERAL_FIELDS.map(renderFieldRow)}
     </div>
   );
 
@@ -386,18 +428,8 @@ export default function ItemDetailPage() {
     <div className="space-y-6">
       {item.gestion_stock ? (
         <>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex flex-col gap-0.5">
-              <span className="text-label-md text-on-surface-variant">Stock actuel</span>
-              <span className={`text-body-md font-semibold flex items-center gap-1 ${stockAlert ? "text-error" : "text-on-surface"}`}>
-                {stockAlert && <WarningAmberOutlined style={{ fontSize: 14 }} />}
-                {Number(item.stock_actuel)} {item.unite}
-              </span>
-            </div>
-            <ReadField
-              label="Seuil d'alerte"
-              value={item.stock_minimum != null ? `${Number(item.stock_minimum)} ${item.unite}` : undefined}
-            />
+          <div className="rounded-xl border border-outline-variant bg-surface-container-lowest divide-y divide-outline-variant">
+            {STOCK_FIELDS.map(renderFieldRow)}
           </div>
 
           {canViewMouvements && (
@@ -531,21 +563,8 @@ export default function ItemDetailPage() {
   );
 
   const venteTab = (
-    <div className="space-y-4">
-      {item.est_vendu ? (
-        <div className="grid grid-cols-2 gap-4">
-          <ReadField
-            label="Prix de vente"
-            value={item.prix_vente != null ? `${Number(item.prix_vente).toLocaleString("fr-CD")} CDF` : undefined}
-          />
-          <ReadField
-            label="Taux TVA"
-            value={item.tva_taux != null ? `${Number(item.tva_taux)}%` : undefined}
-          />
-        </div>
-      ) : (
-        <p className="text-body-sm text-on-surface-variant">Cet article n&apos;est pas vendu.</p>
-      )}
+    <div className="rounded-xl border border-outline-variant bg-surface-container-lowest divide-y divide-outline-variant">
+      {VENTE_FIELDS.map(renderFieldRow)}
     </div>
   );
 
@@ -862,6 +881,15 @@ export default function ItemDetailPage() {
                   onChange={(e) => setFieldValue(e.target.value)}
                   rows={4}
                   className={`${inputCls} resize-none`}
+                />
+              ) : editField.editKind === "number" ? (
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={String(fieldValue ?? "")}
+                  onChange={(e) => setFieldValue(e.target.value)}
+                  className={inputCls}
                 />
               ) : (
                 <input

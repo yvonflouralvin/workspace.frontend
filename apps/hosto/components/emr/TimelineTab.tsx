@@ -9,6 +9,8 @@ import {
   LocalHospitalOutlined,
   WarningAmberOutlined,
   MedicationOutlined,
+  BiotechOutlined,
+  HealingOutlined,
   RefreshOutlined,
   FilterListOffOutlined,
 } from "@mui/icons-material";
@@ -78,6 +80,22 @@ const TYPE_CONFIG: Record<
     textCls: "text-secondary",
     chipActiveCls: "bg-secondary/10 text-secondary ring-1 ring-secondary/40",
     tab: "medications",
+  },
+  LAB: {
+    label: "Examens",
+    Icon: BiotechOutlined,
+    dotCls: "bg-tertiary",
+    textCls: "text-tertiary",
+    chipActiveCls: "bg-tertiary/15 text-tertiary ring-1 ring-tertiary/40",
+    tab: "examens",
+  },
+  ACTE: {
+    label: "Actes",
+    Icon: HealingOutlined,
+    dotCls: "bg-primary",
+    textCls: "text-primary",
+    chipActiveCls: "bg-primary/10 text-primary ring-1 ring-primary/40",
+    tab: "actes",
   },
 };
 

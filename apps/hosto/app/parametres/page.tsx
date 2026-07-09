@@ -10,6 +10,7 @@ import {
   SyncOutlined,
   MedicalServicesOutlined,
   ApartmentOutlined,
+  ScheduleOutlined,
   SettingsOutlined,
   ChevronRightOutlined,
 } from "@mui/icons-material";
@@ -35,6 +36,13 @@ const SECTIONS: Entry[] = [
     description: "Examens médicaux, actes et autres prestations.",
     href: "/parametres/prestations",
     icon: <MedicalServicesOutlined style={{ fontSize: 22 }} />,
+  },
+  {
+    key: "prescriptions-schemas",
+    nom: "Schémas d'administration",
+    description: "Horaires de prise pour le suivi des médicaments.",
+    href: "/parametres/prescriptions-schemas",
+    icon: <ScheduleOutlined style={{ fontSize: 22 }} />,
   },
 ];
 

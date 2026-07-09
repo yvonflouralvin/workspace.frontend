@@ -40,6 +40,151 @@ const EMPTY_FORM = {
 
 type MedicationForm = typeof EMPTY_FORM;
 
+function fromItem(item: MedicationStatementRead): MedicationForm {
+  return {
+    medication: item.medication,
+    dosage: item.dosage ?? "",
+    frequency: item.frequency ?? "",
+    route: item.route ?? "",
+    clinical_status: item.clinical_status,
+    started_at: item.started_at ? item.started_at.slice(0, 10) : "",
+    stopped_at: item.stopped_at ? item.stopped_at.slice(0, 10) : "",
+    notes: item.notes ?? "",
+  };
+}
+
+// ─── Form (autonome — réutilisé en RightDrawer ET dans le SplitWorkspace) ───────
+
+function MedicationForm({
+  patientId,
+  initialData,
+  onSaved,
+  onClose,
+}: {
+  patientId: number;
+  initialData?: MedicationStatementRead;
+  onSaved: () => void;
+  onClose: () => void;
+}) {
+  const isEdit = !!initialData;
+  const [form, setForm] = useState<MedicationForm>(initialData ? fromItem(initialData) : EMPTY_FORM);
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+
+  function setField<K extends keyof MedicationForm>(key: K, value: MedicationForm[K]) {
+    setForm((f) => ({ ...f, [key]: value }));
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!form.medication.trim()) { setFormError("Le médicament est requis."); return; }
+    setSaving(true); setFormError(null);
+    try {
+      const payload: MedicationCreate = {
+        patient_id: patientId,
+        medication: form.medication.trim(),
+        dosage: form.dosage.trim() || null,
+        frequency: form.frequency.trim() || null,
+        route: form.route.trim() || null,
+        clinical_status: form.clinical_status,
+        started_at: form.started_at || null,
+        stopped_at: form.stopped_at || null,
+        notes: form.notes.trim() || null,
+      };
+      if (isEdit) {
+        const { patient_id: _, ...rest } = payload;
+        await updateMedication(initialData!.id, rest);
+      } else {
+        await createMedication(payload);
+      }
+      onSaved();
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : "Erreur lors de l'enregistrement.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="h-full flex flex-col gap-5 overflow-y-auto">
+      <div className="flex-1 space-y-4 overflow-y-auto pr-1">
+
+        <div className="flex flex-col gap-1">
+          <label className={labelCls}>Médicament (DCI ou nom) <span className="text-error">*</span></label>
+          <input className={inputCls} value={form.medication} autoFocus
+            onChange={(e) => setField("medication", e.target.value)}
+            placeholder="Ex: Metformine, Amlodipine, Aspirine…" />
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div className="flex flex-col gap-1">
+            <label className={labelCls}>Dosage</label>
+            <input className={inputCls} value={form.dosage}
+              onChange={(e) => setField("dosage", e.target.value)}
+              placeholder="Ex: 500 mg, 10 mg…" />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className={labelCls}>Fréquence</label>
+            <input className={inputCls} value={form.frequency}
+              onChange={(e) => setField("frequency", e.target.value)}
+              placeholder="Ex: 2x/jour, matin…" />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div className="flex flex-col gap-1">
+            <label className={labelCls}>Voie d&apos;administration</label>
+            <input className={inputCls} value={form.route}
+              onChange={(e) => setField("route", e.target.value)}
+              placeholder="Ex: Orale, IV, SC…" />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className={labelCls}>Statut</label>
+            <select className={selectCls} value={form.clinical_status}
+              onChange={(e) => setField("clinical_status", e.target.value as MedicationStatus)}>
+              <option value="EN_COURS">En cours</option>
+              <option value="ARRETE">Arrêté</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div className="flex flex-col gap-1">
+            <label className={labelCls}>Date de début</label>
+            <input type="date" className={inputCls} value={form.started_at}
+              onChange={(e) => setField("started_at", e.target.value)} />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className={labelCls}>Date d&apos;arrêt</label>
+            <input type="date" className={inputCls} value={form.stopped_at}
+              onChange={(e) => setField("stopped_at", e.target.value)} />
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <label className={labelCls}>Notes</label>
+          <textarea className={`${inputCls} resize-none`} rows={2} value={form.notes}
+            onChange={(e) => setField("notes", e.target.value)}
+            placeholder="Informations complémentaires, contre-indications…" />
+        </div>
+
+        {formError && <p className="text-body-sm text-error">{formError}</p>}
+      </div>
+
+      <div className="shrink-0 flex gap-3 pt-4 border-t border-outline-variant">
+        <button type="submit" disabled={saving}
+          className="flex-1 py-2 rounded-xl bg-primary text-on-primary text-body-md font-medium hover:bg-primary-container transition-colors disabled:opacity-50">
+          {saving ? "Enregistrement…" : isEdit ? "Enregistrer" : "Ajouter"}
+        </button>
+        <button type="button" onClick={onClose} disabled={saving}
+          className="px-5 py-2 rounded-xl text-body-md text-on-surface-variant border border-outline-variant hover:bg-surface-container transition-colors disabled:opacity-50">
+          Annuler
+        </button>
+      </div>
+    </form>
+  );
+}
+
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
 
 function Skeleton() {
@@ -64,10 +209,14 @@ export function MedicationsTab({
   patientId,
   canWrite,
   onMutation,
+  onSplit,
+  onCloseSplit,
 }: {
   patientId: number;
   canWrite: boolean;
   onMutation?: () => void;
+  onSplit?: (title: string, content: React.ReactNode) => void;
+  onCloseSplit?: () => void;
 }) {
   const [items, setItems] = useState<MedicationStatementRead[]>([]);
   const [loading, setLoading] = useState(true);
@@ -75,9 +224,6 @@ export function MedicationsTab({
   const [filter, setFilter] = useState<FilterStatus>("EN_COURS");
 
   const [drawer, setDrawer] = useState<null | { mode: "create" } | { mode: "edit"; item: MedicationStatementRead }>(null);
-  const [form, setForm] = useState<MedicationForm>(EMPTY_FORM);
-  const [saving, setSaving] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
 
   const [deleteTarget, setDeleteTarget] = useState<MedicationStatementRead | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -95,64 +241,38 @@ export function MedicationsTab({
 
   const visible = filter === "all" ? items : items.filter((m) => m.clinical_status === filter);
 
+  function afterSave() { load(); onMutation?.(); }
+
   function openCreate() {
-    setForm(EMPTY_FORM);
-    setFormError(null);
+    if (onSplit) {
+      onSplit("Nouveau traitement", (
+        <MedicationForm
+          patientId={patientId}
+          onSaved={() => { afterSave(); onCloseSplit?.(); }}
+          onClose={() => onCloseSplit?.()}
+        />
+      ));
+      return;
+    }
     setDrawer({ mode: "create" });
   }
 
   function openEdit(item: MedicationStatementRead) {
-    setForm({
-      medication: item.medication,
-      dosage: item.dosage ?? "",
-      frequency: item.frequency ?? "",
-      route: item.route ?? "",
-      clinical_status: item.clinical_status,
-      started_at: item.started_at ? item.started_at.slice(0, 10) : "",
-      stopped_at: item.stopped_at ? item.stopped_at.slice(0, 10) : "",
-      notes: item.notes ?? "",
-    });
-    setFormError(null);
+    if (onSplit) {
+      onSplit(item.medication, (
+        <MedicationForm
+          patientId={patientId}
+          initialData={item}
+          onSaved={() => { afterSave(); onCloseSplit?.(); }}
+          onClose={() => onCloseSplit?.()}
+        />
+      ));
+      return;
+    }
     setDrawer({ mode: "edit", item });
   }
 
-  function closeDrawer() { setDrawer(null); setFormError(null); }
-
-  function setField<K extends keyof MedicationForm>(key: K, value: MedicationForm[K]) {
-    setForm((f) => ({ ...f, [key]: value }));
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!form.medication.trim()) { setFormError("Le médicament est requis."); return; }
-    setSaving(true); setFormError(null);
-    try {
-      const payload: MedicationCreate = {
-        patient_id: patientId,
-        medication: form.medication.trim(),
-        dosage: form.dosage.trim() || null,
-        frequency: form.frequency.trim() || null,
-        route: form.route.trim() || null,
-        clinical_status: form.clinical_status,
-        started_at: form.started_at || null,
-        stopped_at: form.stopped_at || null,
-        notes: form.notes.trim() || null,
-      };
-      if (drawer?.mode === "create") {
-        await createMedication(payload);
-      } else if (drawer?.mode === "edit") {
-        const { patient_id: _, ...rest } = payload;
-        await updateMedication(drawer.item.id, rest);
-      }
-      closeDrawer();
-      load();
-      onMutation?.();
-    } catch (err) {
-      setFormError(err instanceof Error ? err.message : "Erreur lors de l'enregistrement.");
-    } finally {
-      setSaving(false);
-    }
-  }
+  function closeDrawer() { setDrawer(null); }
 
   async function handleDelete() {
     if (!deleteTarget) return;
@@ -291,88 +411,18 @@ export function MedicationsTab({
         </Modal>
       )}
 
-      {/* ── Drawer ── */}
+      {/* ── Drawer (fallback quand onSplit non fourni) ── */}
       {drawer && (
         <RightDrawer
-          title={drawer.mode === "create" ? "Nouveau traitement" : drawer.mode === "edit" ? drawer.item.medication : ""}
+          title={drawer.mode === "create" ? "Nouveau traitement" : drawer.item.medication}
           onClose={closeDrawer}
         >
-          <form onSubmit={handleSubmit} className="h-full flex flex-col gap-5 overflow-y-auto">
-            <div className="flex-1 space-y-4 overflow-y-auto">
-
-              <div className="flex flex-col gap-1">
-                <label className={labelCls}>Médicament (DCI ou nom) <span className="text-error">*</span></label>
-                <input className={inputCls} value={form.medication} autoFocus
-                  onChange={(e) => setField("medication", e.target.value)}
-                  placeholder="Ex: Metformine, Amlodipine, Aspirine…" />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex flex-col gap-1">
-                  <label className={labelCls}>Dosage</label>
-                  <input className={inputCls} value={form.dosage}
-                    onChange={(e) => setField("dosage", e.target.value)}
-                    placeholder="Ex: 500 mg, 10 mg…" />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label className={labelCls}>Fréquence</label>
-                  <input className={inputCls} value={form.frequency}
-                    onChange={(e) => setField("frequency", e.target.value)}
-                    placeholder="Ex: 2x/jour, matin…" />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex flex-col gap-1">
-                  <label className={labelCls}>Voie d'administration</label>
-                  <input className={inputCls} value={form.route}
-                    onChange={(e) => setField("route", e.target.value)}
-                    placeholder="Ex: Orale, IV, SC…" />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label className={labelCls}>Statut</label>
-                  <select className={selectCls} value={form.clinical_status}
-                    onChange={(e) => setField("clinical_status", e.target.value as MedicationStatus)}>
-                    <option value="EN_COURS">En cours</option>
-                    <option value="ARRETE">Arrêté</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex flex-col gap-1">
-                  <label className={labelCls}>Date de début</label>
-                  <input type="date" className={inputCls} value={form.started_at}
-                    onChange={(e) => setField("started_at", e.target.value)} />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label className={labelCls}>Date d'arrêt</label>
-                  <input type="date" className={inputCls} value={form.stopped_at}
-                    onChange={(e) => setField("stopped_at", e.target.value)} />
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-1">
-                <label className={labelCls}>Notes</label>
-                <textarea className={`${inputCls} resize-none`} rows={2} value={form.notes}
-                  onChange={(e) => setField("notes", e.target.value)}
-                  placeholder="Informations complémentaires, contre-indications…" />
-              </div>
-
-              {formError && <p className="text-body-sm text-error">{formError}</p>}
-            </div>
-
-            <div className="shrink-0 flex gap-3 pt-4 border-t border-outline-variant">
-              <button type="submit" disabled={saving}
-                className="flex-1 py-2 rounded-xl bg-primary text-on-primary text-body-md font-medium hover:bg-primary-container transition-colors disabled:opacity-50">
-                {saving ? "Enregistrement…" : drawer.mode === "create" ? "Ajouter" : "Enregistrer"}
-              </button>
-              <button type="button" onClick={closeDrawer} disabled={saving}
-                className="px-5 py-2 rounded-xl text-body-md text-on-surface-variant border border-outline-variant hover:bg-surface-container transition-colors disabled:opacity-50">
-                Annuler
-              </button>
-            </div>
-          </form>
+          <MedicationForm
+            patientId={patientId}
+            initialData={drawer.mode === "edit" ? drawer.item : undefined}
+            onSaved={() => { closeDrawer(); afterSave(); }}
+            onClose={closeDrawer}
+          />
         </RightDrawer>
       )}
     </>

@@ -9,12 +9,14 @@ import {
   SearchOutlined,
   SyncOutlined,
   MedicalServicesOutlined,
+  ApartmentOutlined,
   SettingsOutlined,
   ChevronRightOutlined,
 } from "@mui/icons-material";
 
 const ICONS: Record<string, React.ReactNode> = {
   synchro: <SyncOutlined style={{ fontSize: 22 }} />,
+  organisation: <ApartmentOutlined style={{ fontSize: 22 }} />,
 };
 
 type Entry = {

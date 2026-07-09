@@ -72,6 +72,185 @@ const EMPTY_FORM = {
 
 type AllergyForm = typeof EMPTY_FORM;
 
+function fromItem(item: AllergyRead): AllergyForm {
+  return {
+    substance: item.substance,
+    substance_code: item.substance_code ?? null,
+    type: item.type,
+    category: item.category,
+    severity: item.severity,
+    reaction: item.reaction ?? "",
+    clinical_status: item.clinical_status,
+  };
+}
+
+// ─── Form (autonome — réutilisé en RightDrawer ET dans le SplitWorkspace) ───────
+
+function AllergyForm({
+  patientId,
+  initialData,
+  onSaved,
+  onClose,
+}: {
+  patientId: number;
+  initialData?: AllergyRead;
+  onSaved: () => void;
+  onClose: () => void;
+}) {
+  const isEdit = !!initialData;
+  const [form, setForm] = useState<AllergyForm>(initialData ? fromItem(initialData) : EMPTY_FORM);
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+
+  function setField<K extends keyof AllergyForm>(key: K, value: AllergyForm[K]) {
+    setForm((f) => ({ ...f, [key]: value }));
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!form.substance.trim()) { setFormError("La substance est requise."); return; }
+    setSaving(true); setFormError(null);
+    try {
+      const payload: AllergyCreate = {
+        patient_id: patientId,
+        substance: form.substance.trim(),
+        substance_code: form.category === "MEDICAMENT" ? (form.substance_code || null) : null,
+        type: form.type,
+        category: form.category,
+        severity: form.severity,
+        reaction: form.reaction.trim() || null,
+        clinical_status: form.clinical_status,
+      };
+      if (isEdit) {
+        const { patient_id: _, ...rest } = payload;
+        await updateAllergy(initialData!.id, rest);
+      } else {
+        await createAllergy(payload);
+      }
+      onSaved();
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : "Erreur lors de l'enregistrement.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="h-full flex flex-col gap-5 overflow-y-auto">
+      <div className="flex-1 space-y-4 overflow-y-auto pr-1">
+
+        <div className="flex flex-col gap-1">
+          <label className={labelCls}>Substance <span className="text-error">*</span></label>
+          <input
+            className={inputCls}
+            value={form.substance}
+            onChange={(e) => setField("substance", e.target.value)}
+            placeholder="Ex: Pénicilline, Arachide, Pollen…"
+            autoFocus
+          />
+        </div>
+
+        {form.category === "MEDICAMENT" && (
+          <div className="flex flex-col gap-1">
+            <label className={labelCls}>
+              Classe ATC{" "}
+              <span className="text-on-surface-variant/50 text-label-sm font-normal">(optionnel — active la détection croisée fiable)</span>
+            </label>
+            <SearchSelect<ATCClassResult>
+              fetchOptions={searchATCClasses}
+              value={form.substance_code}
+              onChange={(val) => setField("substance_code", val as string | null)}
+              getOptionLabel={(r) => `${r.code} · ${r.label_fr}`}
+              getOptionValue={(r) => r.code}
+              placeholder="Rechercher une classe ATC…"
+              initialLabel={form.substance_code ?? undefined}
+            />
+            {form.substance_code && (
+              <button
+                type="button"
+                onClick={() => setField("substance_code", null)}
+                className="text-label-sm text-on-surface-variant hover:text-error transition-colors text-left mt-0.5"
+              >
+                Retirer le code ATC
+              </button>
+            )}
+          </div>
+        )}
+
+        <div className="grid grid-cols-2 gap-4">
+          <div className="flex flex-col gap-1">
+            <label className={labelCls}>Type</label>
+            <select className={selectCls} value={form.type}
+              onChange={(e) => setField("type", e.target.value as AllergyType)}>
+              <option value="ALLERGIE">Allergie</option>
+              <option value="INTOLERANCE">Intolérance</option>
+            </select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className={labelCls}>Catégorie</label>
+            <select className={selectCls} value={form.category}
+              onChange={(e) => {
+                const cat = e.target.value as AllergyCategory;
+                setForm((f) => ({ ...f, category: cat, substance_code: cat === "MEDICAMENT" ? f.substance_code : null }));
+              }}>
+              <option value="MEDICAMENT">Médicament</option>
+              <option value="ALIMENT">Aliment</option>
+              <option value="ENVIRONNEMENT">Environnement</option>
+              <option value="AUTRE">Autre</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div className="flex flex-col gap-1">
+            <label className={labelCls}>Sévérité</label>
+            <select className={selectCls} value={form.severity}
+              onChange={(e) => setField("severity", e.target.value as AllergySeverity)}>
+              <option value="LEGERE">Légère</option>
+              <option value="MODEREE">Modérée</option>
+              <option value="SEVERE">Sévère</option>
+              <option value="CRITIQUE">Critique</option>
+            </select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className={labelCls}>Statut clinique</label>
+            <select className={selectCls} value={form.clinical_status}
+              onChange={(e) => setField("clinical_status", e.target.value as AllergyStatus)}>
+              <option value="ACTIVE">Active</option>
+              <option value="INACTIVE">Inactive</option>
+              <option value="RESOLUE">Résolue</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <label className={labelCls}>Réaction observée</label>
+          <textarea
+            className={`${inputCls} resize-none`}
+            rows={3}
+            value={form.reaction}
+            onChange={(e) => setField("reaction", e.target.value)}
+            placeholder="Décrivez la réaction (urticaire, anaphylaxie…)"
+          />
+        </div>
+
+        {formError && <p className="text-body-sm text-error">{formError}</p>}
+      </div>
+
+      <div className="shrink-0 flex gap-3 pt-4 border-t border-outline-variant">
+        <button type="submit" disabled={saving}
+          className="flex-1 py-2 rounded-xl bg-primary text-on-primary text-body-md font-medium hover:bg-primary-container transition-colors disabled:opacity-50">
+          {saving ? "Enregistrement…" : isEdit ? "Enregistrer" : "Ajouter"}
+        </button>
+        <button type="button" onClick={onClose} disabled={saving}
+          className="px-5 py-2 rounded-xl text-body-md text-on-surface-variant border border-outline-variant hover:bg-surface-container transition-colors disabled:opacity-50">
+          Annuler
+        </button>
+      </div>
+    </form>
+  );
+}
+
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
 
 function Skeleton() {
@@ -96,19 +275,20 @@ export function AllergiesTab({
   patientId,
   canWrite,
   onMutation,
+  onSplit,
+  onCloseSplit,
 }: {
   patientId: number;
   canWrite: boolean;
   onMutation: () => void;
+  onSplit?: (title: string, content: React.ReactNode) => void;
+  onCloseSplit?: () => void;
 }) {
   const [items, setItems] = useState<AllergyRead[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const [drawer, setDrawer] = useState<null | { mode: "create" } | { mode: "edit"; item: AllergyRead }>(null);
-  const [form, setForm] = useState<AllergyForm>(EMPTY_FORM);
-  const [saving, setSaving] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
 
   const [deleteTarget, setDeleteTarget] = useState<AllergyRead | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -124,62 +304,38 @@ export function AllergiesTab({
 
   useEffect(() => { load(); }, [load]);
 
+  function afterSave() { load(); onMutation(); }
+
   function openCreate() {
-    setForm(EMPTY_FORM);
-    setFormError(null);
+    if (onSplit) {
+      onSplit("Nouvelle allergie", (
+        <AllergyForm
+          patientId={patientId}
+          onSaved={() => { afterSave(); onCloseSplit?.(); }}
+          onClose={() => onCloseSplit?.()}
+        />
+      ));
+      return;
+    }
     setDrawer({ mode: "create" });
   }
 
   function openEdit(item: AllergyRead) {
-    setForm({
-      substance: item.substance,
-      substance_code: item.substance_code ?? null,
-      type: item.type,
-      category: item.category,
-      severity: item.severity,
-      reaction: item.reaction ?? "",
-      clinical_status: item.clinical_status,
-    });
-    setFormError(null);
+    if (onSplit) {
+      onSplit(item.substance, (
+        <AllergyForm
+          patientId={patientId}
+          initialData={item}
+          onSaved={() => { afterSave(); onCloseSplit?.(); }}
+          onClose={() => onCloseSplit?.()}
+        />
+      ));
+      return;
+    }
     setDrawer({ mode: "edit", item });
   }
 
-  function closeDrawer() { setDrawer(null); setFormError(null); }
-
-  function setField<K extends keyof AllergyForm>(key: K, value: AllergyForm[K]) {
-    setForm((f) => ({ ...f, [key]: value }));
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!form.substance.trim()) { setFormError("La substance est requise."); return; }
-    setSaving(true); setFormError(null);
-    try {
-      const payload: AllergyCreate = {
-        patient_id: patientId,
-        substance: form.substance.trim(),
-        substance_code: form.category === "MEDICAMENT" ? (form.substance_code || null) : null,
-        type: form.type,
-        category: form.category,
-        severity: form.severity,
-        reaction: form.reaction.trim() || null,
-        clinical_status: form.clinical_status,
-      };
-      if (drawer?.mode === "create") {
-        await createAllergy(payload);
-      } else if (drawer?.mode === "edit") {
-        const { patient_id: _, ...rest } = payload;
-        await updateAllergy(drawer.item.id, rest);
-      }
-      closeDrawer();
-      load();
-      onMutation();
-    } catch (err) {
-      setFormError(err instanceof Error ? err.message : "Erreur lors de l'enregistrement.");
-    } finally {
-      setSaving(false);
-    }
-  }
+  function closeDrawer() { setDrawer(null); }
 
   async function handleDelete() {
     if (!deleteTarget) return;
@@ -305,124 +461,18 @@ export function AllergiesTab({
         </Modal>
       )}
 
-      {/* ── Drawer ── */}
+      {/* ── Drawer (fallback quand onSplit non fourni) ── */}
       {drawer && (
         <RightDrawer
-          title={drawer.mode === "create" ? "Nouvelle allergie" : drawer.mode === "edit" ? drawer.item.substance : ""}
+          title={drawer.mode === "create" ? "Nouvelle allergie" : drawer.item.substance}
           onClose={closeDrawer}
         >
-          <form onSubmit={handleSubmit} className="h-full flex flex-col gap-5 overflow-y-auto">
-            <div className="flex-1 space-y-4 overflow-y-auto">
-
-              <div className="flex flex-col gap-1">
-                <label className={labelCls}>Substance <span className="text-error">*</span></label>
-                <input
-                  className={inputCls}
-                  value={form.substance}
-                  onChange={(e) => setField("substance", e.target.value)}
-                  placeholder="Ex: Pénicilline, Arachide, Pollen…"
-                  autoFocus
-                />
-              </div>
-
-              {form.category === "MEDICAMENT" && (
-                <div className="flex flex-col gap-1">
-                  <label className={labelCls}>
-                    Classe ATC{" "}
-                    <span className="text-on-surface-variant/50 text-label-sm font-normal">(optionnel — active la détection croisée fiable)</span>
-                  </label>
-                  <SearchSelect<ATCClassResult>
-                    fetchOptions={searchATCClasses}
-                    value={form.substance_code}
-                    onChange={(val) => setField("substance_code", val as string | null)}
-                    getOptionLabel={(r) => `${r.code} · ${r.label_fr}`}
-                    getOptionValue={(r) => r.code}
-                    placeholder="Rechercher une classe ATC…"
-                    initialLabel={form.substance_code ?? undefined}
-                  />
-                  {form.substance_code && (
-                    <button
-                      type="button"
-                      onClick={() => setField("substance_code", null)}
-                      className="text-label-sm text-on-surface-variant hover:text-error transition-colors text-left mt-0.5"
-                    >
-                      Retirer le code ATC
-                    </button>
-                  )}
-                </div>
-              )}
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex flex-col gap-1">
-                  <label className={labelCls}>Type</label>
-                  <select className={selectCls} value={form.type}
-                    onChange={(e) => setField("type", e.target.value as AllergyType)}>
-                    <option value="ALLERGIE">Allergie</option>
-                    <option value="INTOLERANCE">Intolérance</option>
-                  </select>
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label className={labelCls}>Catégorie</label>
-                  <select className={selectCls} value={form.category}
-                    onChange={(e) => {
-                      const cat = e.target.value as AllergyCategory;
-                      setForm((f) => ({ ...f, category: cat, substance_code: cat === "MEDICAMENT" ? f.substance_code : null }));
-                    }}>
-                    <option value="MEDICAMENT">Médicament</option>
-                    <option value="ALIMENT">Aliment</option>
-                    <option value="ENVIRONNEMENT">Environnement</option>
-                    <option value="AUTRE">Autre</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex flex-col gap-1">
-                  <label className={labelCls}>Sévérité</label>
-                  <select className={selectCls} value={form.severity}
-                    onChange={(e) => setField("severity", e.target.value as AllergySeverity)}>
-                    <option value="LEGERE">Légère</option>
-                    <option value="MODEREE">Modérée</option>
-                    <option value="SEVERE">Sévère</option>
-                    <option value="CRITIQUE">Critique</option>
-                  </select>
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label className={labelCls}>Statut clinique</label>
-                  <select className={selectCls} value={form.clinical_status}
-                    onChange={(e) => setField("clinical_status", e.target.value as AllergyStatus)}>
-                    <option value="ACTIVE">Active</option>
-                    <option value="INACTIVE">Inactive</option>
-                    <option value="RESOLUE">Résolue</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-1">
-                <label className={labelCls}>Réaction observée</label>
-                <textarea
-                  className={`${inputCls} resize-none`}
-                  rows={3}
-                  value={form.reaction}
-                  onChange={(e) => setField("reaction", e.target.value)}
-                  placeholder="Décrivez la réaction (urticaire, anaphylaxie…)"
-                />
-              </div>
-
-              {formError && <p className="text-body-sm text-error">{formError}</p>}
-            </div>
-
-            <div className="shrink-0 flex gap-3 pt-4 border-t border-outline-variant">
-              <button type="submit" disabled={saving}
-                className="flex-1 py-2 rounded-xl bg-primary text-on-primary text-body-md font-medium hover:bg-primary-container transition-colors disabled:opacity-50">
-                {saving ? "Enregistrement…" : drawer.mode === "create" ? "Ajouter" : "Enregistrer"}
-              </button>
-              <button type="button" onClick={closeDrawer} disabled={saving}
-                className="px-5 py-2 rounded-xl text-body-md text-on-surface-variant border border-outline-variant hover:bg-surface-container transition-colors disabled:opacity-50">
-                Annuler
-              </button>
-            </div>
-          </form>
+          <AllergyForm
+            patientId={patientId}
+            initialData={drawer.mode === "edit" ? drawer.item : undefined}
+            onSaved={() => { closeDrawer(); afterSave(); }}
+            onClose={closeDrawer}
+          />
         </RightDrawer>
       )}
     </>

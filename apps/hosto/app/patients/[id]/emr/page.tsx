@@ -1,10 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
 import { AccessDenied } from "@repo/ui/AccessDenied";
+import { SplitWorkspace } from "@repo/ui/SplitWorkspace";
+import { EMRPanel } from "@/components/emr/EMRPanel";
 import { DashboardShell } from "@/components/DashboardShell";
 import { getPatient, type Patient } from "@/app/lib/api";
 import { getPatientSummary, type EMRSummary } from "@/app/lib/emr-api";
@@ -19,6 +21,7 @@ import { NotesTab } from "@/components/emr/NotesTab";
 import { TimelineTab } from "@/components/emr/TimelineTab";
 import { PrescriptionsPanel } from "@/components/prescriptions/PrescriptionsPanel";
 import { LabRequestsPanel } from "@/components/lab/LabRequestsPanel";
+import { ActesPanel } from "@/components/actes/ActesPanel";
 import {
   ArrowBackOutlined,
   BadgeOutlined,
@@ -55,6 +58,7 @@ const EMR_TABS = [
   { key: "medications",   label: "Traitements" },
   { key: "prescriptions", label: "Prescriptions" },
   { key: "examens",       label: "Examens" },
+  { key: "actes",         label: "Actes" },
   { key: "timeline",      label: "Timeline" },
 ] as const;
 
@@ -162,6 +166,18 @@ export default function EMRPage() {
   const canWrite = can("hosto.emr.write");
   const canSign = can("hosto.emr.sign");
 
+  // SplitWorkspace : les formulaires d'ajout s'ouvrent à droite, le dossier patient
+  // COMPLET reste navigable à gauche. Ouvrir un autre formulaire (depuis la vue ou
+  // depuis le dossier de gauche) remplace le contenu de droite. `tab` = l'onglet qui
+  // a déclenché l'ouverture, repris comme onglet initial du dossier de gauche.
+  const [splitState, setSplitState] = useState<{ title: string; content: ReactNode; tab: string } | null>(null);
+  const openSplit = (title: string, content: ReactNode) =>
+    setSplitState((prev) => ({ title, content, tab: prev?.tab ?? activeTab }));
+  const closeSplit = () => setSplitState(null);
+  const fullName = patient
+    ? `${patient.nom} ${patient.postnom} ${patient.prenom}`.replace(/\s+/g, " ").trim()
+    : "";
+
   function setTab(key: TabKey) {
     const params = new URLSearchParams(searchParams.toString());
     params.set("tab", key);
@@ -251,16 +267,40 @@ export default function EMRPage() {
             />
           )}
           {activeTab === "history" && (
-            <HistoryTab patientId={Number(id)} canWrite={canWrite} onMutation={loadSummary} />
+            <HistoryTab
+              patientId={Number(id)}
+              canWrite={canWrite}
+              onMutation={loadSummary}
+              onSplit={canWrite ? openSplit : undefined}
+              onCloseSplit={closeSplit}
+            />
           )}
           {activeTab === "allergies" && (
-            <AllergiesTab patientId={Number(id)} canWrite={canWrite} onMutation={loadSummary} />
+            <AllergiesTab
+              patientId={Number(id)}
+              canWrite={canWrite}
+              onMutation={loadSummary}
+              onSplit={canWrite ? openSplit : undefined}
+              onCloseSplit={closeSplit}
+            />
           )}
           {activeTab === "conditions" && (
-            <ConditionsTab patientId={Number(id)} canWrite={canWrite} onMutation={loadSummary} />
+            <ConditionsTab
+              patientId={Number(id)}
+              canWrite={canWrite}
+              onMutation={loadSummary}
+              onSplit={canWrite ? openSplit : undefined}
+              onCloseSplit={closeSplit}
+            />
           )}
           {activeTab === "observations" && (
-            <VitalsTab patientId={Number(id)} canWrite={canWrite} onMutation={loadSummary} />
+            <VitalsTab
+              patientId={Number(id)}
+              canWrite={canWrite}
+              onMutation={loadSummary}
+              onSplit={canWrite ? openSplit : undefined}
+              onCloseSplit={closeSplit}
+            />
           )}
           {activeTab === "notes" && (
             <NotesTab
@@ -268,16 +308,40 @@ export default function EMRPage() {
               canWrite={canWrite}
               canSign={canSign}
               onMutation={loadSummary}
+              onSplit={canWrite ? openSplit : undefined}
+              onCloseSplit={closeSplit}
             />
           )}
           {activeTab === "medications" && (
-            <MedicationsTab patientId={Number(id)} canWrite={canWrite} onMutation={loadSummary} />
+            <MedicationsTab
+              patientId={Number(id)}
+              canWrite={canWrite}
+              onMutation={loadSummary}
+              onSplit={canWrite ? openSplit : undefined}
+              onCloseSplit={closeSplit}
+            />
           )}
           {activeTab === "prescriptions" && (
-            <PrescriptionsPanel patientId={Number(id)} />
+            <PrescriptionsPanel
+              patientId={Number(id)}
+              onSplit={canWrite ? openSplit : undefined}
+              onCloseSplit={closeSplit}
+            />
           )}
           {activeTab === "examens" && (
-            <LabRequestsPanel patientId={Number(id)} />
+            <LabRequestsPanel
+              patientId={Number(id)}
+              onSplit={canWrite ? openSplit : undefined}
+              onCloseSplit={closeSplit}
+            />
+          )}
+          {activeTab === "actes" && (
+            <ActesPanel
+              patientId={Number(id)}
+              onSplit={canWrite ? openSplit : undefined}
+              onCloseSplit={closeSplit}
+              onMutation={loadSummary}
+            />
           )}
           {activeTab === "timeline" && (
             <TimelineTab patientId={Number(id)} />
@@ -285,6 +349,25 @@ export default function EMRPage() {
         </div>
 
       </div>
+
+      {splitState && patient && (
+        <SplitWorkspace
+          title={splitState.title}
+          onClose={closeSplit}
+          left={
+            <EMRPanel
+              patientId={patient.id}
+              patientName={fullName}
+              initialTab={splitState.tab}
+              canWrite={canWrite}
+              canSign={canSign}
+              onSplit={openSplit}
+              onCloseSplit={closeSplit}
+            />
+          }
+          right={splitState.content}
+        />
+      )}
     </DashboardShell>
   );
 }

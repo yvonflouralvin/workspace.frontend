@@ -8,6 +8,7 @@ import {
   ArrowBackOutlined,
   SearchOutlined,
   ScienceOutlined,
+  HealingOutlined,
   ChevronRightOutlined,
 } from "@mui/icons-material";
 
@@ -26,6 +27,13 @@ const PRESTATIONS: Prestation[] = [
     description: "Catalogue des examens médicaux et leurs tarifs.",
     href: "/parametres/prestations/examens-medicaux",
     icon: <ScienceOutlined style={{ fontSize: 22 }} />,
+  },
+  {
+    key: "actes",
+    nom: "Actes Médicaux",
+    description: "Catalogue des actes et soins infirmiers : libellé local, activation, paiement.",
+    href: "/parametres/prestations/actes",
+    icon: <HealingOutlined style={{ fontSize: 22 }} />,
   },
 ];
 

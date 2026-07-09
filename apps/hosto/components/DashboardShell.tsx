@@ -13,6 +13,7 @@ import { useSearch } from "@repo/ui/shell/useSearch";
 import {
   HomeOutlined,
   BiotechOutlined,
+  HealingOutlined,
   CalendarMonthOutlined,
   LocalHospitalOutlined,
   MedicalInformationOutlined,
@@ -53,9 +54,13 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
   const visibleApps = PLATFORM_APPS.filter((app) => can(`${app.id}.access`));
 
-  const navItems = can("hosto.settings.manage")
-    ? [...NAV_ITEMS, { label: "Paramètres", href: "/parametres", icon: <SettingsOutlined style={{ fontSize: 20 }} /> }]
+  const baseNav = can("hosto.actes.view")
+    ? [...NAV_ITEMS, { label: "Actes", href: "/actes", icon: <HealingOutlined style={{ fontSize: 20 }} /> }]
     : NAV_ITEMS;
+
+  const navItems = can("hosto.settings.manage")
+    ? [...baseNav, { label: "Paramètres", href: "/parametres", icon: <SettingsOutlined style={{ fontSize: 20 }} /> }]
+    : baseNav;
 
   return (
     <AppShell

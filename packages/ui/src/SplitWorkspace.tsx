@@ -56,8 +56,8 @@ export function SplitWorkspace({
         <div className="flex flex-col border-r border-outline-variant bg-surface-container-low/20" style={{ width: "60%" }}>
           {left}
         </div>
-        {/* Right — 40% — form */}
-        <div className="flex flex-col bg-surface-container-lowest" style={{ width: "40%" }}>
+        {/* Right — 40% — form (padding uniforme, aligné sur RightDrawer) */}
+        <div className="flex flex-col bg-surface-container-lowest px-6 py-5 overflow-hidden" style={{ width: "40%" }}>
           {right}
         </div>
       </div>

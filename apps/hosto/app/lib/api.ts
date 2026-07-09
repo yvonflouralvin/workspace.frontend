@@ -224,6 +224,24 @@ export async function listParametres(): Promise<Parametre[]> {
   return parseResponse(await apiFetch("/api/parametres"));
 }
 
+export interface ParametreT<T> {
+  id: number;
+  cle: string;
+  nom: string;
+  description: string | null;
+  valeur: T;
+}
+
+export async function getParametre<T>(cle: string): Promise<ParametreT<T>> {
+  return parseResponse(await apiFetch(`/api/parametres/${cle}`));
+}
+
+export async function updateParametre<T>(cle: string, valeur: T): Promise<ParametreT<T>> {
+  return parseResponse(
+    await apiFetch(`/api/parametres/${cle}`, { method: "PUT", body: { valeur } }),
+  );
+}
+
 export async function createService(data: ServiceCreateInput): Promise<Service> {
   return parseResponse(await apiFetch("/api/services", { method: "POST", body: data }));
 }

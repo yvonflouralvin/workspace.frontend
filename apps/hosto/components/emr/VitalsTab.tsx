@@ -335,16 +335,163 @@ function VignetteCard({
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
+// ─── Form batch (autonome — réutilisé en RightDrawer ET dans le SplitWorkspace) ─
+
+function VitalsForm({
+  patientId,
+  encounterId,
+  onSaved,
+  onClose,
+}: {
+  patientId: number;
+  encounterId?: number;
+  onSaved: () => void;
+  onClose: () => void;
+}) {
+  const [formValues, setFormValues] = useState<FormValues>({});
+  const [measuredAt, setMeasuredAt] = useState(nowLocal());
+  const [formErrors, setFormErrors] = useState<Partial<Record<ObservationCode, string>>>({});
+  const [formGlobalError, setFormGlobalError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  function setField(code: ObservationCode, value: string) {
+    setFormValues((f) => ({ ...f, [code]: value }));
+    const warn = validateField(code, value);
+    setFormErrors((e) => ({ ...e, [code]: warn ?? undefined }));
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const observations: ObservationBatchItem[] = [];
+    for (const code of FORM_CODES) {
+      const raw = formValues[code]?.trim();
+      if (!raw) continue;
+      const v = parseFloat(raw);
+      if (isNaN(v)) {
+        setFormGlobalError(`Valeur invalide pour ${LABELS[code]}.`);
+        return;
+      }
+      observations.push({
+        patient_id: patientId,
+        code,
+        value: v,
+        unit: UNITS[code],
+        measured_at: new Date(measuredAt).toISOString(),
+        ...(encounterId !== undefined ? { encounter_id: encounterId } : {}),
+      });
+    }
+    if (observations.length === 0) {
+      setFormGlobalError("Renseignez au moins une constante.");
+      return;
+    }
+    setSaving(true);
+    setFormGlobalError(null);
+    try {
+      await createObservationsBatch(observations);
+      onSaved();
+    } catch (err) {
+      setFormGlobalError(err instanceof Error ? err.message : "Erreur lors de l'enregistrement.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="h-full flex flex-col gap-5 overflow-y-auto">
+      <div className="flex-1 space-y-4 overflow-y-auto pr-1">
+        <div className="flex flex-col gap-1">
+          <label className={labelCls}>
+            Date et heure <span className="text-error">*</span>
+          </label>
+          <input
+            type="datetime-local"
+            className={inputCls}
+            value={measuredAt}
+            onChange={(e) => setMeasuredAt(e.target.value)}
+            required
+          />
+        </div>
+
+        <hr className="border-outline-variant" />
+
+        <VitalField code="TEMPERATURE" label="Température" value={formValues.TEMPERATURE ?? ""} onChange={(v) => setField("TEMPERATURE", v)} warn={formErrors.TEMPERATURE} />
+
+        <div className="grid grid-cols-2 gap-3">
+          <VitalField code="TA_SYSTOLIQUE" label="TA systolique" value={formValues.TA_SYSTOLIQUE ?? ""} onChange={(v) => setField("TA_SYSTOLIQUE", v)} warn={formErrors.TA_SYSTOLIQUE} />
+          <VitalField code="TA_DIASTOLIQUE" label="TA diastolique" value={formValues.TA_DIASTOLIQUE ?? ""} onChange={(v) => setField("TA_DIASTOLIQUE", v)} warn={formErrors.TA_DIASTOLIQUE} />
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <VitalField code="FC" label="Fréq. cardiaque" value={formValues.FC ?? ""} onChange={(v) => setField("FC", v)} warn={formErrors.FC} />
+          <VitalField code="FR" label="Fréq. respiratoire" value={formValues.FR ?? ""} onChange={(v) => setField("FR", v)} warn={formErrors.FR} />
+        </div>
+
+        <VitalField code="SPO2" label="SpO₂" value={formValues.SPO2 ?? ""} onChange={(v) => setField("SPO2", v)} warn={formErrors.SPO2} />
+
+        <div className="grid grid-cols-2 gap-3">
+          <VitalField code="POIDS" label="Poids" value={formValues.POIDS ?? ""} onChange={(v) => setField("POIDS", v)} warn={formErrors.POIDS} />
+          <VitalField code="TAILLE" label="Taille" value={formValues.TAILLE ?? ""} onChange={(v) => setField("TAILLE", v)} warn={formErrors.TAILLE} />
+        </div>
+
+        {(() => {
+          const p = parseFloat(formValues.POIDS ?? "");
+          const t = parseFloat(formValues.TAILLE ?? "");
+          if (isNaN(p) || isNaN(t) || t <= 0) return null;
+          const tM = t / 100;
+          const preview = Math.round((p / (tM * tM)) * 10) / 10;
+          return (
+            <p className="text-body-sm text-on-surface-variant bg-surface-container rounded-xl px-3 py-2">
+              IMC estimé : <strong>{preview} kg/m²</strong>
+            </p>
+          );
+        })()}
+
+        <VitalField code="DOULEUR_EVA" label="Douleur (EVA)" value={formValues.DOULEUR_EVA ?? ""} onChange={(v) => setField("DOULEUR_EVA", v)} warn={formErrors.DOULEUR_EVA} />
+
+        <p className="text-label-sm text-on-surface-variant/60">
+          Tous les champs sont optionnels — renseignez ceux mesurés. L&apos;IMC est calculé automatiquement.
+        </p>
+
+        {formGlobalError && (
+          <p className="text-body-sm text-error bg-error-container/40 rounded-xl px-3 py-2">{formGlobalError}</p>
+        )}
+      </div>
+
+      <div className="shrink-0 flex gap-3 pt-4 border-t border-outline-variant">
+        <button
+          type="submit"
+          disabled={saving}
+          className="flex-1 py-2 rounded-xl bg-primary text-on-primary text-body-md font-medium hover:bg-primary-container transition-colors disabled:opacity-50"
+        >
+          {saving ? "Enregistrement…" : "Enregistrer"}
+        </button>
+        <button
+          type="button"
+          onClick={onClose}
+          disabled={saving}
+          className="px-5 py-2 rounded-xl text-body-md text-on-surface-variant border border-outline-variant hover:bg-surface-container transition-colors disabled:opacity-50"
+        >
+          Annuler
+        </button>
+      </div>
+    </form>
+  );
+}
+
 export function VitalsTab({
   patientId,
   canWrite,
   onMutation,
   encounterId,
+  onSplit,
+  onCloseSplit,
 }: {
   patientId: number;
   canWrite: boolean;
   onMutation?: () => void;
   encounterId?: number;
+  onSplit?: (title: string, content: React.ReactNode) => void;
+  onCloseSplit?: () => void;
 }) {
   const [latest, setLatest] = useState<ObservationRead[]>([]);
   const [series, setSeries] = useState<SeriesMap>({});
@@ -355,11 +502,6 @@ export function VitalsTab({
   const [error, setError] = useState<string | null>(null);
 
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [formValues, setFormValues] = useState<FormValues>({});
-  const [measuredAt, setMeasuredAt] = useState(nowLocal());
-  const [formErrors, setFormErrors] = useState<Partial<Record<ObservationCode, string>>>({});
-  const [formGlobalError, setFormGlobalError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
 
   const [deleteTarget, setDeleteTarget] = useState<ObservationRead | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -395,60 +537,21 @@ export function VitalsTab({
   useEffect(() => { loadLatest(); }, [loadLatest]);
   useEffect(() => { loadSeries(range); }, [loadSeries, range]);
 
+  function afterSave() { loadLatest(); loadSeries(range); onMutation?.(); }
+
   function openDrawer() {
-    setFormValues({});
-    setFormErrors({});
-    setFormGlobalError(null);
-    setMeasuredAt(nowLocal());
-    setDrawerOpen(true);
-  }
-
-  function setField(code: ObservationCode, value: string) {
-    setFormValues((f) => ({ ...f, [code]: value }));
-    const warn = validateField(code, value);
-    setFormErrors((e) => ({ ...e, [code]: warn ?? undefined }));
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    const observations: ObservationBatchItem[] = [];
-
-    for (const code of FORM_CODES) {
-      const raw = formValues[code]?.trim();
-      if (!raw) continue;
-      const v = parseFloat(raw);
-      if (isNaN(v)) {
-        setFormGlobalError(`Valeur invalide pour ${LABELS[code]}.`);
-        return;
-      }
-      observations.push({
-        patient_id: patientId,
-        code,
-        value: v,
-        unit: UNITS[code],
-        measured_at: new Date(measuredAt).toISOString(),
-        ...(encounterId !== undefined ? { encounter_id: encounterId } : {}),
-      });
-    }
-
-    if (observations.length === 0) {
-      setFormGlobalError("Renseignez au moins une constante.");
+    if (onSplit) {
+      onSplit("Nouvelle prise de constantes", (
+        <VitalsForm
+          patientId={patientId}
+          encounterId={encounterId}
+          onSaved={() => { afterSave(); onCloseSplit?.(); }}
+          onClose={() => onCloseSplit?.()}
+        />
+      ));
       return;
     }
-
-    setSaving(true);
-    setFormGlobalError(null);
-    try {
-      await createObservationsBatch(observations);
-      setDrawerOpen(false);
-      loadLatest();
-      loadSeries(range);
-      onMutation?.();
-    } catch (err) {
-      setFormGlobalError(err instanceof Error ? err.message : "Erreur lors de l'enregistrement.");
-    } finally {
-      setSaving(false);
-    }
+    setDrawerOpen(true);
   }
 
   async function handleDelete() {
@@ -715,88 +818,15 @@ export function VitalsTab({
         </Modal>
       )}
 
-      {/* ── Zone C : Batch entry drawer ── */}
+      {/* ── Zone C : Batch entry drawer (fallback quand onSplit non fourni) ── */}
       {drawerOpen && (
-        <RightDrawer title="Nouvelle prise de constantes" onClose={() => !saving && setDrawerOpen(false)}>
-          <form onSubmit={handleSubmit} className="h-full flex flex-col gap-5 overflow-y-auto">
-            <div className="flex-1 space-y-4 overflow-y-auto">
-              <div className="flex flex-col gap-1">
-                <label className={labelCls}>
-                  Date et heure <span className="text-error">*</span>
-                </label>
-                <input
-                  type="datetime-local"
-                  className={inputCls}
-                  value={measuredAt}
-                  onChange={(e) => setMeasuredAt(e.target.value)}
-                  required
-                />
-              </div>
-
-              <hr className="border-outline-variant" />
-
-              <VitalField code="TEMPERATURE" label="Température" value={formValues.TEMPERATURE ?? ""} onChange={(v) => setField("TEMPERATURE", v)} warn={formErrors.TEMPERATURE} />
-
-              <div className="grid grid-cols-2 gap-3">
-                <VitalField code="TA_SYSTOLIQUE" label="TA systolique" value={formValues.TA_SYSTOLIQUE ?? ""} onChange={(v) => setField("TA_SYSTOLIQUE", v)} warn={formErrors.TA_SYSTOLIQUE} />
-                <VitalField code="TA_DIASTOLIQUE" label="TA diastolique" value={formValues.TA_DIASTOLIQUE ?? ""} onChange={(v) => setField("TA_DIASTOLIQUE", v)} warn={formErrors.TA_DIASTOLIQUE} />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <VitalField code="FC" label="Fréq. cardiaque" value={formValues.FC ?? ""} onChange={(v) => setField("FC", v)} warn={formErrors.FC} />
-                <VitalField code="FR" label="Fréq. respiratoire" value={formValues.FR ?? ""} onChange={(v) => setField("FR", v)} warn={formErrors.FR} />
-              </div>
-
-              <VitalField code="SPO2" label="SpO₂" value={formValues.SPO2 ?? ""} onChange={(v) => setField("SPO2", v)} warn={formErrors.SPO2} />
-
-              <div className="grid grid-cols-2 gap-3">
-                <VitalField code="POIDS" label="Poids" value={formValues.POIDS ?? ""} onChange={(v) => setField("POIDS", v)} warn={formErrors.POIDS} />
-                <VitalField code="TAILLE" label="Taille" value={formValues.TAILLE ?? ""} onChange={(v) => setField("TAILLE", v)} warn={formErrors.TAILLE} />
-              </div>
-
-              {/* Live IMC preview when poids + taille are entered */}
-              {(() => {
-                const p = parseFloat(formValues.POIDS ?? "");
-                const t = parseFloat(formValues.TAILLE ?? "");
-                if (isNaN(p) || isNaN(t) || t <= 0) return null;
-                const tM = t / 100;
-                const preview = Math.round((p / (tM * tM)) * 10) / 10;
-                return (
-                  <p className="text-body-sm text-on-surface-variant bg-surface-container rounded-xl px-3 py-2">
-                    IMC estimé : <strong>{preview} kg/m²</strong>
-                  </p>
-                );
-              })()}
-
-              <VitalField code="DOULEUR_EVA" label="Douleur (EVA)" value={formValues.DOULEUR_EVA ?? ""} onChange={(v) => setField("DOULEUR_EVA", v)} warn={formErrors.DOULEUR_EVA} />
-
-              <p className="text-label-sm text-on-surface-variant/60">
-                Tous les champs sont optionnels — renseignez ceux mesurés. L&apos;IMC est calculé automatiquement.
-              </p>
-
-              {formGlobalError && (
-                <p className="text-body-sm text-error bg-error-container/40 rounded-xl px-3 py-2">{formGlobalError}</p>
-              )}
-            </div>
-
-            <div className="shrink-0 flex gap-3 pt-4 border-t border-outline-variant">
-              <button
-                type="submit"
-                disabled={saving}
-                className="flex-1 py-2 rounded-xl bg-primary text-on-primary text-body-md font-medium hover:bg-primary-container transition-colors disabled:opacity-50"
-              >
-                {saving ? "Enregistrement…" : "Enregistrer"}
-              </button>
-              <button
-                type="button"
-                onClick={() => setDrawerOpen(false)}
-                disabled={saving}
-                className="px-5 py-2 rounded-xl text-body-md text-on-surface-variant border border-outline-variant hover:bg-surface-container transition-colors disabled:opacity-50"
-              >
-                Annuler
-              </button>
-            </div>
-          </form>
+        <RightDrawer title="Nouvelle prise de constantes" onClose={() => setDrawerOpen(false)}>
+          <VitalsForm
+            patientId={patientId}
+            encounterId={encounterId}
+            onSaved={() => { setDrawerOpen(false); afterSave(); }}
+            onClose={() => setDrawerOpen(false)}
+          />
         </RightDrawer>
       )}
     </>

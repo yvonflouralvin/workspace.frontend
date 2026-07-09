@@ -10,6 +10,7 @@ import { NotesTab } from "@/components/emr/NotesTab";
 import { ConditionsTab } from "@/components/emr/ConditionsTab";
 import { PrescriptionsPanel } from "@/components/prescriptions/PrescriptionsPanel";
 import { LabRequestsPanel } from "@/components/lab/LabRequestsPanel";
+import { ActesPanel } from "@/components/actes/ActesPanel";
 import { getPatient, listServices, type Patient, type Service } from "@/app/lib/api";
 import { getPatientAllergies, type AllergyRead } from "@/app/lib/emr-api";
 import {
@@ -59,7 +60,7 @@ function formatDateTime(iso: string): string {
 
 // ─── Tab types ────────────────────────────────────────────────────────────────
 
-type ConsultTab = "constantes" | "notes" | "diagnostics" | "prescriptions" | "examens" | "resume";
+type ConsultTab = "constantes" | "notes" | "diagnostics" | "prescriptions" | "examens" | "actes" | "resume";
 
 const TABS: { id: ConsultTab; label: string; closedOnly?: boolean }[] = [
   { id: "constantes",   label: "Constantes" },
@@ -67,6 +68,7 @@ const TABS: { id: ConsultTab; label: string; closedOnly?: boolean }[] = [
   { id: "diagnostics",  label: "Diagnostics" },
   { id: "prescriptions", label: "Ordonnances" },
   { id: "examens",      label: "Examens" },
+  { id: "actes",        label: "Actes" },
   { id: "resume",       label: "Résumé", closedOnly: true },
 ];
 
@@ -90,7 +92,7 @@ export default function ConsultationPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [emrOpen, setEmrOpen] = useState(false);
-  const [splitState, setSplitState] = useState<{ title: string; content: React.ReactNode } | null>(null);
+  const [splitState, setSplitState] = useState<{ title: string; content: React.ReactNode; tab: string } | null>(null);
 
   // ── Modal state ──
   const [showCloseModal, setShowCloseModal]       = useState(false);
@@ -106,8 +108,19 @@ export default function ConsultationPage() {
   const [cancelReason, setCancelReason]           = useState("");
   const [cancelPending, setCancelPending]         = useState(false);
 
+  // Onglets de la consultation → onglets du dossier complet (volet gauche).
+  const CONSULT_TO_EMR_TAB: Record<ConsultTab, string> = {
+    constantes: "observations",
+    notes: "notes",
+    diagnostics: "conditions",
+    prescriptions: "prescriptions",
+    examens: "examens",
+    actes: "actes",
+    resume: "summary",
+  };
+
   function openSplit(title: string, content: React.ReactNode) {
-    setSplitState({ title, content });
+    setSplitState((prev) => ({ title, content, tab: prev?.tab ?? CONSULT_TO_EMR_TAB[activeTab] }));
   }
 
   const load = useCallback(async () => {
@@ -317,6 +330,8 @@ export default function ConsultationPage() {
               canWrite={canWrite && !isClosed}
               encounterId={encounterId}
               onMutation={load}
+              onSplit={canWrite && !isClosed ? openSplit : undefined}
+              onCloseSplit={() => setSplitState(null)}
             />
           )}
           {activeTab === "notes" && (
@@ -352,6 +367,15 @@ export default function ConsultationPage() {
             <LabRequestsPanel
               patientId={patient.id}
               encounterId={encounterId}
+              onSplit={canWrite && !isClosed ? openSplit : undefined}
+              onCloseSplit={() => setSplitState(null)}
+            />
+          )}
+          {activeTab === "actes" && (
+            <ActesPanel
+              patientId={patient.id}
+              encounterId={encounterId}
+              onMutation={load}
               onSplit={canWrite && !isClosed ? openSplit : undefined}
               onCloseSplit={() => setSplitState(null)}
             />
@@ -534,7 +558,17 @@ export default function ConsultationPage() {
       <SplitWorkspace
         title={splitState.title}
         onClose={() => setSplitState(null)}
-        left={<EMRPanel patientId={patient.id} patientName={fullName} />}
+        left={
+          <EMRPanel
+            patientId={patient.id}
+            patientName={fullName}
+            initialTab={splitState.tab}
+            canWrite={canWrite && !isClosed}
+            canSign={canSign}
+            onSplit={!isClosed ? openSplit : undefined}
+            onCloseSplit={() => setSplitState(null)}
+          />
+        }
         right={splitState.content}
       />
     )}

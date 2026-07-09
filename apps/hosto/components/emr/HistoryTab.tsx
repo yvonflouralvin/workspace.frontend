@@ -37,6 +37,120 @@ const EMPTY_FORM = {
 
 type HistoryForm = typeof EMPTY_FORM;
 
+function fromItem(item: MedicalHistoryRead): HistoryForm {
+  return {
+    category: item.category as HistoryCategory,
+    title: item.title,
+    date_approximative: item.date_approximative ?? "",
+    active: item.active,
+  };
+}
+
+// ─── Form (autonome — réutilisé en RightDrawer ET dans le SplitWorkspace) ───────
+
+function HistoryForm({
+  patientId,
+  initialData,
+  defaultCategory,
+  onSaved,
+  onClose,
+}: {
+  patientId: number;
+  initialData?: MedicalHistoryRead;
+  defaultCategory?: HistoryCategory;
+  onSaved: () => void;
+  onClose: () => void;
+}) {
+  const isEdit = !!initialData;
+  const [form, setForm] = useState<HistoryForm>(
+    initialData ? fromItem(initialData) : { ...EMPTY_FORM, category: defaultCategory ?? "MEDICAL" },
+  );
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+
+  function setField<K extends keyof HistoryForm>(key: K, value: HistoryForm[K]) {
+    setForm((f) => ({ ...f, [key]: value }));
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!form.title.trim()) { setFormError("L'intitulé est requis."); return; }
+    setSaving(true); setFormError(null);
+    try {
+      const payload: HistoryCreate = {
+        patient_id: patientId,
+        category: form.category,
+        title: form.title.trim(),
+        date_approximative: form.date_approximative.trim() || null,
+        active: form.active,
+      };
+      if (isEdit) {
+        const { patient_id: _, ...rest } = payload;
+        await updateHistory(initialData!.id, rest);
+      } else {
+        await createHistory(payload);
+      }
+      onSaved();
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : "Erreur lors de l'enregistrement.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="h-full flex flex-col gap-5 overflow-y-auto">
+      <div className="flex-1 space-y-4 overflow-y-auto pr-1">
+
+        <div className="flex flex-col gap-1">
+          <label className={labelCls}>Catégorie</label>
+          <select className={selectCls} value={form.category}
+            onChange={(e) => setField("category", e.target.value as HistoryCategory)}>
+            {CATEGORIES.map((c) => (
+              <option key={c} value={c}>{CATEGORY_LABEL[c]}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <label className={labelCls}>Intitulé <span className="text-error">*</span></label>
+          <textarea className={`${inputCls} resize-none`} rows={3} value={form.title} autoFocus
+            onChange={(e) => setField("title", e.target.value)}
+            placeholder="Ex: Appendicite opérée en 1998, Diabète de type 2 chez le père…" />
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <label className={labelCls}>Date approximative</label>
+          <input className={inputCls} value={form.date_approximative}
+            onChange={(e) => setField("date_approximative", e.target.value)}
+            placeholder="Ex: vers 2010, enfance, 1985…" />
+          <p className="text-label-sm text-on-surface-variant/60">Texte libre — pas un calendrier.</p>
+        </div>
+
+        <label className="flex items-center gap-3 cursor-pointer">
+          <input type="checkbox" checked={form.active}
+            onChange={(e) => setField("active", e.target.checked)}
+            className="w-4 h-4 rounded accent-primary" />
+          <span className={labelCls}>Toujours actif / pertinent</span>
+        </label>
+
+        {formError && <p className="text-body-sm text-error">{formError}</p>}
+      </div>
+
+      <div className="shrink-0 flex gap-3 pt-4 border-t border-outline-variant">
+        <button type="submit" disabled={saving}
+          className="flex-1 py-2 rounded-xl bg-primary text-on-primary text-body-md font-medium hover:bg-primary-container transition-colors disabled:opacity-50">
+          {saving ? "Enregistrement…" : isEdit ? "Enregistrer" : "Ajouter"}
+        </button>
+        <button type="button" onClick={onClose} disabled={saving}
+          className="px-5 py-2 rounded-xl text-body-md text-on-surface-variant border border-outline-variant hover:bg-surface-container transition-colors disabled:opacity-50">
+          Annuler
+        </button>
+      </div>
+    </form>
+  );
+}
+
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
 
 function Skeleton() {
@@ -61,19 +175,20 @@ export function HistoryTab({
   patientId,
   canWrite,
   onMutation,
+  onSplit,
+  onCloseSplit,
 }: {
   patientId: number;
   canWrite: boolean;
   onMutation?: () => void;
+  onSplit?: (title: string, content: React.ReactNode) => void;
+  onCloseSplit?: () => void;
 }) {
   const [items, setItems] = useState<MedicalHistoryRead[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const [drawer, setDrawer] = useState<null | { mode: "create"; defaultCategory?: HistoryCategory } | { mode: "edit"; item: MedicalHistoryRead }>(null);
-  const [form, setForm] = useState<HistoryForm>(EMPTY_FORM);
-  const [saving, setSaving] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
 
   const [deleteTarget, setDeleteTarget] = useState<MedicalHistoryRead | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -89,56 +204,39 @@ export function HistoryTab({
 
   useEffect(() => { load(); }, [load]);
 
+  function afterSave() { load(); onMutation?.(); }
+
   function openCreate(defaultCategory?: HistoryCategory) {
-    setForm({ ...EMPTY_FORM, category: defaultCategory ?? "MEDICAL" });
-    setFormError(null);
+    if (onSplit) {
+      onSplit("Nouvel antécédent", (
+        <HistoryForm
+          patientId={patientId}
+          defaultCategory={defaultCategory}
+          onSaved={() => { afterSave(); onCloseSplit?.(); }}
+          onClose={() => onCloseSplit?.()}
+        />
+      ));
+      return;
+    }
     setDrawer({ mode: "create", defaultCategory });
   }
 
   function openEdit(item: MedicalHistoryRead) {
-    setForm({
-      category: item.category as HistoryCategory,
-      title: item.title,
-      date_approximative: item.date_approximative ?? "",
-      active: item.active,
-    });
-    setFormError(null);
+    if (onSplit) {
+      onSplit("Modifier l'antécédent", (
+        <HistoryForm
+          patientId={patientId}
+          initialData={item}
+          onSaved={() => { afterSave(); onCloseSplit?.(); }}
+          onClose={() => onCloseSplit?.()}
+        />
+      ));
+      return;
+    }
     setDrawer({ mode: "edit", item });
   }
 
-  function closeDrawer() { setDrawer(null); setFormError(null); }
-
-  function setField<K extends keyof HistoryForm>(key: K, value: HistoryForm[K]) {
-    setForm((f) => ({ ...f, [key]: value }));
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!form.title.trim()) { setFormError("L'intitulé est requis."); return; }
-    setSaving(true); setFormError(null);
-    try {
-      const payload: HistoryCreate = {
-        patient_id: patientId,
-        category: form.category,
-        title: form.title.trim(),
-        date_approximative: form.date_approximative.trim() || null,
-        active: form.active,
-      };
-      if (drawer?.mode === "create") {
-        await createHistory(payload);
-      } else if (drawer?.mode === "edit") {
-        const { patient_id: _, ...rest } = payload;
-        await updateHistory(drawer.item.id, rest);
-      }
-      closeDrawer();
-      load();
-      onMutation?.();
-    } catch (err) {
-      setFormError(err instanceof Error ? err.message : "Erreur lors de l'enregistrement.");
-    } finally {
-      setSaving(false);
-    }
-  }
+  function closeDrawer() { setDrawer(null); }
 
   async function handleDelete() {
     if (!deleteTarget) return;
@@ -284,61 +382,19 @@ export function HistoryTab({
         </Modal>
       )}
 
-      {/* ── Drawer ── */}
+      {/* ── Drawer (fallback quand onSplit non fourni) ── */}
       {drawer && (
         <RightDrawer
-          title={drawer.mode === "create" ? "Nouvel antécédent" : drawer.mode === "edit" ? "Modifier l'antécédent" : ""}
+          title={drawer.mode === "create" ? "Nouvel antécédent" : "Modifier l'antécédent"}
           onClose={closeDrawer}
         >
-          <form onSubmit={handleSubmit} className="h-full flex flex-col gap-5 overflow-y-auto">
-            <div className="flex-1 space-y-4 overflow-y-auto">
-
-              <div className="flex flex-col gap-1">
-                <label className={labelCls}>Catégorie</label>
-                <select className={selectCls} value={form.category}
-                  onChange={(e) => setField("category", e.target.value as HistoryCategory)}>
-                  {CATEGORIES.map((c) => (
-                    <option key={c} value={c}>{CATEGORY_LABEL[c]}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="flex flex-col gap-1">
-                <label className={labelCls}>Intitulé <span className="text-error">*</span></label>
-                <textarea className={`${inputCls} resize-none`} rows={3} value={form.title} autoFocus
-                  onChange={(e) => setField("title", e.target.value)}
-                  placeholder="Ex: Appendicite opérée en 1998, Diabète de type 2 chez le père…" />
-              </div>
-
-              <div className="flex flex-col gap-1">
-                <label className={labelCls}>Date approximative</label>
-                <input className={inputCls} value={form.date_approximative}
-                  onChange={(e) => setField("date_approximative", e.target.value)}
-                  placeholder="Ex: vers 2010, enfance, 1985…" />
-                <p className="text-label-sm text-on-surface-variant/60">Texte libre — pas un calendrier.</p>
-              </div>
-
-              <label className="flex items-center gap-3 cursor-pointer">
-                <input type="checkbox" checked={form.active}
-                  onChange={(e) => setField("active", e.target.checked)}
-                  className="w-4 h-4 rounded accent-primary" />
-                <span className={labelCls}>Toujours actif / pertinent</span>
-              </label>
-
-              {formError && <p className="text-body-sm text-error">{formError}</p>}
-            </div>
-
-            <div className="shrink-0 flex gap-3 pt-4 border-t border-outline-variant">
-              <button type="submit" disabled={saving}
-                className="flex-1 py-2 rounded-xl bg-primary text-on-primary text-body-md font-medium hover:bg-primary-container transition-colors disabled:opacity-50">
-                {saving ? "Enregistrement…" : drawer.mode === "create" ? "Ajouter" : "Enregistrer"}
-              </button>
-              <button type="button" onClick={closeDrawer} disabled={saving}
-                className="px-5 py-2 rounded-xl text-body-md text-on-surface-variant border border-outline-variant hover:bg-surface-container transition-colors disabled:opacity-50">
-                Annuler
-              </button>
-            </div>
-          </form>
+          <HistoryForm
+            patientId={patientId}
+            initialData={drawer.mode === "edit" ? drawer.item : undefined}
+            defaultCategory={drawer.mode === "create" ? drawer.defaultCategory : undefined}
+            onSaved={() => { closeDrawer(); afterSave(); }}
+            onClose={closeDrawer}
+          />
         </RightDrawer>
       )}
     </>

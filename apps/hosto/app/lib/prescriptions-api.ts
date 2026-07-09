@@ -11,6 +11,15 @@ export class SignBlockedError extends Error {
   }
 }
 
+// Refus de signature : item en suivi d'administration sans données complètes (H4a).
+export class SignAdminBlockedError extends Error {
+  blockingAdministration: string[];
+  constructor(items: string[]) {
+    super(`Signature refusée — données de suivi incomplètes pour : ${items.join(", ")}`);
+    this.blockingAdministration = items;
+  }
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type PrescriptionStatus = "BROUILLON" | "SIGNEE" | "ANNULEE";
@@ -26,6 +35,17 @@ export interface PrescriptionItemRead {
   instructions: string | null;
   allergy_alert_raised: boolean;
   allergy_overridden: boolean;
+  // Suivi d'administration (H4a)
+  suivi_administration: boolean;
+  mode_administration: string | null;
+  dose_quantite: number | null;
+  dose_unite: string | null;
+  frequence_par_jour: number | null;
+  duree_jours: number | null;
+  schema_id: number | null;
+  horaires_personnalises: string[] | null;
+  date_debut: string | null;
+  horaires_effectifs: string[] | null;
 }
 
 export interface PrescriptionRead {
@@ -53,6 +73,16 @@ export interface PrescriptionItemCreate {
   route?: string | null;
   duration?: string | null;
   instructions?: string | null;
+  // Suivi d'administration (H4a)
+  suivi_administration?: boolean;
+  mode_administration?: string | null;
+  dose_quantite?: number | null;
+  dose_unite?: string | null;
+  frequence_par_jour?: number | null;
+  duree_jours?: number | null;
+  schema_id?: number | null;
+  horaires_personnalises?: string[] | null;
+  date_debut?: string | null;
 }
 
 export interface PrescriptionCreate {
@@ -206,6 +236,10 @@ export async function signPrescription(id: number | string): Promise<Prescriptio
       ? (detail.blocking_medications as string[])
       : null;
     if (blocking) throw new SignBlockedError(blocking);
+    const blockingAdmin = typeof detail === "object" && detail !== null && Array.isArray(detail.blocking_administration)
+      ? (detail.blocking_administration as string[])
+      : null;
+    if (blockingAdmin) throw new SignAdminBlockedError(blockingAdmin);
     const msg =
       typeof detail === "string"
         ? detail

@@ -19,6 +19,7 @@ import {
 import { StatusBadge, PaiementRequisNotice, actorLabel, fmtDate, fmtDateTime } from "./shared";
 import { PrescrireDrawer } from "./PrescrireDrawer";
 import { RealiserDrawer } from "./RealiserDrawer";
+import { ActesHistoryView } from "./ActesHistoryView";
 
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
 
@@ -235,8 +236,11 @@ export function ActesPanel({
 }: {
   patientId: number | string;
   encounterId?: number | string;
-  // Extension future (ex. hospitalisation) : un contexte de séjour pourra être
-  // ajouté ici sans casser les appelants existants.
+  // Contexte d'hospitalisation (H5). Optionnel et non invasif : les actes restent
+  // indexés par patient côté backend (ActePrescrit n'a pas de sejour_id), donc la
+  // liste affichée est inchangée. Accepté ici pour l'affichage/le futur rattachement
+  // sans casser les appelants existants (EMR, consultation).
+  sejourId?: number | string;
   onMutation?: () => void;
   // Quand fournis (EMR/consultation), les formulaires s'ouvrent dans le SplitWorkspace
   // (dossier patient visible à gauche) au lieu d'un RightDrawer.
@@ -254,6 +258,7 @@ export function ActesPanel({
   const [prescrireOpen, setPrescrireOpen] = useState(false);
   const [realiserActe, setRealiserActe] = useState<ActePrescrit | null>(null);
   const [cancelActe, setCancelActe] = useState<ActePrescrit | null>(null);
+  const [view, setView] = useState<"encours" | "historique">("encours");
 
   const load = useCallback(() => {
     if (!canView) return;
@@ -338,18 +343,26 @@ export function ActesPanel({
     <>
       {/* Header */}
       <div className="flex items-center justify-between gap-4 mb-4 flex-wrap">
-        <div>
-          <h2 className="text-body-md font-semibold text-on-surface">Actes</h2>
-          {!loading && (
-            <p className="text-body-sm text-on-surface-variant mt-0.5">
-              {items.length} acte{items.length !== 1 ? "s" : ""}
-            </p>
-          )}
+        <div className="flex rounded-xl border border-outline-variant overflow-hidden">
+          {(["encours", "historique"] as const).map((v) => (
+            <button
+              key={v}
+              type="button"
+              onClick={() => setView(v)}
+              className={`px-3 py-1.5 text-body-sm transition-colors ${
+                view === v
+                  ? "bg-primary text-on-primary"
+                  : "text-on-surface-variant hover:bg-surface-container"
+              }`}
+            >
+              {v === "encours" ? "En cours" : "Historique"}
+            </button>
+          ))}
         </div>
-        {canPrescribe && (
+        {view === "encours" && canPrescribe && (
           <button
             type="button"
-            onClick={() => setPrescrireOpen(true)}
+            onClick={openPrescribe}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-on-primary text-body-md font-medium hover:bg-primary-container transition-colors"
           >
             <AddOutlined style={{ fontSize: 18 }} />
@@ -358,6 +371,10 @@ export function ActesPanel({
         )}
       </div>
 
+      {view === "historique" ? (
+        <ActesHistoryView patientId={patientId} />
+      ) : (
+        <>
       {error && (
         <p className="text-body-sm text-error bg-error-container/40 rounded-xl px-4 py-3 mb-4">{error}</p>
       )}
@@ -392,6 +409,8 @@ export function ActesPanel({
             />
           ))}
         </div>
+      )}
+        </>
       )}
 
       {/* Drawers / modales */}

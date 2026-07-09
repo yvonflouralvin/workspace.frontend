@@ -25,11 +25,16 @@ import {
   updatePrescriptionItem,
   checkAllergiesInstant,
   SignBlockedError,
+  SignAdminBlockedError,
   type AllergyCheckResult,
   type DrugSearchResult,
   type MedicationConflict,
   type PrescriptionRead,
 } from "@/app/lib/prescriptions-api";
+import {
+  listSchemasAdministration,
+  type SchemaAdministration,
+} from "@/app/lib/schemas-admin-api";
 import {
   getPatientEncounters,
   createEncounter,
@@ -70,6 +75,14 @@ interface PrescriptionLine {
   route: string;
   duration: string;
   instructions: string;
+  // Suivi d'administration (H4a)
+  suiviAdministration: boolean;
+  doseQuantite: string;
+  doseUnite: string;
+  schemaId: number | null;
+  horairesPerso: string[] | null; // null = utiliser les horaires du schéma
+  dureeJours: string;
+  dateDebut: string;
 }
 
 interface Override {
@@ -91,7 +104,45 @@ function newLine(drug: DrugSearchResult): PrescriptionLine {
     route: "",
     duration: "",
     instructions: "",
+    suiviAdministration: false,
+    doseQuantite: "",
+    doseUnite: "",
+    schemaId: null,
+    horairesPerso: null,
+    dureeJours: "",
+    dateDebut: "",
   };
+}
+
+// ─── Plan d'administration (aperçu) ────────────────────────────────────────────
+
+function frDate(iso: string): string {
+  const [y, m, d] = iso.split("-");
+  if (!y || !m || !d) return iso;
+  return `${d}/${m}/${y}`;
+}
+
+function addDaysIso(iso: string, days: number): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  if (!y || !m || !d) return iso;
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  dt.setUTCDate(dt.getUTCDate() + days);
+  return dt.toISOString().slice(0, 10);
+}
+
+function lineHoraires(line: PrescriptionLine, schemas: SchemaAdministration[]): string[] {
+  if (line.horairesPerso && line.horairesPerso.length > 0) return line.horairesPerso;
+  const schema = schemas.find((s) => s.id === line.schemaId);
+  return schema?.horaires ?? [];
+}
+
+function planPreview(line: PrescriptionLine, schemas: SchemaAdministration[]): string | null {
+  const horaires = lineHoraires(line, schemas);
+  const duree = parseInt(line.dureeJours, 10);
+  if (!horaires.length || !line.dateDebut || !Number.isFinite(duree) || duree < 1) return null;
+  const nbDoses = horaires.length * duree;
+  const fin = addDaysIso(line.dateDebut, duree - 1);
+  return `${nbDoses} doses : du ${frDate(line.dateDebut)} au ${frDate(fin)}, à ${horaires.join(", ")}`;
 }
 
 function drugLabel(d: DrugSearchResult): string {
@@ -210,6 +261,213 @@ function AllergyOverrideSection({
           {reasonMissing && (
             <p className="text-label-sm text-error mt-1" role="alert">
               La justification est obligatoire pour forcer une alerte d&apos;allergie.
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── PosologyFields (H4a) — formulaire structuré unique ────────────────────────
+
+function PosologyFields({
+  line,
+  schemas,
+  onPatch,
+}: {
+  line: PrescriptionLine;
+  schemas: SchemaAdministration[];
+  onPatch: (tempId: string, patch: Partial<PrescriptionLine>) => void;
+}) {
+  const { tempId } = line;
+  const selectedSchema = schemas.find((s) => s.id === line.schemaId) ?? null;
+  const perso = line.horairesPerso;
+  const dureeRequired = line.suiviAdministration;
+
+  return (
+    <div className="grid grid-cols-2 gap-3">
+      <div className="flex flex-col gap-1">
+        <label className={labelCls}>
+          Dose <span className="text-error">*</span>
+        </label>
+        <input
+          type="number"
+          min={0}
+          step="any"
+          className={inputCls}
+          value={line.doseQuantite}
+          onChange={(e) => onPatch(tempId, { doseQuantite: e.target.value })}
+          placeholder="Ex: 500"
+        />
+      </div>
+      <div className="flex flex-col gap-1">
+        <label className={labelCls}>Unité</label>
+        <input
+          className={inputCls}
+          value={line.doseUnite}
+          onChange={(e) => onPatch(tempId, { doseUnite: e.target.value })}
+          placeholder="Ex: mg, comprimé…"
+        />
+      </div>
+
+      <div className="col-span-2 flex flex-col gap-1">
+        <label className={labelCls}>
+          Rythme <span className="text-error">*</span>
+        </label>
+        <select
+          className={inputCls}
+          value={line.schemaId ?? ""}
+          onChange={(e) => {
+            const id = e.target.value ? Number(e.target.value) : null;
+            onPatch(tempId, { schemaId: id, horairesPerso: null });
+          }}
+        >
+          <option value="">— Choisir un rythme —</option>
+          {schemas.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.nom} ({s.horaires.join(", ")})
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {selectedSchema && (
+        <div className="col-span-2 flex flex-col gap-1.5">
+          <div className="flex items-center justify-between gap-2">
+            <label className={labelCls}>Horaires</label>
+            {perso === null ? (
+              <button
+                type="button"
+                className="text-label-sm text-tertiary hover:underline"
+                onClick={() => onPatch(tempId, { horairesPerso: [...selectedSchema.horaires] })}
+              >
+                Personnaliser
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="text-label-sm text-on-surface-variant hover:underline"
+                onClick={() => onPatch(tempId, { horairesPerso: null })}
+              >
+                Rétablir le rythme
+              </button>
+            )}
+          </div>
+          {perso === null ? (
+            <p className="text-body-sm text-on-surface-variant">
+              {selectedSchema.horaires.join(" · ")}{" "}
+              <span className="text-label-sm">(du rythme)</span>
+            </p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {perso.map((h, i) => (
+                <input
+                  key={i}
+                  type="time"
+                  className="rounded-xl border border-outline-variant bg-surface-container-lowest px-2.5 py-1.5 text-body-sm text-on-surface focus:outline-none focus:border-primary"
+                  value={h}
+                  onChange={(e) =>
+                    onPatch(tempId, {
+                      horairesPerso: perso.map((x, j) => (j === i ? e.target.value : x)),
+                    })
+                  }
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="flex flex-col gap-1">
+        <label className={labelCls}>
+          Durée (jours){dureeRequired && <span className="text-error"> *</span>}
+        </label>
+        <input
+          type="number"
+          min={1}
+          className={inputCls}
+          value={line.dureeJours}
+          onChange={(e) => onPatch(tempId, { dureeJours: e.target.value })}
+          placeholder="Ex: 7"
+        />
+      </div>
+      <div className="flex flex-col gap-1">
+        <label className={labelCls}>Voie</label>
+        <input
+          className={inputCls}
+          value={line.route}
+          onChange={(e) => onPatch(tempId, { route: e.target.value })}
+          placeholder="Ex: Orale, IV, SC…"
+        />
+      </div>
+      <div className="col-span-2 flex flex-col gap-1">
+        <label className={labelCls}>Instructions</label>
+        <input
+          className={inputCls}
+          value={line.instructions}
+          onChange={(e) => onPatch(tempId, { instructions: e.target.value })}
+          placeholder="Ex: À prendre pendant le repas"
+        />
+      </div>
+    </div>
+  );
+}
+
+// ─── Suivi d'administration (H4a) ──────────────────────────────────────────────
+
+function SuiviSection({
+  line,
+  schemas,
+  onPatch,
+}: {
+  line: PrescriptionLine;
+  schemas: SchemaAdministration[];
+  onPatch: (tempId: string, patch: Partial<PrescriptionLine>) => void;
+}) {
+  const { tempId } = line;
+  const preview = planPreview(line, schemas);
+
+  return (
+    <div className="mt-3 rounded-xl border border-tertiary/30 bg-tertiary/5 p-3">
+      <label className="flex items-center gap-2.5 cursor-pointer select-none">
+        <input
+          type="checkbox"
+          className="h-4 w-4 accent-tertiary cursor-pointer"
+          checked={line.suiviAdministration}
+          onChange={(e) => onPatch(tempId, { suiviAdministration: e.target.checked })}
+        />
+        <span className="text-body-sm font-semibold text-tertiary">
+          Suivi d&apos;administration
+        </span>
+        <span className="text-label-sm font-normal text-on-surface-variant">
+          — tracer chaque prise (patient hospitalisé)
+        </span>
+      </label>
+
+      {line.suiviAdministration && (
+        <div className="mt-3 space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-1">
+              <label className={labelCls}>
+                Date de début <span className="text-error">*</span>
+              </label>
+              <input
+                type="date"
+                className={inputCls}
+                value={line.dateDebut}
+                onChange={(e) => onPatch(tempId, { dateDebut: e.target.value })}
+              />
+            </div>
+          </div>
+
+          {preview ? (
+            <div className="rounded-xl bg-tertiary/10 px-3 py-2 text-body-sm text-tertiary">
+              {preview}
+            </div>
+          ) : (
+            <p className="text-label-sm text-on-surface-variant">
+              Renseignez dose, rythme, durée et date de début pour visualiser le plan.
             </p>
           )}
         </div>
@@ -360,6 +618,7 @@ export function PrescriptionEditor({
   const [lines, setLines] = useState<PrescriptionLine[]>([]);
   const [notes, setNotes] = useState("");
   const [overrides, setOverrides] = useState<Record<string, Override>>({});
+  const [schemas, setSchemas] = useState<SchemaAdministration[]>([]);
 
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -405,6 +664,13 @@ export function PrescriptionEditor({
             route: item.route ?? "",
             duration: item.duration ?? "",
             instructions: item.instructions ?? "",
+            suiviAdministration: item.suivi_administration ?? false,
+            doseQuantite: item.dose_quantite != null ? String(item.dose_quantite) : "",
+            doseUnite: item.dose_unite ?? "",
+            schemaId: item.schema_id ?? null,
+            horairesPerso: item.horaires_personnalises ?? null,
+            dureeJours: item.duree_jours != null ? String(item.duree_jours) : "",
+            dateDebut: item.date_debut ?? "",
           })),
         );
         if (!encounterIdProp) {
@@ -414,6 +680,11 @@ export function PrescriptionEditor({
       .catch(() => setLoadError("Impossible de charger la prescription."))
       .finally(() => setLoadingPrescription(false));
   }, [prescriptionId, encounterIdProp]);
+
+  // ── Load schémas d'administration (H4a) ───────────────────────────────────
+  useEffect(() => {
+    listSchemasAdministration().then(setSchemas).catch(() => {});
+  }, []);
 
   // ── Encounter resolution ──────────────────────────────────────────────────
 
@@ -492,9 +763,9 @@ export function PrescriptionEditor({
     });
   }
 
-  function updateLine(tempId: string, key: keyof PrescriptionLine, value: string) {
+  function patchLine(tempId: string, patch: Partial<PrescriptionLine>) {
     setLines((prev) =>
-      prev.map((l) => (l.tempId === tempId ? { ...l, [key]: value } : l)),
+      prev.map((l) => (l.tempId === tempId ? { ...l, ...patch } : l)),
     );
   }
 
@@ -514,15 +785,38 @@ export function PrescriptionEditor({
 
   // ── Build items payload ───────────────────────────────────────────────────
 
+  // Le formulaire est structuré ; on dérive les chaînes texte (dosage/frequency/
+  // duration) uniquement pour l'ordonnance PDF, qui reste inchangée côté backend.
   function buildItems() {
-    return lines.map((l) => ({
-      medication_id: l.medicationId,
-      dosage: l.dosage.trim(),
-      frequency: l.frequency.trim(),
-      route: l.route.trim() || null,
-      duration: l.duration.trim() || null,
-      instructions: l.instructions.trim() || null,
-    }));
+    return lines.map((l) => {
+      const horaires = lineHoraires(l, schemas);
+      const doseNum = parseFloat(l.doseQuantite);
+      const dureeNum = parseInt(l.dureeJours, 10);
+      const doseStr = [l.doseQuantite.trim(), l.doseUnite.trim()].filter(Boolean).join(" ");
+      const frequencyStr = horaires.length
+        ? `${horaires.length}x/jour — ${horaires.join(", ")}`
+        : "";
+      const durationStr =
+        Number.isFinite(dureeNum) && dureeNum > 0
+          ? `${dureeNum} jour${dureeNum > 1 ? "s" : ""}`
+          : null;
+      return {
+        medication_id: l.medicationId,
+        dosage: doseStr,
+        frequency: frequencyStr,
+        route: l.route.trim() || null,
+        duration: durationStr,
+        instructions: l.instructions.trim() || null,
+        dose_quantite: Number.isFinite(doseNum) ? doseNum : null,
+        dose_unite: l.doseUnite.trim() || null,
+        duree_jours: Number.isFinite(dureeNum) ? dureeNum : null,
+        schema_id: l.schemaId,
+        horaires_personnalises: l.horairesPerso,
+        suivi_administration: l.suiviAdministration,
+        mode_administration: l.suiviAdministration ? "PERSONNEL" : null,
+        date_debut: l.suiviAdministration ? l.dateDebut || null : null,
+      };
+    });
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────────
@@ -621,6 +915,10 @@ export function PrescriptionEditor({
       if (err instanceof SignBlockedError) {
         setSignError(
           `Justification manquante pour : ${err.blockingMedications.join(", ")}. Cochez et remplissez la justification pour ces médicaments.`,
+        );
+      } else if (err instanceof SignAdminBlockedError) {
+        setSignError(
+          `Données de suivi d'administration incomplètes pour : ${err.blockingAdministration.join(", ")}. Renseignez la dose, le rythme, la durée et la date de début pour ces médicaments.`,
         );
       } else {
         setSignError(err instanceof Error ? err.message : "Erreur lors de la signature.");
@@ -795,60 +1093,8 @@ export function PrescriptionEditor({
                           </button>
                         </div>
 
-                        {/* Posologie */}
-                        <div className="grid grid-cols-2 gap-3">
-                          <div className="flex flex-col gap-1">
-                            <label className={labelCls}>
-                              Dosage <span className="text-error">*</span>
-                            </label>
-                            <input
-                              className={inputCls}
-                              value={line.dosage}
-                              onChange={(e) => updateLine(line.tempId, "dosage", e.target.value)}
-                              placeholder="Ex: 500 mg, 1 g…"
-                            />
-                          </div>
-                          <div className="flex flex-col gap-1">
-                            <label className={labelCls}>
-                              Fréquence <span className="text-error">*</span>
-                            </label>
-                            <input
-                              className={inputCls}
-                              value={line.frequency}
-                              onChange={(e) => updateLine(line.tempId, "frequency", e.target.value)}
-                              placeholder="Ex: 3 fois/jour, matin…"
-                            />
-                          </div>
-                          <div className="flex flex-col gap-1">
-                            <label className={labelCls}>Voie</label>
-                            <input
-                              className={inputCls}
-                              value={line.route}
-                              onChange={(e) => updateLine(line.tempId, "route", e.target.value)}
-                              placeholder="Ex: Orale, IV, SC…"
-                            />
-                          </div>
-                          <div className="flex flex-col gap-1">
-                            <label className={labelCls}>Durée</label>
-                            <input
-                              className={inputCls}
-                              value={line.duration}
-                              onChange={(e) => updateLine(line.tempId, "duration", e.target.value)}
-                              placeholder="Ex: 7 jours, 1 mois…"
-                            />
-                          </div>
-                          <div className="col-span-2 flex flex-col gap-1">
-                            <label className={labelCls}>Instructions</label>
-                            <input
-                              className={inputCls}
-                              value={line.instructions}
-                              onChange={(e) =>
-                                updateLine(line.tempId, "instructions", e.target.value)
-                              }
-                              placeholder="Ex: À prendre pendant le repas"
-                            />
-                          </div>
-                        </div>
+                        {/* Posologie structurée (H4a) */}
+                        <PosologyFields line={line} schemas={schemas} onPatch={patchLine} />
 
                         {/* Alerte allergie + forçage */}
                         {conflict && (
@@ -863,6 +1109,9 @@ export function PrescriptionEditor({
                             />
                           </>
                         )}
+
+                        {/* Suivi d'administration (H4a) */}
+                        <SuiviSection line={line} schemas={schemas} onPatch={patchLine} />
                       </div>
                     );
                   })}

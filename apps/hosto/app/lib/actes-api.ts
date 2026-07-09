@@ -71,6 +71,7 @@ export interface ActePrescrit {
   acte_catalog_id: number;
   acte_libelle: string;
   acte_type: ActeType | null;
+  acte_category: string | null;
   prescribed_by: number;
   prescribed_by_name: string | null;
   prescribed_by_role: string | null;
@@ -170,6 +171,44 @@ export async function getActe(id: number | string): Promise<ActePrescrit> {
 
 export async function getPatientActes(patientId: number | string): Promise<ActePrescrit[]> {
   return parseJson<ActePrescrit[]>(await apiFetch(`/api/patients/${patientId}/actes`));
+}
+
+export interface ActeStatsCategorie {
+  categorie: string;
+  count: number;
+}
+
+export interface ActeStats {
+  total_realises: number;
+  par_categorie: ActeStatsCategorie[];
+  dernier_acte_libelle: string | null;
+  dernier_acte_date: string | null;
+}
+
+export interface ActeHistoryFilters {
+  category?: string;
+  type?: ActeType;
+  from?: string;
+  to?: string;
+}
+
+export async function getActesHistory(
+  patientId: number | string,
+  filters?: ActeHistoryFilters,
+): Promise<ActePrescrit[]> {
+  const qs = new URLSearchParams();
+  if (filters?.category) qs.set("category", filters.category);
+  if (filters?.type) qs.set("type", filters.type);
+  if (filters?.from) qs.set("from", filters.from);
+  if (filters?.to) qs.set("to", filters.to);
+  const suffix = qs.toString() ? `?${qs}` : "";
+  return parseJson<ActePrescrit[]>(
+    await apiFetch(`/api/patients/${patientId}/actes/history${suffix}`),
+  );
+}
+
+export async function getActesStats(patientId: number | string): Promise<ActeStats> {
+  return parseJson<ActeStats>(await apiFetch(`/api/patients/${patientId}/actes/stats`));
 }
 
 export async function getEncounterActes(

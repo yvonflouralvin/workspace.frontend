@@ -14,10 +14,13 @@ import {
   HomeOutlined,
   BiotechOutlined,
   HealingOutlined,
+  HotelOutlined,
+  GridViewOutlined,
   CalendarMonthOutlined,
   LocalHospitalOutlined,
   MedicalInformationOutlined,
   MedicalServicesOutlined,
+  MonitorHeartOutlined,
   PeopleAltOutlined,
   ScheduleOutlined,
   SensorDoorOutlined,
@@ -54,9 +57,22 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
   const visibleApps = PLATFORM_APPS.filter((app) => can(`${app.id}.access`));
 
-  const baseNav = can("hosto.actes.view")
+  let baseNav = can("hosto.actes.view")
     ? [...NAV_ITEMS, { label: "Actes", href: "/actes", icon: <HealingOutlined style={{ fontSize: 20 }} /> }]
     : NAV_ITEMS;
+  if (can("hosto.beds.view")) {
+    baseNav = [
+      ...baseNav,
+      { label: "Occupation", href: "/occupation", icon: <GridViewOutlined style={{ fontSize: 20 }} /> },
+      { label: "Lits", href: "/beds", icon: <HotelOutlined style={{ fontSize: 20 }} /> },
+    ];
+  }
+  if (can("hosto.mar.view")) {
+    baseNav = [
+      ...baseNav,
+      { label: "Surveillance", href: "/surveillance", icon: <MonitorHeartOutlined style={{ fontSize: 20 }} /> },
+    ];
+  }
 
   const navItems = can("hosto.settings.manage")
     ? [...baseNav, { label: "Paramètres", href: "/parametres", icon: <SettingsOutlined style={{ fontSize: 20 }} /> }]

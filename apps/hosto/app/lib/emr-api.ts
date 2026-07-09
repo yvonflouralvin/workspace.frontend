@@ -33,7 +33,9 @@ export type TimelineItemType =
   | "OBSERVATIONS"
   | "CONDITION"
   | "ALLERGY"
-  | "MEDICATION";
+  | "MEDICATION"
+  | "LAB"
+  | "ACTE";
 
 export interface AllergyRead {
   id: number;

@@ -7,6 +7,10 @@ import { NetworkDecryptionError, toBadRequestResponse } from "./errors.js";
 
 export { NetworkDecryptionError, toBadRequestResponse } from "./errors.js";
 
+// Statuts « null body » (WHATWG) : une Response avec un corps sur l'un d'eux lève
+// « Response with null body status cannot have body » (ex. 204 d'un DELETE backend).
+const NULL_BODY_STATUS = new Set([101, 103, 204, 205, 304]);
+
 // `Request`/`Response` (pas `NextRequest`/`NextResponse` en paramètre) pour rester
 // compatible quelle que soit la version de `next` installée localement par chaque
 // app du monorepo — `NextRequest` est une classe différente par version installée,
@@ -127,6 +131,12 @@ export async function forwardToBackend(
 
   const search = new URL(request.url).search;
   const res = await fetch(`${backendUrl}${path}${search}`, init);
+
+  // 204/304/… : pas de corps autorisé — le relayer tel quel (sinon TypeError).
+  if (NULL_BODY_STATUS.has(res.status)) {
+    return new NextResponse(null, { status: res.status });
+  }
+
   const contentType = res.headers.get("content-type") ?? "";
 
   if (!contentType.includes("application/json")) {

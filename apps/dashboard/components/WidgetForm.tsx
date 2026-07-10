@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { AddOutlined, CloseOutlined } from "@mui/icons-material";
+import { useState, type ReactNode } from "react";
+import { AddOutlined, BarChartOutlined, CategoryOutlined, CloseOutlined, NumbersOutlined, SpeedOutlined, TimelineOutlined, TrendingUpOutlined } from "@mui/icons-material";
 import {
   createWidget,
   updateWidget,
@@ -9,6 +9,15 @@ import {
   type DataSourceApp,
   type SourceField,
 } from "@/lib/dashboard-api";
+
+const TYPE_ICON: Record<string, ReactNode> = {
+  count: <NumbersOutlined style={{ fontSize: 20 }} />,
+  trend: <TrendingUpOutlined style={{ fontSize: 20 }} />,
+  gauge: <SpeedOutlined style={{ fontSize: 20 }} />,
+  comparison: <BarChartOutlined style={{ fontSize: 20 }} />,
+  timeseries: <TimelineOutlined style={{ fontSize: 20 }} />,
+  groupby: <CategoryOutlined style={{ fontSize: 20 }} />,
+};
 
 const inputCls =
   "w-full rounded-xl border border-outline-variant bg-surface-container-lowest px-3 py-2 text-body-md text-on-surface focus:border-primary focus:outline-none";
@@ -25,11 +34,12 @@ const OPERATORS = [
 const NO_VALUE = new Set(["is_true", "is_false"]);
 
 export const WIDGET_TYPES = [
-  { value: "count", label: "Comptage" },
-  { value: "trend", label: "KPI de tendance" },
-  { value: "comparison", label: "Comparaison" },
-  { value: "timeseries", label: "Série temporelle" },
-  { value: "groupby", label: "Regroupement" },
+  { value: "count", label: "Comptage", description: "Le nombre — ou une somme/moyenne — d'un modèle, filtrable." },
+  { value: "trend", label: "KPI de tendance", description: "Une valeur + son évolution vs la période précédente + sparkline." },
+  { value: "gauge", label: "Jauge / Objectif", description: "Une valeur comparée à un objectif, colorée selon l'atteinte." },
+  { value: "comparison", label: "Comparaison", description: "Compare plusieurs valeurs (chiffres, histogramme, camembert)." },
+  { value: "timeseries", label: "Série temporelle", description: "L'évolution d'une valeur dans le temps, en courbe." },
+  { value: "groupby", label: "Regroupement", description: "Répartition automatique d'une valeur par catégorie." },
 ];
 
 const CATEGORICAL = new Set(["enum", "string", "boolean", "integer"]);
@@ -151,6 +161,8 @@ export function WidgetForm({ sources, widget, initialType, onSaved, onCancel }: 
   const [conditions, setConditions] = useState<Condition[]>(
     Array.isArray(cfg.conditions) ? cfg.conditions.map((c) => ({ field: c.field ?? "", operator: c.operator ?? "eq", value: c.value ?? "" })) : [],
   );
+  const [target, setTarget] = useState<string>((cfg as { target?: number }).target !== undefined ? String((cfg as { target?: number }).target) : "");
+  const [direction, setDirection] = useState<string>((cfg as { direction?: string }).direction ?? "higher");
   const [granularity, setGranularity] = useState<string>((cfg as { granularity?: string }).granularity ?? "month");
   const [buckets, setBuckets] = useState<number>((cfg as { buckets?: number }).buckets ?? 12);
   const [groupByCol, setGroupByCol] = useState<string>((cfg as { group_by?: string }).group_by ?? "");
@@ -166,6 +178,8 @@ export function WidgetForm({ sources, widget, initialType, onSaved, onCancel }: 
   );
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+
+  const typeMeta = WIDGET_TYPES.find((t) => t.value === type) ?? { label: "Widget", description: "" };
 
   const modelsOf = (prov: string) => sources.find((s) => s.app_key === prov)?.models ?? [];
   const fieldsOf = (prov: string, mod: string) => modelsOf(prov).find((m) => m.name === mod)?.fields ?? [];
@@ -187,13 +201,16 @@ export function WidgetForm({ sources, widget, initialType, onSaved, onCancel }: 
       if (!title.trim() || !provider || !model) { setErr("Titre, source et modèle requis."); return; }
       if (NEEDS_FIELD.has(measure) && !field) { setErr("Choisissez le champ à agréger."); return; }
       if (type === "groupby" && !groupByCol) { setErr("Choisissez la colonne de regroupement."); return; }
+      if (type === "gauge" && !Number.isFinite(Number(target))) { setErr("Renseignez un objectif (cible) numérique."); return; }
       const baseConfig = { measure, field: NEEDS_FIELD.has(measure) ? field : undefined, conditions: cleanConditions(conditions) };
       input =
         type === "timeseries" || type === "trend"
           ? { type, title: title.trim(), provider, model, config: { ...baseConfig, granularity, buckets: Math.max(2, Math.min(Number(buckets) || 12, 366)) } }
           : type === "groupby"
             ? { type: "groupby", title: title.trim(), provider, model, config: { ...baseConfig, group_by: groupByCol, render, reference: refModel && refJoin && refLabel ? { model: refModel, join_field: refJoin, label_field: refLabel } : undefined } }
-            : { type: "count", title: title.trim(), provider, model, config: baseConfig };
+            : type === "gauge"
+              ? { type: "gauge", title: title.trim(), provider, model, config: { ...baseConfig, target: Number(target), direction } }
+              : { type: "count", title: title.trim(), provider, model, config: baseConfig };
     }
     setSaving(true);
     try {
@@ -208,13 +225,24 @@ export function WidgetForm({ sources, widget, initialType, onSaved, onCancel }: 
 
   return (
     <form onSubmit={submit} className="space-y-5">
-      <div className="flex flex-col gap-1">
-        <label className="text-label-md font-medium text-on-surface-variant">Type de widget</label>
-        <select className={`${inputCls} disabled:opacity-70`} value={type} disabled={isEdit} onChange={(e) => setType(e.target.value)}>
-          {WIDGET_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-        </select>
-        {isEdit && <p className="text-label-sm text-on-surface-variant/60">Le type ne peut pas être modifié après création.</p>}
+      <div className="flex items-start gap-3 rounded-xl border border-outline-variant bg-surface-container-low/50 p-4">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+          {TYPE_ICON[type] ?? TYPE_ICON.count}
+        </span>
+        <div className="min-w-0">
+          <p className="font-display text-body-lg font-semibold text-on-surface">{typeMeta.label}</p>
+          <p className="text-body-sm text-on-surface-variant">{typeMeta.description}</p>
+        </div>
       </div>
+
+      {!isEdit && (
+        <div className="flex flex-col gap-1">
+          <label className="text-label-md font-medium text-on-surface-variant">Type de widget</label>
+          <select className={inputCls} value={type} onChange={(e) => setType(e.target.value)}>
+            {WIDGET_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+          </select>
+        </div>
+      )}
 
       <div className="flex flex-col gap-1">
         <label className="text-label-md font-medium text-on-surface-variant">Titre</label>
@@ -303,6 +331,21 @@ export function WidgetForm({ sources, widget, initialType, onSaved, onCancel }: 
               )}
               <MeasureFields fields={fieldsOf(provider, model)} measure={measure} field={field}
                 onChange={(p) => { if (p.measure !== undefined) setMeasure(p.measure); if (p.field !== undefined) setField(p.field); }} />
+              {type === "gauge" && (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-label-md font-medium text-on-surface-variant">Objectif (cible)</label>
+                    <input type="number" className={inputCls} value={target} onChange={(e) => setTarget(e.target.value)} placeholder="Ex. 100" />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-label-md font-medium text-on-surface-variant">Sens favorable</label>
+                    <select className={inputCls} value={direction} onChange={(e) => setDirection(e.target.value)}>
+                      <option value="higher">Plus c&apos;est haut, mieux c&apos;est</option>
+                      <option value="lower">Plus c&apos;est bas, mieux c&apos;est</option>
+                    </select>
+                  </div>
+                </div>
+              )}
               <ConditionsEditor fields={fieldsOf(provider, model)} conditions={conditions} onChange={setConditions} />
             </>
           )}

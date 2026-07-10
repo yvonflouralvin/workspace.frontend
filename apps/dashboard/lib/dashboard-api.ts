@@ -150,12 +150,21 @@ export interface WidgetTrendData {
   points: TimeseriesPoint[];
 }
 
+export interface WidgetGaugeData {
+  widget_id: number;
+  type: "gauge";
+  value: number | null;
+  target: number | null;
+  direction: string;
+}
+
 export type WidgetData =
   | WidgetCountData
   | WidgetComparisonData
   | WidgetTimeseriesData
   | WidgetGroupbyData
-  | WidgetTrendData;
+  | WidgetTrendData
+  | WidgetGaugeData;
 
 export interface WidgetInput {
   type?: string;

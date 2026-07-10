@@ -153,6 +153,10 @@ export function WidgetForm({ sources, widget, initialType, onSaved, onCancel }: 
   const [granularity, setGranularity] = useState<string>((cfg as { granularity?: string }).granularity ?? "month");
   const [buckets, setBuckets] = useState<number>((cfg as { buckets?: number }).buckets ?? 12);
   const [groupByCol, setGroupByCol] = useState<string>((cfg as { group_by?: string }).group_by ?? "");
+  const refCfg = (cfg as { reference?: { model?: string; join_field?: string; label_field?: string } }).reference ?? {};
+  const [refModel, setRefModel] = useState<string>(refCfg.model ?? "");
+  const [refJoin, setRefJoin] = useState<string>(refCfg.join_field ?? "");
+  const [refLabel, setRefLabel] = useState<string>(refCfg.label_field ?? "");
   const [render, setRender] = useState<string>(cfg.render ?? "bar_vertical");
   const [series, setSeries] = useState<Serie[]>(
     Array.isArray(cfg.series)
@@ -187,7 +191,7 @@ export function WidgetForm({ sources, widget, initialType, onSaved, onCancel }: 
         type === "timeseries"
           ? { type: "timeseries", title: title.trim(), provider, model, config: { ...baseConfig, granularity, buckets: Math.max(2, Math.min(Number(buckets) || 12, 366)) } }
           : type === "groupby"
-            ? { type: "groupby", title: title.trim(), provider, model, config: { ...baseConfig, group_by: groupByCol, render } }
+            ? { type: "groupby", title: title.trim(), provider, model, config: { ...baseConfig, group_by: groupByCol, render, reference: refModel && refJoin && refLabel ? { model: refModel, join_field: refJoin, label_field: refLabel } : undefined } }
             : { type: "count", title: title.trim(), provider, model, config: baseConfig };
     }
     setSaving(true);
@@ -220,7 +224,7 @@ export function WidgetForm({ sources, widget, initialType, onSaved, onCancel }: 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="flex flex-col gap-1">
               <label className="text-label-md font-medium text-on-surface-variant">Source de données</label>
-              <select className={inputCls} value={provider} onChange={(e) => { setProvider(e.target.value); setModel(""); setConditions([]); }}>
+              <select className={inputCls} value={provider} onChange={(e) => { setProvider(e.target.value); setModel(""); setConditions([]); setField(""); setGroupByCol(""); setRefModel(""); setRefJoin(""); setRefLabel(""); }}>
                 <option value="">Choisir une application…</option>
                 {sources.map((s) => <option key={s.app_key} value={s.app_key}>{s.app_label}</option>)}
               </select>
@@ -250,6 +254,34 @@ export function WidgetForm({ sources, widget, initialType, onSaved, onCancel }: 
                       {RENDER_OPTIONS.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
                     </select>
                   </div>
+                </div>
+              )}
+              {type === "groupby" && (
+                <div className="space-y-2 rounded-xl border border-outline-variant p-3">
+                  <p className="text-label-md font-medium text-on-surface-variant">Référence pour l&apos;affichage (optionnel)</p>
+                  <p className="text-label-sm text-on-surface-variant/60">Si la colonne de regroupement est un identifiant, résolvez-le en libellé lisible via un autre modèle.</p>
+                  <select className={inputCls} value={refModel} onChange={(e) => { setRefModel(e.target.value); setRefJoin(""); setRefLabel(""); }}>
+                    <option value="">Aucune référence (afficher la valeur brute)</option>
+                    {modelsOf(provider).map((m) => <option key={m.name} value={m.name}>{m.name}</option>)}
+                  </select>
+                  {refModel && (
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="flex flex-col gap-1">
+                        <label className="text-label-sm text-on-surface-variant">Colonne de jointure</label>
+                        <select className={inputCls} value={refJoin} onChange={(e) => setRefJoin(e.target.value)}>
+                          <option value="">Choisir…</option>
+                          {fieldsOf(provider, refModel).map((f) => <option key={f.name} value={f.name}>{f.name}</option>)}
+                        </select>
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-label-sm text-on-surface-variant">Colonne d&apos;affichage</label>
+                        <select className={inputCls} value={refLabel} onChange={(e) => setRefLabel(e.target.value)}>
+                          <option value="">Choisir…</option>
+                          {fieldsOf(provider, refModel).map((f) => <option key={f.name} value={f.name}>{f.name}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
               {type === "timeseries" && (

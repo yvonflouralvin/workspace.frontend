@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import type { HomeStat } from "./types";
 
 export type { HomeStat, HomeWidget } from "./types";
@@ -7,10 +8,9 @@ export type { HomeStat, HomeWidget } from "./types";
 export interface DashboardHomeWidgetProps {
   label: string;
   appLabel?: string;
-  description?: string;
   stats: HomeStat[];
   accent?: string;
-  icon?: string;
+  icon?: ReactNode;
   onClick?: () => void;
 }
 
@@ -20,62 +20,57 @@ function fmt(v: number | string): string {
   return typeof v === "number" ? nf.format(v) : v;
 }
 
-// Carte d'accueil cliquable : pastille-icône teintée (couleur de l'app) + titre du
-// domaine + 2-3 chiffres clés séparés par un filet. Un clic entre dans le domaine.
+// Carte d'accueil — même présentation que les StatCard de l'app workspace :
+// carte rounded-2xl, pastille-icône teintée en haut-droite, grande valeur en gras.
+// Adaptée au domaine : chiffre héros (1re stat) + ligne secondaire pour les autres,
+// cliquable pour entrer dans le domaine.
 export function DashboardHomeWidget({
   label,
   appLabel,
-  description,
   stats,
   accent = "var(--color-primary)",
   icon,
   onClick,
 }: DashboardHomeWidgetProps) {
-  const badge = (icon ?? appLabel ?? label).charAt(0).toUpperCase();
+  const [hero, ...rest] = stats;
 
   return (
     <button
       type="button"
       onClick={onClick}
-      className="group relative flex h-full w-full flex-col rounded-2xl border border-outline-variant bg-surface-container-lowest p-5 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-outline hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary/30"
+      className="group flex w-full flex-col gap-3 rounded-2xl border border-outline-variant bg-surface-container-lowest p-5 text-left transition-colors hover:border-primary/40 hover:bg-primary/5"
     >
-      <svg
-        viewBox="0 0 24 24" width={20} height={20} fill="none" stroke="currentColor"
-        strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"
-        className="absolute right-4 top-5 text-on-surface-variant/40 transition-all group-hover:translate-x-0.5 group-hover:text-on-surface"
-      >
-        <polyline points="9 18 15 12 9 6" />
-      </svg>
-
-      <div className="flex items-center gap-3 pr-6">
-        <div
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl font-display text-body-lg font-semibold"
-          style={{ backgroundColor: `color-mix(in srgb, ${accent} 14%, transparent)`, color: accent }}
-        >
-          {badge}
-        </div>
+      <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h3 className="truncate font-display text-headline-sm leading-tight text-on-surface">{label}</h3>
-          {appLabel && <p className="truncate text-label-sm text-on-surface-variant">{appLabel}</p>}
+          <p className="truncate text-body-md font-semibold text-on-surface">{label}</p>
+          {appLabel && <p className="mt-0.5 truncate text-label-md text-on-surface-variant">{appLabel}</p>}
         </div>
+        <span
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
+          style={{ backgroundColor: `color-mix(in srgb, ${accent} 12%, transparent)`, color: accent }}
+        >
+          {icon}
+        </span>
       </div>
 
-      {description && (
-        <p className="mt-3 line-clamp-2 text-body-sm text-on-surface-variant">{description}</p>
+      {hero && (
+        <div className="flex flex-col gap-1">
+          <p className="text-3xl font-bold leading-none text-on-surface tabular-nums">
+            {fmt(hero.value)}
+            {hero.unit ? <span className="ml-1 text-body-lg font-semibold text-on-surface-variant">{hero.unit}</span> : null}
+          </p>
+          <p className="text-body-sm text-on-surface-variant">{hero.label}</p>
+        </div>
       )}
 
-      {stats.length > 0 && (
-        <div className="mt-auto flex flex-wrap gap-x-6 gap-y-3 border-t border-outline-variant/50 pt-4 mt-4">
-          {stats.slice(0, 3).map((s, i) => (
-            <div key={i} className="min-w-0">
-              <p className="font-display text-headline-sm leading-none text-on-surface tabular-nums">
-                {fmt(s.value)}
-                {s.unit ? (
-                  <span className="ml-0.5 text-body-sm font-normal text-on-surface-variant">{s.unit}</span>
-                ) : null}
-              </p>
-              <p className="mt-1.5 max-w-[14ch] text-label-sm leading-tight text-on-surface-variant">{s.label}</p>
-            </div>
+      {rest.length > 0 && (
+        <div className="flex flex-wrap items-center text-body-sm text-on-surface-variant">
+          {rest.map((s, i) => (
+            <span key={i} className="flex items-center">
+              {i > 0 && <span className="mx-1.5 text-outline-variant">·</span>}
+              <span className="font-semibold text-on-surface tabular-nums">{fmt(s.value)}</span>
+              <span className="ml-1">{s.label}</span>
+            </span>
           ))}
         </div>
       )}

@@ -2,11 +2,31 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { QueryStatsOutlined } from "@mui/icons-material";
+import {
+  QueryStatsOutlined,
+  LocalHospitalOutlined,
+  ReceiptLongOutlined,
+  InsightsOutlined,
+} from "@mui/icons-material";
 import { DashboardHomeWidget, type HomeWidget } from "@repo/reporting-widgets/DashboardHomeWidget";
 import { DashboardShell } from "@/components/DashboardShell";
 import { getHome } from "@/lib/dashboard-api";
 import { accentFor } from "@/lib/app-accent";
+
+const ICON_STYLE = { fontSize: 20 };
+
+function iconFor(provider: string) {
+  switch (provider) {
+    case "hosto":
+      return <LocalHospitalOutlined style={ICON_STYLE} />;
+    case "ventes":
+      return <ReceiptLongOutlined style={ICON_STYLE} />;
+    case "dashboard":
+      return <QueryStatsOutlined style={ICON_STYLE} />;
+    default:
+      return <InsightsOutlined style={ICON_STYLE} />;
+  }
+}
 
 export default function Page() {
   const router = useRouter();
@@ -64,9 +84,9 @@ export default function Page() {
                 key={`${w.provider}:${w.domain_key}`}
                 label={w.label}
                 appLabel={w.app_label}
-                description={w.description}
                 stats={w.stats}
                 accent={accentFor(w.provider)}
+                icon={iconFor(w.provider)}
                 onClick={() => router.push(w.href)}
               />
             ))}

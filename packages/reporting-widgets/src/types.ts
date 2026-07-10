@@ -36,6 +36,14 @@ export interface ReportData {
   table?: ReportTable | null;
 }
 
+export interface ReportFilter {
+  key: string;
+  label: string;
+  type: string; // "date_range" pour l'instant
+  from_key?: string;
+  to_key?: string;
+}
+
 export interface ReportDescriptor {
   report_key: string;
   label: string;
@@ -44,6 +52,7 @@ export interface ReportDescriptor {
   provider?: string;
   required_permission?: string;
   refresh_interval_seconds?: number;
+  filters?: ReportFilter[];
 }
 
 export interface HomeStat {

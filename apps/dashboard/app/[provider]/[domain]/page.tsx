@@ -1,12 +1,20 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowBackOutlined } from "@mui/icons-material";
-import { ReportWidget, type ReportData } from "@repo/reporting-widgets/ReportWidget";
+import {
+  ReportWidget,
+  type ReportData,
+  type ReportDescriptor,
+} from "@repo/reporting-widgets/ReportWidget";
 import { DashboardShell } from "@/components/DashboardShell";
 import { getDomain, getReportData, type DomainDetail } from "@/lib/dashboard-api";
 import { accentFor } from "@/lib/app-accent";
+
+function dateRangeFilter(report: ReportDescriptor) {
+  return report.filters?.find((f) => f.type === "date_range");
+}
 
 export default function DomainPage() {
   const params = useParams<{ provider: string; domain: string }>();
@@ -19,6 +27,9 @@ export default function DomainPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+
   useEffect(() => {
     setLoading(true);
     getDomain(provider, domain)
@@ -27,23 +38,38 @@ export default function DomainPage() {
       .finally(() => setLoading(false));
   }, [provider, domain]);
 
+  // Barre de période visible si au moins un rapport du domaine déclare un filtre date_range.
+  const hasPeriod = useMemo(
+    () => (detail?.reports ?? []).some((r) => dateRangeFilter(r)),
+    [detail],
+  );
+
   const loadReport = useCallback(
-    (reportKey: string) => {
-      getReportData(provider, reportKey)
-        .then((d) => setDataByReport((prev) => ({ ...prev, [reportKey]: d })))
+    (report: ReportDescriptor) => {
+      const range = dateRangeFilter(report);
+      const filters: Record<string, string> = {};
+      if (range) {
+        if (from) filters[range.from_key ?? "from"] = from;
+        if (to) filters[range.to_key ?? "to"] = to;
+      }
+      getReportData(provider, report.report_key, filters)
+        .then((d) => setDataByReport((prev) => ({ ...prev, [report.report_key]: d })))
         .catch(() => {});
     },
-    [provider],
+    [provider, from, to],
   );
 
   useEffect(() => {
     if (!detail) return;
-    detail.reports.forEach((r) => loadReport(r.report_key));
+    detail.reports.forEach((r) => loadReport(r));
     const timers = detail.reports
       .filter((r) => r.refresh_interval_seconds && r.refresh_interval_seconds > 0)
-      .map((r) => setInterval(() => loadReport(r.report_key), r.refresh_interval_seconds! * 1000));
+      .map((r) => setInterval(() => loadReport(r), r.refresh_interval_seconds! * 1000));
     return () => timers.forEach((t) => clearInterval(t));
   }, [detail, loadReport]);
+
+  const inputCls =
+    "rounded-xl border border-outline-variant bg-surface-container-lowest px-3 py-1.5 text-body-sm text-on-surface focus:outline-none focus:border-primary";
 
   return (
     <DashboardShell>
@@ -65,11 +91,35 @@ export default function DomainPage() {
           <div className="h-64 rounded-2xl bg-surface-container animate-pulse" />
         ) : detail ? (
           <>
-            <div className="mb-6">
-              <p className="text-label-sm uppercase tracking-wide text-on-surface-variant/60">
-                {detail.app_label}
-              </p>
-              <h1 className="text-headline-lg font-display text-on-surface">{detail.label}</h1>
+            <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+              <div>
+                <p className="text-label-sm uppercase tracking-wide text-on-surface-variant/60">
+                  {detail.app_label}
+                </p>
+                <h1 className="text-headline-lg font-display text-on-surface">{detail.label}</h1>
+              </div>
+
+              {hasPeriod && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <label className="flex items-center gap-1.5 text-label-md text-on-surface-variant">
+                    Du
+                    <input type="date" value={from} max={to || undefined} onChange={(e) => setFrom(e.target.value)} className={inputCls} />
+                  </label>
+                  <label className="flex items-center gap-1.5 text-label-md text-on-surface-variant">
+                    Au
+                    <input type="date" value={to} min={from || undefined} onChange={(e) => setTo(e.target.value)} className={inputCls} />
+                  </label>
+                  {(from || to) && (
+                    <button
+                      type="button"
+                      onClick={() => { setFrom(""); setTo(""); }}
+                      className="text-label-md text-primary hover:opacity-70 transition-opacity"
+                    >
+                      Réinitialiser
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
 
             {detail.reports.length === 0 ? (

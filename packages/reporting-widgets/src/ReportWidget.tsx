@@ -9,6 +9,7 @@ import type { ReportData, ReportDescriptor } from "./types";
 export type {
   ReportData,
   ReportDescriptor,
+  ReportFilter,
   ReportKpi,
   ReportSeries,
   ReportTable,

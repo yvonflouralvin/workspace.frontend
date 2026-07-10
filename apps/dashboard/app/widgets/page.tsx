@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { AddOutlined, DeleteOutlined, NumbersOutlined, WidgetsOutlined } from "@mui/icons-material";
+import { AddOutlined, CloseOutlined, DeleteOutlined, NumbersOutlined, WidgetsOutlined } from "@mui/icons-material";
 import { RightDrawer } from "@repo/ui/RightDrawer";
 import { DashboardShell } from "@/components/DashboardShell";
 import {
@@ -12,12 +12,30 @@ import {
   getSources,
   type Widget,
   type DataSourceApp,
+  type SourceField,
 } from "@/lib/dashboard-api";
 import { accentFor } from "@/lib/app-accent";
 
 const nf = new Intl.NumberFormat("fr-FR");
 const inputCls =
   "w-full rounded-xl border border-outline-variant bg-surface-container-lowest px-3 py-2 text-body-md text-on-surface focus:border-primary focus:outline-none";
+
+const OPERATORS = [
+  { value: "eq", label: "=" },
+  { value: "ne", label: "≠" },
+  { value: "gt", label: ">" },
+  { value: "gte", label: "≥" },
+  { value: "lt", label: "<" },
+  { value: "lte", label: "≤" },
+  { value: "contains", label: "Contient" },
+  { value: "starts_with", label: "Commence par" },
+  { value: "ends_with", label: "Finit par" },
+  { value: "is_true", label: "Est vrai" },
+  { value: "is_false", label: "Est faux" },
+];
+const NO_VALUE = new Set(["is_true", "is_false"]);
+
+type Condition = { field: string; operator: string; value: string };
 
 export default function WidgetsPage() {
   const [widgets, setWidgets] = useState<Widget[]>([]);
@@ -116,6 +134,9 @@ export default function WidgetsPage() {
             {widgets.map((w) => {
               const accent = accentFor(w.provider);
               const c = counts[w.id];
+              const nbCond = Array.isArray((w.config as { conditions?: unknown[] })?.conditions)
+                ? ((w.config as { conditions: unknown[] }).conditions.length)
+                : 0;
               return (
                 <div key={w.id}
                   className="group relative flex flex-col gap-3 rounded-2xl border border-outline-variant bg-surface-container-lowest p-5">
@@ -123,7 +144,7 @@ export default function WidgetsPage() {
                     <div className="min-w-0">
                       <p className="truncate text-body-md font-semibold text-on-surface">{w.title}</p>
                       <p className="mt-0.5 truncate font-mono text-label-md text-on-surface-variant">
-                        {w.provider} · {w.model}
+                        {w.provider} · {w.model}{nbCond > 0 ? ` · ${nbCond} cond.` : ""}
                       </p>
                     </div>
                     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
@@ -168,10 +189,17 @@ function CreateWidgetDrawer({
   const [title, setTitle] = useState("");
   const [provider, setProvider] = useState("");
   const [model, setModel] = useState("");
+  const [conditions, setConditions] = useState<Condition[]>([]);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
   const models = sources.find((s) => s.app_key === provider)?.models ?? [];
+  const fields: SourceField[] = models.find((m) => m.name === model)?.fields ?? [];
+  const fieldDef = (name: string) => fields.find((f) => f.name === name);
+
+  function updateCond(i: number, patch: Partial<Condition>) {
+    setConditions((prev) => prev.map((c, idx) => (idx === i ? { ...c, ...patch } : c)));
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -179,10 +207,19 @@ function CreateWidgetDrawer({
       setErr("Renseignez le titre, la source et le modèle.");
       return;
     }
+    const cleaned = conditions
+      .filter((c) => c.field && c.operator)
+      .map((c) => (NO_VALUE.has(c.operator) ? { field: c.field, operator: c.operator } : c));
     setSaving(true);
     setErr(null);
     try {
-      const w = await createWidget({ type: "count", title: title.trim(), provider, model });
+      const w = await createWidget({
+        type: "count",
+        title: title.trim(),
+        provider,
+        model,
+        config: { conditions: cleaned },
+      });
       onCreated(w);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Erreur.");
@@ -194,21 +231,21 @@ function CreateWidgetDrawer({
   return (
     <RightDrawer title="Nouveau widget" onClose={onClose}>
       <form onSubmit={submit} className="flex h-full flex-col gap-5">
-        <div className="flex-1 space-y-4 overflow-y-auto">
+        <div className="flex-1 space-y-4 overflow-y-auto pr-1">
           <div className="rounded-xl bg-surface-container px-3 py-2.5 text-body-sm text-on-surface-variant">
-            Type : <span className="font-medium text-on-surface">Comptage</span> — affiche le nombre de lignes d&apos;un modèle.
+            Type : <span className="font-medium text-on-surface">Comptage</span> — nombre de lignes d&apos;un modèle.
           </div>
 
           <div className="flex flex-col gap-1">
             <label className="text-label-md font-medium text-on-surface-variant">Titre</label>
             <input className={inputCls} value={title} onChange={(e) => setTitle(e.target.value)}
-              placeholder="Ex. Nombre de patients" />
+              placeholder="Ex. Commandes payées" />
           </div>
 
           <div className="flex flex-col gap-1">
             <label className="text-label-md font-medium text-on-surface-variant">Source de données</label>
             <select className={inputCls} value={provider}
-              onChange={(e) => { setProvider(e.target.value); setModel(""); }}>
+              onChange={(e) => { setProvider(e.target.value); setModel(""); setConditions([]); }}>
               <option value="">Choisir une application…</option>
               {sources.map((s) => (
                 <option key={s.app_key} value={s.app_key}>{s.app_label}</option>
@@ -219,13 +256,70 @@ function CreateWidgetDrawer({
           <div className="flex flex-col gap-1">
             <label className="text-label-md font-medium text-on-surface-variant">Modèle</label>
             <select className={inputCls} value={model} disabled={!provider}
-              onChange={(e) => setModel(e.target.value)}>
+              onChange={(e) => { setModel(e.target.value); setConditions([]); }}>
               <option value="">{provider ? "Choisir un modèle…" : "Choisir d'abord une source"}</option>
               {models.map((m) => (
                 <option key={m.name} value={m.name}>{m.name}</option>
               ))}
             </select>
           </div>
+
+          {model && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-label-md font-medium text-on-surface-variant">Conditions</label>
+                <button type="button"
+                  onClick={() => setConditions((prev) => [...prev, { field: fields[0]?.name ?? "", operator: "eq", value: "" }])}
+                  className="inline-flex items-center gap-1 text-label-md text-primary hover:opacity-70">
+                  <AddOutlined style={{ fontSize: 16 }} /> Ajouter
+                </button>
+              </div>
+
+              {conditions.length === 0 && (
+                <p className="text-label-md text-on-surface-variant/60">Aucune condition — compte toutes les lignes.</p>
+              )}
+
+              {conditions.map((cond, i) => {
+                const fdef = fieldDef(cond.field);
+                const isEnum = !!fdef?.values?.length && (cond.operator === "eq" || cond.operator === "ne");
+                return (
+                  <div key={i} className="relative rounded-xl border border-outline-variant p-3 pr-9">
+                    <button type="button" onClick={() => setConditions((prev) => prev.filter((_, idx) => idx !== i))}
+                      className="absolute right-2 top-2 rounded p-1 text-on-surface-variant/50 hover:text-error">
+                      <CloseOutlined style={{ fontSize: 16 }} />
+                    </button>
+                    <select className={`${inputCls} mb-2`} value={cond.field}
+                      onChange={(e) => updateCond(i, { field: e.target.value })}>
+                      {fields.map((f) => (
+                        <option key={f.name} value={f.name}>{f.name}</option>
+                      ))}
+                    </select>
+                    <div className="flex gap-2">
+                      <select className={`${inputCls} w-auto shrink-0`} value={cond.operator}
+                        onChange={(e) => updateCond(i, { operator: e.target.value })}>
+                        {OPERATORS.map((op) => (
+                          <option key={op.value} value={op.value}>{op.label}</option>
+                        ))}
+                      </select>
+                      {!NO_VALUE.has(cond.operator) &&
+                        (isEnum ? (
+                          <select className={inputCls} value={cond.value}
+                            onChange={(e) => updateCond(i, { value: e.target.value })}>
+                            <option value="">Valeur…</option>
+                            {fdef!.values!.map((v) => (
+                              <option key={v} value={v}>{v}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <input className={inputCls} value={cond.value}
+                            onChange={(e) => updateCond(i, { value: e.target.value })} placeholder="Valeur" />
+                        ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
           {err && <p className="rounded-xl bg-error-container/40 px-3 py-2 text-body-sm text-error">{err}</p>}
         </div>

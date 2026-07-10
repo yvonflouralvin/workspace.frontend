@@ -28,7 +28,11 @@ export const WIDGET_TYPES = [
   { value: "count", label: "Comptage" },
   { value: "comparison", label: "Comparaison" },
   { value: "timeseries", label: "Série temporelle" },
+  { value: "groupby", label: "Regroupement" },
 ];
+
+const CATEGORICAL = new Set(["enum", "string", "boolean", "integer"]);
+const categoricalFields = (fields: SourceField[]) => fields.filter((f) => CATEGORICAL.has(f.type));
 
 const GRANULARITIES = [
   { value: "day", label: "Jour" },
@@ -148,6 +152,7 @@ export function WidgetForm({ sources, widget, initialType, onSaved, onCancel }: 
   );
   const [granularity, setGranularity] = useState<string>((cfg as { granularity?: string }).granularity ?? "month");
   const [buckets, setBuckets] = useState<number>((cfg as { buckets?: number }).buckets ?? 12);
+  const [groupByCol, setGroupByCol] = useState<string>((cfg as { group_by?: string }).group_by ?? "");
   const [render, setRender] = useState<string>(cfg.render ?? "bar_vertical");
   const [series, setSeries] = useState<Serie[]>(
     Array.isArray(cfg.series)
@@ -176,10 +181,14 @@ export function WidgetForm({ sources, widget, initialType, onSaved, onCancel }: 
     } else {
       if (!title.trim() || !provider || !model) { setErr("Titre, source et modèle requis."); return; }
       if (NEEDS_FIELD.has(measure) && !field) { setErr("Choisissez le champ à agréger."); return; }
+      if (type === "groupby" && !groupByCol) { setErr("Choisissez la colonne de regroupement."); return; }
       const baseConfig = { measure, field: NEEDS_FIELD.has(measure) ? field : undefined, conditions: cleanConditions(conditions) };
-      input = type === "timeseries"
-        ? { type: "timeseries", title: title.trim(), provider, model, config: { ...baseConfig, granularity, buckets: Math.max(2, Math.min(Number(buckets) || 12, 366)) } }
-        : { type: "count", title: title.trim(), provider, model, config: baseConfig };
+      input =
+        type === "timeseries"
+          ? { type: "timeseries", title: title.trim(), provider, model, config: { ...baseConfig, granularity, buckets: Math.max(2, Math.min(Number(buckets) || 12, 366)) } }
+          : type === "groupby"
+            ? { type: "groupby", title: title.trim(), provider, model, config: { ...baseConfig, group_by: groupByCol, render } }
+            : { type: "count", title: title.trim(), provider, model, config: baseConfig };
     }
     setSaving(true);
     try {
@@ -218,7 +227,7 @@ export function WidgetForm({ sources, widget, initialType, onSaved, onCancel }: 
             </div>
             <div className="flex flex-col gap-1">
               <label className="text-label-md font-medium text-on-surface-variant">Modèle</label>
-              <select className={inputCls} value={model} disabled={!provider} onChange={(e) => { setModel(e.target.value); setConditions([]); setField(""); }}>
+              <select className={inputCls} value={model} disabled={!provider} onChange={(e) => { setModel(e.target.value); setConditions([]); setField(""); setGroupByCol(""); }}>
                 <option value="">{provider ? "Choisir un modèle…" : "Choisir d'abord une source"}</option>
                 {modelsOf(provider).map((m) => <option key={m.name} value={m.name}>{m.name}</option>)}
               </select>
@@ -226,6 +235,23 @@ export function WidgetForm({ sources, widget, initialType, onSaved, onCancel }: 
           </div>
           {model && (
             <>
+              {type === "groupby" && (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-label-md font-medium text-on-surface-variant">Regrouper par</label>
+                    <select className={inputCls} value={groupByCol} onChange={(e) => setGroupByCol(e.target.value)}>
+                      <option value="">Choisir une colonne…</option>
+                      {categoricalFields(fieldsOf(provider, model)).map((f) => <option key={f.name} value={f.name}>{f.name}</option>)}
+                    </select>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-label-md font-medium text-on-surface-variant">Rendu</label>
+                    <select className={inputCls} value={render} onChange={(e) => setRender(e.target.value)}>
+                      {RENDER_OPTIONS.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
+                    </select>
+                  </div>
+                </div>
+              )}
               {type === "timeseries" && (
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="flex flex-col gap-1">

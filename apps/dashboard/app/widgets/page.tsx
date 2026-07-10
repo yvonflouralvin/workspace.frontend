@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { AddOutlined, BarChartOutlined, DeleteOutlined, EditOutlined, ExpandMoreOutlined, NumbersOutlined, TimelineOutlined, WidgetsOutlined } from "@mui/icons-material";
+import { AddOutlined, BarChartOutlined, CategoryOutlined, DeleteOutlined, EditOutlined, ExpandMoreOutlined, NumbersOutlined, TimelineOutlined, WidgetsOutlined } from "@mui/icons-material";
 import { ComparisonView } from "@repo/reporting-widgets/ComparisonView";
 import { TimeseriesView } from "@repo/reporting-widgets/TimeseriesView";
 import { DashboardShell } from "@/components/DashboardShell";
@@ -16,6 +16,7 @@ const TYPE_ICONS: Record<string, ReactNode> = {
   count: <NumbersOutlined style={{ fontSize: 18 }} />,
   comparison: <BarChartOutlined style={{ fontSize: 18 }} />,
   timeseries: <TimelineOutlined style={{ fontSize: 18 }} />,
+  groupby: <CategoryOutlined style={{ fontSize: 18 }} />,
 };
 
 export default function WidgetsPage() {
@@ -129,10 +130,11 @@ function WidgetTile({ widget, data, onEdit, onDelete }: { widget: Widget; data?:
   const accent = accentFor(widget.provider ?? "");
   const isComparison = widget.type === "comparison";
   const isTimeseries = widget.type === "timeseries";
-  const cfg = widget.config as { conditions?: unknown[]; series?: unknown[] };
+  const isGroupby = widget.type === "groupby";
+  const cfg = widget.config as { conditions?: unknown[]; series?: unknown[]; group_by?: string };
   const caption = isComparison
     ? `Comparaison · ${Array.isArray(cfg?.series) ? cfg.series.length : 0} source(s)`
-    : `${widget.provider} · ${widget.model}${Array.isArray(cfg?.conditions) && cfg.conditions.length ? ` · ${cfg.conditions.length} cond.` : ""}`;
+    : `${widget.provider} · ${widget.model}${isGroupby && cfg.group_by ? ` · par ${cfg.group_by}` : ""}${Array.isArray(cfg?.conditions) && cfg.conditions.length ? ` · ${cfg.conditions.length} cond.` : ""}`;
 
   return (
     <div className="group relative flex flex-col gap-3 rounded-2xl border border-outline-variant bg-surface-container-lowest p-5">
@@ -143,14 +145,14 @@ function WidgetTile({ widget, data, onEdit, onDelete }: { widget: Widget; data?:
         </div>
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
           style={{ backgroundColor: `color-mix(in srgb, ${accent} 12%, transparent)`, color: accent }}>
-          {isComparison ? <BarChartOutlined style={{ fontSize: 18 }} /> : isTimeseries ? <TimelineOutlined style={{ fontSize: 18 }} /> : <NumbersOutlined style={{ fontSize: 18 }} />}
+          {isComparison ? <BarChartOutlined style={{ fontSize: 18 }} /> : isTimeseries ? <TimelineOutlined style={{ fontSize: 18 }} /> : isGroupby ? <CategoryOutlined style={{ fontSize: 18 }} /> : <NumbersOutlined style={{ fontSize: 18 }} />}
         </span>
       </div>
 
       <div className="pb-4">
         {data === undefined ? (
           <div className="h-9 w-24 animate-pulse rounded bg-surface-container" />
-        ) : data.type === "comparison" ? (
+        ) : data.type === "comparison" || data.type === "groupby" ? (
           <ComparisonView render={data.render} series={data.series} />
         ) : data.type === "timeseries" ? (
           <TimeseriesView points={data.points} granularity={data.granularity} />

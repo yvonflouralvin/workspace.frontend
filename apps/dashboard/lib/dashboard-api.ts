@@ -133,7 +133,14 @@ export interface WidgetTimeseriesData {
   points: TimeseriesPoint[];
 }
 
-export type WidgetData = WidgetCountData | WidgetComparisonData | WidgetTimeseriesData;
+export interface WidgetGroupbyData {
+  widget_id: number;
+  type: "groupby";
+  render: string;
+  series: ComparisonSerieValue[];
+}
+
+export type WidgetData = WidgetCountData | WidgetComparisonData | WidgetTimeseriesData | WidgetGroupbyData;
 
 export interface WidgetInput {
   type?: string;

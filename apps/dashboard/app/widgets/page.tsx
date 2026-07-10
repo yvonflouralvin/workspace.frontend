@@ -316,26 +316,27 @@ function WidgetDrawer({
                         <option key={f.name} value={f.name}>{f.name}</option>
                       ))}
                     </select>
-                    <div className="flex gap-2">
-                      <select className={`${inputCls} w-auto shrink-0`} value={cond.operator}
+                    <div className="grid grid-cols-[auto_1fr] items-center gap-2">
+                      <select className={inputCls} value={cond.operator}
                         onChange={(e) => updateCond(i, { operator: e.target.value })}>
                         {OPERATORS.map((op) => (
                           <option key={op.value} value={op.value}>{op.label}</option>
                         ))}
                       </select>
-                      {!NO_VALUE.has(cond.operator) &&
-                        (isEnum ? (
-                          <select className={inputCls} value={cond.value}
-                            onChange={(e) => updateCond(i, { value: e.target.value })}>
-                            <option value="">Valeur…</option>
-                            {fdef!.values!.map((v) => (
-                              <option key={v} value={v}>{v}</option>
-                            ))}
-                          </select>
-                        ) : (
-                          <input className={inputCls} value={cond.value}
-                            onChange={(e) => updateCond(i, { value: e.target.value })} placeholder="Valeur" />
-                        ))}
+                      {NO_VALUE.has(cond.operator) ? (
+                        <span className="text-body-sm text-on-surface-variant/60">(sans valeur)</span>
+                      ) : isEnum ? (
+                        <select className={inputCls} value={cond.value}
+                          onChange={(e) => updateCond(i, { value: e.target.value })}>
+                          <option value="">Valeur…</option>
+                          {fdef!.values!.map((v) => (
+                            <option key={v} value={v}>{v}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        <input className={inputCls} value={cond.value}
+                          onChange={(e) => updateCond(i, { value: e.target.value })} placeholder="Valeur" />
+                      )}
                     </div>
                   </div>
                 );

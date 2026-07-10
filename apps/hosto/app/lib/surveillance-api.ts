@@ -167,3 +167,22 @@ export async function refuserDose(doseId: number, motif: string): Promise<DoseSu
     await apiFetch(`/api/doses/${doseId}/refuser`, { method: "POST", body: { motif } }),
   );
 }
+
+// ─── Gestion d'un plan d'administration (acte médical) ──────────────────────────
+export async function suspendrePlan(planId: number, motif: string): Promise<unknown> {
+  return parseJson<unknown>(
+    await apiFetch(`/api/plans/${planId}/suspendre`, { method: "POST", body: { motif } }),
+  );
+}
+
+export async function reprendrePlan(planId: number): Promise<unknown> {
+  return parseJson<unknown>(
+    await apiFetch(`/api/plans/${planId}/reprendre`, { method: "POST", body: {} }),
+  );
+}
+
+export async function arreterPlan(planId: number, motif: string): Promise<unknown> {
+  return parseJson<unknown>(
+    await apiFetch(`/api/plans/${planId}/arreter`, { method: "POST", body: { motif } }),
+  );
+}

@@ -8,6 +8,7 @@ import {
   WarningAmberOutlined,
   BlockOutlined,
   ScheduleOutlined,
+  DescriptionOutlined,
   LockOutlined,
 } from "@mui/icons-material";
 import { DashboardShell } from "@/components/DashboardShell";
@@ -19,6 +20,9 @@ import {
   administrerDose,
   omettreDose,
   refuserDose,
+  suspendrePlan,
+  reprendrePlan,
+  arreterPlan,
   type FeuilleSurveillance,
   type DoseSurveillance,
 } from "@/app/lib/surveillance-api";
@@ -146,10 +150,12 @@ function DoseActionModal({ dose, mode, onClose, onDone }: {
 }
 
 // ─── Carte d'une dose ───────────────────────────────────────────────────────────
-function DoseCard({ dose, canAdminister, onAction }: {
+function DoseCard({ dose, canAdminister, canManagePlan, onAction, onPlan }: {
   dose: DoseSurveillance;
   canAdminister: boolean;
+  canManagePlan: boolean;
   onAction: (mode: "administrer" | "omettre" | "refuser") => void;
+  onPlan: (planId: number, mode: "suspendre" | "reprendre" | "arreter") => void;
 }) {
   const traitee = ["DONNEE", "OMISE", "REFUSEE"].includes(dose.status);
   const inactive = ["SUSPENDUE", "ANNULEE"].includes(dose.status);
@@ -206,6 +212,79 @@ function DoseCard({ dose, canAdminister, onAction }: {
           </button>
         </div>
       )}
+
+      {/* Gestion du traitement (acte médical) */}
+      {canManagePlan && (dose.status === "A_DONNER" || dose.status === "SUSPENDUE") && (
+        <div className="flex gap-3 mt-2 text-label-md">
+          {dose.status === "SUSPENDUE" ? (
+            <button type="button" onClick={() => onPlan(dose.plan_id, "reprendre")}
+              className="text-tertiary hover:underline">Reprendre le traitement</button>
+          ) : (
+            <>
+              <button type="button" onClick={() => onPlan(dose.plan_id, "suspendre")}
+                className="text-on-surface-variant hover:text-tertiary hover:underline">Suspendre le traitement</button>
+              <button type="button" onClick={() => onPlan(dose.plan_id, "arreter")}
+                className="text-on-surface-variant hover:text-error hover:underline">Arrêter</button>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Modale d'action sur un plan (acte médical) ─────────────────────────────────
+function PlanActionModal({ planId, mode, onClose, onDone }: {
+  planId: number;
+  mode: "suspendre" | "reprendre" | "arreter";
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const [motif, setMotif] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const motifRequis = mode !== "reprendre";
+  const titre = mode === "suspendre" ? "Suspendre le traitement"
+    : mode === "arreter" ? "Arrêter le traitement" : "Reprendre le traitement";
+
+  async function submit() {
+    if (motifRequis && !motif.trim()) return;
+    setBusy(true); setError(null);
+    try {
+      if (mode === "suspendre") await suspendrePlan(planId, motif.trim());
+      else if (mode === "arreter") await arreterPlan(planId, motif.trim());
+      else await reprendrePlan(planId);
+      onDone();
+    } catch (e) { setError(e instanceof Error ? e.message : "Action impossible."); setBusy(false); }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal>
+      <div className="w-full max-w-md rounded-3xl bg-surface-container-lowest p-6 shadow-xl space-y-4">
+        <h2 className="text-headline-sm font-display text-on-surface">{titre}</h2>
+        <p className="text-body-sm text-on-surface-variant">
+          {mode === "reprendre"
+            ? "Les doses futures suspendues repasseront « à donner »."
+            : "Les doses à venir de ce traitement seront " + (mode === "arreter" ? "annulées." : "suspendues.")}
+        </p>
+        {motifRequis && (
+          <div className="flex flex-col gap-1">
+            <label className="text-label-md font-medium text-on-surface-variant">Motif <span className="text-error">*</span></label>
+            <textarea className="rounded-xl border border-outline-variant bg-surface-container-lowest px-3 py-2.5 text-body-md resize-none focus:outline-none focus:border-primary"
+              rows={2} value={motif} onChange={(e) => setMotif(e.target.value)} autoFocus
+              placeholder={mode === "suspendre" ? "Ex : à jeun avant chirurgie" : "Ex : traitement stoppé par le médecin"} />
+          </div>
+        )}
+        {error && <p className="text-body-sm text-error">{error}</p>}
+        <div className="flex gap-3">
+          <button type="button" onClick={submit} disabled={busy || (motifRequis && !motif.trim())}
+            className="flex-1 py-3 rounded-xl bg-primary text-on-primary text-body-md font-semibold hover:bg-primary-container transition-colors disabled:opacity-40">
+            {busy ? "…" : "Confirmer"}
+          </button>
+          <button type="button" onClick={onClose} disabled={busy}
+            className="px-5 py-3 rounded-xl border border-outline-variant text-body-md text-on-surface-variant hover:bg-surface-container transition-colors">Annuler</button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -221,12 +300,14 @@ export default function FeuilleSurveillancePage() {
   const { can } = usePermissions();
   const canView = can("hosto.mar.view");
   const canAdminister = can("hosto.mar.administer");
+  const canManagePlan = can("hosto.prescriptions.create");
   const canWriteObs = can("hosto.emr.write");
 
   const [feuille, setFeuille] = useState<FeuilleSurveillance | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [action, setAction] = useState<{ dose: DoseSurveillance; mode: "administrer" | "omettre" | "refuser" } | null>(null);
+  const [planAction, setPlanAction] = useState<{ planId: number; mode: "suspendre" | "reprendre" | "arreter" } | null>(null);
   const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const load = useCallback((silent = false) => {
@@ -276,10 +357,18 @@ export default function FeuilleSurveillancePage() {
   return (
     <DashboardShell>
       <div className="p-6 md:p-8 max-w-3xl mx-auto space-y-6">
-        <button type="button" onClick={() => router.push("/surveillance")}
-          className="inline-flex items-center gap-1.5 text-body-sm text-on-surface-variant hover:text-on-surface transition-colors">
-          <ArrowBackOutlined style={{ fontSize: 16 }} /> Retour au service
-        </button>
+        <div className="flex items-center justify-between gap-3">
+          <button type="button" onClick={() => router.push("/surveillance")}
+            className="inline-flex items-center gap-1.5 text-body-sm text-on-surface-variant hover:text-on-surface transition-colors">
+            <ArrowBackOutlined style={{ fontSize: 16 }} /> Retour au service
+          </button>
+          {can("hosto.discharge.write") && (
+            <button type="button" onClick={() => router.push(`/sejours/${sejourId}/compte-rendu`)}
+              className="inline-flex items-center gap-1.5 text-body-sm text-primary hover:underline">
+              <DescriptionOutlined style={{ fontSize: 16 }} /> Lettre de sortie
+            </button>
+          )}
+        </div>
 
         {loading && !feuille ? (
           <div className="space-y-3" aria-busy>
@@ -356,7 +445,9 @@ export default function FeuilleSurveillancePage() {
                     <div className="space-y-2 pl-1">
                       {doses.map((d) => (
                         <DoseCard key={d.id} dose={d} canAdminister={canAdminister}
-                          onAction={(mode) => setAction({ dose: d, mode })} />
+                          canManagePlan={canManagePlan}
+                          onAction={(mode) => setAction({ dose: d, mode })}
+                          onPlan={(planId, mode) => setPlanAction({ planId, mode })} />
                       ))}
                     </div>
                   </div>
@@ -379,6 +470,14 @@ export default function FeuilleSurveillancePage() {
         ) : null}
       </div>
 
+      {planAction && (
+        <PlanActionModal
+          planId={planAction.planId}
+          mode={planAction.mode}
+          onClose={() => setPlanAction(null)}
+          onDone={() => { setPlanAction(null); load(true); }}
+        />
+      )}
       {action && (
         <DoseActionModal
           dose={action.dose}

@@ -7,6 +7,7 @@ import {
   HistoryEduOutlined,
   MonitorHeartOutlined,
   LocalHospitalOutlined,
+  HotelOutlined,
   WarningAmberOutlined,
   MedicationOutlined,
   BiotechOutlined,
@@ -96,6 +97,14 @@ const TYPE_CONFIG: Record<
     textCls: "text-primary",
     chipActiveCls: "bg-primary/10 text-primary ring-1 ring-primary/40",
     tab: "actes",
+  },
+  HOSPITALISATION: {
+    label: "Hospitalisations",
+    Icon: HotelOutlined,
+    dotCls: "bg-secondary",
+    textCls: "text-secondary",
+    chipActiveCls: "bg-secondary/12 text-secondary ring-1 ring-secondary/40",
+    tab: "hospitalisations",
   },
 };
 

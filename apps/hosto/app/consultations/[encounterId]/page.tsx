@@ -20,6 +20,8 @@ import {
   cancelConsultation,
   type ConsultationAggregate,
 } from "@/app/lib/consultation-api";
+import { admettreDepuisEncounter } from "@/app/lib/sejours-api";
+import { getLitsLibres, type LitLibre } from "@/app/lib/occupation-api";
 import { EMRDrawer } from "@/components/emr/EMRDrawer";
 import { EMRPanel } from "@/components/emr/EMRPanel";
 import { SummaryTab } from "@/components/consultation/SummaryTab";
@@ -32,6 +34,7 @@ import {
   CallSplitOutlined,
   CancelOutlined,
   WarningAmberOutlined,
+  HotelOutlined,
 } from "@mui/icons-material";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -83,6 +86,7 @@ export default function ConsultationPage() {
 
   const canWrite = can("hosto.consultations.manage");
   const canSign  = can("hosto.emr.sign");
+  const canAdmit = can("hosto.admissions.manage");
 
   const [aggregate, setAggregate] = useState<ConsultationAggregate | null>(null);
   const [patient, setPatient] = useState<Patient | null>(null);
@@ -107,6 +111,13 @@ export default function ConsultationPage() {
   const [showCancelModal, setShowCancelModal]     = useState(false);
   const [cancelReason, setCancelReason]           = useState("");
   const [cancelPending, setCancelPending]         = useState(false);
+
+  const [showAdmitModal, setShowAdmitModal]       = useState(false);
+  const [admitLits, setAdmitLits]                 = useState<LitLibre[]>([]);
+  const [admitLitId, setAdmitLitId]               = useState<number | "">("");
+  const [admitMotif, setAdmitMotif]               = useState("");
+  const [admitPending, setAdmitPending]           = useState(false);
+  const [admitError, setAdmitError]               = useState<string | null>(null);
 
   // Onglets de la consultation → onglets du dossier complet (volet gauche).
   const CONSULT_TO_EMR_TAB: Record<ConsultTab, string> = {
@@ -190,6 +201,26 @@ export default function ConsultationPage() {
     }
   }
 
+  function openAdmit() {
+    setShowAdmitModal(true);
+    setAdmitLitId(""); setAdmitMotif(""); setAdmitError(null); setAdmitLits([]);
+    // Lits libres du service de la consultation (l'admission reprend ce service).
+    const svc = aggregate?.encounter.service_id ?? undefined;
+    getLitsLibres(svc ? { service_id: svc } : undefined).then(setAdmitLits).catch(() => {});
+  }
+
+  async function handleAdmitConfirm() {
+    if (admitPending || !admitLitId) return;
+    setAdmitPending(true); setAdmitError(null);
+    try {
+      const sej = await admettreDepuisEncounter(encounterId, Number(admitLitId), admitMotif.trim() || undefined);
+      router.push(`/surveillance/${sej.id}`);
+    } catch (e) {
+      setAdmitError(e instanceof Error ? e.message : "Admission impossible.");
+      setAdmitPending(false);
+    }
+  }
+
   // ── Render guards ─────────────────────────────────────────────────────────
 
   if (loading) {
@@ -250,6 +281,14 @@ export default function ConsultationPage() {
                 <CallSplitOutlined style={{ fontSize: 15 }} />
                 Réorienter
               </button>
+              {canAdmit && (
+                <button
+                  onClick={openAdmit}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-outline-variant text-on-surface-variant text-body-sm hover:text-primary hover:border-primary transition-colors">
+                  <HotelOutlined style={{ fontSize: 15 }} />
+                  Hospitaliser
+                </button>
+              )}
               <button
                 onClick={() => { setShowCloseModal(true); setCloseAddendum(""); setCloseWarnings([]); }}
                 className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-secondary text-on-primary text-body-sm font-medium hover:bg-secondary/90 transition-colors">
@@ -499,6 +538,63 @@ export default function ConsultationPage() {
               disabled={redirectPending || !redirectServiceId}
               className="px-4 py-2 rounded-xl bg-primary text-on-primary text-body-sm font-medium hover:bg-primary-container disabled:opacity-50 transition-colors">
               {redirectPending ? "Réorientation…" : "Confirmer"}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* ── Modal Hospitaliser ───────────────────────────────────────────────── */}
+    {showAdmitModal && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
+        <div className="bg-surface-container-lowest rounded-2xl shadow-2xl w-full max-w-[448px] p-6 space-y-5">
+          <div className="space-y-1">
+            <h2 className="text-headline-sm font-semibold text-on-surface">Hospitaliser le patient</h2>
+            <p className="text-body-sm text-on-surface-variant">
+              Le patient et le service de la consultation sont repris. Choisissez un lit libre.
+            </p>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-label-md text-on-surface-variant">Lit d&apos;accueil</label>
+            <select
+              value={admitLitId}
+              onChange={(e) => setAdmitLitId(e.target.value ? Number(e.target.value) : "")}
+              className="w-full rounded-xl border border-outline-variant bg-surface px-3 py-2.5 text-body-sm text-on-surface focus:outline-none focus:border-primary">
+              <option value="">Sélectionner un lit libre…</option>
+              {admitLits.map((l) => (
+                <option key={l.lit_id} value={l.lit_id}>
+                  {l.service_nom} · Ch. {l.chambre_numero} · Lit {l.numero}
+                </option>
+              ))}
+            </select>
+            {admitLits.length === 0 && (
+              <p className="text-label-sm text-on-surface-variant">Aucun lit libre trouvé pour ce service.</p>
+            )}
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-label-md text-on-surface-variant">Motif d&apos;admission</label>
+            <input
+              value={admitMotif}
+              onChange={(e) => setAdmitMotif(e.target.value)}
+              placeholder="Ex : surveillance, aggravation…"
+              className="w-full rounded-xl border border-outline-variant bg-surface px-3 py-2.5 text-body-sm text-on-surface focus:outline-none focus:border-primary" />
+          </div>
+
+          {admitError && <p className="text-body-sm text-error">{admitError}</p>}
+
+          <div className="flex justify-end gap-2 pt-1">
+            <button
+              onClick={() => setShowAdmitModal(false)}
+              className="px-4 py-2 rounded-xl border border-outline-variant text-body-sm text-on-surface-variant hover:bg-surface-container transition-colors">
+              Annuler
+            </button>
+            <button
+              onClick={handleAdmitConfirm}
+              disabled={admitPending || !admitLitId}
+              className="px-4 py-2 rounded-xl bg-primary text-on-primary text-body-sm font-medium hover:bg-primary-container disabled:opacity-50 transition-colors">
+              {admitPending ? "Admission…" : "Hospitaliser"}
             </button>
           </div>
         </div>

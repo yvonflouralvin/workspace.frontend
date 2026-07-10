@@ -34,6 +34,7 @@ export interface LitOccupation {
   status: LitStatus;
   occupant: LitOccupant | null;
   nettoyage_depuis: string | null;
+  nettoyage_alerte: boolean;
   anomalie: boolean;
 }
 
@@ -49,6 +50,7 @@ export interface ChambreOccupation {
 export interface ServiceOccupationDetail {
   service_id: number;
   service_nom: string;
+  seuil_nettoyage_heures: number;
   chambres: ChambreOccupation[];
 }
 

@@ -26,8 +26,9 @@ import {
   type LitOccupation,
   type LitLibre,
 } from "@/app/lib/occupation-api";
-import { LIT_STATUS_LABEL, type LitStatus } from "@/app/lib/beds-api";
+import { LIT_STATUS_LABEL, changeLitStatus, type LitStatus } from "@/app/lib/beds-api";
 import { listPatients, type PatientSummary } from "@/app/lib/api";
+import { SejourActions } from "@/components/hospitalisation/SejourActions";
 
 const POLL_MS = 30_000;
 
@@ -87,18 +88,17 @@ function OverviewCard({ ov, onOpen }: { ov: ServiceOccupationOverview; onOpen: (
 }
 
 // ─── Lit tile ──────────────────────────────────────────────────────────────────
-function LitTile({ lit, onOpen }: { lit: LitOccupation; onOpen: () => void }) {
-  const clickable = lit.status === "OCCUPE" && !!lit.occupant;
-  return (
-    <button
-      type="button"
-      onClick={clickable ? onOpen : undefined}
-      className={`text-left rounded-xl border p-3 min-w-[150px] ${TILE_CLS[lit.status]} ${clickable ? "hover:brightness-95 cursor-pointer" : "cursor-default"}`}
-    >
+function LitTile({ lit, onOpen, canOperate, onLitPret }: {
+  lit: LitOccupation; onOpen: () => void; canOperate: boolean; onLitPret: (litId: number) => void;
+}) {
+  const occupClickable = lit.status === "OCCUPE" && !!lit.occupant;
+  const alerte = lit.status === "NETTOYAGE" && lit.nettoyage_alerte;
+  const inner = (
+    <>
       <div className="flex items-center gap-1.5">
         <BedOutlined style={{ fontSize: 15 }} className="text-on-surface-variant" />
         <span className="text-body-sm font-semibold text-on-surface">Lit {lit.numero}</span>
-        {lit.anomalie && <WarningAmberOutlined style={{ fontSize: 14 }} className="text-error" />}
+        {(lit.anomalie || alerte) && <WarningAmberOutlined style={{ fontSize: 14 }} className="text-error" />}
       </div>
       {lit.occupant ? (
         <div className="mt-1">
@@ -108,13 +108,29 @@ function LitTile({ lit, onOpen }: { lit: LitOccupation; onOpen: () => void }) {
           </p>
         </div>
       ) : (
-        <p className="text-label-sm text-on-surface-variant mt-1">
+        <p className={`text-label-sm mt-1 ${alerte ? "text-error font-medium" : "text-on-surface-variant"}`}>
           {LIT_STATUS_LABEL[lit.status]}
           {lit.status === "NETTOYAGE" && lit.nettoyage_depuis && ` · depuis ${fmtDateTime(lit.nettoyage_depuis).split(" à ")[0]}`}
+          {alerte && " · à libérer"}
           {lit.anomalie && " · anomalie"}
         </p>
       )}
-    </button>
+    </>
+  );
+  return (
+    <div className={`rounded-xl border p-3 min-w-[150px] ${alerte ? "border-error bg-error-container/70" : TILE_CLS[lit.status]}`}>
+      {occupClickable ? (
+        <button type="button" onClick={onOpen} className="text-left w-full hover:opacity-80 transition-opacity">{inner}</button>
+      ) : (
+        <div>{inner}</div>
+      )}
+      {lit.status === "NETTOYAGE" && canOperate && (
+        <button type="button" onClick={() => onLitPret(lit.lit_id)}
+          className="mt-2 w-full py-1.5 rounded-lg bg-secondary text-on-secondary text-label-md font-medium hover:opacity-90 transition-opacity">
+          Lit prêt
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -124,17 +140,26 @@ type LitFilter = "all" | "LIBRE" | "OCCUPE";
 function ServiceDetail({ serviceId, onBack, refreshKey }: {
   serviceId: number; onBack: () => void; refreshKey: number;
 }) {
+  const { can } = usePermissions();
+  const canOperate = can("hosto.beds.operate") || can("hosto.beds.manage");
   const [detail, setDetail] = useState<ServiceOccupationDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<LitFilter>("all");
   const [occupant, setOccupant] = useState<LitOccupation | null>(null);
+  const [bump, setBump] = useState(0);
+  const reload = () => setBump((x) => x + 1);
 
   useEffect(() => {
     getServiceOccupation(serviceId)
       .then(setDetail)
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [serviceId, refreshKey]);
+  }, [serviceId, refreshKey, bump]);
+
+  async function handleLitPret(litId: number) {
+    try { await changeLitStatus(litId, "LIBRE"); reload(); }
+    catch { /* laissé silencieux : le poll rafraîchira l'état réel */ }
+  }
 
   if (loading && !detail) {
     return <div className="h-40 rounded-2xl bg-surface-container animate-pulse" />;
@@ -178,7 +203,8 @@ function ServiceDetail({ serviceId, onBack, refreshKey }: {
               </p>
               <div className="flex flex-wrap gap-2">
                 {lits.map((lit) => (
-                  <LitTile key={lit.lit_id} lit={lit} onOpen={() => setOccupant(lit)} />
+                  <LitTile key={lit.lit_id} lit={lit} onOpen={() => setOccupant(lit)}
+                    canOperate={canOperate} onLitPret={handleLitPret} />
                 ))}
               </div>
             </div>
@@ -203,6 +229,8 @@ function ServiceDetail({ serviceId, onBack, refreshKey }: {
               className="inline-flex items-center gap-1.5 text-body-sm text-primary hover:opacity-70 transition-opacity">
               Ouvrir le dossier médical →
             </Link>
+            <SejourActions sejourId={occupant.occupant.sejour_id} serviceId={serviceId}
+              onDone={() => { setOccupant(null); reload(); }} />
           </div>
         </RightDrawer>
       )}

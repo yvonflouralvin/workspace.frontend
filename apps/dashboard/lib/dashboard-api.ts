@@ -101,23 +101,43 @@ export interface Widget {
   config: Record<string, unknown>;
 }
 
-export interface WidgetData {
+export interface WidgetCountData {
   widget_id: number;
-  type: string;
+  type: "count";
   count: number;
 }
+
+export interface ComparisonSerieValue {
+  label: string;
+  value: number | null;
+}
+
+export interface WidgetComparisonData {
+  widget_id: number;
+  type: "comparison";
+  render: string;
+  series: ComparisonSerieValue[];
+}
+
+export type WidgetData = WidgetCountData | WidgetComparisonData;
 
 export interface WidgetInput {
   type?: string;
   title: string;
-  provider: string;
-  model: string;
+  provider?: string | null;
+  model?: string | null;
   config?: Record<string, unknown>;
 }
 
 export async function getWidgets(): Promise<{ widgets: Widget[] }> {
   const res = await apiFetch("/api/widgets");
   if (!res.ok) throw new Error("Impossible de charger les widgets.");
+  return res.json();
+}
+
+export async function getWidget(id: number): Promise<Widget> {
+  const res = await apiFetch(`/api/widgets/${id}`);
+  if (!res.ok) throw new Error("Widget introuvable.");
   return res.json();
 }
 

@@ -30,6 +30,8 @@ Le **type est verrouillé après création**.
 
 ### Existants ✅
 - **Comptage** — une mesure (count/somme/moyenne…) d'un modèle. `direct_reader.aggregate`.
+- **KPI de tendance** — une mesure sur la fenêtre courante + delta vs période précédente +
+  sparkline. `direct_reader.trend` (compose aggregate + time_series) → `TrendView`.
 - **Comparaison** — plusieurs séries (chacune source/modèle/mesure/conditions), rendu
   chiffres (ligne/colonne) · histogramme (V/H) · camembert. `ComparisonView`.
 - **Série temporelle** — évolution d'une mesure par bucket (jour/semaine/mois) sur
@@ -39,9 +41,8 @@ Le **type est verrouillé après création**.
   base). `direct_reader.group_by` → `ComparisonView`.
 
 ### Roadmap — nouveaux types
-- **KPI de tendance** — un chiffre + **delta vs période précédente** (+X %) + **sparkline**.
-  _(prochaine étape)_
 - **Jauge / Objectif** — une valeur vs un seuil/cible, colorée (bon/attention/critique).
+  _(prochaine étape recommandée)_
 - **Table / Top-N** — afficher de vraies lignes (pas un agrégat) ; colonnes au choix, dans le
   respect de l'anonymisation.
 - **Ratio / Pourcentage** — une valeur en % d'une autre (ex. taux de paiement).

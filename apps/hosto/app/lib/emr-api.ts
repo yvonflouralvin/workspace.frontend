@@ -35,7 +35,8 @@ export type TimelineItemType =
   | "ALLERGY"
   | "MEDICATION"
   | "LAB"
-  | "ACTE";
+  | "ACTE"
+  | "HOSPITALISATION";
 
 export interface AllergyRead {
   id: number;
@@ -232,6 +233,15 @@ export interface LastEncounterRead {
   created_at: string;
 }
 
+export interface SejourEnCours {
+  sejour_id: number;
+  service_id: number;
+  service_nom: string | null;
+  chambre_numero: string | null;
+  lit_numero: string | null;
+  admitted_at: string | null;
+}
+
 export interface EMRSummary {
   patient_id: number;
   active_allergies: AllergyRead[];
@@ -239,6 +249,7 @@ export interface EMRSummary {
   current_medications: MedicationStatementRead[];
   latest_observations: ObservationRead[];
   last_encounter: LastEncounterRead | null;
+  sejour_en_cours: SejourEnCours | null;
 }
 
 export interface TimelineItemRead {

@@ -22,6 +22,8 @@ import { TimelineTab } from "@/components/emr/TimelineTab";
 import { PrescriptionsPanel } from "@/components/prescriptions/PrescriptionsPanel";
 import { LabRequestsPanel } from "@/components/lab/LabRequestsPanel";
 import { ActesPanel } from "@/components/actes/ActesPanel";
+import { SejoursPanel } from "@/components/hospitalisation/SejoursPanel";
+import { HotelOutlined } from "@mui/icons-material";
 import {
   ArrowBackOutlined,
   BadgeOutlined,
@@ -59,6 +61,7 @@ const EMR_TABS = [
   { key: "prescriptions", label: "Prescriptions" },
   { key: "examens",       label: "Examens" },
   { key: "actes",         label: "Actes" },
+  { key: "hospitalisations", label: "Hospitalisations" },
   { key: "timeline",      label: "Timeline" },
 ] as const;
 
@@ -254,6 +257,21 @@ export default function EMRPage() {
         {/* ── Allergy banner — always visible ── */}
         <AllergyBanner allergies={summary?.active_allergies ?? []} />
 
+        {/* ── Bandeau patient hospitalisé (discret, ne concurrence pas l'allergie) ── */}
+        {summary?.sejour_en_cours && (
+          <Link href={`/surveillance/${summary.sejour_en_cours.sejour_id}`}
+            className="flex items-center gap-2.5 rounded-xl border border-primary/30 bg-primary/5 px-4 py-2.5 hover:bg-primary/10 transition-colors">
+            <HotelOutlined className="text-primary shrink-0" style={{ fontSize: 18 }} />
+            <p className="text-body-sm text-on-surface">
+              <span className="font-semibold text-primary">Patient hospitalisé</span>
+              {summary.sejour_en_cours.admitted_at && ` — depuis le ${new Date(summary.sejour_en_cours.admitted_at).toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}`}
+              {summary.sejour_en_cours.service_nom ? ` · ${summary.sejour_en_cours.service_nom}` : ""}
+              {summary.sejour_en_cours.chambre_numero ? ` · chambre ${summary.sejour_en_cours.chambre_numero}` : ""}
+              {summary.sejour_en_cours.lit_numero ? ` · lit ${summary.sejour_en_cours.lit_numero}` : ""}
+            </p>
+          </Link>
+        )}
+
         {/* ── Tab bar ── */}
         <EMRTabBar active={activeTab} onChange={setTab} />
 
@@ -342,6 +360,9 @@ export default function EMRPage() {
               onCloseSplit={closeSplit}
               onMutation={loadSummary}
             />
+          )}
+          {activeTab === "hospitalisations" && (
+            <SejoursPanel patientId={Number(id)} />
           )}
           {activeTab === "timeline" && (
             <TimelineTab patientId={Number(id)} />

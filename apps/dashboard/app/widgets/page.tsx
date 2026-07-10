@@ -8,7 +8,7 @@ import { DashboardShell } from "@/components/DashboardShell";
 import { getWidgets, deleteWidget, getWidgetData, type Widget, type WidgetData } from "@/lib/dashboard-api";
 import { accentFor } from "@/lib/app-accent";
 
-const nf = new Intl.NumberFormat("fr-FR");
+const nf = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 2 });
 
 export default function WidgetsPage() {
   const router = useRouter();
@@ -124,7 +124,7 @@ function WidgetTile({ widget, data, onEdit, onDelete }: { widget: Widget; data?:
         ) : data.type === "comparison" ? (
           <ComparisonView render={data.render} series={data.series} />
         ) : (
-          <p className="text-3xl font-bold leading-none text-on-surface tabular-nums">{nf.format(data.count)}</p>
+          <p className="text-3xl font-bold leading-none text-on-surface tabular-nums">{data.value === null ? "—" : nf.format(data.value)}</p>
         )}
       </div>
 

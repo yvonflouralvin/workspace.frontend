@@ -104,7 +104,8 @@ export interface Widget {
 export interface WidgetCountData {
   widget_id: number;
   type: "count";
-  count: number;
+  value: number | null;
+  measure?: string;
 }
 
 export interface ComparisonSerieValue {

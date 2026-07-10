@@ -29,6 +29,16 @@ const WIDGET_TYPES = [
   { value: "comparison", label: "Comparaison" },
 ];
 
+const MEASURES = [
+  { value: "count", label: "Nombre de lignes" },
+  { value: "sum", label: "Somme" },
+  { value: "avg", label: "Moyenne" },
+  { value: "min", label: "Minimum" },
+  { value: "max", label: "Maximum" },
+];
+const NEEDS_FIELD = new Set(["sum", "avg", "min", "max"]);
+const numericFields = (fields: SourceField[]) => fields.filter((f) => f.type === "integer" || f.type === "decimal");
+
 const RENDER_OPTIONS = [
   { value: "numbers_row", label: "Chiffres (ligne)" },
   { value: "numbers_column", label: "Chiffres (colonne)" },
@@ -38,7 +48,7 @@ const RENDER_OPTIONS = [
 ];
 
 type Condition = { field: string; operator: string; value: string };
-type Serie = { label: string; provider: string; model: string; conditions: Condition[] };
+type Serie = { label: string; provider: string; model: string; measure: string; field: string; conditions: Condition[] };
 
 function cleanConditions(conds: Condition[]) {
   return conds
@@ -92,21 +102,47 @@ function ConditionsEditor({ fields, conditions, onChange }: { fields: SourceFiel
   );
 }
 
+function MeasureFields({ fields, measure, field, onChange }: { fields: SourceField[]; measure: string; field: string; onChange: (patch: { measure?: string; field?: string }) => void }) {
+  const nums = numericFields(fields);
+  return (
+    <div className="grid gap-2 sm:grid-cols-2">
+      <div className="flex flex-col gap-1">
+        <label className="text-label-md font-medium text-on-surface-variant">Mesure</label>
+        <select className={inputCls} value={measure}
+          onChange={(e) => onChange(NEEDS_FIELD.has(e.target.value) ? { measure: e.target.value } : { measure: e.target.value, field: "" })}>
+          {MEASURES.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
+        </select>
+      </div>
+      {NEEDS_FIELD.has(measure) && (
+        <div className="flex flex-col gap-1">
+          <label className="text-label-md font-medium text-on-surface-variant">Champ (numérique)</label>
+          <select className={inputCls} value={field} onChange={(e) => onChange({ field: e.target.value })}>
+            <option value="">Choisir un champ…</option>
+            {nums.map((f) => <option key={f.name} value={f.name}>{f.name}</option>)}
+          </select>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function WidgetForm({ sources, widget, onSaved, onCancel }: { sources: DataSourceApp[]; widget?: Widget; onSaved: (w: Widget) => void; onCancel: () => void }) {
   const isEdit = !!widget;
-  const cfg = (widget?.config ?? {}) as { conditions?: Condition[]; render?: string; series?: Serie[] };
+  const cfg = (widget?.config ?? {}) as { conditions?: Condition[]; measure?: string; field?: string; render?: string; series?: Serie[] };
 
   const [type, setType] = useState<string>(widget?.type ?? "count");
   const [title, setTitle] = useState(widget?.title ?? "");
   const [provider, setProvider] = useState(widget?.provider ?? "");
   const [model, setModel] = useState(widget?.model ?? "");
+  const [measure, setMeasure] = useState<string>(cfg.measure ?? "count");
+  const [field, setField] = useState<string>(cfg.field ?? "");
   const [conditions, setConditions] = useState<Condition[]>(
     Array.isArray(cfg.conditions) ? cfg.conditions.map((c) => ({ field: c.field ?? "", operator: c.operator ?? "eq", value: c.value ?? "" })) : [],
   );
   const [render, setRender] = useState<string>(cfg.render ?? "bar_vertical");
   const [series, setSeries] = useState<Serie[]>(
     Array.isArray(cfg.series)
-      ? cfg.series.map((s) => ({ label: s.label ?? "", provider: s.provider ?? "", model: s.model ?? "", conditions: (s.conditions ?? []).map((c) => ({ field: c.field ?? "", operator: c.operator ?? "eq", value: c.value ?? "" })) }))
+      ? cfg.series.map((s) => ({ label: s.label ?? "", provider: s.provider ?? "", model: s.model ?? "", measure: s.measure ?? "count", field: s.field ?? "", conditions: (s.conditions ?? []).map((c) => ({ field: c.field ?? "", operator: c.operator ?? "eq", value: c.value ?? "" })) }))
       : [],
   );
   const [saving, setSaving] = useState(false);
@@ -123,10 +159,15 @@ export function WidgetForm({ sources, widget, onSaved, onCancel }: { sources: Da
     if (type === "comparison") {
       if (!title.trim() || series.length === 0) { setErr("Titre et au moins une source requis."); return; }
       if (series.some((s) => !s.provider || !s.model)) { setErr("Chaque source doit avoir une application et un modèle."); return; }
-      input = { type: "comparison", title: title.trim(), config: { render, series: series.map((s) => ({ label: s.label.trim() || s.model, provider: s.provider, model: s.model, conditions: cleanConditions(s.conditions) })) } };
+      if (series.some((s) => NEEDS_FIELD.has(s.measure) && !s.field)) { setErr("Choisissez le champ à agréger pour chaque source."); return; }
+      input = {
+        type: "comparison", title: title.trim(),
+        config: { render, series: series.map((s) => ({ label: s.label.trim() || s.model, provider: s.provider, model: s.model, measure: s.measure, field: NEEDS_FIELD.has(s.measure) ? s.field : undefined, conditions: cleanConditions(s.conditions) })) },
+      };
     } else {
       if (!title.trim() || !provider || !model) { setErr("Titre, source et modèle requis."); return; }
-      input = { type: "count", title: title.trim(), provider, model, config: { conditions: cleanConditions(conditions) } };
+      if (NEEDS_FIELD.has(measure) && !field) { setErr("Choisissez le champ à agréger."); return; }
+      input = { type: "count", title: title.trim(), provider, model, config: { measure, field: NEEDS_FIELD.has(measure) ? field : undefined, conditions: cleanConditions(conditions) } };
     }
     setSaving(true);
     try {
@@ -165,13 +206,19 @@ export function WidgetForm({ sources, widget, onSaved, onCancel }: { sources: Da
             </div>
             <div className="flex flex-col gap-1">
               <label className="text-label-md font-medium text-on-surface-variant">Modèle</label>
-              <select className={inputCls} value={model} disabled={!provider} onChange={(e) => { setModel(e.target.value); setConditions([]); }}>
+              <select className={inputCls} value={model} disabled={!provider} onChange={(e) => { setModel(e.target.value); setConditions([]); setField(""); }}>
                 <option value="">{provider ? "Choisir un modèle…" : "Choisir d'abord une source"}</option>
                 {modelsOf(provider).map((m) => <option key={m.name} value={m.name}>{m.name}</option>)}
               </select>
             </div>
           </div>
-          {model && <ConditionsEditor fields={fieldsOf(provider, model)} conditions={conditions} onChange={setConditions} />}
+          {model && (
+            <>
+              <MeasureFields fields={fieldsOf(provider, model)} measure={measure} field={field}
+                onChange={(p) => { if (p.measure !== undefined) setMeasure(p.measure); if (p.field !== undefined) setField(p.field); }} />
+              <ConditionsEditor fields={fieldsOf(provider, model)} conditions={conditions} onChange={setConditions} />
+            </>
+          )}
         </>
       ) : (
         <>
@@ -184,7 +231,7 @@ export function WidgetForm({ sources, widget, onSaved, onCancel }: { sources: Da
 
           <div className="flex items-center justify-between">
             <label className="text-label-md font-medium text-on-surface-variant">Sources à comparer</label>
-            <button type="button" onClick={() => setSeries((prev) => [...prev, { label: "", provider: "", model: "", conditions: [] }])}
+            <button type="button" onClick={() => setSeries((prev) => [...prev, { label: "", provider: "", model: "", measure: "count", field: "", conditions: [] }])}
               className="inline-flex items-center gap-1 text-label-md text-primary hover:opacity-70">
               <AddOutlined style={{ fontSize: 16 }} /> Ajouter une source
             </button>
@@ -201,12 +248,17 @@ export function WidgetForm({ sources, widget, onSaved, onCancel }: { sources: Da
                   <option value="">Source…</option>
                   {sources.map((src) => <option key={src.app_key} value={src.app_key}>{src.app_label}</option>)}
                 </select>
-                <select className={inputCls} value={s.model} disabled={!s.provider} onChange={(e) => updateSerie(i, { model: e.target.value, conditions: [] })}>
+                <select className={inputCls} value={s.model} disabled={!s.provider} onChange={(e) => updateSerie(i, { model: e.target.value, conditions: [], field: "" })}>
                   <option value="">Modèle…</option>
                   {modelsOf(s.provider).map((m) => <option key={m.name} value={m.name}>{m.name}</option>)}
                 </select>
               </div>
-              {s.model && <ConditionsEditor fields={fieldsOf(s.provider, s.model)} conditions={s.conditions} onChange={(c) => updateSerie(i, { conditions: c })} />}
+              {s.model && (
+                <>
+                  <MeasureFields fields={fieldsOf(s.provider, s.model)} measure={s.measure} field={s.field} onChange={(p) => updateSerie(i, p)} />
+                  <ConditionsEditor fields={fieldsOf(s.provider, s.model)} conditions={s.conditions} onChange={(c) => updateSerie(i, { conditions: c })} />
+                </>
+              )}
             </div>
           ))}
         </>

@@ -39,12 +39,16 @@ Le **type est verrouillé après création**.
 - **Regroupement** — répartition d'une mesure par valeur distincte d'une colonne (GROUP BY),
   avec **référence de libellé** optionnelle (résout un ID en libellé via un modèle de la même
   base). `direct_reader.group_by` → `ComparisonView`.
+- **Jauge / Objectif** — une valeur vs une cible, colorée selon des **seuils configurables**
+  (en % de la cible : bon/alerte/critique) et le sens favorable (higher/lower). Repères de
+  seuils dessinés sur l'arc. `direct_reader.aggregate` → `GaugeView` / `@repo/ui/charts/GaugeChart`.
+- **Tableau / palmarès** — classement **top‑N** d'une mesure par catégorie (GROUP BY trié
+  décroissant, `limit` configurable), rendu en liste classée (rang + barre proportionnelle).
+  Réutilise `direct_reader.group_by` (avec référence de libellé) → `LeaderboardView`.
 
 ### Roadmap — nouveaux types
-- **Jauge / Objectif** — une valeur vs un seuil/cible, colorée (bon/attention/critique).
-  _(prochaine étape recommandée)_
-- **Table / Top-N** — afficher de vraies lignes (pas un agrégat) ; colonnes au choix, dans le
-  respect de l'anonymisation.
+- **Table brute** — afficher de vraies lignes (pas un agrégat) ; colonnes au choix, dans le
+  respect de l'anonymisation (variante du palmarès actuel qui, lui, reste agrégé).
 - **Ratio / Pourcentage** — une valeur en % d'une autre (ex. taux de paiement).
 - **Entonnoir (funnel)** — étapes successives (créées → validées → payées).
 - **Heatmap calendrier** — densité d'activité par jour sur `created_at`.
@@ -54,9 +58,9 @@ Le **type est verrouillé après création**.
 
 - **Comptage** : delta vs période précédente + sparkline ; unité/format (%, FC, préfixe/
   suffixe) ; comparaison à un objectif coloré.
-- **Regroupement / Comparaison** : tri (valeur/libellé) ; Top-N + « Autres » (regrouper la
-  traîne) ; barres empilées / 100 % (2ᵉ dimension) ; référence de libellé **cross-app** (via
-  le `database_url` d'une autre app).
+- **Regroupement / Comparaison** : tri (valeur/libellé) ; « Autres » (regrouper la traîne
+  au-delà du Top-N) ; barres empilées / 100 % (2ᵉ dimension) ; référence de libellé
+  **cross-app** (via le `database_url` d'une autre app).
 - **Série temporelle** : plusieurs séries sur un même graphe ; moyenne mobile / cumulé ;
   courbe fantôme de la période précédente ; aire/barres au choix.
 - **Transversal (tous)** : rafraîchissement auto temps réel ; taille du widget
@@ -71,7 +75,7 @@ Le **type est verrouillé après création**.
 
 ## Priorités recommandées
 
-1. **KPI de tendance** (delta + sparkline) — gros impact, peu de travail.
-2. **Jauge / Objectif** — simple et très visuel.
-3. **Table Top-N** — le seul qui montre les données brutes.
-4. **Organisation** (drag & drop + tailles) — dès qu'il y a beaucoup de widgets.
+1. ~~**KPI de tendance**~~ ✅ · ~~**Jauge / Objectif**~~ ✅ · ~~**Tableau / palmarès**~~ ✅ (livrés)
+2. **Table brute** — la seule vue qui montrerait les lignes non agrégées (anonymisation).
+3. **Organisation** (drag & drop + tailles) — dès qu'il y a beaucoup de widgets.
+4. **Transversal** — rafraîchissement auto temps réel, export, duplication.

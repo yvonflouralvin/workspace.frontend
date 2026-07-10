@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { AddOutlined, BarChartOutlined, CategoryOutlined, CloseOutlined, NumbersOutlined, SpeedOutlined, TimelineOutlined, TrendingUpOutlined } from "@mui/icons-material";
+import { AddOutlined, BarChartOutlined, CategoryOutlined, CloseOutlined, LeaderboardOutlined, NumbersOutlined, SpeedOutlined, TimelineOutlined, TrendingUpOutlined } from "@mui/icons-material";
 import {
   createWidget,
   updateWidget,
@@ -17,6 +17,7 @@ const TYPE_ICON: Record<string, ReactNode> = {
   comparison: <BarChartOutlined style={{ fontSize: 20 }} />,
   timeseries: <TimelineOutlined style={{ fontSize: 20 }} />,
   groupby: <CategoryOutlined style={{ fontSize: 20 }} />,
+  table: <LeaderboardOutlined style={{ fontSize: 20 }} />,
 };
 
 const inputCls =
@@ -40,6 +41,7 @@ export const WIDGET_TYPES = [
   { value: "comparison", label: "Comparaison", description: "Compare plusieurs valeurs (chiffres, histogramme, camembert)." },
   { value: "timeseries", label: "Série temporelle", description: "L'évolution d'une valeur dans le temps, en courbe." },
   { value: "groupby", label: "Regroupement", description: "Répartition automatique d'une valeur par catégorie." },
+  { value: "table", label: "Tableau / palmarès", description: "Un classement top‑N par catégorie, du plus grand au plus petit." },
 ];
 
 const CATEGORICAL = new Set(["enum", "string", "boolean", "integer"]);
@@ -163,6 +165,10 @@ export function WidgetForm({ sources, widget, initialType, onSaved, onCancel }: 
   );
   const [target, setTarget] = useState<string>((cfg as { target?: number }).target !== undefined ? String((cfg as { target?: number }).target) : "");
   const [direction, setDirection] = useState<string>((cfg as { direction?: string }).direction ?? "higher");
+  const thCfg = (cfg as { thresholds?: { good?: number; warn?: number } }).thresholds ?? {};
+  const [goodPct, setGoodPct] = useState<string>(thCfg.good !== undefined ? String(thCfg.good) : "");
+  const [warnPct, setWarnPct] = useState<string>(thCfg.warn !== undefined ? String(thCfg.warn) : "");
+  const [limit, setLimit] = useState<number>((cfg as { limit?: number }).limit ?? 10);
   const [granularity, setGranularity] = useState<string>((cfg as { granularity?: string }).granularity ?? "month");
   const [buckets, setBuckets] = useState<number>((cfg as { buckets?: number }).buckets ?? 12);
   const [groupByCol, setGroupByCol] = useState<string>((cfg as { group_by?: string }).group_by ?? "");
@@ -200,17 +206,24 @@ export function WidgetForm({ sources, widget, initialType, onSaved, onCancel }: 
     } else {
       if (!title.trim() || !provider || !model) { setErr("Titre, source et modèle requis."); return; }
       if (NEEDS_FIELD.has(measure) && !field) { setErr("Choisissez le champ à agréger."); return; }
-      if (type === "groupby" && !groupByCol) { setErr("Choisissez la colonne de regroupement."); return; }
+      if ((type === "groupby" || type === "table") && !groupByCol) { setErr("Choisissez la colonne de regroupement."); return; }
       if (type === "gauge" && !Number.isFinite(Number(target))) { setErr("Renseignez un objectif (cible) numérique."); return; }
       const baseConfig = { measure, field: NEEDS_FIELD.has(measure) ? field : undefined, conditions: cleanConditions(conditions) };
+      const reference = refModel && refJoin && refLabel ? { model: refModel, join_field: refJoin, label_field: refLabel } : undefined;
+      const thDefaults = direction === "lower" ? { good: 100, warn: 140 } : { good: 100, warn: 60 };
+      const thresholds = goodPct !== "" || warnPct !== ""
+        ? { good: goodPct !== "" ? Number(goodPct) : thDefaults.good, warn: warnPct !== "" ? Number(warnPct) : thDefaults.warn }
+        : undefined;
       input =
         type === "timeseries" || type === "trend"
           ? { type, title: title.trim(), provider, model, config: { ...baseConfig, granularity, buckets: Math.max(2, Math.min(Number(buckets) || 12, 366)) } }
           : type === "groupby"
-            ? { type: "groupby", title: title.trim(), provider, model, config: { ...baseConfig, group_by: groupByCol, render, reference: refModel && refJoin && refLabel ? { model: refModel, join_field: refJoin, label_field: refLabel } : undefined } }
-            : type === "gauge"
-              ? { type: "gauge", title: title.trim(), provider, model, config: { ...baseConfig, target: Number(target), direction } }
-              : { type: "count", title: title.trim(), provider, model, config: baseConfig };
+            ? { type: "groupby", title: title.trim(), provider, model, config: { ...baseConfig, group_by: groupByCol, render, reference } }
+            : type === "table"
+              ? { type: "table", title: title.trim(), provider, model, config: { ...baseConfig, group_by: groupByCol, limit: Math.max(1, Math.min(Number(limit) || 10, 200)), reference } }
+              : type === "gauge"
+                ? { type: "gauge", title: title.trim(), provider, model, config: { ...baseConfig, target: Number(target), direction, thresholds } }
+                : { type: "count", title: title.trim(), provider, model, config: baseConfig };
     }
     setSaving(true);
     try {
@@ -269,7 +282,7 @@ export function WidgetForm({ sources, widget, initialType, onSaved, onCancel }: 
           </div>
           {model && (
             <>
-              {type === "groupby" && (
+              {(type === "groupby" || type === "table") && (
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="flex flex-col gap-1">
                     <label className="text-label-md font-medium text-on-surface-variant">Regrouper par</label>
@@ -278,15 +291,23 @@ export function WidgetForm({ sources, widget, initialType, onSaved, onCancel }: 
                       {categoricalFields(fieldsOf(provider, model)).map((f) => <option key={f.name} value={f.name}>{f.name}</option>)}
                     </select>
                   </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-label-md font-medium text-on-surface-variant">Rendu</label>
-                    <select className={inputCls} value={render} onChange={(e) => setRender(e.target.value)}>
-                      {RENDER_OPTIONS.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
-                    </select>
-                  </div>
+                  {type === "groupby" ? (
+                    <div className="flex flex-col gap-1">
+                      <label className="text-label-md font-medium text-on-surface-variant">Rendu</label>
+                      <select className={inputCls} value={render} onChange={(e) => setRender(e.target.value)}>
+                        {RENDER_OPTIONS.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
+                      </select>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-1">
+                      <label className="text-label-md font-medium text-on-surface-variant">Nombre de lignes (top N)</label>
+                      <input type="number" min={1} max={200} className={inputCls} value={limit}
+                        onChange={(e) => setLimit(Number(e.target.value))} />
+                    </div>
+                  )}
                 </div>
               )}
-              {type === "groupby" && (
+              {(type === "groupby" || type === "table") && (
                 <div className="space-y-2 rounded-xl border border-outline-variant p-3">
                   <p className="text-label-md font-medium text-on-surface-variant">Référence pour l&apos;affichage (optionnel)</p>
                   <p className="text-label-sm text-on-surface-variant/60">Si la colonne de regroupement est un identifiant, résolvez-le en libellé lisible via un autre modèle.</p>
@@ -332,17 +353,37 @@ export function WidgetForm({ sources, widget, initialType, onSaved, onCancel }: 
               <MeasureFields fields={fieldsOf(provider, model)} measure={measure} field={field}
                 onChange={(p) => { if (p.measure !== undefined) setMeasure(p.measure); if (p.field !== undefined) setField(p.field); }} />
               {type === "gauge" && (
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="flex flex-col gap-1">
-                    <label className="text-label-md font-medium text-on-surface-variant">Objectif (cible)</label>
-                    <input type="number" className={inputCls} value={target} onChange={(e) => setTarget(e.target.value)} placeholder="Ex. 100" />
+                <div className="space-y-3 rounded-xl border border-outline-variant p-3">
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="flex flex-col gap-1">
+                      <label className="text-label-md font-medium text-on-surface-variant">Objectif (cible)</label>
+                      <input type="number" className={inputCls} value={target} onChange={(e) => setTarget(e.target.value)} placeholder="Ex. 100" />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <label className="text-label-md font-medium text-on-surface-variant">Sens favorable</label>
+                      <select className={inputCls} value={direction} onChange={(e) => setDirection(e.target.value)}>
+                        <option value="higher">Plus c&apos;est haut, mieux c&apos;est</option>
+                        <option value="lower">Plus c&apos;est bas, mieux c&apos;est</option>
+                      </select>
+                    </div>
                   </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-label-md font-medium text-on-surface-variant">Sens favorable</label>
-                    <select className={inputCls} value={direction} onChange={(e) => setDirection(e.target.value)}>
-                      <option value="higher">Plus c&apos;est haut, mieux c&apos;est</option>
-                      <option value="lower">Plus c&apos;est bas, mieux c&apos;est</option>
-                    </select>
+                  <div>
+                    <p className="text-label-md font-medium text-on-surface-variant">Seuils de couleur (% de la cible)</p>
+                    <p className="text-label-sm text-on-surface-variant/60">
+                      {direction === "lower"
+                        ? "Vert jusqu'au seuil « bon », orange jusqu'au seuil « alerte », rouge au-delà."
+                        : "Vert au-dessus du seuil « bon », orange au-dessus du seuil « alerte », rouge en dessous."}
+                    </p>
+                    <div className="mt-2 grid gap-4 sm:grid-cols-2">
+                      <div className="flex flex-col gap-1">
+                        <label className="text-label-sm text-on-surface-variant">Seuil « bon » {direction === "lower" ? "≤" : "≥"} (%)</label>
+                        <input type="number" min={0} className={inputCls} value={goodPct} onChange={(e) => setGoodPct(e.target.value)} placeholder={direction === "lower" ? "100" : "100"} />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-label-sm text-on-surface-variant">Seuil « alerte » {direction === "lower" ? "≤" : "≥"} (%)</label>
+                        <input type="number" min={0} className={inputCls} value={warnPct} onChange={(e) => setWarnPct(e.target.value)} placeholder={direction === "lower" ? "140" : "60"} />
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}

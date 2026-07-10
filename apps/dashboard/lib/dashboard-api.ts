@@ -150,12 +150,26 @@ export interface WidgetTrendData {
   points: TimeseriesPoint[];
 }
 
+export interface GaugeThresholds {
+  good: number;
+  warn: number;
+}
+
 export interface WidgetGaugeData {
   widget_id: number;
   type: "gauge";
   value: number | null;
   target: number | null;
   direction: string;
+  thresholds?: GaugeThresholds | null;
+}
+
+export interface WidgetTableData {
+  widget_id: number;
+  type: "table";
+  measure: string;
+  group_label?: string | null;
+  rows: ComparisonSerieValue[];
 }
 
 export type WidgetData =
@@ -164,7 +178,8 @@ export type WidgetData =
   | WidgetTimeseriesData
   | WidgetGroupbyData
   | WidgetTrendData
-  | WidgetGaugeData;
+  | WidgetGaugeData
+  | WidgetTableData;
 
 export interface WidgetInput {
   type?: string;

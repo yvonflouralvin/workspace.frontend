@@ -24,6 +24,11 @@ const OPERATORS = [
 ];
 const NO_VALUE = new Set(["is_true", "is_false"]);
 
+const WIDGET_TYPES = [
+  { value: "count", label: "Comptage" },
+  { value: "comparison", label: "Comparaison" },
+];
+
 const RENDER_OPTIONS = [
   { value: "numbers_row", label: "Chiffres (ligne)" },
   { value: "numbers_column", label: "Chiffres (colonne)" },
@@ -136,13 +141,11 @@ export function WidgetForm({ sources, widget, onSaved, onCancel }: { sources: Da
 
   return (
     <form onSubmit={submit} className="space-y-5">
-      <div className="flex gap-2">
-        {[{ v: "count", l: "Comptage" }, { v: "comparison", l: "Comparaison" }].map((t) => (
-          <button key={t.v} type="button" onClick={() => setType(t.v)}
-            className={`flex-1 rounded-xl border px-3 py-2.5 text-body-md font-medium transition-colors ${type === t.v ? "border-primary bg-primary/5 text-primary" : "border-outline-variant text-on-surface-variant hover:bg-surface-container"}`}>
-            {t.l}
-          </button>
-        ))}
+      <div className="flex flex-col gap-1">
+        <label className="text-label-md font-medium text-on-surface-variant">Type de widget</label>
+        <select className={inputCls} value={type} onChange={(e) => setType(e.target.value)}>
+          {WIDGET_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+        </select>
       </div>
 
       <div className="flex flex-col gap-1">

@@ -27,6 +27,7 @@ import {
   ShoppingCartOutlined,
   ReceiptLongOutlined,
   SyncOutlined,
+  QueryStatsOutlined,
 } from "@mui/icons-material";
 import type { AppDefinition } from "../types/shell";
 
@@ -103,6 +104,14 @@ export const PLATFORM_APPS: AppDefinition[] = [
     url: process.env.NEXT_PUBLIC_AUTH_API_VENTES_DOMAIN ?? "http://localhost:3011",
     color: "#e11d48",
     description: "Facturation",
+  },
+  {
+    id: "dashboard",
+    name: "Tableau de bord",
+    icon: "R",
+    url: process.env.NEXT_PUBLIC_AUTH_API_DASHBOARD_DOMAIN ?? "http://localhost:3012",
+    color: "#0891b2",
+    description: "Rapports temps réel agrégés des applications",
   },
 ];
 
@@ -246,6 +255,19 @@ export const VENTES_SHELL: AppShellConfig = {
     "/commandes":  <ShoppingCartOutlined style={s(15)} />,
     "/factures":   <ReceiptLongOutlined style={s(15)} />,
     "/parametres": <SettingsOutlined style={s(15)} />,
+  },
+};
+
+export const DASHBOARD_SHELL: AppShellConfig = {
+  appName: "Tableau de bord",
+  appHref: "/",
+  appIcon: "R",
+  appColor: "#0891b2",
+  routeLabels: {
+    "/": "Rapports",
+  },
+  routeIcons: {
+    "/": <QueryStatsOutlined style={s(15)} />,
   },
 };
 

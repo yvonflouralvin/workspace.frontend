@@ -91,3 +91,56 @@ export async function getSources(): Promise<SourcesResponse> {
   if (!res.ok) throw new Error("Impossible de charger les sources de données.");
   return res.json();
 }
+
+export interface Widget {
+  id: number;
+  type: string;
+  title: string;
+  provider: string;
+  model: string;
+  config: Record<string, unknown>;
+}
+
+export interface WidgetData {
+  widget_id: number;
+  type: string;
+  count: number;
+}
+
+export interface WidgetInput {
+  type?: string;
+  title: string;
+  provider: string;
+  model: string;
+  config?: Record<string, unknown>;
+}
+
+export async function getWidgets(): Promise<{ widgets: Widget[] }> {
+  const res = await apiFetch("/api/widgets");
+  if (!res.ok) throw new Error("Impossible de charger les widgets.");
+  return res.json();
+}
+
+export async function createWidget(input: WidgetInput): Promise<Widget> {
+  const res = await apiFetch("/api/widgets", { method: "POST", body: input });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail ?? "Impossible de créer le widget.");
+  }
+  return res.json();
+}
+
+export async function deleteWidget(id: number): Promise<void> {
+  const res = await apiFetch(`/api/widgets/${id}`, { method: "DELETE" });
+  if (!res.ok) throw new Error("Impossible de supprimer le widget.");
+}
+
+export async function getWidgetData(id: number, from?: string, to?: string): Promise<WidgetData> {
+  const qs = new URLSearchParams();
+  if (from) qs.set("from", from);
+  if (to) qs.set("to", to);
+  const suffix = qs.toString() ? `?${qs.toString()}` : "";
+  const res = await apiFetch(`/api/widgets/${id}/data${suffix}`);
+  if (!res.ok) throw new Error("Impossible de charger la donnée du widget.");
+  return res.json();
+}

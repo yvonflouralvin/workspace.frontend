@@ -29,6 +29,7 @@ import {
   SyncOutlined,
   QueryStatsOutlined,
   StorageOutlined,
+  WidgetsOutlined,
 } from "@mui/icons-material";
 import type { AppDefinition } from "../types/shell";
 
@@ -266,10 +267,12 @@ export const DASHBOARD_SHELL: AppShellConfig = {
   appColor: "#0891b2",
   routeLabels: {
     "/": "Rapports",
+    "/widgets": "Widgets",
     "/sources": "Sources de données",
   },
   routeIcons: {
     "/": <QueryStatsOutlined style={s(15)} />,
+    "/widgets": <WidgetsOutlined style={s(15)} />,
     "/sources": <StorageOutlined style={s(15)} />,
   },
 };

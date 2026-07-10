@@ -21,7 +21,8 @@ import {
   type ConsultationAggregate,
 } from "@/app/lib/consultation-api";
 import { admettreDepuisEncounter } from "@/app/lib/sejours-api";
-import { getLitsLibres, type LitLibre } from "@/app/lib/occupation-api";
+import { getLitsLibres, getPatientLocalisation, type LitLibre, type PatientLocalisation } from "@/app/lib/occupation-api";
+import { HospitalisationBanner } from "@/components/hospitalisation/HospitalisationBanner";
 import { EMRDrawer } from "@/components/emr/EMRDrawer";
 import { EMRPanel } from "@/components/emr/EMRPanel";
 import { SummaryTab } from "@/components/consultation/SummaryTab";
@@ -90,6 +91,7 @@ export default function ConsultationPage() {
 
   const [aggregate, setAggregate] = useState<ConsultationAggregate | null>(null);
   const [patient, setPatient] = useState<Patient | null>(null);
+  const [localisation, setLocalisation] = useState<PatientLocalisation | null>(null);
   const [allergies, setAllergies] = useState<AllergyRead[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [activeTab, setActiveTab] = useState<ConsultTab>("constantes");
@@ -139,14 +141,16 @@ export default function ConsultationPage() {
       const agg = await getConsultation(encounterId);
       setAggregate(agg);
 
-      const [p, alg, svcs] = await Promise.all([
+      const [p, alg, svcs, loc] = await Promise.all([
         getPatient(agg.encounter.patient_id),
         getPatientAllergies(agg.encounter.patient_id),
         listServices(),
+        getPatientLocalisation(agg.encounter.patient_id).catch(() => null),
       ]);
       setPatient(p);
       setAllergies(alg);
       setServices(svcs);
+      setLocalisation(loc);
     } catch {
       setError("Impossible de charger la consultation.");
     } finally {
@@ -281,7 +285,7 @@ export default function ConsultationPage() {
                 <CallSplitOutlined style={{ fontSize: 15 }} />
                 Réorienter
               </button>
-              {canAdmit && (
+              {canAdmit && !localisation?.hospitalise && (
                 <button
                   onClick={openAdmit}
                   className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-outline-variant text-on-surface-variant text-body-sm hover:text-primary hover:border-primary transition-colors">
@@ -342,6 +346,16 @@ export default function ConsultationPage() {
           </div>
 
           <AllergyBanner allergies={allergies} />
+
+          {localisation?.hospitalise && localisation.sejour_id && (
+            <HospitalisationBanner
+              sejourId={localisation.sejour_id}
+              admittedAt={localisation.admitted_at}
+              serviceNom={localisation.service_nom}
+              chambreNumero={localisation.chambre_numero}
+              litNumero={localisation.lit_numero}
+            />
+          )}
         </div>
 
         {/* ── Onglets ───────────────────────────────────────────────────── */}

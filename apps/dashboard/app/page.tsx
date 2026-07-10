@@ -6,6 +6,7 @@ import { QueryStatsOutlined } from "@mui/icons-material";
 import { DashboardHomeWidget, type HomeWidget } from "@repo/reporting-widgets/DashboardHomeWidget";
 import { DashboardShell } from "@/components/DashboardShell";
 import { getHome } from "@/lib/dashboard-api";
+import { accentFor } from "@/lib/app-accent";
 
 export default function Page() {
   const router = useRouter();
@@ -65,6 +66,7 @@ export default function Page() {
                 appLabel={w.app_label}
                 description={w.description}
                 stats={w.stats}
+                accent={accentFor(w.provider)}
                 onClick={() => router.push(w.href)}
               />
             ))}

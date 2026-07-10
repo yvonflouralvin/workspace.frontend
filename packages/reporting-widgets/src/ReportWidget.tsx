@@ -17,15 +17,17 @@ export type {
 export interface ReportWidgetProps {
   report: ReportDescriptor;
   data: ReportData;
+  accent?: string;
 }
 
 // Aiguilleur : rend les sections présentes dans le payload (kpis / series / table).
-// `report.widget === "line"` force les séries en courbe temporelle, sinon histogramme
-// catégoriel. Un rapport composite (occupation) combine plusieurs sections.
-export function ReportWidget({ report, data }: ReportWidgetProps) {
+// `report.widget === "line"` force les séries en courbe temporelle, sinon histogramme.
+// `accent` teinte KPIs et barres à la couleur de l'app propriétaire.
+export function ReportWidget({ report, data, accent }: ReportWidgetProps) {
   const kpis = data.kpis ?? [];
   const series = data.series ?? [];
   const table = data.table && data.table.columns.length > 0 ? data.table : null;
+  const barColor = accent ?? "var(--color-primary)";
 
   const isEmpty = kpis.length === 0 && series.length === 0 && !table;
   if (isEmpty) {
@@ -38,17 +40,15 @@ export function ReportWidget({ report, data }: ReportWidgetProps) {
 
   return (
     <div className="space-y-4">
-      {kpis.length > 0 && <KpiGrid kpis={kpis} />}
+      {kpis.length > 0 && <KpiGrid kpis={kpis} accent={accent} />}
 
       {series.map((s, i) => (
         <div key={i} className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-4">
-          <p className="text-label-md font-medium text-on-surface-variant mb-2">{s.label}</p>
+          <p className="mb-3 text-body-sm font-medium text-on-surface-variant">{s.label}</p>
           {report.widget === "line" ? (
-            <LineChart
-              series={[{ points: s.points, color: "var(--color-primary)", label: s.label, unit: s.unit }]}
-            />
+            <LineChart series={[{ points: s.points, color: barColor, label: s.label, unit: s.unit }]} />
           ) : (
-            <BarChartWidget series={s} />
+            <BarChartWidget series={s} color={barColor} />
           )}
         </div>
       ))}

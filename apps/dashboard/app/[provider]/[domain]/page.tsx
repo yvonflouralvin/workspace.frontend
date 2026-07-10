@@ -6,6 +6,7 @@ import { ArrowBackOutlined } from "@mui/icons-material";
 import { ReportWidget, type ReportData } from "@repo/reporting-widgets/ReportWidget";
 import { DashboardShell } from "@/components/DashboardShell";
 import { getDomain, getReportData, type DomainDetail } from "@/lib/dashboard-api";
+import { accentFor } from "@/lib/app-accent";
 
 export default function DomainPage() {
   const params = useParams<{ provider: string; domain: string }>();
@@ -86,7 +87,7 @@ export default function DomainPage() {
                       )}
                     </div>
                     {dataByReport[report.report_key] ? (
-                      <ReportWidget report={report} data={dataByReport[report.report_key]!} />
+                      <ReportWidget report={report} data={dataByReport[report.report_key]!} accent={accentFor(provider)} />
                     ) : (
                       <div className="h-48 rounded-2xl bg-surface-container animate-pulse" />
                     )}

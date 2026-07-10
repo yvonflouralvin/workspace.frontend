@@ -380,6 +380,7 @@ Voir **`docs/TESTING.md`** pour la stratégie complète (niveaux 1→5, Vitest e
 
 - `docs/apps/auth/AUTH.md` — App auth : login, inscription, cookie trick, proxy API
 - `docs/apps/workspace/WORKSPACE.md` — Architecture dashboard workspace, shell partagé, composants
+- `docs/apps/dashboard/DASHBOARD.md` — App reporting/widgets : lecture directe des bases, sources de données, types de widget, roadmap
 - `docs/apps/hr/HR.md` — Module RH (état actuel et à venir)
 - `docs/apps/approval-flows/APPROVAL_FLOWS.md` — Création/gestion libre de workflows d'approbation
 - `docs/packages/UI.md` — Guide des composants @repo/ui

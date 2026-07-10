@@ -45,3 +45,23 @@ export interface ReportDescriptor {
   required_permission?: string;
   refresh_interval_seconds?: number;
 }
+
+export interface HomeStat {
+  label: string;
+  value: number | string;
+  unit?: string;
+}
+
+// Widget d'accueil du dashboard : résumé compact d'un domaine (1-3 stats),
+// cliquable pour entrer dans le domaine (/{provider}/{domain_key}).
+export interface HomeWidget {
+  provider: string;
+  app_label: string;
+  domain_key: string;
+  label: string;
+  description?: string;
+  stats: HomeStat[];
+  generated_at?: string;
+  refresh_interval_seconds?: number;
+  href: string;
+}

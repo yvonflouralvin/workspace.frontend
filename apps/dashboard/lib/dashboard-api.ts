@@ -2,6 +2,7 @@
 
 import { apiFetch } from "@repo/network/client";
 import type { ReportData, ReportDescriptor } from "@repo/reporting-widgets/ReportWidget";
+import type { HomeWidget } from "@repo/reporting-widgets/DashboardHomeWidget";
 
 export interface ContractDomain {
   provider: string;
@@ -31,6 +32,34 @@ export async function getReportData(
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.detail ?? "Impossible de charger les données du rapport.");
+  }
+  return res.json();
+}
+
+export interface HomeResponse {
+  widgets: HomeWidget[];
+}
+
+export interface DomainDetail {
+  provider: string;
+  app_label: string;
+  domain_key: string;
+  label: string;
+  reports: ReportDescriptor[];
+}
+
+export async function getHome(): Promise<HomeResponse> {
+  const res = await apiFetch("/api/home");
+  if (!res.ok) throw new Error("Impossible de charger l'accueil du tableau de bord.");
+  return res.json();
+}
+
+export async function getDomain(provider: string, domain: string): Promise<DomainDetail> {
+  const qs = new URLSearchParams({ provider, domain });
+  const res = await apiFetch(`/api/domain?${qs.toString()}`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail ?? "Impossible de charger le domaine.");
   }
   return res.json();
 }

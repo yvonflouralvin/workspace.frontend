@@ -209,9 +209,10 @@ export function WidgetForm({ sources, widget, initialType, onSaved, onCancel }: 
     <form onSubmit={submit} className="space-y-5">
       <div className="flex flex-col gap-1">
         <label className="text-label-md font-medium text-on-surface-variant">Type de widget</label>
-        <select className={inputCls} value={type} onChange={(e) => setType(e.target.value)}>
+        <select className={`${inputCls} disabled:opacity-70`} value={type} disabled={isEdit} onChange={(e) => setType(e.target.value)}>
           {WIDGET_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
         </select>
+        {isEdit && <p className="text-label-sm text-on-surface-variant/60">Le type ne peut pas être modifié après création.</p>}
       </div>
 
       <div className="flex flex-col gap-1">

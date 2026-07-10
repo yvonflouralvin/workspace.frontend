@@ -24,7 +24,7 @@ const OPERATORS = [
 ];
 const NO_VALUE = new Set(["is_true", "is_false"]);
 
-const WIDGET_TYPES = [
+export const WIDGET_TYPES = [
   { value: "count", label: "Comptage" },
   { value: "comparison", label: "Comparaison" },
   { value: "timeseries", label: "Série temporelle" },
@@ -133,11 +133,11 @@ function MeasureFields({ fields, measure, field, onChange }: { fields: SourceFie
   );
 }
 
-export function WidgetForm({ sources, widget, onSaved, onCancel }: { sources: DataSourceApp[]; widget?: Widget; onSaved: (w: Widget) => void; onCancel: () => void }) {
+export function WidgetForm({ sources, widget, initialType, onSaved, onCancel }: { sources: DataSourceApp[]; widget?: Widget; initialType?: string; onSaved: (w: Widget) => void; onCancel: () => void }) {
   const isEdit = !!widget;
   const cfg = (widget?.config ?? {}) as { conditions?: Condition[]; measure?: string; field?: string; render?: string; series?: Serie[] };
 
-  const [type, setType] = useState<string>(widget?.type ?? "count");
+  const [type, setType] = useState<string>(widget?.type ?? initialType ?? "count");
   const [title, setTitle] = useState(widget?.title ?? "");
   const [provider, setProvider] = useState(widget?.provider ?? "");
   const [model, setModel] = useState(widget?.model ?? "");

@@ -1,15 +1,22 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { AddOutlined, BarChartOutlined, DeleteOutlined, EditOutlined, NumbersOutlined, TimelineOutlined, WidgetsOutlined } from "@mui/icons-material";
+import { AddOutlined, BarChartOutlined, DeleteOutlined, EditOutlined, ExpandMoreOutlined, NumbersOutlined, TimelineOutlined, WidgetsOutlined } from "@mui/icons-material";
 import { ComparisonView } from "@repo/reporting-widgets/ComparisonView";
 import { TimeseriesView } from "@repo/reporting-widgets/TimeseriesView";
 import { DashboardShell } from "@/components/DashboardShell";
+import { WIDGET_TYPES } from "@/components/WidgetForm";
 import { getWidgets, deleteWidget, getWidgetData, type Widget, type WidgetData } from "@/lib/dashboard-api";
 import { accentFor } from "@/lib/app-accent";
 
 const nf = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 2 });
+
+const TYPE_ICONS: Record<string, ReactNode> = {
+  count: <NumbersOutlined style={{ fontSize: 18 }} />,
+  comparison: <BarChartOutlined style={{ fontSize: 18 }} />,
+  timeseries: <TimelineOutlined style={{ fontSize: 18 }} />,
+};
 
 export default function WidgetsPage() {
   const router = useRouter();
@@ -19,6 +26,7 @@ export default function WidgetsPage() {
   const [error, setError] = useState<string | null>(null);
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const load = useCallback(() => {
     getWidgets()
@@ -67,10 +75,29 @@ export default function WidgetsPage() {
             {(from || to) && (
               <button type="button" onClick={() => { setFrom(""); setTo(""); }} className="text-label-md text-primary hover:opacity-70">Réinitialiser</button>
             )}
-            <button type="button" onClick={() => router.push("/widgets/new")}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-body-md font-medium text-on-primary transition-colors hover:bg-primary-container">
-              <AddOutlined style={{ fontSize: 18 }} /> Créer un widget
-            </button>
+            <div className="relative">
+              <button type="button" onClick={() => setMenuOpen((o) => !o)}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-body-md font-medium text-on-primary transition-colors hover:bg-primary-container">
+                <AddOutlined style={{ fontSize: 18 }} /> Créer un widget
+                <ExpandMoreOutlined style={{ fontSize: 18 }} className={`transition-transform ${menuOpen ? "rotate-180" : ""}`} />
+              </button>
+              {menuOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
+                  <div className="absolute right-0 top-full z-50 mt-2 w-56 rounded-xl border border-outline-variant bg-surface-container-lowest p-1 shadow-lg">
+                    <p className="px-3 py-1.5 text-label-sm uppercase tracking-wide text-on-surface-variant/60">Type de widget</p>
+                    {WIDGET_TYPES.map((t) => (
+                      <button key={t.value} type="button"
+                        onClick={() => { setMenuOpen(false); router.push(`/widgets/new?type=${t.value}`); }}
+                        className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-body-md text-on-surface transition-colors hover:bg-surface-container">
+                        <span className="text-on-surface-variant">{TYPE_ICONS[t.value]}</span>
+                        {t.label}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
 

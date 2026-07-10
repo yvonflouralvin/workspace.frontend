@@ -2,9 +2,10 @@
 
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { AddOutlined, BarChartOutlined, CategoryOutlined, DeleteOutlined, EditOutlined, ExpandMoreOutlined, NumbersOutlined, TimelineOutlined, WidgetsOutlined } from "@mui/icons-material";
+import { AddOutlined, BarChartOutlined, CategoryOutlined, DeleteOutlined, EditOutlined, ExpandMoreOutlined, NumbersOutlined, TimelineOutlined, TrendingUpOutlined, WidgetsOutlined } from "@mui/icons-material";
 import { ComparisonView } from "@repo/reporting-widgets/ComparisonView";
 import { TimeseriesView } from "@repo/reporting-widgets/TimeseriesView";
+import { TrendView } from "@repo/reporting-widgets/TrendView";
 import { DashboardShell } from "@/components/DashboardShell";
 import { WIDGET_TYPES } from "@/components/WidgetForm";
 import { getWidgets, deleteWidget, getWidgetData, type Widget, type WidgetData } from "@/lib/dashboard-api";
@@ -14,6 +15,7 @@ const nf = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 2 });
 
 const TYPE_ICONS: Record<string, ReactNode> = {
   count: <NumbersOutlined style={{ fontSize: 18 }} />,
+  trend: <TrendingUpOutlined style={{ fontSize: 18 }} />,
   comparison: <BarChartOutlined style={{ fontSize: 18 }} />,
   timeseries: <TimelineOutlined style={{ fontSize: 18 }} />,
   groupby: <CategoryOutlined style={{ fontSize: 18 }} />,
@@ -131,6 +133,7 @@ function WidgetTile({ widget, data, onEdit, onDelete }: { widget: Widget; data?:
   const isComparison = widget.type === "comparison";
   const isTimeseries = widget.type === "timeseries";
   const isGroupby = widget.type === "groupby";
+  const isTrend = widget.type === "trend";
   const cfg = widget.config as { conditions?: unknown[]; series?: unknown[]; group_by?: string };
   const caption = isComparison
     ? `Comparaison · ${Array.isArray(cfg?.series) ? cfg.series.length : 0} source(s)`
@@ -145,7 +148,7 @@ function WidgetTile({ widget, data, onEdit, onDelete }: { widget: Widget; data?:
         </div>
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
           style={{ backgroundColor: `color-mix(in srgb, ${accent} 12%, transparent)`, color: accent }}>
-          {isComparison ? <BarChartOutlined style={{ fontSize: 18 }} /> : isTimeseries ? <TimelineOutlined style={{ fontSize: 18 }} /> : isGroupby ? <CategoryOutlined style={{ fontSize: 18 }} /> : <NumbersOutlined style={{ fontSize: 18 }} />}
+          {isComparison ? <BarChartOutlined style={{ fontSize: 18 }} /> : isTimeseries ? <TimelineOutlined style={{ fontSize: 18 }} /> : isGroupby ? <CategoryOutlined style={{ fontSize: 18 }} /> : isTrend ? <TrendingUpOutlined style={{ fontSize: 18 }} /> : <NumbersOutlined style={{ fontSize: 18 }} />}
         </span>
       </div>
 
@@ -156,6 +159,8 @@ function WidgetTile({ widget, data, onEdit, onDelete }: { widget: Widget; data?:
           <ComparisonView render={data.render} series={data.series} />
         ) : data.type === "timeseries" ? (
           <TimeseriesView points={data.points} granularity={data.granularity} />
+        ) : data.type === "trend" ? (
+          <TrendView value={data.value} previous={data.previous} points={data.points} />
         ) : (
           <p className="text-3xl font-bold leading-none text-on-surface tabular-nums">{data.value === null ? "—" : nf.format(data.value)}</p>
         )}

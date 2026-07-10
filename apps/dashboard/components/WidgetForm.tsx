@@ -26,6 +26,7 @@ const NO_VALUE = new Set(["is_true", "is_false"]);
 
 export const WIDGET_TYPES = [
   { value: "count", label: "Comptage" },
+  { value: "trend", label: "KPI de tendance" },
   { value: "comparison", label: "Comparaison" },
   { value: "timeseries", label: "Série temporelle" },
   { value: "groupby", label: "Regroupement" },
@@ -188,8 +189,8 @@ export function WidgetForm({ sources, widget, initialType, onSaved, onCancel }: 
       if (type === "groupby" && !groupByCol) { setErr("Choisissez la colonne de regroupement."); return; }
       const baseConfig = { measure, field: NEEDS_FIELD.has(measure) ? field : undefined, conditions: cleanConditions(conditions) };
       input =
-        type === "timeseries"
-          ? { type: "timeseries", title: title.trim(), provider, model, config: { ...baseConfig, granularity, buckets: Math.max(2, Math.min(Number(buckets) || 12, 366)) } }
+        type === "timeseries" || type === "trend"
+          ? { type, title: title.trim(), provider, model, config: { ...baseConfig, granularity, buckets: Math.max(2, Math.min(Number(buckets) || 12, 366)) } }
           : type === "groupby"
             ? { type: "groupby", title: title.trim(), provider, model, config: { ...baseConfig, group_by: groupByCol, render, reference: refModel && refJoin && refLabel ? { model: refModel, join_field: refJoin, label_field: refLabel } : undefined } }
             : { type: "count", title: title.trim(), provider, model, config: baseConfig };
@@ -285,7 +286,7 @@ export function WidgetForm({ sources, widget, initialType, onSaved, onCancel }: 
                   )}
                 </div>
               )}
-              {type === "timeseries" && (
+              {(type === "timeseries" || type === "trend") && (
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="flex flex-col gap-1">
                     <label className="text-label-md font-medium text-on-surface-variant">Granularité</label>

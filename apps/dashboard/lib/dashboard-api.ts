@@ -140,7 +140,22 @@ export interface WidgetGroupbyData {
   series: ComparisonSerieValue[];
 }
 
-export type WidgetData = WidgetCountData | WidgetComparisonData | WidgetTimeseriesData | WidgetGroupbyData;
+export interface WidgetTrendData {
+  widget_id: number;
+  type: "trend";
+  measure: string;
+  granularity: string;
+  value: number | null;
+  previous: number | null;
+  points: TimeseriesPoint[];
+}
+
+export type WidgetData =
+  | WidgetCountData
+  | WidgetComparisonData
+  | WidgetTimeseriesData
+  | WidgetGroupbyData
+  | WidgetTrendData;
 
 export interface WidgetInput {
   type?: string;

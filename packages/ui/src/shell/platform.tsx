@@ -28,6 +28,7 @@ import {
   ReceiptLongOutlined,
   SyncOutlined,
   QueryStatsOutlined,
+  StorageOutlined,
 } from "@mui/icons-material";
 import type { AppDefinition } from "../types/shell";
 
@@ -265,9 +266,11 @@ export const DASHBOARD_SHELL: AppShellConfig = {
   appColor: "#0891b2",
   routeLabels: {
     "/": "Rapports",
+    "/sources": "Sources de données",
   },
   routeIcons: {
     "/": <QueryStatsOutlined style={s(15)} />,
+    "/sources": <StorageOutlined style={s(15)} />,
   },
 };
 

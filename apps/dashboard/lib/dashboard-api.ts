@@ -63,3 +63,31 @@ export async function getDomain(provider: string, domain: string): Promise<Domai
   }
   return res.json();
 }
+
+export interface SourceField {
+  name: string;
+  type: string;
+  nullable?: boolean;
+  values?: string[];
+}
+
+export interface SourceModel {
+  name: string;
+  fields: SourceField[];
+}
+
+export interface DataSourceApp {
+  app_key: string;
+  app_label: string;
+  models: SourceModel[];
+}
+
+export interface SourcesResponse {
+  sources: DataSourceApp[];
+}
+
+export async function getSources(): Promise<SourcesResponse> {
+  const res = await apiFetch("/api/sources");
+  if (!res.ok) throw new Error("Impossible de charger les sources de données.");
+  return res.json();
+}

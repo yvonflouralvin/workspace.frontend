@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AddOutlined, BarChartOutlined, DeleteOutlined, EditOutlined, NumbersOutlined, WidgetsOutlined } from "@mui/icons-material";
+import { AddOutlined, BarChartOutlined, DeleteOutlined, EditOutlined, NumbersOutlined, TimelineOutlined, WidgetsOutlined } from "@mui/icons-material";
 import { ComparisonView } from "@repo/reporting-widgets/ComparisonView";
+import { TimeseriesView } from "@repo/reporting-widgets/TimeseriesView";
 import { DashboardShell } from "@/components/DashboardShell";
 import { getWidgets, deleteWidget, getWidgetData, type Widget, type WidgetData } from "@/lib/dashboard-api";
 import { accentFor } from "@/lib/app-accent";
@@ -100,6 +101,7 @@ export default function WidgetsPage() {
 function WidgetTile({ widget, data, onEdit, onDelete }: { widget: Widget; data?: WidgetData; onEdit: () => void; onDelete: () => void }) {
   const accent = accentFor(widget.provider ?? "");
   const isComparison = widget.type === "comparison";
+  const isTimeseries = widget.type === "timeseries";
   const cfg = widget.config as { conditions?: unknown[]; series?: unknown[] };
   const caption = isComparison
     ? `Comparaison · ${Array.isArray(cfg?.series) ? cfg.series.length : 0} source(s)`
@@ -114,7 +116,7 @@ function WidgetTile({ widget, data, onEdit, onDelete }: { widget: Widget; data?:
         </div>
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
           style={{ backgroundColor: `color-mix(in srgb, ${accent} 12%, transparent)`, color: accent }}>
-          {isComparison ? <BarChartOutlined style={{ fontSize: 18 }} /> : <NumbersOutlined style={{ fontSize: 18 }} />}
+          {isComparison ? <BarChartOutlined style={{ fontSize: 18 }} /> : isTimeseries ? <TimelineOutlined style={{ fontSize: 18 }} /> : <NumbersOutlined style={{ fontSize: 18 }} />}
         </span>
       </div>
 
@@ -123,6 +125,8 @@ function WidgetTile({ widget, data, onEdit, onDelete }: { widget: Widget; data?:
           <div className="h-9 w-24 animate-pulse rounded bg-surface-container" />
         ) : data.type === "comparison" ? (
           <ComparisonView render={data.render} series={data.series} />
+        ) : data.type === "timeseries" ? (
+          <TimeseriesView points={data.points} granularity={data.granularity} />
         ) : (
           <p className="text-3xl font-bold leading-none text-on-surface tabular-nums">{data.value === null ? "—" : nf.format(data.value)}</p>
         )}

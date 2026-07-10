@@ -120,7 +120,20 @@ export interface WidgetComparisonData {
   series: ComparisonSerieValue[];
 }
 
-export type WidgetData = WidgetCountData | WidgetComparisonData;
+export interface TimeseriesPoint {
+  t: string;
+  v: number | null;
+}
+
+export interface WidgetTimeseriesData {
+  widget_id: number;
+  type: "timeseries";
+  granularity: string;
+  measure: string;
+  points: TimeseriesPoint[];
+}
+
+export type WidgetData = WidgetCountData | WidgetComparisonData | WidgetTimeseriesData;
 
 export interface WidgetInput {
   type?: string;

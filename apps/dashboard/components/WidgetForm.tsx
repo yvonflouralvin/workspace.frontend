@@ -27,6 +27,13 @@ const NO_VALUE = new Set(["is_true", "is_false"]);
 const WIDGET_TYPES = [
   { value: "count", label: "Comptage" },
   { value: "comparison", label: "Comparaison" },
+  { value: "timeseries", label: "Série temporelle" },
+];
+
+const GRANULARITIES = [
+  { value: "day", label: "Jour" },
+  { value: "week", label: "Semaine" },
+  { value: "month", label: "Mois" },
 ];
 
 const MEASURES = [
@@ -139,6 +146,8 @@ export function WidgetForm({ sources, widget, onSaved, onCancel }: { sources: Da
   const [conditions, setConditions] = useState<Condition[]>(
     Array.isArray(cfg.conditions) ? cfg.conditions.map((c) => ({ field: c.field ?? "", operator: c.operator ?? "eq", value: c.value ?? "" })) : [],
   );
+  const [granularity, setGranularity] = useState<string>((cfg as { granularity?: string }).granularity ?? "month");
+  const [buckets, setBuckets] = useState<number>((cfg as { buckets?: number }).buckets ?? 12);
   const [render, setRender] = useState<string>(cfg.render ?? "bar_vertical");
   const [series, setSeries] = useState<Serie[]>(
     Array.isArray(cfg.series)
@@ -167,7 +176,10 @@ export function WidgetForm({ sources, widget, onSaved, onCancel }: { sources: Da
     } else {
       if (!title.trim() || !provider || !model) { setErr("Titre, source et modèle requis."); return; }
       if (NEEDS_FIELD.has(measure) && !field) { setErr("Choisissez le champ à agréger."); return; }
-      input = { type: "count", title: title.trim(), provider, model, config: { measure, field: NEEDS_FIELD.has(measure) ? field : undefined, conditions: cleanConditions(conditions) } };
+      const baseConfig = { measure, field: NEEDS_FIELD.has(measure) ? field : undefined, conditions: cleanConditions(conditions) };
+      input = type === "timeseries"
+        ? { type: "timeseries", title: title.trim(), provider, model, config: { ...baseConfig, granularity, buckets: Math.max(2, Math.min(Number(buckets) || 12, 366)) } }
+        : { type: "count", title: title.trim(), provider, model, config: baseConfig };
     }
     setSaving(true);
     try {
@@ -194,7 +206,7 @@ export function WidgetForm({ sources, widget, onSaved, onCancel }: { sources: Da
         <input className={inputCls} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ex. Patients par sexe" />
       </div>
 
-      {type === "count" ? (
+      {type !== "comparison" ? (
         <>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="flex flex-col gap-1">
@@ -214,6 +226,21 @@ export function WidgetForm({ sources, widget, onSaved, onCancel }: { sources: Da
           </div>
           {model && (
             <>
+              {type === "timeseries" && (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-label-md font-medium text-on-surface-variant">Granularité</label>
+                    <select className={inputCls} value={granularity} onChange={(e) => setGranularity(e.target.value)}>
+                      {GRANULARITIES.map((g) => <option key={g.value} value={g.value}>{g.label}</option>)}
+                    </select>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-label-md font-medium text-on-surface-variant">Nombre de périodes</label>
+                    <input type="number" min={2} max={366} className={inputCls} value={buckets}
+                      onChange={(e) => setBuckets(Number(e.target.value))} />
+                  </div>
+                </div>
+              )}
               <MeasureFields fields={fieldsOf(provider, model)} measure={measure} field={field}
                 onChange={(p) => { if (p.measure !== undefined) setMeasure(p.measure); if (p.field !== undefined) setField(p.field); }} />
               <ConditionsEditor fields={fieldsOf(provider, model)} conditions={conditions} onChange={setConditions} />

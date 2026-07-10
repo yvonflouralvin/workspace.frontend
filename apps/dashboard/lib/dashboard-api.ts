@@ -130,6 +130,15 @@ export async function createWidget(input: WidgetInput): Promise<Widget> {
   return res.json();
 }
 
+export async function updateWidget(id: number, input: WidgetInput): Promise<Widget> {
+  const res = await apiFetch(`/api/widgets/${id}`, { method: "PATCH", body: input });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail ?? "Impossible de modifier le widget.");
+  }
+  return res.json();
+}
+
 export async function deleteWidget(id: number): Promise<void> {
   const res = await apiFetch(`/api/widgets/${id}`, { method: "DELETE" });
   if (!res.ok) throw new Error("Impossible de supprimer le widget.");

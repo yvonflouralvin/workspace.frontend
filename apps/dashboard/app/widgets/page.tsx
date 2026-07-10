@@ -1,12 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { AddOutlined, CloseOutlined, DeleteOutlined, NumbersOutlined, WidgetsOutlined } from "@mui/icons-material";
+import { AddOutlined, CloseOutlined, DeleteOutlined, EditOutlined, NumbersOutlined, WidgetsOutlined } from "@mui/icons-material";
 import { RightDrawer } from "@repo/ui/RightDrawer";
 import { DashboardShell } from "@/components/DashboardShell";
 import {
   getWidgets,
   createWidget,
+  updateWidget,
   deleteWidget,
   getWidgetData,
   getSources,
@@ -46,6 +47,7 @@ export default function WidgetsPage() {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
+  const [editing, setEditing] = useState<Widget | null>(null);
 
   const load = useCallback(() => {
     getWidgets()
@@ -155,10 +157,16 @@ export default function WidgetsPage() {
                   <p className="text-3xl font-bold leading-none text-on-surface tabular-nums">
                     {c === undefined ? "…" : c === null ? "—" : nf.format(c)}
                   </p>
-                  <button type="button" onClick={() => handleDelete(w.id)} title="Supprimer"
-                    className="absolute bottom-3 right-3 rounded-lg p-1.5 text-on-surface-variant/40 opacity-0 transition-all hover:bg-error/8 hover:text-error group-hover:opacity-100">
-                    <DeleteOutlined style={{ fontSize: 16 }} />
-                  </button>
+                  <div className="absolute bottom-3 right-3 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                    <button type="button" onClick={() => setEditing(w)} title="Modifier"
+                      className="rounded-lg p-1.5 text-on-surface-variant/50 transition-colors hover:bg-surface-container hover:text-on-surface">
+                      <EditOutlined style={{ fontSize: 16 }} />
+                    </button>
+                    <button type="button" onClick={() => handleDelete(w.id)} title="Supprimer"
+                      className="rounded-lg p-1.5 text-on-surface-variant/50 transition-colors hover:bg-error/8 hover:text-error">
+                      <DeleteOutlined style={{ fontSize: 16 }} />
+                    </button>
+                  </div>
                 </div>
               );
             })}
@@ -166,30 +174,49 @@ export default function WidgetsPage() {
         )}
       </div>
 
-      {createOpen && (
-        <CreateWidgetDrawer
+      {(createOpen || editing) && (
+        <WidgetDrawer
           sources={sources}
-          onClose={() => setCreateOpen(false)}
-          onCreated={(w) => { setWidgets((prev) => [w, ...prev]); setCreateOpen(false); }}
+          widget={editing ?? undefined}
+          onClose={() => { setCreateOpen(false); setEditing(null); }}
+          onSaved={(w) => {
+            setWidgets((prev) => (editing ? prev.map((x) => (x.id === w.id ? w : x)) : [w, ...prev]));
+            fetchCount(w.id);
+            setCreateOpen(false);
+            setEditing(null);
+          }}
         />
       )}
     </DashboardShell>
   );
 }
 
-function CreateWidgetDrawer({
+function WidgetDrawer({
   sources,
+  widget,
   onClose,
-  onCreated,
+  onSaved,
 }: {
   sources: DataSourceApp[];
+  widget?: Widget;
   onClose: () => void;
-  onCreated: (w: Widget) => void;
+  onSaved: (w: Widget) => void;
 }) {
-  const [title, setTitle] = useState("");
-  const [provider, setProvider] = useState("");
-  const [model, setModel] = useState("");
-  const [conditions, setConditions] = useState<Condition[]>([]);
+  const isEdit = !!widget;
+  const initialConditions: Condition[] = Array.isArray(
+    (widget?.config as { conditions?: unknown[] })?.conditions,
+  )
+    ? ((widget!.config as { conditions: Array<Record<string, string>> }).conditions).map((c) => ({
+        field: c.field ?? "",
+        operator: c.operator ?? "eq",
+        value: c.value ?? "",
+      }))
+    : [];
+
+  const [title, setTitle] = useState(widget?.title ?? "");
+  const [provider, setProvider] = useState(widget?.provider ?? "");
+  const [model, setModel] = useState(widget?.model ?? "");
+  const [conditions, setConditions] = useState<Condition[]>(initialConditions);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -212,15 +239,10 @@ function CreateWidgetDrawer({
       .map((c) => (NO_VALUE.has(c.operator) ? { field: c.field, operator: c.operator } : c));
     setSaving(true);
     setErr(null);
+    const input = { type: "count", title: title.trim(), provider, model, config: { conditions: cleaned } };
     try {
-      const w = await createWidget({
-        type: "count",
-        title: title.trim(),
-        provider,
-        model,
-        config: { conditions: cleaned },
-      });
-      onCreated(w);
+      const w = isEdit ? await updateWidget(widget!.id, input) : await createWidget(input);
+      onSaved(w);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Erreur.");
     } finally {
@@ -229,7 +251,7 @@ function CreateWidgetDrawer({
   }
 
   return (
-    <RightDrawer title="Nouveau widget" onClose={onClose}>
+    <RightDrawer title={isEdit ? "Modifier le widget" : "Nouveau widget"} onClose={onClose}>
       <form onSubmit={submit} className="flex h-full flex-col gap-5">
         <div className="flex-1 space-y-4 overflow-y-auto pr-1">
           <div className="rounded-xl bg-surface-container px-3 py-2.5 text-body-sm text-on-surface-variant">
@@ -327,7 +349,7 @@ function CreateWidgetDrawer({
         <div className="flex shrink-0 gap-3 border-t border-outline-variant pt-4">
           <button type="submit" disabled={saving}
             className="flex-1 rounded-xl bg-primary py-2 text-body-md font-medium text-on-primary transition-colors hover:bg-primary-container disabled:opacity-50">
-            {saving ? "Création…" : "Créer le widget"}
+            {saving ? "Enregistrement…" : isEdit ? "Enregistrer" : "Créer le widget"}
           </button>
           <button type="button" onClick={onClose} disabled={saving}
             className="rounded-xl border border-outline-variant px-5 py-2 text-body-md text-on-surface-variant transition-colors hover:bg-surface-container disabled:opacity-50">

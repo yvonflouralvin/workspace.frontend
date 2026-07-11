@@ -92,6 +92,34 @@ export async function getSources(): Promise<SourcesResponse> {
   return res.json();
 }
 
+// --- Config multi-sources d'un widget -------------------------------------------------
+// Un widget peut porter plusieurs sources (modèles) de LA MÊME app. Chaque source a un id
+// local (s1, s2…) servant de clé pour les conditions, l'agrégat, le regroupement et la
+// période. Une condition compare une colonne à un littéral OU à la colonne d'une autre
+// source (prédicat de jointure).
+
+export interface WidgetSource {
+  id: string;
+  provider: string;
+  model: string;
+}
+
+export type ConditionValue =
+  | { kind: "literal"; value: string }
+  | { kind: "column"; source: string; field: string };
+
+export interface WidgetCondition {
+  source: string;
+  field: string;
+  operator: string;
+  value?: ConditionValue;
+}
+
+export interface AggregateRef {
+  source: string;
+  field: string;
+}
+
 export interface Widget {
   id: number;
   type: string;
@@ -242,4 +270,81 @@ export async function getWidgetData(id: number, from?: string, to?: string): Pro
   const res = await apiFetch(`/api/widgets/${id}/data${suffix}`);
   if (!res.ok) throw new Error("Impossible de charger la donnée du widget.");
   return res.json();
+}
+
+// --- Vue détaillée d'un widget (lignes sous-jacentes) ---------------------------------
+
+// Colonne du tableau détaillé côté config du widget.
+export interface WidgetColumnConfig {
+  source: string;
+  field: string;
+  label?: string;
+  width?: number | null;
+}
+
+// Colonne renvoyée par le backend (résolue).
+export interface DetailColumn {
+  key: string;
+  label: string;
+  width?: number | null;
+}
+
+export type DetailRow = Record<string, string | number | boolean | null>;
+
+export interface WidgetRowsResponse {
+  widget_id: number;
+  columns: DetailColumn[];
+  rows: DetailRow[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+export interface WidgetPreviewResponse {
+  columns: DetailColumn[];
+  rows: DetailRow[];
+  total: number;
+}
+
+export interface WidgetRowsQuery {
+  from?: string;
+  to?: string;
+  q?: string;
+  page?: number;
+  page_size?: number;
+}
+
+function rowsQueryString(opts: WidgetRowsQuery): string {
+  const qs = new URLSearchParams();
+  if (opts.from) qs.set("from", opts.from);
+  if (opts.to) qs.set("to", opts.to);
+  if (opts.q) qs.set("q", opts.q);
+  if (opts.page) qs.set("page", String(opts.page));
+  if (opts.page_size) qs.set("page_size", String(opts.page_size));
+  return qs.toString();
+}
+
+export async function getWidgetRows(id: number, opts: WidgetRowsQuery = {}): Promise<WidgetRowsResponse> {
+  const qs = rowsQueryString(opts);
+  const res = await apiFetch(`/api/widgets/${id}/rows${qs ? `?${qs}` : ""}`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail ?? "Impossible de charger les lignes du widget.");
+  }
+  return res.json();
+}
+
+export async function previewRows(input: WidgetInput): Promise<WidgetPreviewResponse> {
+  const res = await apiFetch("/api/widgets/preview-rows", { method: "POST", body: input });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail ?? "Aperçu indisponible.");
+  }
+  return res.json();
+}
+
+// URL (même origine) pour télécharger le CSV — utilisée dans un <a download> / window.open.
+export function widgetExportUrl(id: number, opts: Omit<WidgetRowsQuery, "page" | "page_size"> = {}): string {
+  const qs = rowsQueryString(opts);
+  return `/api/widgets/${id}/export${qs ? `?${qs}` : ""}`;
 }

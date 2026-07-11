@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { AddOutlined, BarChartOutlined, CategoryOutlined, DeleteOutlined, EditOutlined, ExpandMoreOutlined, LeaderboardOutlined, NumbersOutlined, PercentOutlined, SpeedOutlined, TimelineOutlined, TrendingUpOutlined, WidgetsOutlined } from "@mui/icons-material";
+import { AddOutlined, BarChartOutlined, CategoryOutlined, DeleteOutlined, EditOutlined, ExpandMoreOutlined, LeaderboardOutlined, NumbersOutlined, PercentOutlined, ReadMoreOutlined, SpeedOutlined, TimelineOutlined, TrendingUpOutlined, WidgetsOutlined } from "@mui/icons-material";
 import { ComparisonView } from "@repo/reporting-widgets/ComparisonView";
 import { TimeseriesView } from "@repo/reporting-widgets/TimeseriesView";
 import { TrendView } from "@repo/reporting-widgets/TrendView";
@@ -125,7 +125,7 @@ export default function WidgetsPage() {
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {widgets.map((w) => (
-              <WidgetTile key={w.id} widget={w} data={dataById[w.id]} onEdit={() => router.push(`/widgets/${w.id}/edit`)} onDelete={() => handleDelete(w.id)} />
+              <WidgetTile key={w.id} widget={w} data={dataById[w.id]} onView={() => router.push(`/widgets/${w.id}`)} onEdit={() => router.push(`/widgets/${w.id}/edit`)} onDelete={() => handleDelete(w.id)} />
             ))}
           </div>
         )}
@@ -134,7 +134,7 @@ export default function WidgetsPage() {
   );
 }
 
-function WidgetTile({ widget, data, onEdit, onDelete }: { widget: Widget; data?: WidgetData; onEdit: () => void; onDelete: () => void }) {
+function WidgetTile({ widget, data, onView, onEdit, onDelete }: { widget: Widget; data?: WidgetData; onView: () => void; onEdit: () => void; onDelete: () => void }) {
   const accent = accentFor(widget.provider ?? "");
   const isComparison = widget.type === "comparison";
   const isTimeseries = widget.type === "timeseries";
@@ -182,6 +182,11 @@ function WidgetTile({ widget, data, onEdit, onDelete }: { widget: Widget; data?:
           <p className="text-3xl font-bold leading-none text-on-surface tabular-nums">{data.value === null ? "—" : nf.format(data.value)}</p>
         )}
       </div>
+
+      <button type="button" onClick={onView}
+        className="mt-auto inline-flex w-fit items-center gap-1 text-label-md font-medium text-primary transition-opacity hover:opacity-70">
+        <ReadMoreOutlined style={{ fontSize: 16 }} /> Voir plus
+      </button>
 
       <div className="absolute bottom-3 right-3 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
         <button type="button" onClick={onEdit} title="Modifier"

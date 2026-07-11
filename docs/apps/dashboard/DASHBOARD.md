@@ -26,11 +26,38 @@ colonne numérique) + **conditions** (opérateurs `=`, `≠`, `>`, `≥`, `<`, `
 `starts_with`, `ends_with`, `is_true`, `is_false`) + **filtre de période** (sur `created_at`).
 Le **type est verrouillé après création**.
 
+### Sources multiples (jointure même-app)
+
+Un widget peut porter **plusieurs sources (modèles) de LA MÊME application** (donc la même
+base — contrainte « 1 base par service »). Le moteur assemble alors **une seule requête SQL**
+avec un **INNER JOIN implicite** : `FROM "t1" AS "s1", "t2" AS "s2" WHERE <toutes les
+conditions>`. Chaque source a un id local (`s1`, `s2`…) servant d'alias ; **toutes les
+colonnes sont qualifiées** `"s1"."champ"`.
+
+- **Condition = littéral OU colonne.** La valeur d'une condition est soit un littéral
+  (`{kind:"literal", value}`), soit **la colonne d'une autre source**
+  (`{kind:"column", source, field}` → prédicat de jointure, opérateurs de comparaison
+  uniquement). Une réf. intra-source compare deux colonnes du même modèle (ex.
+  `montant_paye < montant_total`).
+- **Agrégat = modèle + colonne.** `aggregate: {source, field}` désigne la source et la
+  colonne numérique agrégées (`count` = lignes de l'ensemble joint, sans source).
+- **`workspace_id`** est filtré sur **chaque** source qui porte la colonne (une table enfant
+  jointe sans `workspace_id` reste tenant-safe via le parent).
+- **Config** : `config.sources[] = [{id, provider, model}]` (même `provider` partout, validé),
+  `config.conditions[] = [{source, field, operator, value}]`, `config.aggregate`,
+  `config.group = {source, field}` (groupby/table), `config.period = {source}`. Les
+  `provider`/`model` top-level du widget = source primaire (rétro-compat). Les widgets
+  **legacy** mono-source (conditions plates, `field`, `group_by`) sont **normalisés** à la
+  lecture en une source unique `s1` — aucune migration. Cf. `_normalize_spec` /
+  `_resolve` dans `backends/dashboard/routers/widgets.py` et le constructeur multi-tables de
+  `services/direct_reader.py`. UI : `SpecEditor` réutilisable dans `WidgetForm.tsx`.
+
 ### Filtre de période (vue Widgets)
 
 Le filtre **Du / Au** de la page `/widgets` est **global** : le front renvoie `from`/`to` à
-`GET /widgets/{id}/data` pour **chaque** widget, et **tous** les types bornent leurs données
-sur l'intervalle (`created_at >= from` et `< to + 1 jour`).
+`GET /widgets/{id}/data` pour **chaque** widget. Dans un widget multi-sources, la période
+s'applique au `created_at` de la **source désignée** par `config.period.source` (choisie dans
+le formulaire ; défaut = source primaire). Bornes `created_at >= from` et `< to + 1 jour`.
 
 - **Agrégats** (comptage, jauge, ratio, comparaison, regroupement, palmarès) : bornes
   ajoutées directement dans le `WHERE` (`aggregate` / `group_by`).
@@ -39,6 +66,40 @@ sur l'intervalle (`created_at >= from` et `< to + 1 jour`).
   courante = `[from, to]` et la précédente = l'intervalle de **même longueur juste avant**.
   Sans période, comportement historique (N derniers buckets). Cf. `direct_reader.time_series`
   / `trend` (params `frm`/`to`).
+
+### Vue détaillée d'un widget (« Voir plus »)
+
+Chaque carte widget a un bouton **« Voir plus »** → page `/widgets/[id]` : le **widget en
+pleine largeur** en haut, et en bas le **tableau des données qui génèrent la valeur**. Le
+tableau est **conscient de l'agrégation du widget** (`_detail_rows`) :
+
+- **`groupby` / `table`** → lignes **agrégées** (catégorie → mesure), pas la liste brute.
+  Réutilise `direct_reader.group_by` (toutes les catégories, non plafonné par la limite
+  d'affichage). Colonnes fixes : `[<colonne de regroupement>, <mesure>]`.
+- **`timeseries` / `trend`** → une ligne par bucket (période → valeur). Réutilise
+  `direct_reader.time_series`.
+- **`count` / `gauge`** (agrégat scalaire) → les **enregistrements bruts** derrière la valeur
+  (même ensemble joint, on **SELECT les colonnes configurées** ; `direct_reader.rows`).
+  C'est le **seul** cas où l'on configure les colonnes.
+
+- **Colonnes (count/gauge uniquement)** : `config.columns = [{source, field, label?, width?}]`
+  (largeur en % ; vide = toutes les colonnes des modèles). Configurées dans l'éditeur
+  (`DetailColumnsSection`, masqué pour les types agrégés), avec **aperçu 3 lignes**
+  (`POST /widgets/preview-rows`, config non enregistrée, branche aussi par type).
+- **Pagination serveur** (`page`/`page_size`) + **recherche** (`q`, `ILIKE` sur cast text) :
+  par défaut sur toutes les colonnes des modèles, restreignable via
+  `config.search_fields = [{source, field}]`.
+- **Filtre période Du/Au** identique à la grille (sur `config.period.source`).
+- **Téléchargement CSV** (`GET /widgets/{id}/export`) : respecte période + recherche, **ignore
+  la pagination** (toutes les lignes, plafond `_EXPORT_CAP`). BOM UTF-8 pour Excel. Route BFF
+  `export` en **pass-through brut** (pas de chiffrement `@repo/network`, déclenché par
+  `<a download>`).
+- **Indisponible pour `comparison`/`ratio`** (sources indépendantes, pas d'ensemble joint
+  unique) → 400 côté API, message côté page.
+
+Endpoints : `GET /widgets/{id}/rows`, `GET /widgets/{id}/export`, `POST /widgets/preview-rows`
+(`routers/widgets.py`). Client : `getWidgetRows` / `widgetExportUrl` / `previewRows`
+(`lib/dashboard-api.ts`). Rendu widget réutilisable : `components/WidgetView.tsx`.
 
 ## Types de widget
 

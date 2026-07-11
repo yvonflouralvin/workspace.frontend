@@ -172,6 +172,15 @@ export interface WidgetTableData {
   rows: ComparisonSerieValue[];
 }
 
+export interface WidgetRatioData {
+  widget_id: number;
+  type: "ratio";
+  numerator: number | null;
+  denominator: number | null;
+  percent: number | null;
+  format: string; // "percent" | "ratio"
+}
+
 export type WidgetData =
   | WidgetCountData
   | WidgetComparisonData
@@ -179,7 +188,8 @@ export type WidgetData =
   | WidgetGroupbyData
   | WidgetTrendData
   | WidgetGaugeData
-  | WidgetTableData;
+  | WidgetTableData
+  | WidgetRatioData;
 
 export interface WidgetInput {
   type?: string;

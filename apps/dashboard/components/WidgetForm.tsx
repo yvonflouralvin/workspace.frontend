@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { AddOutlined, BarChartOutlined, CategoryOutlined, CloseOutlined, LeaderboardOutlined, NumbersOutlined, SpeedOutlined, TimelineOutlined, TrendingUpOutlined } from "@mui/icons-material";
+import { AddOutlined, BarChartOutlined, CategoryOutlined, CloseOutlined, LeaderboardOutlined, NumbersOutlined, PercentOutlined, SpeedOutlined, TimelineOutlined, TrendingUpOutlined } from "@mui/icons-material";
 import {
   createWidget,
   updateWidget,
@@ -18,6 +18,7 @@ const TYPE_ICON: Record<string, ReactNode> = {
   timeseries: <TimelineOutlined style={{ fontSize: 20 }} />,
   groupby: <CategoryOutlined style={{ fontSize: 20 }} />,
   table: <LeaderboardOutlined style={{ fontSize: 20 }} />,
+  ratio: <PercentOutlined style={{ fontSize: 20 }} />,
 };
 
 const inputCls =
@@ -42,6 +43,7 @@ export const WIDGET_TYPES = [
   { value: "timeseries", label: "Série temporelle", description: "L'évolution d'une valeur dans le temps, en courbe." },
   { value: "groupby", label: "Regroupement", description: "Répartition automatique d'une valeur par catégorie." },
   { value: "table", label: "Tableau / palmarès", description: "Un classement top‑N par catégorie, du plus grand au plus petit." },
+  { value: "ratio", label: "Ratio / Pourcentage", description: "Une valeur en pourcentage d'une autre (ex. taux de paiement)." },
 ];
 
 const CATEGORICAL = new Set(["enum", "string", "boolean", "integer"]);
@@ -150,6 +152,44 @@ function MeasureFields({ fields, measure, field, onChange }: { fields: SourceFie
   );
 }
 
+const emptySerie = (): Serie => ({ label: "", provider: "", model: "", measure: "count", field: "", conditions: [] });
+
+function applyPatch(s: Serie, p: Partial<Serie>): Serie {
+  const next = { ...s, ...p };
+  if (p.provider !== undefined && p.provider !== s.provider) { next.model = ""; next.field = ""; next.conditions = []; }
+  if (p.model !== undefined && p.model !== s.model) { next.field = ""; next.conditions = []; }
+  return next;
+}
+
+function AggregateSpecEditor({ label, hint, spec, onChange, sources }: { label: string; hint?: string; spec: Serie; onChange: (patch: Partial<Serie>) => void; sources: DataSourceApp[] }) {
+  const modelsOf = (prov: string) => sources.find((s) => s.app_key === prov)?.models ?? [];
+  const fieldsOf = (prov: string, mod: string) => modelsOf(prov).find((m) => m.name === mod)?.fields ?? [];
+  return (
+    <div className="space-y-2 rounded-xl border border-outline-variant p-4">
+      <div>
+        <p className="text-label-md font-medium text-on-surface-variant">{label}</p>
+        {hint && <p className="text-label-sm text-on-surface-variant/60">{hint}</p>}
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <select className={inputCls} value={spec.provider} onChange={(e) => onChange({ provider: e.target.value })}>
+          <option value="">Source…</option>
+          {sources.map((src) => <option key={src.app_key} value={src.app_key}>{src.app_label}</option>)}
+        </select>
+        <select className={inputCls} value={spec.model} disabled={!spec.provider} onChange={(e) => onChange({ model: e.target.value })}>
+          <option value="">Modèle…</option>
+          {modelsOf(spec.provider).map((m) => <option key={m.name} value={m.name}>{m.name}</option>)}
+        </select>
+      </div>
+      {spec.model && (
+        <>
+          <MeasureFields fields={fieldsOf(spec.provider, spec.model)} measure={spec.measure} field={spec.field} onChange={onChange} />
+          <ConditionsEditor fields={fieldsOf(spec.provider, spec.model)} conditions={spec.conditions} onChange={(c) => onChange({ conditions: c })} />
+        </>
+      )}
+    </div>
+  );
+}
+
 export function WidgetForm({ sources, widget, initialType, onSaved, onCancel }: { sources: DataSourceApp[]; widget?: Widget; initialType?: string; onSaved: (w: Widget) => void; onCancel: () => void }) {
   const isEdit = !!widget;
   const cfg = (widget?.config ?? {}) as { conditions?: Condition[]; measure?: string; field?: string; render?: string; series?: Serie[] };
@@ -169,6 +209,11 @@ export function WidgetForm({ sources, widget, initialType, onSaved, onCancel }: 
   const [goodPct, setGoodPct] = useState<string>(thCfg.good !== undefined ? String(thCfg.good) : "");
   const [warnPct, setWarnPct] = useState<string>(thCfg.warn !== undefined ? String(thCfg.warn) : "");
   const [limit, setLimit] = useState<number>((cfg as { limit?: number }).limit ?? 10);
+  const ratioCfg = cfg as { numerator?: Serie; denominator?: Serie; format?: string };
+  const initSpec = (s?: Serie): Serie => ({ ...emptySerie(), ...(s ?? {}), conditions: (s?.conditions ?? []).map((c) => ({ field: c.field ?? "", operator: c.operator ?? "eq", value: c.value ?? "" })) });
+  const [numerator, setNumerator] = useState<Serie>(initSpec(ratioCfg.numerator));
+  const [denominator, setDenominator] = useState<Serie>(initSpec(ratioCfg.denominator));
+  const [ratioFormat, setRatioFormat] = useState<string>(ratioCfg.format ?? "percent");
   const [granularity, setGranularity] = useState<string>((cfg as { granularity?: string }).granularity ?? "month");
   const [buckets, setBuckets] = useState<number>((cfg as { buckets?: number }).buckets ?? 12);
   const [groupByCol, setGroupByCol] = useState<string>((cfg as { group_by?: string }).group_by ?? "");
@@ -203,6 +248,14 @@ export function WidgetForm({ sources, widget, initialType, onSaved, onCancel }: 
         type: "comparison", title: title.trim(),
         config: { render, series: series.map((s) => ({ label: s.label.trim() || s.model, provider: s.provider, model: s.model, measure: s.measure, field: NEEDS_FIELD.has(s.measure) ? s.field : undefined, conditions: cleanConditions(s.conditions) })) },
       };
+    } else if (type === "ratio") {
+      if (!title.trim()) { setErr("Titre requis."); return; }
+      for (const [name, s] of [["numérateur", numerator], ["dénominateur", denominator]] as const) {
+        if (!s.provider || !s.model) { setErr(`Choisissez la source et le modèle du ${name}.`); return; }
+        if (NEEDS_FIELD.has(s.measure) && !s.field) { setErr(`Choisissez le champ à agréger du ${name}.`); return; }
+      }
+      const packSpec = (s: Serie) => ({ provider: s.provider, model: s.model, measure: s.measure, field: NEEDS_FIELD.has(s.measure) ? s.field : undefined, conditions: cleanConditions(s.conditions) });
+      input = { type: "ratio", title: title.trim(), config: { numerator: packSpec(numerator), denominator: packSpec(denominator), format: ratioFormat } };
     } else {
       if (!title.trim() || !provider || !model) { setErr("Titre, source et modèle requis."); return; }
       if (NEEDS_FIELD.has(measure) && !field) { setErr("Choisissez le champ à agréger."); return; }
@@ -262,7 +315,19 @@ export function WidgetForm({ sources, widget, initialType, onSaved, onCancel }: 
         <input className={inputCls} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ex. Patients par sexe" />
       </div>
 
-      {type !== "comparison" ? (
+      {type === "ratio" ? (
+        <>
+          <AggregateSpecEditor label="Numérateur (la part)" hint="Ex. commandes payées." spec={numerator} onChange={(p) => setNumerator((s) => applyPatch(s, p))} sources={sources} />
+          <AggregateSpecEditor label="Dénominateur (le total)" hint="Ex. toutes les commandes." spec={denominator} onChange={(p) => setDenominator((s) => applyPatch(s, p))} sources={sources} />
+          <div className="flex flex-col gap-1">
+            <label className="text-label-md font-medium text-on-surface-variant">Format</label>
+            <select className={inputCls} value={ratioFormat} onChange={(e) => setRatioFormat(e.target.value)}>
+              <option value="percent">Pourcentage (%)</option>
+              <option value="ratio">Ratio (×)</option>
+            </select>
+          </div>
+        </>
+      ) : type !== "comparison" ? (
         <>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="flex flex-col gap-1">

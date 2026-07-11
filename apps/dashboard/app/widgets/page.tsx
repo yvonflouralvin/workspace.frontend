@@ -2,12 +2,13 @@
 
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { AddOutlined, BarChartOutlined, CategoryOutlined, DeleteOutlined, EditOutlined, ExpandMoreOutlined, LeaderboardOutlined, NumbersOutlined, SpeedOutlined, TimelineOutlined, TrendingUpOutlined, WidgetsOutlined } from "@mui/icons-material";
+import { AddOutlined, BarChartOutlined, CategoryOutlined, DeleteOutlined, EditOutlined, ExpandMoreOutlined, LeaderboardOutlined, NumbersOutlined, PercentOutlined, SpeedOutlined, TimelineOutlined, TrendingUpOutlined, WidgetsOutlined } from "@mui/icons-material";
 import { ComparisonView } from "@repo/reporting-widgets/ComparisonView";
 import { TimeseriesView } from "@repo/reporting-widgets/TimeseriesView";
 import { TrendView } from "@repo/reporting-widgets/TrendView";
 import { GaugeView } from "@repo/reporting-widgets/GaugeView";
 import { LeaderboardView } from "@repo/reporting-widgets/LeaderboardView";
+import { RatioView } from "@repo/reporting-widgets/RatioView";
 import { DashboardShell } from "@/components/DashboardShell";
 import { WIDGET_TYPES } from "@/components/WidgetForm";
 import { getWidgets, deleteWidget, getWidgetData, type Widget, type WidgetData } from "@/lib/dashboard-api";
@@ -23,6 +24,7 @@ const TYPE_ICONS: Record<string, ReactNode> = {
   timeseries: <TimelineOutlined style={{ fontSize: 18 }} />,
   groupby: <CategoryOutlined style={{ fontSize: 18 }} />,
   table: <LeaderboardOutlined style={{ fontSize: 18 }} />,
+  ratio: <PercentOutlined style={{ fontSize: 18 }} />,
 };
 
 export default function WidgetsPage() {
@@ -140,10 +142,13 @@ function WidgetTile({ widget, data, onEdit, onDelete }: { widget: Widget; data?:
   const isTrend = widget.type === "trend";
   const isGauge = widget.type === "gauge";
   const isTable = widget.type === "table";
+  const isRatio = widget.type === "ratio";
   const cfg = widget.config as { conditions?: unknown[]; series?: unknown[]; group_by?: string };
   const caption = isComparison
     ? `Comparaison · ${Array.isArray(cfg?.series) ? cfg.series.length : 0} source(s)`
-    : `${widget.provider} · ${widget.model}${(isGroupby || isTable) && cfg.group_by ? ` · par ${cfg.group_by}` : ""}${Array.isArray(cfg?.conditions) && cfg.conditions.length ? ` · ${cfg.conditions.length} cond.` : ""}`;
+    : isRatio
+      ? "Ratio / pourcentage"
+      : `${widget.provider} · ${widget.model}${(isGroupby || isTable) && cfg.group_by ? ` · par ${cfg.group_by}` : ""}${Array.isArray(cfg?.conditions) && cfg.conditions.length ? ` · ${cfg.conditions.length} cond.` : ""}`;
 
   return (
     <div className="group relative flex flex-col gap-3 rounded-2xl border border-outline-variant bg-surface-container-lowest p-5">
@@ -154,7 +159,7 @@ function WidgetTile({ widget, data, onEdit, onDelete }: { widget: Widget; data?:
         </div>
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
           style={{ backgroundColor: `color-mix(in srgb, ${accent} 12%, transparent)`, color: accent }}>
-          {isComparison ? <BarChartOutlined style={{ fontSize: 18 }} /> : isTimeseries ? <TimelineOutlined style={{ fontSize: 18 }} /> : isGroupby ? <CategoryOutlined style={{ fontSize: 18 }} /> : isTrend ? <TrendingUpOutlined style={{ fontSize: 18 }} /> : isGauge ? <SpeedOutlined style={{ fontSize: 18 }} /> : isTable ? <LeaderboardOutlined style={{ fontSize: 18 }} /> : <NumbersOutlined style={{ fontSize: 18 }} />}
+          {isComparison ? <BarChartOutlined style={{ fontSize: 18 }} /> : isTimeseries ? <TimelineOutlined style={{ fontSize: 18 }} /> : isGroupby ? <CategoryOutlined style={{ fontSize: 18 }} /> : isTrend ? <TrendingUpOutlined style={{ fontSize: 18 }} /> : isGauge ? <SpeedOutlined style={{ fontSize: 18 }} /> : isTable ? <LeaderboardOutlined style={{ fontSize: 18 }} /> : isRatio ? <PercentOutlined style={{ fontSize: 18 }} /> : <NumbersOutlined style={{ fontSize: 18 }} />}
         </span>
       </div>
 
@@ -171,6 +176,8 @@ function WidgetTile({ widget, data, onEdit, onDelete }: { widget: Widget; data?:
           <GaugeView value={data.value} target={data.target} direction={data.direction} thresholds={data.thresholds} />
         ) : data.type === "table" ? (
           <LeaderboardView rows={data.rows} />
+        ) : data.type === "ratio" ? (
+          <RatioView numerator={data.numerator} denominator={data.denominator} percent={data.percent} format={data.format} />
         ) : (
           <p className="text-3xl font-bold leading-none text-on-surface tabular-nums">{data.value === null ? "—" : nf.format(data.value)}</p>
         )}

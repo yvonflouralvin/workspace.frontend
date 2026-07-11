@@ -45,11 +45,13 @@ Le **type est verrouillé après création**.
 - **Tableau / palmarès** — classement **top‑N** d'une mesure par catégorie (GROUP BY trié
   décroissant, `limit` configurable), rendu en liste classée (rang + barre proportionnelle).
   Réutilise `direct_reader.group_by` (avec référence de libellé) → `LeaderboardView`.
+- **Ratio / Pourcentage** — une valeur (numérateur) en % d'une autre (dénominateur), chacune
+  étant un agrégat complet (source/modèle/mesure/conditions, indépendants). Format % ou ratio
+  (×), garde-fou dénominateur nul. Deux `direct_reader.aggregate` → `RatioView`.
 
 ### Roadmap — nouveaux types
 - **Table brute** — afficher de vraies lignes (pas un agrégat) ; colonnes au choix, dans le
   respect de l'anonymisation (variante du palmarès actuel qui, lui, reste agrégé).
-- **Ratio / Pourcentage** — une valeur en % d'une autre (ex. taux de paiement).
 - **Entonnoir (funnel)** — étapes successives (créées → validées → payées).
 - **Heatmap calendrier** — densité d'activité par jour sur `created_at`.
 - **Texte / Titre** — bloc de note pour structurer/annoter un dashboard.

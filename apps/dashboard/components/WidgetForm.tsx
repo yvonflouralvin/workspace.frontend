@@ -62,14 +62,23 @@ const GRANULARITIES = [
   { value: "month", label: "Mois" },
 ];
 
-const MEASURES = [
+const SIMPLE_MEASURES = [
   { value: "count", label: "Nombre de lignes" },
   { value: "sum", label: "Somme" },
   { value: "avg", label: "Moyenne" },
   { value: "min", label: "Minimum" },
   { value: "max", label: "Maximum" },
 ];
+const MEASURES = [...SIMPLE_MEASURES, { value: "computed", label: "Calcul (A op B)" }];
 const NEEDS_FIELD = new Set(["sum", "avg", "min", "max"]);
+
+const FORMULA_OPS = [
+  { value: "divide", label: "Division (A ÷ B)" },
+  { value: "percent", label: "Pourcentage (A ÷ B × 100)" },
+  { value: "subtract", label: "Différence (A − B)" },
+  { value: "add", label: "Somme (A + B)" },
+  { value: "multiply", label: "Produit (A × B)" },
+];
 const numericFields = (fields: SourceField[]) => fields.filter((f) => f.type === "integer" || f.type === "decimal");
 
 const ORDER_OPTIONS = [
@@ -100,6 +109,9 @@ type UICondition = {
 
 type SpecSource = { id: string; model: string };
 
+type SubM = { measure: string; source: string; field: string };
+type FormulaState = { op: string; a: SubM; b: SubM };
+
 type SpecState = {
   provider: string;
   sources: SpecSource[];
@@ -108,7 +120,14 @@ type SpecState = {
   aggField: string;
   conditions: UICondition[];
   periodSource: string;
+  formula: FormulaState;
 };
+
+const defaultFormula = (primary: string): FormulaState => ({
+  op: "divide",
+  a: { measure: "sum", source: primary, field: "" },
+  b: { measure: "sum", source: primary, field: "" },
+});
 
 // Lecture d'une config existante (legacy mono-source OU nouvelle multi-sources).
 type RawCond = { source?: string; field?: string; operator?: string; value?: unknown };
@@ -122,6 +141,7 @@ type RawSpec = {
   aggregate?: { source?: string; field?: string };
   conditions?: RawCond[];
   period?: { source?: string };
+  formula?: { op?: string; a?: { measure?: string; source?: string; field?: string }; b?: { measure?: string; source?: string; field?: string } };
   label?: string;
 };
 
@@ -158,6 +178,13 @@ function specFromRaw(raw: RawSpec | undefined, fp?: string, fm?: string): SpecSt
   const measure = r.measure ?? "count";
   const agg = r.aggregate ?? (r.field ? { source: primary, field: r.field } : undefined);
   const conditions = (r.conditions ?? []).map((c) => toUICondition(c, primary));
+  const formula: FormulaState = r.formula
+    ? {
+        op: r.formula.op ?? "divide",
+        a: { measure: r.formula.a?.measure ?? "sum", source: r.formula.a?.source ?? primary, field: r.formula.a?.field ?? "" },
+        b: { measure: r.formula.b?.measure ?? "sum", source: r.formula.b?.source ?? primary, field: r.formula.b?.field ?? "" },
+      }
+    : defaultFormula(primary);
   return {
     provider,
     sources,
@@ -166,11 +193,12 @@ function specFromRaw(raw: RawSpec | undefined, fp?: string, fm?: string): SpecSt
     aggField: agg?.field ?? "",
     conditions,
     periodSource: r.period?.source ?? primary,
+    formula,
   };
 }
 
 function emptySpec(): SpecState {
-  return { provider: "", sources: [{ id: "s1", model: "" }], measure: "count", aggSource: "s1", aggField: "", conditions: [], periodSource: "s1" };
+  return { provider: "", sources: [{ id: "s1", model: "" }], measure: "count", aggSource: "s1", aggField: "", conditions: [], periodSource: "s1", formula: defaultFormula("s1") };
 }
 
 const modelsOf = (catalog: DataSourceApp[], provider: string): SourceModel[] => catalog.find((s) => s.app_key === provider)?.models ?? [];
@@ -194,6 +222,10 @@ function packSpec(spec: SpecState, includePeriod: boolean) {
   const aggregate = NEEDS_FIELD.has(spec.measure) ? { source: spec.aggSource, field: spec.aggField } : undefined;
   const out: Record<string, unknown> = { sources, conditions, measure: spec.measure };
   if (aggregate) out.aggregate = aggregate;
+  if (spec.measure === "computed") {
+    const packSub = (m: SubM) => (NEEDS_FIELD.has(m.measure) ? { measure: m.measure, source: m.source, field: m.field } : { measure: m.measure });
+    out.formula = { op: spec.formula.op, a: packSub(spec.formula.a), b: packSub(spec.formula.b) };
+  }
   if (includePeriod && spec.periodSource) out.period = { source: spec.periodSource };
   return out;
 }
@@ -202,6 +234,11 @@ function specError(spec: SpecState): string | null {
   if (!spec.provider) return "Choisissez une application.";
   if (filledSources(spec).length === 0) return "Ajoutez au moins un modèle.";
   if (NEEDS_FIELD.has(spec.measure) && (!spec.aggSource || !spec.aggField)) return "Choisissez le modèle et le champ à agréger.";
+  if (spec.measure === "computed") {
+    const bad = (m: SubM) => NEEDS_FIELD.has(m.measure) && (!m.source || !m.field);
+    if (!spec.formula.op) return "Choisissez l'opération de calcul.";
+    if (bad(spec.formula.a) || bad(spec.formula.b)) return "Complétez les deux mesures du calcul.";
+  }
   for (const c of spec.conditions) {
     if (c.source && c.field && c.valueKind === "column" && CMP_OPS.has(c.operator) && (!c.colSource || !c.colField)) {
       return "Complétez la colonne référencée dans une condition.";
@@ -212,36 +249,76 @@ function specError(spec: SpecState): string | null {
 
 // ---------------------------------------------------------------------------------------
 
+function SubMeasureField({ catalog, spec, value, onChange, label }: { catalog: DataSourceApp[]; spec: SpecState; value: SubM; onChange: (v: SubM) => void; label: string }) {
+  const filled = filledSources(spec);
+  const needsField = NEEDS_FIELD.has(value.measure);
+  const nums = numericFields(fieldsOf(catalog, spec.provider, filled.find((s) => s.id === value.source)?.model ?? filled[0]?.model ?? ""));
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="w-4 text-label-md font-semibold text-on-surface-variant">{label}</span>
+      <select className={`${inputCls} w-auto`} value={value.measure}
+        onChange={(e) => onChange({ ...value, measure: e.target.value, field: NEEDS_FIELD.has(e.target.value) ? value.field : "" })}>
+        {SIMPLE_MEASURES.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
+      </select>
+      {needsField && filled.length > 1 && (
+        <select className={`${inputCls} w-auto`} value={value.source} onChange={(e) => onChange({ ...value, source: e.target.value, field: "" })}>
+          {filled.map((s) => <option key={s.id} value={s.id}>{s.model}</option>)}
+        </select>
+      )}
+      {needsField && (
+        <select className={`${inputCls} w-auto flex-1`} value={value.field} onChange={(e) => onChange({ ...value, field: e.target.value })}>
+          <option value="">Champ…</option>
+          {nums.map((f) => <option key={f.name} value={f.name}>{f.name}</option>)}
+        </select>
+      )}
+    </div>
+  );
+}
+
 function MeasureFields({ catalog, spec, onChange }: { catalog: DataSourceApp[]; spec: SpecState; onChange: (patch: Partial<SpecState>) => void }) {
   const filled = filledSources(spec);
   const aggFields = numericFields(fieldsOf(catalog, spec.provider, filled.find((s) => s.id === spec.aggSource)?.model ?? ""));
   return (
-    <div className="grid gap-2 sm:grid-cols-3">
-      <div className="flex flex-col gap-1">
-        <label className="text-label-md font-medium text-on-surface-variant">Mesure</label>
-        <select className={inputCls} value={spec.measure}
-          onChange={(e) => onChange(NEEDS_FIELD.has(e.target.value) ? { measure: e.target.value } : { measure: e.target.value, aggField: "" })}>
-          {MEASURES.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
-        </select>
-      </div>
-      {NEEDS_FIELD.has(spec.measure) && (
-        <>
-          {filled.length > 1 && (
+    <div className="space-y-2">
+      <div className="grid gap-2 sm:grid-cols-3">
+        <div className="flex flex-col gap-1">
+          <label className="text-label-md font-medium text-on-surface-variant">Mesure</label>
+          <select className={inputCls} value={spec.measure}
+            onChange={(e) => onChange(NEEDS_FIELD.has(e.target.value) ? { measure: e.target.value } : { measure: e.target.value, aggField: "" })}>
+            {MEASURES.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
+          </select>
+        </div>
+        {NEEDS_FIELD.has(spec.measure) && (
+          <>
+            {filled.length > 1 && (
+              <div className="flex flex-col gap-1">
+                <label className="text-label-md font-medium text-on-surface-variant">Modèle à agréger</label>
+                <select className={inputCls} value={spec.aggSource} onChange={(e) => onChange({ aggSource: e.target.value, aggField: "" })}>
+                  {filled.map((s) => <option key={s.id} value={s.id}>{s.model}</option>)}
+                </select>
+              </div>
+            )}
             <div className="flex flex-col gap-1">
-              <label className="text-label-md font-medium text-on-surface-variant">Modèle à agréger</label>
-              <select className={inputCls} value={spec.aggSource} onChange={(e) => onChange({ aggSource: e.target.value, aggField: "" })}>
-                {filled.map((s) => <option key={s.id} value={s.id}>{s.model}</option>)}
+              <label className="text-label-md font-medium text-on-surface-variant">Champ (numérique)</label>
+              <select className={inputCls} value={spec.aggField} onChange={(e) => onChange({ aggField: e.target.value })}>
+                <option value="">Choisir un champ…</option>
+                {aggFields.map((f) => <option key={f.name} value={f.name}>{f.name}</option>)}
               </select>
             </div>
-          )}
+          </>
+        )}
+      </div>
+      {spec.measure === "computed" && (
+        <div className="space-y-2 rounded-lg border border-outline-variant p-3">
           <div className="flex flex-col gap-1">
-            <label className="text-label-md font-medium text-on-surface-variant">Champ (numérique)</label>
-            <select className={inputCls} value={spec.aggField} onChange={(e) => onChange({ aggField: e.target.value })}>
-              <option value="">Choisir un champ…</option>
-              {aggFields.map((f) => <option key={f.name} value={f.name}>{f.name}</option>)}
+            <label className="text-label-md font-medium text-on-surface-variant">Opération</label>
+            <select className={inputCls} value={spec.formula.op} onChange={(e) => onChange({ formula: { ...spec.formula, op: e.target.value } })}>
+              {FORMULA_OPS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
           </div>
-        </>
+          <SubMeasureField catalog={catalog} spec={spec} label="A" value={spec.formula.a} onChange={(a) => onChange({ formula: { ...spec.formula, a } })} />
+          <SubMeasureField catalog={catalog} spec={spec} label="B" value={spec.formula.b} onChange={(b) => onChange({ formula: { ...spec.formula, b } })} />
+        </div>
       )}
     </div>
   );

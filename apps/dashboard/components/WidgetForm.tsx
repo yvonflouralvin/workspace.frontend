@@ -538,6 +538,7 @@ export function WidgetForm({ sources, widget, initialType, onSaved, onCancel }: 
     columns?: { source?: string; field?: string; label?: string; width?: number }[];
     search_fields?: { source?: string; field?: string }[];
     order?: string; others?: boolean;
+    having?: { operator?: string; value?: number };
   };
 
   const [type, setType] = useState<string>(widget?.type ?? initialType ?? "count");
@@ -566,6 +567,8 @@ export function WidgetForm({ sources, widget, initialType, onSaved, onCancel }: 
   const [render, setRender] = useState<string>(cfg.render ?? "bar_vertical");
   const [order, setOrder] = useState<string>(cfg.order ?? "value_desc");
   const [others, setOthers] = useState<boolean>(!!cfg.others);
+  const [havingOp, setHavingOp] = useState<string>(cfg.having?.operator ?? "");
+  const [havingVal, setHavingVal] = useState<string>(cfg.having?.value != null ? String(cfg.having.value) : "");
 
   // Vue détaillée — colonnes du tableau + colonnes cherchables + aperçu.
   const [detailCols, setDetailCols] = useState<DetailCol[]>(
@@ -657,14 +660,15 @@ export function WidgetForm({ sources, widget, initialType, onSaved, onCancel }: 
         ? { good: goodPct !== "" ? Number(goodPct) : thDefaults.good, warn: warnPct !== "" ? Number(warnPct) : thDefaults.warn }
         : undefined;
       const group = { source: groupSource, field: groupField };
+      const having = havingOp && havingVal !== "" ? { operator: havingOp, value: Number(havingVal) } : undefined;
       const common = { type, title: title.trim(), provider: spec.provider, model: primaryModel };
       input =
         type === "timeseries" || type === "trend"
           ? { ...common, config: { ...base, granularity, buckets: Math.max(2, Math.min(Number(buckets) || 12, 366)) } }
           : type === "groupby"
-            ? { ...common, config: { ...base, group, render, reference, order, others: others && measureIsAdditive, limit: Math.max(1, Math.min(Number(limit) || 10, 200)) } }
+            ? { ...common, config: { ...base, group, render, reference, order, others: others && measureIsAdditive, having, limit: Math.max(1, Math.min(Number(limit) || 10, 200)) } }
             : type === "table"
-              ? { ...common, config: { ...base, group, limit: Math.max(1, Math.min(Number(limit) || 10, 200)), reference, order, others: others && measureIsAdditive } }
+              ? { ...common, config: { ...base, group, limit: Math.max(1, Math.min(Number(limit) || 10, 200)), reference, order, others: others && measureIsAdditive, having } }
               : type === "gauge"
                 ? { ...common, config: { ...base, target: Number(target), direction, thresholds } }
                 : { ...common, config: base };
@@ -803,6 +807,14 @@ export function WidgetForm({ sources, widget, initialType, onSaved, onCancel }: 
                 <input type="checkbox" checked={others && measureIsAdditive} disabled={!measureIsAdditive} onChange={(e) => setOthers(e.target.checked)} />
                 Regrouper le reste (au-delà du Top-N) dans « Autres »{measureIsAdditive ? "" : " — seulement pour Nombre/Somme"}
               </label>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-label-md font-medium text-on-surface-variant">Ne garder que les groupes dont la valeur</span>
+                <select className={`${inputCls} w-auto`} value={havingOp} onChange={(e) => setHavingOp(e.target.value)}>
+                  <option value="">(tous)</option>
+                  {OPERATORS.slice(0, 6).map((op) => <option key={op.value} value={op.value}>{op.label}</option>)}
+                </select>
+                {havingOp && <input type="number" className={`${inputCls} w-32`} value={havingVal} onChange={(e) => setHavingVal(e.target.value)} placeholder="Valeur" />}
+              </div>
             </div>
           )}
 

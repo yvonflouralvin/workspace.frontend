@@ -16,7 +16,7 @@ Légende : ⬜ à faire · 🔶 en cours · ✅ fait
 |---|--------------|--------|--------|---------|
 | 1 | **Périodes relatives** (7 derniers jours, ce mois, mois dernier, cette année…) + **auto-refresh** par widget | front | ✅ | `lib/periods.ts`, `PeriodFilter` |
 | 2 | **Tri configurable** du regroupement (label/valeur, asc/desc) + **Top-N + « Autres »** | back+front | ✅ | `group_by(order, others)` |
-| 3 | **Filtres sur agrégat (HAVING)** — ex. groupes dont somme > X | back+front | ⬜ | |
+| 3 | **Filtres sur agrégat (HAVING)** — ex. groupes dont somme > X | back+front | ✅ | `group_by(having)` |
 | 4 | **Mesures calculées** (a/b, a−b, marge, taux) au-delà de count/sum/avg | back+front | ⬜ | |
 | 5 | **Widget Tableau croisé (pivot 2D)** + histogramme **empilé** | back+front | ⬜ | |
 | 6 | **Cache court (TTL)** des requêtes widget + **timeout** garde-fou | back | ⬜ | |
@@ -35,3 +35,4 @@ Légende : ⬜ à faire · 🔶 en cours · ✅ fait
 - #1 Périodes relatives (`presetRange`) + auto-refresh (`REFRESH_OPTIONS`, setInterval) sur la grille et la vue détaillée. Composant `PeriodFilter` réutilisable. tsc OK, routes 200.
 - Note #7 (alertes) : finaliser l'envoi email du service `notifications` (SMTP par workspace) ; credentials de test fournis par l'utilisateur, à appliquer HORS dépôt.
 - #2 `group_by(order, others)` : tri value/label asc/desc ; « Autres » = reste au-delà du Top-N (mesures additives count/sum). Form : Trier par + Top-N (groupby+table) + case « Autres ». Détail = tous les groupes, ordre appliqué, sans Autres. Test top2+Autres = total 425. Régression OK.
+- #3 `group_by(having={operator,value})` : clause HAVING sur la mesure (opérateurs de comparaison). Form : « Ne garder que les groupes dont la valeur <op> <val> ». Détail respecte le HAVING. Test count>100 → VALIDEE seul. Régression OK.

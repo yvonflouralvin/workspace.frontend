@@ -10,8 +10,10 @@ import { GaugeView } from "@repo/reporting-widgets/GaugeView";
 import { LeaderboardView } from "@repo/reporting-widgets/LeaderboardView";
 import { RatioView } from "@repo/reporting-widgets/RatioView";
 import { DashboardShell } from "@/components/DashboardShell";
+import { PeriodFilter } from "@/components/PeriodFilter";
 import { WIDGET_TYPES } from "@/components/WidgetForm";
 import { getWidgets, deleteWidget, getWidgetData, type Widget, type WidgetData } from "@/lib/dashboard-api";
+import { REFRESH_OPTIONS } from "@/lib/periods";
 import { accentFor } from "@/lib/app-accent";
 
 const nf = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 2 });
@@ -35,6 +37,7 @@ export default function WidgetsPage() {
   const [error, setError] = useState<string | null>(null);
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
+  const [refreshMs, setRefreshMs] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
 
   const load = useCallback(() => {
@@ -57,6 +60,12 @@ export default function WidgetsPage() {
 
   useEffect(() => { widgets.forEach((w) => fetchData(w.id)); }, [widgets, fetchData]);
 
+  useEffect(() => {
+    if (!refreshMs) return;
+    const t = setInterval(() => widgets.forEach((w) => fetchData(w.id)), refreshMs);
+    return () => clearInterval(t);
+  }, [refreshMs, widgets, fetchData]);
+
   async function handleDelete(id: number) {
     setWidgets((prev) => prev.filter((w) => w.id !== id));
     await deleteWidget(id).catch(() => load());
@@ -71,19 +80,11 @@ export default function WidgetsPage() {
             <p className="mt-1 text-body-md text-on-surface-variant">Créez des widgets à partir de vos sources de données.</p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <label className="flex items-center gap-1.5 text-label-md text-on-surface-variant">
-              Du
-              <input type="date" value={from} max={to || undefined} onChange={(e) => setFrom(e.target.value)}
-                className="rounded-xl border border-outline-variant bg-surface-container-lowest px-2.5 py-1.5 text-body-sm text-on-surface focus:border-primary focus:outline-none" />
-            </label>
-            <label className="flex items-center gap-1.5 text-label-md text-on-surface-variant">
-              Au
-              <input type="date" value={to} min={from || undefined} onChange={(e) => setTo(e.target.value)}
-                className="rounded-xl border border-outline-variant bg-surface-container-lowest px-2.5 py-1.5 text-body-sm text-on-surface focus:border-primary focus:outline-none" />
-            </label>
-            {(from || to) && (
-              <button type="button" onClick={() => { setFrom(""); setTo(""); }} className="text-label-md text-primary hover:opacity-70">Réinitialiser</button>
-            )}
+            <PeriodFilter from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t); }} />
+            <select value={refreshMs} onChange={(e) => setRefreshMs(Number(e.target.value))}
+              className="rounded-xl border border-outline-variant bg-surface-container-lowest px-2.5 py-1.5 text-body-sm text-on-surface focus:border-primary focus:outline-none">
+              {REFRESH_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
             <div className="relative">
               <button type="button" onClick={() => setMenuOpen((o) => !o)}
                 className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-body-md font-medium text-on-primary transition-colors hover:bg-primary-container">

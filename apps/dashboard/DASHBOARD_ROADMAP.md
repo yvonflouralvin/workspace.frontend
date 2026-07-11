@@ -14,7 +14,7 @@ Légende : ⬜ à faire · 🔶 en cours · ✅ fait
 
 | # | Amélioration | Portée | Statut | Commits |
 |---|--------------|--------|--------|---------|
-| 1 | **Périodes relatives** (7 derniers jours, ce mois, mois dernier, cette année…) + **auto-refresh** par widget | front | ⬜ | |
+| 1 | **Périodes relatives** (7 derniers jours, ce mois, mois dernier, cette année…) + **auto-refresh** par widget | front | ✅ | `lib/periods.ts`, `PeriodFilter` |
 | 2 | **Tri configurable** du regroupement (label/valeur, asc/desc) + **Top-N + « Autres »** | back+front | ⬜ | |
 | 3 | **Filtres sur agrégat (HAVING)** — ex. groupes dont somme > X | back+front | ⬜ | |
 | 4 | **Mesures calculées** (a/b, a−b, marge, taux) au-delà de count/sum/avg | back+front | ⬜ | |
@@ -32,3 +32,5 @@ Légende : ⬜ à faire · 🔶 en cours · ✅ fait
 
 ## Journal
 - (base) Multi-sources + vue détaillée livrés et testés.
+- #1 Périodes relatives (`presetRange`) + auto-refresh (`REFRESH_OPTIONS`, setInterval) sur la grille et la vue détaillée. Composant `PeriodFilter` réutilisable. tsc OK, routes 200.
+- Note #7 (alertes) : finaliser l'envoi email du service `notifications` (SMTP par workspace) ; credentials de test fournis par l'utilisateur, à appliquer HORS dépôt.

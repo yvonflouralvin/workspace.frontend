@@ -4,7 +4,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowBackOutlined, DownloadOutlined, EditOutlined, SearchOutlined } from "@mui/icons-material";
 import { DashboardShell } from "@/components/DashboardShell";
+import { PeriodFilter } from "@/components/PeriodFilter";
 import { WidgetView } from "@/components/WidgetView";
+import { REFRESH_OPTIONS } from "@/lib/periods";
 import {
   getWidget,
   getWidgetData,
@@ -16,8 +18,6 @@ import {
 } from "@/lib/dashboard-api";
 
 const nf = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 2 });
-const dateInput =
-  "rounded-xl border border-outline-variant bg-surface-container-lowest px-2.5 py-1.5 text-body-sm text-on-surface focus:border-primary focus:outline-none";
 
 function cell(v: string | number | boolean | null): string {
   if (v === null || v === undefined) return "—";
@@ -43,6 +43,7 @@ export default function WidgetDetailPage() {
   const [qInput, setQInput] = useState("");
   const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
+  const [refreshMs, setRefreshMs] = useState(0);
   const pageSize = 25;
 
   useEffect(() => {
@@ -75,6 +76,15 @@ export default function WidgetDetailPage() {
   }, [id, widget, from, to, q, page]);
 
   useEffect(() => { loadRows(); }, [loadRows]);
+
+  useEffect(() => {
+    if (!refreshMs || !widget) return;
+    const t = setInterval(() => {
+      getWidgetData(id, from || undefined, to || undefined).then(setData).catch(() => {});
+      loadRows();
+    }, refreshMs);
+    return () => clearInterval(t);
+  }, [refreshMs, widget, id, from, to, loadRows]);
 
   const total = rows?.total ?? 0;
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
@@ -111,15 +121,11 @@ export default function WidgetDetailPage() {
                 <p className="mt-1 font-mono text-label-md text-on-surface-variant">{widget.provider}{widget.model ? ` · ${widget.model}` : ""}</p>
               </div>
               <div className="flex flex-wrap items-center gap-3">
-                <label className="flex items-center gap-1.5 text-label-md text-on-surface-variant">
-                  Du <input type="date" value={from} max={to || undefined} onChange={(e) => { setFrom(e.target.value); setPage(1); }} className={dateInput} />
-                </label>
-                <label className="flex items-center gap-1.5 text-label-md text-on-surface-variant">
-                  Au <input type="date" value={to} min={from || undefined} onChange={(e) => { setTo(e.target.value); setPage(1); }} className={dateInput} />
-                </label>
-                {(from || to) && (
-                  <button type="button" onClick={() => { setFrom(""); setTo(""); setPage(1); }} className="text-label-md text-primary hover:opacity-70">Réinitialiser</button>
-                )}
+                <PeriodFilter from={from} to={to} onChange={(f, t) => { setFrom(f); setTo(t); setPage(1); }} />
+                <select value={refreshMs} onChange={(e) => setRefreshMs(Number(e.target.value))}
+                  className="rounded-xl border border-outline-variant bg-surface-container-lowest px-2.5 py-1.5 text-body-sm text-on-surface focus:border-primary focus:outline-none">
+                  {REFRESH_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
               </div>
             </div>
 

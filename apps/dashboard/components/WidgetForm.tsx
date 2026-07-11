@@ -72,6 +72,13 @@ const MEASURES = [
 const NEEDS_FIELD = new Set(["sum", "avg", "min", "max"]);
 const numericFields = (fields: SourceField[]) => fields.filter((f) => f.type === "integer" || f.type === "decimal");
 
+const ORDER_OPTIONS = [
+  { value: "value_desc", label: "Valeur ↓" },
+  { value: "value_asc", label: "Valeur ↑" },
+  { value: "label_asc", label: "Libellé A→Z" },
+  { value: "label_desc", label: "Libellé Z→A" },
+];
+
 const RENDER_OPTIONS = [
   { value: "numbers_row", label: "Chiffres (ligne)" },
   { value: "numbers_column", label: "Chiffres (colonne)" },
@@ -530,6 +537,7 @@ export function WidgetForm({ sources, widget, initialType, onSaved, onCancel }: 
     series?: (RawSpec & { label?: string })[]; numerator?: RawSpec; denominator?: RawSpec;
     columns?: { source?: string; field?: string; label?: string; width?: number }[];
     search_fields?: { source?: string; field?: string }[];
+    order?: string; others?: boolean;
   };
 
   const [type, setType] = useState<string>(widget?.type ?? initialType ?? "count");
@@ -556,6 +564,8 @@ export function WidgetForm({ sources, widget, initialType, onSaved, onCancel }: 
   const [refJoin, setRefJoin] = useState<string>(refCfg.join_field ?? "");
   const [refLabel, setRefLabel] = useState<string>(refCfg.label_field ?? "");
   const [render, setRender] = useState<string>(cfg.render ?? "bar_vertical");
+  const [order, setOrder] = useState<string>(cfg.order ?? "value_desc");
+  const [others, setOthers] = useState<boolean>(!!cfg.others);
 
   // Vue détaillée — colonnes du tableau + colonnes cherchables + aperçu.
   const [detailCols, setDetailCols] = useState<DetailCol[]>(
@@ -583,6 +593,7 @@ export function WidgetForm({ sources, widget, initialType, onSaved, onCancel }: 
   const typeMeta = WIDGET_TYPES.find((t) => t.value === type) ?? { label: "Widget", description: "" };
   const filled = filledSources(spec);
   const groupFields = categoricalFields(fieldsOf(sources, spec.provider, filled.find((s) => s.id === groupSource)?.model ?? filled[0]?.model ?? ""));
+  const measureIsAdditive = spec.measure === "count" || spec.measure === "sum";
 
   const detailConfig = (): Record<string, unknown> => {
     const columns = detailCols
@@ -651,9 +662,9 @@ export function WidgetForm({ sources, widget, initialType, onSaved, onCancel }: 
         type === "timeseries" || type === "trend"
           ? { ...common, config: { ...base, granularity, buckets: Math.max(2, Math.min(Number(buckets) || 12, 366)) } }
           : type === "groupby"
-            ? { ...common, config: { ...base, group, render, reference } }
+            ? { ...common, config: { ...base, group, render, reference, order, others: others && measureIsAdditive, limit: Math.max(1, Math.min(Number(limit) || 10, 200)) } }
             : type === "table"
-              ? { ...common, config: { ...base, group, limit: Math.max(1, Math.min(Number(limit) || 10, 200)), reference } }
+              ? { ...common, config: { ...base, group, limit: Math.max(1, Math.min(Number(limit) || 10, 200)), reference, order, others: others && measureIsAdditive } }
               : type === "gauge"
                 ? { ...common, config: { ...base, target: Number(target), direction, thresholds } }
                 : { ...common, config: base };
@@ -752,35 +763,46 @@ export function WidgetForm({ sources, widget, initialType, onSaved, onCancel }: 
           />
 
           {filled.length > 0 && (type === "groupby" || type === "table") && (
-            <div className="grid gap-4 sm:grid-cols-2">
-              {filled.length > 1 && (
+            <div className="space-y-3">
+              <div className="grid gap-4 sm:grid-cols-2">
+                {filled.length > 1 && (
+                  <div className="flex flex-col gap-1">
+                    <label className="text-label-md font-medium text-on-surface-variant">Modèle de regroupement</label>
+                    <select className={inputCls} value={groupSource} onChange={(e) => { setGroupSource(e.target.value); setGroupField(""); }}>
+                      {filled.map((s) => <option key={s.id} value={s.id}>{s.model}</option>)}
+                    </select>
+                  </div>
+                )}
                 <div className="flex flex-col gap-1">
-                  <label className="text-label-md font-medium text-on-surface-variant">Modèle de regroupement</label>
-                  <select className={inputCls} value={groupSource} onChange={(e) => { setGroupSource(e.target.value); setGroupField(""); }}>
-                    {filled.map((s) => <option key={s.id} value={s.id}>{s.model}</option>)}
+                  <label className="text-label-md font-medium text-on-surface-variant">Regrouper par</label>
+                  <select className={inputCls} value={groupField} onChange={(e) => setGroupField(e.target.value)}>
+                    <option value="">Choisir une colonne…</option>
+                    {groupFields.map((f) => <option key={f.name} value={f.name}>{f.name}</option>)}
                   </select>
                 </div>
-              )}
-              <div className="flex flex-col gap-1">
-                <label className="text-label-md font-medium text-on-surface-variant">Regrouper par</label>
-                <select className={inputCls} value={groupField} onChange={(e) => setGroupField(e.target.value)}>
-                  <option value="">Choisir une colonne…</option>
-                  {groupFields.map((f) => <option key={f.name} value={f.name}>{f.name}</option>)}
-                </select>
-              </div>
-              {type === "groupby" ? (
                 <div className="flex flex-col gap-1">
-                  <label className="text-label-md font-medium text-on-surface-variant">Rendu</label>
-                  <select className={inputCls} value={render} onChange={(e) => setRender(e.target.value)}>
-                    {RENDER_OPTIONS.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
+                  <label className="text-label-md font-medium text-on-surface-variant">Trier par</label>
+                  <select className={inputCls} value={order} onChange={(e) => setOrder(e.target.value)}>
+                    {ORDER_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                   </select>
                 </div>
-              ) : (
                 <div className="flex flex-col gap-1">
-                  <label className="text-label-md font-medium text-on-surface-variant">Nombre de lignes (top N)</label>
+                  <label className="text-label-md font-medium text-on-surface-variant">{type === "groupby" ? "Nombre max de catégories" : "Nombre de lignes (top N)"}</label>
                   <input type="number" min={1} max={200} className={inputCls} value={limit} onChange={(e) => setLimit(Number(e.target.value))} />
                 </div>
-              )}
+                {type === "groupby" && (
+                  <div className="flex flex-col gap-1">
+                    <label className="text-label-md font-medium text-on-surface-variant">Rendu</label>
+                    <select className={inputCls} value={render} onChange={(e) => setRender(e.target.value)}>
+                      {RENDER_OPTIONS.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
+                    </select>
+                  </div>
+                )}
+              </div>
+              <label className={`flex items-center gap-2 text-label-md ${measureIsAdditive ? "text-on-surface-variant" : "text-on-surface-variant/40"}`}>
+                <input type="checkbox" checked={others && measureIsAdditive} disabled={!measureIsAdditive} onChange={(e) => setOthers(e.target.checked)} />
+                Regrouper le reste (au-delà du Top-N) dans « Autres »{measureIsAdditive ? "" : " — seulement pour Nombre/Somme"}
+              </label>
             </div>
           )}
 

@@ -26,6 +26,20 @@ colonne numérique) + **conditions** (opérateurs `=`, `≠`, `>`, `≥`, `<`, `
 `starts_with`, `ends_with`, `is_true`, `is_false`) + **filtre de période** (sur `created_at`).
 Le **type est verrouillé après création**.
 
+### Filtre de période (vue Widgets)
+
+Le filtre **Du / Au** de la page `/widgets` est **global** : le front renvoie `from`/`to` à
+`GET /widgets/{id}/data` pour **chaque** widget, et **tous** les types bornent leurs données
+sur l'intervalle (`created_at >= from` et `< to + 1 jour`).
+
+- **Agrégats** (comptage, jauge, ratio, comparaison, regroupement, palmarès) : bornes
+  ajoutées directement dans le `WHERE` (`aggregate` / `group_by`).
+- **Série temporelle / KPI de tendance** : la période **remplace** la fenêtre « N derniers
+  buckets ». La série couvre les buckets de `[from, to]` ; pour la tendance, la fenêtre
+  courante = `[from, to]` et la précédente = l'intervalle de **même longueur juste avant**.
+  Sans période, comportement historique (N derniers buckets). Cf. `direct_reader.time_series`
+  / `trend` (params `frm`/`to`).
+
 ## Types de widget
 
 ### Existants ✅

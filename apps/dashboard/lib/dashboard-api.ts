@@ -427,6 +427,55 @@ export async function testAlert(id: number): Promise<{ value: number | null; tri
   return res.json();
 }
 
+// --- Rapports programmés (export email) -----------------------------------------------
+
+export interface ScheduledReport {
+  id: number;
+  widget_id: number;
+  frequency: string;
+  recipients: string[];
+  enabled: boolean;
+  last_sent_at: string | null;
+}
+export interface ScheduledReportInput {
+  widget_id: number;
+  frequency: string;
+  recipients: string[];
+  enabled: boolean;
+}
+
+export async function getScheduledReports(widgetId: number): Promise<{ reports: ScheduledReport[] }> {
+  const res = await apiFetch(`/api/scheduled-reports?widget_id=${widgetId}`);
+  if (!res.ok) throw new Error("Impossible de charger les rapports programmés.");
+  return res.json();
+}
+
+async function reportWrite(url: string, method: string, body?: ScheduledReportInput): Promise<ScheduledReport> {
+  const res = await apiFetch(url, { method, body });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail ?? "Erreur.");
+  }
+  return res.json();
+}
+
+export const createScheduledReport = (input: ScheduledReportInput) => reportWrite("/api/scheduled-reports", "POST", input);
+export const updateScheduledReport = (id: number, input: ScheduledReportInput) => reportWrite(`/api/scheduled-reports/${id}`, "PATCH", input);
+
+export async function deleteScheduledReport(id: number): Promise<void> {
+  const res = await apiFetch(`/api/scheduled-reports/${id}`, { method: "DELETE" });
+  if (!res.ok) throw new Error("Impossible de supprimer le rapport.");
+}
+
+export async function runScheduledReport(id: number): Promise<{ sent?: boolean; error?: string }> {
+  const res = await apiFetch(`/api/scheduled-reports/${id}/run`, { method: "POST" });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail ?? "Envoi impossible.");
+  }
+  return res.json();
+}
+
 // --- Tableaux de bord (boards) --------------------------------------------------------
 
 export interface BoardSummary { id: number; name: string; count: number }

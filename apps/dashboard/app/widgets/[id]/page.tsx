@@ -7,6 +7,7 @@ import { DashboardShell } from "@/components/DashboardShell";
 import { PeriodFilter } from "@/components/PeriodFilter";
 import { WidgetView } from "@/components/WidgetView";
 import { AlertsPanel } from "@/components/AlertsPanel";
+import { ScheduledReportsPanel } from "@/components/ScheduledReportsPanel";
 import { REFRESH_OPTIONS } from "@/lib/periods";
 import { ALERTABLE_TYPES } from "@/lib/dashboard-api";
 import {
@@ -145,6 +146,12 @@ export default function WidgetDetailPage() {
             {ALERTABLE_TYPES.includes(widget.type) && (
               <div className="mb-6">
                 <AlertsPanel widgetId={id} />
+              </div>
+            )}
+
+            {detailAvailable && (
+              <div className="mb-6">
+                <ScheduledReportsPanel widgetId={id} />
               </div>
             )}
 

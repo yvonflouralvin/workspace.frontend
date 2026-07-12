@@ -109,7 +109,7 @@ type UICondition = {
   colField: string;
 };
 
-type SpecSource = { id: string; model: string };
+type SpecSource = { id: string; model: string; join?: string };
 
 type SubM = { measure: string; source: string; field: string };
 type FormulaState = { op: string; a: SubM; b: SubM };
@@ -133,7 +133,7 @@ const defaultFormula = (primary: string): FormulaState => ({
 
 // Lecture d'une config existante (legacy mono-source OU nouvelle multi-sources).
 type RawCond = { source?: string; field?: string; operator?: string; value?: unknown };
-type RawSource = { id?: string; provider?: string; model?: string };
+type RawSource = { id?: string; provider?: string; model?: string; join?: string };
 type RawSpec = {
   sources?: RawSource[];
   provider?: string;
@@ -171,7 +171,7 @@ function specFromRaw(raw: RawSpec | undefined, fp?: string, fm?: string): SpecSt
   let sources: SpecSource[];
   if (Array.isArray(r.sources) && r.sources.length) {
     provider = r.sources[0]?.provider ?? fp ?? "";
-    sources = r.sources.map((s, i) => ({ id: s.id || `s${i + 1}`, model: s.model ?? "" }));
+    sources = r.sources.map((s, i) => ({ id: s.id || `s${i + 1}`, model: s.model ?? "", join: s.join }));
   } else {
     provider = r.provider ?? fp ?? "";
     sources = [{ id: "s1", model: r.model ?? fm ?? "" }];
@@ -210,7 +210,7 @@ const createdAtSources = (catalog: DataSourceApp[], spec: SpecState) =>
   filledSources(spec).filter((s) => fieldsOf(catalog, spec.provider, s.model).some((f) => f.name === "created_at"));
 
 function packSpec(spec: SpecState, includePeriod: boolean) {
-  const sources = filledSources(spec).map((s) => ({ id: s.id, provider: spec.provider, model: s.model }));
+  const sources = filledSources(spec).map((s, i) => (i === 0 ? { id: s.id, provider: spec.provider, model: s.model } : { id: s.id, provider: spec.provider, model: s.model, join: s.join || "inner" }));
   const conditions = spec.conditions
     .filter((c) => c.source && c.field && c.operator)
     .map((c) => {
@@ -429,8 +429,9 @@ function SpecEditor({ catalog, spec, onChange, periodRequired = false, periodLab
   };
   const addSource = () => {
     const id = genSourceId(spec.sources);
-    onChange({ sources: [...spec.sources, { id, model: "" }] });
+    onChange({ sources: [...spec.sources, { id, model: "", join: "inner" }] });
   };
+  const setJoin = (id: string, join: string) => onChange({ sources: spec.sources.map((x) => (x.id === id ? { ...x, join } : x)) });
   const removeSource = (id: string) => {
     const sources = spec.sources.filter((s) => s.id !== id);
     const primary = sources[0]?.id ?? "s1";
@@ -463,9 +464,15 @@ function SpecEditor({ catalog, spec, onChange, periodRequired = false, periodLab
           {spec.sources.length > 1 && (
             <p className="text-label-sm text-on-surface-variant/60">Plusieurs modèles de la même application, joints par les conditions (comparer une colonne à celle d&apos;un autre modèle).</p>
           )}
-          {spec.sources.map((s) => (
+          {spec.sources.map((s, i) => (
             <div key={s.id} className="flex items-center gap-2">
               {spec.sources.length > 1 && <span className="w-8 shrink-0 text-label-sm text-on-surface-variant/60">{s.id}</span>}
+              {i > 0 && (
+                <select className={`${inputCls} w-auto`} value={s.join || "inner"} onChange={(e) => setJoin(s.id, e.target.value)} title="Type de jointure">
+                  <option value="inner">jointure</option>
+                  <option value="left">externe (LEFT)</option>
+                </select>
+              )}
               <select className={inputCls} value={s.model} onChange={(e) => setModel(s.id, e.target.value)}>
                 <option value="">Choisir un modèle…</option>
                 {modelsOf(catalog, spec.provider).map((m) => <option key={m.name} value={m.name}>{m.name}</option>)}

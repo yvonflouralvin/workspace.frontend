@@ -28,6 +28,9 @@ export default function BoardPage() {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [refreshMs, setRefreshMs] = useState(0);
+  const [filterField, setFilterField] = useState("");
+  const [filterValue, setFilterValue] = useState("");
+  const [gf, setGf] = useState<{ field: string; value: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const applyBoard = useCallback((b: Board) => {
@@ -42,11 +45,11 @@ export default function BoardPage() {
 
   const fetchAll = useCallback(() => {
     items.forEach((it) => {
-      getWidgetData(it.widget_id, from || undefined, to || undefined)
+      getWidgetData(it.widget_id, from || undefined, to || undefined, gf?.field, gf?.value)
         .then((d) => setDataById((prev) => ({ ...prev, [it.widget_id]: d })))
         .catch(() => setDataById((prev) => ({ ...prev, [it.widget_id]: undefined })));
     });
-  }, [items, from, to]);
+  }, [items, from, to, gf]);
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
   useEffect(() => {
@@ -112,6 +115,21 @@ export default function BoardPage() {
         </div>
 
         {error && <p className="mb-4 rounded-xl bg-error-container/40 px-4 py-3 text-body-sm text-error">{error}</p>}
+
+        {!editing && items.length > 0 && (
+          <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-outline-variant p-3">
+            <span className="text-label-md font-medium text-on-surface-variant">Filtre global :</span>
+            <input value={filterField} onChange={(e) => setFilterField(e.target.value)} placeholder="champ (ex. statut)"
+              className="w-40 rounded-xl border border-outline-variant bg-surface-container-lowest px-3 py-1.5 text-body-sm text-on-surface focus:border-primary focus:outline-none" />
+            <span className="text-on-surface-variant">=</span>
+            <input value={filterValue} onChange={(e) => setFilterValue(e.target.value)} placeholder="valeur (ex. VALIDEE)"
+              className="w-40 rounded-xl border border-outline-variant bg-surface-container-lowest px-3 py-1.5 text-body-sm text-on-surface focus:border-primary focus:outline-none" />
+            <button type="button" onClick={() => setGf(filterField.trim() && filterValue.trim() ? { field: filterField.trim(), value: filterValue.trim() } : null)}
+              className="rounded-xl bg-primary px-3 py-1.5 text-body-sm font-medium text-on-primary hover:bg-primary-container">Appliquer</button>
+            {gf && <button type="button" onClick={() => { setGf(null); setFilterField(""); setFilterValue(""); }} className="text-label-md text-primary hover:opacity-70">Effacer</button>}
+            <span className="text-label-sm text-on-surface-variant/60">{gf ? `actif : ${gf.field} = ${gf.value} · ` : ""}appliqué aux widgets ayant ce champ</span>
+          </div>
+        )}
 
         {editing && (
           <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-outline-variant p-3">

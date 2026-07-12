@@ -278,10 +278,11 @@ export async function deleteWidget(id: number): Promise<void> {
   if (!res.ok) throw new Error("Impossible de supprimer le widget.");
 }
 
-export async function getWidgetData(id: number, from?: string, to?: string): Promise<WidgetData> {
+export async function getWidgetData(id: number, from?: string, to?: string, filterField?: string, filterValue?: string): Promise<WidgetData> {
   const qs = new URLSearchParams();
   if (from) qs.set("from", from);
   if (to) qs.set("to", to);
+  if (filterField && filterValue) { qs.set("filter_field", filterField); qs.set("filter_value", filterValue); }
   const suffix = qs.toString() ? `?${qs.toString()}` : "";
   const res = await apiFetch(`/api/widgets/${id}/data${suffix}`);
   if (!res.ok) throw new Error("Impossible de charger la donnée du widget.");

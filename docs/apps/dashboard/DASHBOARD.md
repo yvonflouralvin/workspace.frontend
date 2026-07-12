@@ -123,36 +123,63 @@ Endpoints : `GET /widgets/{id}/rows`, `GET /widgets/{id}/export`, `POST /widgets
 - **Ratio / Pourcentage** — une valeur (numérateur) en % d'une autre (dénominateur), chacune
   étant un agrégat complet (source/modèle/mesure/conditions, indépendants). Format % ou ratio
   (×), garde-fou dénominateur nul. Deux `direct_reader.aggregate` → `RatioView`.
+- **Tableau croisé (pivot 2D)** — une mesure par **deux** dimensions (lignes × colonnes),
+  rendu tableau croisé + total, ou **histogramme empilé** (CSS). `direct_reader.pivot` →
+  `PivotView`. Top-N lignes/colonnes.
 
-### Roadmap — nouveaux types
-- **Table brute** — afficher de vraies lignes (pas un agrégat) ; colonnes au choix, dans le
-  respect de l'anonymisation (variante du palmarès actuel qui, lui, reste agrégé).
-- **Entonnoir (funnel)** — étapes successives (créées → validées → payées).
-- **Heatmap calendrier** — densité d'activité par jour sur `created_at`.
-- **Texte / Titre** — bloc de note pour structurer/annoter un dashboard.
+**Mesure calculée** (transversale à tous les types) : `measure="computed"` avec une
+`formula = {op, a, b}` — deux sous-mesures combinées par `divide` / `percent` / `subtract` /
+`add` / `multiply` (division protégée par `nullif`). Ex. taux d'encaissement =
+`sum(paye) ÷ sum(total) × 100`. `direct_reader._measure_expr`.
 
-## Roadmap — améliorations des widgets existants
+## Fonctionnalités livrées (lot « 15 améliorations », juillet 2026)
 
-- **Comptage** : delta vs période précédente + sparkline ; unité/format (%, FC, préfixe/
-  suffixe) ; comparaison à un objectif coloré.
-- **Regroupement / Comparaison** : tri (valeur/libellé) ; « Autres » (regrouper la traîne
-  au-delà du Top-N) ; barres empilées / 100 % (2ᵉ dimension) ; référence de libellé
-  **cross-app** (via le `database_url` d'une autre app).
-- **Série temporelle** : plusieurs séries sur un même graphe ; moyenne mobile / cumulé ;
-  courbe fantôme de la période précédente ; aire/barres au choix.
-- **Transversal (tous)** : rafraîchissement auto temps réel ; taille du widget
-  (petit/moyen/large) dans la grille ; drill-down (cliquer une part → filtrer) ; export
-  CSV/image ; duplication.
+Suivi détaillé par item : `apps/dashboard/DASHBOARD_ROADMAP.md`.
 
-## Roadmap — niveau dashboard (organisation)
+- **Périodes relatives + auto-refresh** — presets (aujourd'hui, 7/30 j, ce mois, mois dernier,
+  cette année) et rafraîchissement auto. `lib/periods.ts`, `PeriodFilter`.
+- **Tri / Top-N / « Autres »** et **HAVING** sur les regroupements. `group_by(order, others, having)`.
+- **Mesures calculées** (`measure="computed"`) et **pivot 2D** (cf. Types de widget).
+- **Cache court + timeout** — cache mémoire TTL (`WIDGET_CACHE_TTL`=20 s, clé incluant
+  `updated_at` → invalidation à l'édition) + `statement_timeout` Postgres
+  (`WIDGET_STATEMENT_TIMEOUT_MS`=15 000). `services/cache.py`.
+- **Alertes / seuils par email** — `models/alert`, `services/alerts` (valeur scalaire comparée
+  au seuil, **anti-rebond** `ok→triggered`), `AlertsPanel`. Évaluées par une **boucle de fond**
+  (`alert_eval_interval`=300 s) + endpoint `/internal/alerts/evaluate`. L'envoi passe par le
+  service **notifications** (SMTP par workspace, cf. `backends/notifications`, `mailer.py`).
+- **Drill-down** — clic sur un groupe → enregistrements bruts (`_drill_rows`).
+- **Filtres globaux** — barre partagée `champ=valeur` d'un board, appliquée à tous les widgets
+  qui portent le champ (`_inject_filter`, params `filter_field`/`filter_value` sur `/data`).
+- **Tableaux de bord (boards)** — pages nommées, grille 3 colonnes (span 1-3), période +
+  auto-refresh partagés, mode plein écran/TV. `models/board`, `/boards`, `/boards/[id]`.
+- **Favoris / étiquettes** — `config.tags` / `config.favorite` (sans migration) + filtre grille.
+- **Rapports programmés** — envoi périodique du **CSV** d'un widget par email (pièce jointe) ;
+  `models/scheduled_report`, `services/scheduled_reports`, même boucle de fond (`run_due`).
+- **Jointures LEFT/externes** — `direct_reader._from_where` (INNER par défaut, LEFT si
+  `source.join="left"`).
+- **Widgets cross-app** — jointure **en mémoire** entre bases différentes
+  (`services/cross_reader`), agrégat scalaire uniquement.
 
-- Réorganisation drag & drop + tailles des widgets.
-- Plusieurs tableaux de bord (onglets) et partage.
-- Filtres globaux partagés (la période existe déjà).
+## Limitations connues & pistes d'amélioration
 
-## Priorités recommandées
+> À revisiter à la prochaine itération.
 
-1. ~~**KPI de tendance**~~ ✅ · ~~**Jauge / Objectif**~~ ✅ · ~~**Tableau / palmarès**~~ ✅ (livrés)
-2. **Table brute** — la seule vue qui montrerait les lignes non agrégées (anonymisation).
-3. **Organisation** (drag & drop + tailles) — dès qu'il y a beaucoup de widgets.
-4. **Transversal** — rafraîchissement auto temps réel, export, duplication.
+- **Boucle de fond (alertes + rapports)** : `asyncio` **par process** → en multi-workers
+  (gunicorn -w N), la boucle tourne N fois. Latence d'alerte ≤ intervalle (~5 min, pas temps
+  réel). *Piste* : worker dédié unique, ou **cron externe** appelant `/internal/alerts/evaluate`.
+- **Cache widget** : mémoire **par process** (non partagé entre workers), TTL fixe. *Piste* :
+  Redis partagé si passage multi-workers.
+- **Cross-app** : **scalaire uniquement** (count/sum/avg/min/max), **INNER** only, chargement
+  **plafonné** (`WIDGET_CROSS_ROW_CAP`=50 000) puis jointure mémoire ; pas de groupby/timeseries/
+  pivot cross-app, pas de vue détaillée cross-app. *Piste* : pagination/streaming, support groupby.
+- **Jointures LEFT** : appliquées à `aggregate`/`group_by`/`pivot` ; `time_series` et la vue
+  détaillée (`rows`) restent **INNER** même si `join="left"`.
+- **Rapports programmés** : **CSV** seulement. *Piste* : **PDF** d'un board via le service
+  `documents`/WeasyPrint (rendu HTML serveur des widgets).
+- **Boards** : réordonnancement par flèches ↑/↓ + span, **pas de drag & drop** ni de grille
+  libre (x/y). Pas de partage/duplication de board.
+- **Filtre global** : silencieusement ignoré par les widgets sans le champ ; ne s'applique pas
+  aux `comparison`/`ratio` (specs indépendants).
+- **Nouveaux types encore ouverts** : entonnoir (funnel), heatmap calendrier, bloc texte/titre.
+- **Transversal** : duplication de widget, export image (PNG/SVG), unités/formats d'affichage
+  (%, FC, préfixe/suffixe) restent à faire.

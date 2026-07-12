@@ -620,10 +620,14 @@ export function WidgetForm({ sources, widget, initialType, onSaved, onCancel }: 
     having?: { operator?: string; value?: number };
     row_group?: { source?: string; field?: string };
     col_group?: { source?: string; field?: string };
+    tags?: string[];
+    favorite?: boolean;
   };
 
   const [type, setType] = useState<string>(widget?.type ?? initialType ?? "count");
   const [title, setTitle] = useState(widget?.title ?? "");
+  const [tags, setTags] = useState<string>(Array.isArray(cfg.tags) ? cfg.tags.join(", ") : "");
+  const [favorite, setFavorite] = useState<boolean>(!!cfg.favorite);
 
   // Widget mono (count/timeseries/trend/gauge/groupby/table) — une spec multi-sources.
   const [spec, setSpec] = useState<SpecState>(() => specFromRaw(cfg, widget?.provider, widget?.model));
@@ -762,6 +766,9 @@ export function WidgetForm({ sources, widget, initialType, onSaved, onCancel }: 
                 : { ...common, config: base };
     }
 
+    const tagList = tags.split(",").map((t) => t.trim()).filter(Boolean);
+    input.config = { ...(input.config ?? {}), tags: tagList, favorite };
+
     setSaving(true);
     try {
       const w = isEdit ? await updateWidget(widget!.id, input) : await createWidget(input);
@@ -799,6 +806,16 @@ export function WidgetForm({ sources, widget, initialType, onSaved, onCancel }: 
       <div className="flex flex-col gap-1">
         <label className="text-label-md font-medium text-on-surface-variant">Titre</label>
         <input className={inputCls} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ex. Patients par sexe" />
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-end">
+        <div className="flex flex-col gap-1">
+          <label className="text-label-md font-medium text-on-surface-variant">Étiquettes (dossiers, séparées par virgule)</label>
+          <input className={inputCls} value={tags} onChange={(e) => setTags(e.target.value)} placeholder="Ex. ventes, mensuel" />
+        </div>
+        <label className="flex items-center gap-2 pb-2 text-label-md text-on-surface-variant">
+          <input type="checkbox" checked={favorite} onChange={(e) => setFavorite(e.target.checked)} /> Favori
+        </label>
       </div>
 
       {type === "ratio" ? (

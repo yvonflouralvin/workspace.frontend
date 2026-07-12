@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { AddOutlined, BarChartOutlined, CategoryOutlined, DeleteOutlined, EditOutlined, ExpandMoreOutlined, GridOnOutlined, LeaderboardOutlined, NumbersOutlined, PercentOutlined, ReadMoreOutlined, SpeedOutlined, TimelineOutlined, TrendingUpOutlined, WidgetsOutlined } from "@mui/icons-material";
+import { AddOutlined, BarChartOutlined, CategoryOutlined, DeleteOutlined, EditOutlined, ExpandMoreOutlined, GridOnOutlined, LeaderboardOutlined, NumbersOutlined, PercentOutlined, ReadMoreOutlined, SpeedOutlined, StarOutlineOutlined, StarOutlined, TimelineOutlined, TrendingUpOutlined, WidgetsOutlined } from "@mui/icons-material";
 import { ComparisonView } from "@repo/reporting-widgets/ComparisonView";
 import { TimeseriesView } from "@repo/reporting-widgets/TimeseriesView";
 import { TrendView } from "@repo/reporting-widgets/TrendView";
@@ -13,7 +13,7 @@ import { PivotView } from "@/components/PivotView";
 import { DashboardShell } from "@/components/DashboardShell";
 import { PeriodFilter } from "@/components/PeriodFilter";
 import { WIDGET_TYPES } from "@/components/WidgetForm";
-import { getWidgets, deleteWidget, getWidgetData, type Widget, type WidgetData } from "@/lib/dashboard-api";
+import { getWidgets, deleteWidget, getWidgetData, updateWidget, type Widget, type WidgetData } from "@/lib/dashboard-api";
 import { REFRESH_OPTIONS } from "@/lib/periods";
 import { accentFor } from "@/lib/app-accent";
 
@@ -41,6 +41,8 @@ export default function WidgetsPage() {
   const [to, setTo] = useState("");
   const [refreshMs, setRefreshMs] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [tagFilter, setTagFilter] = useState("");
+  const [favOnly, setFavOnly] = useState(false);
 
   const load = useCallback(() => {
     getWidgets()
@@ -71,6 +73,18 @@ export default function WidgetsPage() {
   async function handleDelete(id: number) {
     setWidgets((prev) => prev.filter((w) => w.id !== id));
     await deleteWidget(id).catch(() => load());
+  }
+
+  const cfgOf = (w: Widget) => (w.config ?? {}) as { tags?: string[]; favorite?: boolean };
+  const allTags = Array.from(new Set(widgets.flatMap((w) => cfgOf(w).tags ?? []))).sort();
+  const visible = widgets
+    .filter((w) => (!tagFilter || (cfgOf(w).tags ?? []).includes(tagFilter)) && (!favOnly || cfgOf(w).favorite))
+    .sort((a, b) => Number(!!cfgOf(b).favorite) - Number(!!cfgOf(a).favorite));
+
+  async function toggleFav(w: Widget) {
+    const next = { ...w, config: { ...w.config, favorite: !cfgOf(w).favorite } };
+    setWidgets((prev) => prev.map((x) => (x.id === w.id ? next : x)));
+    await updateWidget(w.id, { type: w.type, title: w.title, provider: w.provider, model: w.model, config: next.config }).catch(() => load());
   }
 
   return (
@@ -115,6 +129,21 @@ export default function WidgetsPage() {
 
         {error && <p className="mb-4 rounded-xl bg-error-container/40 px-4 py-3 text-body-sm text-error">{error}</p>}
 
+        {widgets.length > 0 && (
+          <div className="mb-4 flex flex-wrap items-center gap-3">
+            {allTags.length > 0 && (
+              <select value={tagFilter} onChange={(e) => setTagFilter(e.target.value)}
+                className="rounded-xl border border-outline-variant bg-surface-container-lowest px-2.5 py-1.5 text-body-sm text-on-surface focus:border-primary focus:outline-none">
+                <option value="">Toutes les étiquettes</option>
+                {allTags.map((t) => <option key={t} value={t}>{t}</option>)}
+              </select>
+            )}
+            <label className="flex items-center gap-1.5 text-label-md text-on-surface-variant">
+              <input type="checkbox" checked={favOnly} onChange={(e) => setFavOnly(e.target.checked)} /> Favoris uniquement
+            </label>
+          </div>
+        )}
+
         {loading ? (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-32 animate-pulse rounded-2xl bg-surface-container" />)}
@@ -127,8 +156,8 @@ export default function WidgetsPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {widgets.map((w) => (
-              <WidgetTile key={w.id} widget={w} data={dataById[w.id]} onView={() => router.push(`/widgets/${w.id}`)} onEdit={() => router.push(`/widgets/${w.id}/edit`)} onDelete={() => handleDelete(w.id)} />
+            {visible.map((w) => (
+              <WidgetTile key={w.id} widget={w} data={dataById[w.id]} isFav={!!cfgOf(w).favorite} onToggleFav={() => toggleFav(w)} onView={() => router.push(`/widgets/${w.id}`)} onEdit={() => router.push(`/widgets/${w.id}/edit`)} onDelete={() => handleDelete(w.id)} />
             ))}
           </div>
         )}
@@ -137,7 +166,7 @@ export default function WidgetsPage() {
   );
 }
 
-function WidgetTile({ widget, data, onView, onEdit, onDelete }: { widget: Widget; data?: WidgetData; onView: () => void; onEdit: () => void; onDelete: () => void }) {
+function WidgetTile({ widget, data, isFav, onToggleFav, onView, onEdit, onDelete }: { widget: Widget; data?: WidgetData; isFav: boolean; onToggleFav: () => void; onView: () => void; onEdit: () => void; onDelete: () => void }) {
   const accent = accentFor(widget.provider ?? "");
   const isComparison = widget.type === "comparison";
   const isTimeseries = widget.type === "timeseries";
@@ -161,10 +190,16 @@ function WidgetTile({ widget, data, onView, onEdit, onDelete }: { widget: Widget
           <p className="truncate text-body-md font-semibold text-on-surface">{widget.title}</p>
           <p className="mt-0.5 truncate font-mono text-label-md text-on-surface-variant">{caption}</p>
         </div>
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
-          style={{ backgroundColor: `color-mix(in srgb, ${accent} 12%, transparent)`, color: accent }}>
-          {isComparison ? <BarChartOutlined style={{ fontSize: 18 }} /> : isTimeseries ? <TimelineOutlined style={{ fontSize: 18 }} /> : isGroupby ? <CategoryOutlined style={{ fontSize: 18 }} /> : isTrend ? <TrendingUpOutlined style={{ fontSize: 18 }} /> : isGauge ? <SpeedOutlined style={{ fontSize: 18 }} /> : isTable ? <LeaderboardOutlined style={{ fontSize: 18 }} /> : isRatio ? <PercentOutlined style={{ fontSize: 18 }} /> : isPivot ? <GridOnOutlined style={{ fontSize: 18 }} /> : <NumbersOutlined style={{ fontSize: 18 }} />}
-        </span>
+        <div className="flex shrink-0 items-center gap-1">
+          <button type="button" onClick={onToggleFav} title={isFav ? "Retirer des favoris" : "Ajouter aux favoris"}
+            className={`rounded-lg p-1 ${isFav ? "text-amber-500" : "text-on-surface-variant/40 hover:text-on-surface-variant"}`}>
+            {isFav ? <StarOutlined style={{ fontSize: 18 }} /> : <StarOutlineOutlined style={{ fontSize: 18 }} />}
+          </button>
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl"
+            style={{ backgroundColor: `color-mix(in srgb, ${accent} 12%, transparent)`, color: accent }}>
+            {isComparison ? <BarChartOutlined style={{ fontSize: 18 }} /> : isTimeseries ? <TimelineOutlined style={{ fontSize: 18 }} /> : isGroupby ? <CategoryOutlined style={{ fontSize: 18 }} /> : isTrend ? <TrendingUpOutlined style={{ fontSize: 18 }} /> : isGauge ? <SpeedOutlined style={{ fontSize: 18 }} /> : isTable ? <LeaderboardOutlined style={{ fontSize: 18 }} /> : isRatio ? <PercentOutlined style={{ fontSize: 18 }} /> : isPivot ? <GridOnOutlined style={{ fontSize: 18 }} /> : <NumbersOutlined style={{ fontSize: 18 }} />}
+          </span>
+        </div>
       </div>
 
       <div className="pb-4">

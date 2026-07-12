@@ -425,3 +425,39 @@ export async function testAlert(id: number): Promise<{ value: number | null; tri
   }
   return res.json();
 }
+
+// --- Tableaux de bord (boards) --------------------------------------------------------
+
+export interface BoardSummary { id: number; name: string; count: number }
+export interface BoardItem { widget_id: number; w: number; widget: Widget }
+export interface Board { id: number; name: string; items: BoardItem[] }
+export interface BoardInput { name: string; items: { widget_id: number; w: number }[] }
+
+export async function getBoards(): Promise<{ boards: BoardSummary[] }> {
+  const res = await apiFetch("/api/boards");
+  if (!res.ok) throw new Error("Impossible de charger les tableaux de bord.");
+  return res.json();
+}
+
+export async function getBoard(id: number): Promise<Board> {
+  const res = await apiFetch(`/api/boards/${id}`);
+  if (!res.ok) throw new Error("Tableau de bord introuvable.");
+  return res.json();
+}
+
+async function boardWrite(url: string, method: string, body: BoardInput): Promise<BoardSummary> {
+  const res = await apiFetch(url, { method, body });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail ?? "Erreur.");
+  }
+  return res.json();
+}
+
+export const createBoard = (input: BoardInput) => boardWrite("/api/boards", "POST", input);
+export const updateBoard = (id: number, input: BoardInput) => boardWrite(`/api/boards/${id}`, "PATCH", input);
+
+export async function deleteBoard(id: number): Promise<void> {
+  const res = await apiFetch(`/api/boards/${id}`, { method: "DELETE" });
+  if (!res.ok) throw new Error("Impossible de supprimer le tableau de bord.");
+}

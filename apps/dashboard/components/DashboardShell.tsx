@@ -9,7 +9,7 @@ import { TopBar } from "@repo/ui/shell/TopBar";
 import { UserFooter } from "@repo/ui/shell/UserFooter";
 import { WorkspaceSwitcher } from "@repo/ui/WorkspaceSwitcher";
 import { PLATFORM_APPS, DASHBOARD_SHELL } from "@repo/ui/shell/platform";
-import { HomeOutlined, QueryStatsOutlined, StorageOutlined, WidgetsOutlined } from "@mui/icons-material";
+import { DashboardOutlined, HomeOutlined, QueryStatsOutlined, StorageOutlined, WidgetsOutlined } from "@mui/icons-material";
 import type { NavItem } from "@repo/ui/types/shell";
 
 const NAV_ITEMS: NavItem[] = [
@@ -21,6 +21,7 @@ const NAV_ITEMS: NavItem[] = [
   },
   { label: "Rapports", href: "/", icon: <QueryStatsOutlined style={{ fontSize: 20 }} /> },
   { label: "Widgets", href: "/widgets", icon: <WidgetsOutlined style={{ fontSize: 20 }} /> },
+  { label: "Tableaux de bord", href: "/boards", icon: <DashboardOutlined style={{ fontSize: 20 }} /> },
   { label: "Sources de données", href: "/sources", icon: <StorageOutlined style={{ fontSize: 20 }} /> },
 ];
 

@@ -19,7 +19,7 @@ Légende : ⬜ à faire · 🔶 en cours · ✅ fait
 | 3 | **Filtres sur agrégat (HAVING)** — ex. groupes dont somme > X | back+front | ✅ | `group_by(having)` |
 | 4 | **Mesures calculées** (a/b, a−b, marge, taux) au-delà de count/sum/avg | back+front | ✅ | `measure="computed"`, `formula` |
 | 5 | **Widget Tableau croisé (pivot 2D)** + histogramme **empilé** | back+front | ✅ | `direct_reader.pivot`, `PivotView` |
-| 6 | **Cache court (TTL)** des requêtes widget + **timeout** garde-fou | back | ⬜ | |
+| 6 | **Cache court (TTL)** des requêtes widget + **timeout** garde-fou | back | ✅ | `services/cache.py`, statement_timeout |
 | 7 | **Alertes / seuils** (valeur franchit un seuil → notification) | back+front | ⬜ | |
 | 8 | **Drill-down** : clic sur un groupe → vue détaillée filtrée sur ce groupe | back+front | ⬜ | |
 | 9 | **Filtres globaux** (barre partagée client/service/période appliquée à plusieurs widgets) | back+front | ⬜ | |
@@ -38,3 +38,4 @@ Légende : ⬜ à faire · 🔶 en cours · ✅ fait
 - #3 `group_by(having={operator,value})` : clause HAVING sur la mesure (opérateurs de comparaison). Form : « Ne garder que les groupes dont la valeur <op> <val> ». Détail respecte le HAVING. Test count>100 → VALIDEE seul. Régression OK.
 - #4 mesure `computed` : `_measure_expr(formula={op,a,b})` → `(exprA) op (exprB)` (divide/percent/subtract/add/multiply, division protégée nullif). Propagé à aggregate/time_series/group_by/trend + comparison. Form : SubMeasureField A/B + opération. Test taux encaissement 100% (=sum/sum), reste dû, groupby computed, rejet op invalide. Régression OK.
 - #5 widget `pivot` : `direct_reader.pivot(row_group,col_group)` → {cols, rows:[{label,total,cells}]} (Top-N lignes/colonnes). Rendu `PivotView` (tableau croisé + histogramme empilé CSS). Détail = triples (ligne,colonne,valeur). Validation 2 dimensions. Test factures statut×mode. Régression OK.
+- #6 cache TTL (`services/cache.py`, env `WIDGET_CACHE_TTL`=20s, clé inclut `updated_at` → invalidation auto à l'édition) sur /data et /rows ; timeout Postgres `statement_timeout` (env `WIDGET_STATEMENT_TIMEOUT_MS`=15000) sur les moteurs `direct_reader`. Test : 381 servi 2×, 32 après édition. Régression OK.

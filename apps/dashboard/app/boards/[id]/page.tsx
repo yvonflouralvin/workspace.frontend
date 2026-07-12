@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { AddOutlined, ArrowBackOutlined, ArrowDownwardOutlined, ArrowUpwardOutlined, CloseOutlined, EditOutlined, ReadMoreOutlined, SaveOutlined } from "@mui/icons-material";
+import { AddOutlined, ArrowBackOutlined, ArrowDownwardOutlined, ArrowUpwardOutlined, CloseOutlined, EditOutlined, FullscreenOutlined, ReadMoreOutlined, SaveOutlined } from "@mui/icons-material";
 import { DashboardShell } from "@/components/DashboardShell";
 import { PeriodFilter } from "@/components/PeriodFilter";
 import { WidgetView } from "@/components/WidgetView";
@@ -32,6 +32,9 @@ export default function BoardPage() {
   const [filterValue, setFilterValue] = useState("");
   const [gf, setGf] = useState<{ field: string; value: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const boardRef = useRef<HTMLDivElement>(null);
+
+  const goFullscreen = () => { boardRef.current?.requestFullscreen?.().catch(() => {}); };
 
   const applyBoard = useCallback((b: Board) => {
     setBoard(b); setName(b.name);
@@ -83,14 +86,17 @@ export default function BoardPage() {
 
   return (
     <DashboardShell>
-      <div className="p-6 max-w-[1200px] mx-auto w-full">
+      <div ref={boardRef} className="p-6 max-w-[1200px] mx-auto w-full overflow-auto bg-background">
         <div className="mb-4 flex items-center justify-between gap-3">
           <button type="button" onClick={() => router.push("/boards")} className="inline-flex items-center gap-1.5 text-body-sm text-on-surface-variant hover:text-on-surface">
             <ArrowBackOutlined style={{ fontSize: 18 }} /> Tableaux de bord
           </button>
           <div className="flex items-center gap-2">
             {!editing ? (
-              <button type="button" onClick={startEdit} className="inline-flex items-center gap-1.5 rounded-xl border border-outline-variant px-3 py-1.5 text-body-sm text-on-surface-variant hover:bg-surface-container hover:text-on-surface"><EditOutlined style={{ fontSize: 16 }} /> Modifier</button>
+              <>
+                <button type="button" onClick={goFullscreen} title="Plein écran (mode TV)" className="inline-flex items-center gap-1.5 rounded-xl border border-outline-variant px-3 py-1.5 text-body-sm text-on-surface-variant hover:bg-surface-container hover:text-on-surface"><FullscreenOutlined style={{ fontSize: 16 }} /> Plein écran</button>
+                <button type="button" onClick={startEdit} className="inline-flex items-center gap-1.5 rounded-xl border border-outline-variant px-3 py-1.5 text-body-sm text-on-surface-variant hover:bg-surface-container hover:text-on-surface"><EditOutlined style={{ fontSize: 16 }} /> Modifier</button>
+              </>
             ) : (
               <>
                 <button type="button" onClick={cancelEdit} className="rounded-xl border border-outline-variant px-3 py-1.5 text-body-sm text-on-surface-variant hover:bg-surface-container">Annuler</button>

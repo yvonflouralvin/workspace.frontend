@@ -25,7 +25,7 @@ Légende : ⬜ à faire · 🔶 en cours · ✅ fait
 | 9 | **Filtres globaux** (barre partagée client/service/période appliquée à plusieurs widgets) | back+front | ✅ | `_inject_filter` + barre board |
 | 10 | **Tableaux de bord personnalisés (boards)** : pages nommées, widgets arrangés (grille) | back+front | ✅ | `models/board`, `/boards`, `/boards/[id]` (fait avant #9 : #9 s'appuie dessus) |
 | 11 | **Favoris / dossiers / tags** pour organiser les widgets | front | ✅ | `config.tags`/`config.favorite` (sans migration) |
-| 12 | **Mode plein écran / TV** | front | ⬜ | |
+| 12 | **Mode plein écran / TV** | front | ✅ | Fullscreen API sur board |
 | 13 | **Export/envoi programmé** d'un board (PDF via `documents`/WeasyPrint, ou CSV) via `cron` | back+front | ⬜ | |
 | 14 | **Jointures LEFT/externes** (aujourd'hui INNER only) | back+front | ⬜ | |
 | 15 | **Widgets cross-app** (jointure en mémoire, multi-bases) | back+front | ⬜ | |
@@ -39,6 +39,7 @@ Légende : ⬜ à faire · 🔶 en cours · ✅ fait
 - #4 mesure `computed` : `_measure_expr(formula={op,a,b})` → `(exprA) op (exprB)` (divide/percent/subtract/add/multiply, division protégée nullif). Propagé à aggregate/time_series/group_by/trend + comparison. Form : SubMeasureField A/B + opération. Test taux encaissement 100% (=sum/sum), reste dû, groupby computed, rejet op invalide. Régression OK.
 - #5 widget `pivot` : `direct_reader.pivot(row_group,col_group)` → {cols, rows:[{label,total,cells}]} (Top-N lignes/colonnes). Rendu `PivotView` (tableau croisé + histogramme empilé CSS). Détail = triples (ligne,colonne,valeur). Validation 2 dimensions. Test factures statut×mode. Régression OK.
 - #6 cache TTL (`services/cache.py`, env `WIDGET_CACHE_TTL`=20s, clé inclut `updated_at` → invalidation auto à l'édition) sur /data et /rows ; timeout Postgres `statement_timeout` (env `WIDGET_STATEMENT_TIMEOUT_MS`=15000) sur les moteurs `direct_reader`. Test : 381 servi 2×, 32 après édition. Régression OK.
+- #12 plein écran/TV : bouton « Plein écran » sur `/boards/[id]` (Fullscreen API sur le conteneur du board) + auto-refresh existant. tsc OK.
 - #11 favoris/étiquettes : stockés dans `config.tags` (liste) + `config.favorite` (bool) — **aucune migration**. Form : champ étiquettes + case Favori. Grille : filtre par étiquette + « Favoris uniquement », étoile cliquable par carte (PATCH), favoris triés en tête. tsc OK.
 - #9 filtres globaux : `_inject_filter` (condition d'égalité `champ=valeur` ajoutée sur la source qui porte le champ ; ignoré si absent) sur `/data` (params `filter_field`/`filter_value`, clé de cache étendue). Front : `getWidgetData(..., filterField, filterValue)` + barre de filtre global sur `/boards/[id]` (période déjà partagée). Test 425→381, champ absent ignoré, groupby→1 groupe. Régression OK.
 - #10 boards : `models/board` + migration 0006, router CRUD `/dashboard/boards` (+ GET résolu widgets), perm view=widgets.view / manage=reports.compose. Front : nav « Tableaux de bord », page liste `/boards` (créer/supprimer), page `/boards/[id]` (grille 3 col, span 1-3, période partagée + auto-refresh ; édition : ajouter/retirer/réordonner/redimensionner/renommer). Test CRUD + reorder/resize + widget invalide filtré. **NB : réalisé avant #9** (les filtres globaux s'appliquent à un board). Régression OK.

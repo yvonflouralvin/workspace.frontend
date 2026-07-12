@@ -6,7 +6,9 @@ import { ArrowBackOutlined, DownloadOutlined, EditOutlined, SearchOutlined } fro
 import { DashboardShell } from "@/components/DashboardShell";
 import { PeriodFilter } from "@/components/PeriodFilter";
 import { WidgetView } from "@/components/WidgetView";
+import { AlertsPanel } from "@/components/AlertsPanel";
 import { REFRESH_OPTIONS } from "@/lib/periods";
+import { ALERTABLE_TYPES } from "@/lib/dashboard-api";
 import {
   getWidget,
   getWidgetData,
@@ -133,6 +135,12 @@ export default function WidgetDetailPage() {
             <div className="mb-6 rounded-2xl border border-outline-variant bg-surface-container-lowest p-6">
               <WidgetView data={data} />
             </div>
+
+            {ALERTABLE_TYPES.includes(widget.type) && (
+              <div className="mb-6">
+                <AlertsPanel widgetId={id} />
+              </div>
+            )}
 
             {/* Tableau des données sous-jacentes */}
             <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest">

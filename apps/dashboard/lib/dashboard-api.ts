@@ -364,3 +364,60 @@ export function widgetExportUrl(id: number, opts: Omit<WidgetRowsQuery, "page" |
   const qs = rowsQueryString(opts);
   return `/api/widgets/${id}/export${qs ? `?${qs}` : ""}`;
 }
+
+// --- Alertes / seuils -----------------------------------------------------------------
+
+export const ALERTABLE_TYPES = ["count", "gauge", "trend", "ratio"];
+
+export interface Alert {
+  id: number;
+  widget_id: number;
+  operator: string;
+  threshold: number;
+  recipients: string[];
+  enabled: boolean;
+  last_state: string | null;
+  last_value: number | null;
+  last_evaluated_at: string | null;
+  last_triggered_at: string | null;
+}
+
+export interface AlertInput {
+  widget_id: number;
+  operator: string;
+  threshold: number;
+  recipients: string[];
+  enabled: boolean;
+}
+
+export async function getAlerts(widgetId: number): Promise<{ alerts: Alert[] }> {
+  const res = await apiFetch(`/api/alerts?widget_id=${widgetId}`);
+  if (!res.ok) throw new Error("Impossible de charger les alertes.");
+  return res.json();
+}
+
+async function alertWrite(url: string, method: string, body?: AlertInput): Promise<Alert> {
+  const res = await apiFetch(url, { method, body });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail ?? "Erreur.");
+  }
+  return res.json();
+}
+
+export const createAlert = (input: AlertInput) => alertWrite("/api/alerts", "POST", input);
+export const updateAlert = (id: number, input: AlertInput) => alertWrite(`/api/alerts/${id}`, "PATCH", input);
+
+export async function deleteAlert(id: number): Promise<void> {
+  const res = await apiFetch(`/api/alerts/${id}`, { method: "DELETE" });
+  if (!res.ok) throw new Error("Impossible de supprimer l'alerte.");
+}
+
+export async function testAlert(id: number): Promise<{ value: number | null; triggered: boolean; fired: boolean }> {
+  const res = await apiFetch(`/api/alerts/${id}/test`, { method: "POST" });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail ?? "Test impossible.");
+  }
+  return res.json();
+}

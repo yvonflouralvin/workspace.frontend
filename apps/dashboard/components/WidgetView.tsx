@@ -6,6 +6,7 @@ import { TrendView } from "@repo/reporting-widgets/TrendView";
 import { GaugeView } from "@repo/reporting-widgets/GaugeView";
 import { LeaderboardView } from "@repo/reporting-widgets/LeaderboardView";
 import { RatioView } from "@repo/reporting-widgets/RatioView";
+import { PivotView } from "@/components/PivotView";
 import type { WidgetData } from "@/lib/dashboard-api";
 
 const nf = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 2 });
@@ -27,6 +28,8 @@ export function WidgetView({ data }: { data?: WidgetData }) {
       return <LeaderboardView rows={data.rows} />;
     case "ratio":
       return <RatioView numerator={data.numerator} denominator={data.denominator} percent={data.percent} format={data.format} />;
+    case "pivot":
+      return <PivotView cols={data.cols} rows={data.rows} render={data.render} />;
     default:
       return <p className="text-4xl font-bold leading-none text-on-surface tabular-nums">{data.value === null ? "—" : nf.format(data.value)}</p>;
   }

@@ -2,13 +2,14 @@
 
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { AddOutlined, BarChartOutlined, CategoryOutlined, DeleteOutlined, EditOutlined, ExpandMoreOutlined, LeaderboardOutlined, NumbersOutlined, PercentOutlined, ReadMoreOutlined, SpeedOutlined, TimelineOutlined, TrendingUpOutlined, WidgetsOutlined } from "@mui/icons-material";
+import { AddOutlined, BarChartOutlined, CategoryOutlined, DeleteOutlined, EditOutlined, ExpandMoreOutlined, GridOnOutlined, LeaderboardOutlined, NumbersOutlined, PercentOutlined, ReadMoreOutlined, SpeedOutlined, TimelineOutlined, TrendingUpOutlined, WidgetsOutlined } from "@mui/icons-material";
 import { ComparisonView } from "@repo/reporting-widgets/ComparisonView";
 import { TimeseriesView } from "@repo/reporting-widgets/TimeseriesView";
 import { TrendView } from "@repo/reporting-widgets/TrendView";
 import { GaugeView } from "@repo/reporting-widgets/GaugeView";
 import { LeaderboardView } from "@repo/reporting-widgets/LeaderboardView";
 import { RatioView } from "@repo/reporting-widgets/RatioView";
+import { PivotView } from "@/components/PivotView";
 import { DashboardShell } from "@/components/DashboardShell";
 import { PeriodFilter } from "@/components/PeriodFilter";
 import { WIDGET_TYPES } from "@/components/WidgetForm";
@@ -27,6 +28,7 @@ const TYPE_ICONS: Record<string, ReactNode> = {
   groupby: <CategoryOutlined style={{ fontSize: 18 }} />,
   table: <LeaderboardOutlined style={{ fontSize: 18 }} />,
   ratio: <PercentOutlined style={{ fontSize: 18 }} />,
+  pivot: <GridOnOutlined style={{ fontSize: 18 }} />,
 };
 
 export default function WidgetsPage() {
@@ -144,6 +146,7 @@ function WidgetTile({ widget, data, onView, onEdit, onDelete }: { widget: Widget
   const isGauge = widget.type === "gauge";
   const isTable = widget.type === "table";
   const isRatio = widget.type === "ratio";
+  const isPivot = widget.type === "pivot";
   const cfg = widget.config as { conditions?: unknown[]; series?: unknown[]; group_by?: string };
   const caption = isComparison
     ? `Comparaison · ${Array.isArray(cfg?.series) ? cfg.series.length : 0} source(s)`
@@ -160,7 +163,7 @@ function WidgetTile({ widget, data, onView, onEdit, onDelete }: { widget: Widget
         </div>
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
           style={{ backgroundColor: `color-mix(in srgb, ${accent} 12%, transparent)`, color: accent }}>
-          {isComparison ? <BarChartOutlined style={{ fontSize: 18 }} /> : isTimeseries ? <TimelineOutlined style={{ fontSize: 18 }} /> : isGroupby ? <CategoryOutlined style={{ fontSize: 18 }} /> : isTrend ? <TrendingUpOutlined style={{ fontSize: 18 }} /> : isGauge ? <SpeedOutlined style={{ fontSize: 18 }} /> : isTable ? <LeaderboardOutlined style={{ fontSize: 18 }} /> : isRatio ? <PercentOutlined style={{ fontSize: 18 }} /> : <NumbersOutlined style={{ fontSize: 18 }} />}
+          {isComparison ? <BarChartOutlined style={{ fontSize: 18 }} /> : isTimeseries ? <TimelineOutlined style={{ fontSize: 18 }} /> : isGroupby ? <CategoryOutlined style={{ fontSize: 18 }} /> : isTrend ? <TrendingUpOutlined style={{ fontSize: 18 }} /> : isGauge ? <SpeedOutlined style={{ fontSize: 18 }} /> : isTable ? <LeaderboardOutlined style={{ fontSize: 18 }} /> : isRatio ? <PercentOutlined style={{ fontSize: 18 }} /> : isPivot ? <GridOnOutlined style={{ fontSize: 18 }} /> : <NumbersOutlined style={{ fontSize: 18 }} />}
         </span>
       </div>
 
@@ -179,6 +182,8 @@ function WidgetTile({ widget, data, onView, onEdit, onDelete }: { widget: Widget
           <LeaderboardView rows={data.rows} />
         ) : data.type === "ratio" ? (
           <RatioView numerator={data.numerator} denominator={data.denominator} percent={data.percent} format={data.format} />
+        ) : data.type === "pivot" ? (
+          <PivotView cols={data.cols} rows={data.rows} render={data.render} />
         ) : (
           <p className="text-3xl font-bold leading-none text-on-surface tabular-nums">{data.value === null ? "—" : nf.format(data.value)}</p>
         )}

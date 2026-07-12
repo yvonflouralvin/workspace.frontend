@@ -209,6 +209,21 @@ export interface WidgetRatioData {
   format: string; // "percent" | "ratio"
 }
 
+export interface PivotRow {
+  label: string;
+  total: number;
+  cells: Record<string, number | null>;
+}
+
+export interface WidgetPivotData {
+  widget_id: number;
+  type: "pivot";
+  render: string;
+  measure: string;
+  cols: string[];
+  rows: PivotRow[];
+}
+
 export type WidgetData =
   | WidgetCountData
   | WidgetComparisonData
@@ -217,7 +232,8 @@ export type WidgetData =
   | WidgetTrendData
   | WidgetGaugeData
   | WidgetTableData
-  | WidgetRatioData;
+  | WidgetRatioData
+  | WidgetPivotData;
 
 export interface WidgetInput {
   type?: string;

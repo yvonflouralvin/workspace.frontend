@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { AddOutlined, BarChartOutlined, CategoryOutlined, CloseOutlined, LeaderboardOutlined, NumbersOutlined, PercentOutlined, SpeedOutlined, TimelineOutlined, TrendingUpOutlined } from "@mui/icons-material";
+import { AddOutlined, BarChartOutlined, CategoryOutlined, CloseOutlined, GridOnOutlined, LeaderboardOutlined, NumbersOutlined, PercentOutlined, SpeedOutlined, TimelineOutlined, TrendingUpOutlined } from "@mui/icons-material";
 import {
   createWidget,
   previewRows,
@@ -23,6 +23,7 @@ const TYPE_ICON: Record<string, ReactNode> = {
   groupby: <CategoryOutlined style={{ fontSize: 20 }} />,
   table: <LeaderboardOutlined style={{ fontSize: 20 }} />,
   ratio: <PercentOutlined style={{ fontSize: 20 }} />,
+  pivot: <GridOnOutlined style={{ fontSize: 20 }} />,
 };
 
 const inputCls =
@@ -51,6 +52,7 @@ export const WIDGET_TYPES = [
   { value: "groupby", label: "Regroupement", description: "Répartition automatique d'une valeur par catégorie." },
   { value: "table", label: "Tableau / palmarès", description: "Un classement top‑N par catégorie, du plus grand au plus petit." },
   { value: "ratio", label: "Ratio / Pourcentage", description: "Une valeur en pourcentage d'une autre (ex. taux de paiement)." },
+  { value: "pivot", label: "Tableau croisé", description: "Une mesure par deux dimensions (lignes × colonnes), en tableau ou histogramme empilé." },
 ];
 
 const CATEGORICAL = new Set(["enum", "string", "boolean", "integer"]);
@@ -616,6 +618,8 @@ export function WidgetForm({ sources, widget, initialType, onSaved, onCancel }: 
     search_fields?: { source?: string; field?: string }[];
     order?: string; others?: boolean;
     having?: { operator?: string; value?: number };
+    row_group?: { source?: string; field?: string };
+    col_group?: { source?: string; field?: string };
   };
 
   const [type, setType] = useState<string>(widget?.type ?? initialType ?? "count");
@@ -646,6 +650,10 @@ export function WidgetForm({ sources, widget, initialType, onSaved, onCancel }: 
   const [others, setOthers] = useState<boolean>(!!cfg.others);
   const [havingOp, setHavingOp] = useState<string>(cfg.having?.operator ?? "");
   const [havingVal, setHavingVal] = useState<string>(cfg.having?.value != null ? String(cfg.having.value) : "");
+  const [rowSource, setRowSource] = useState<string>(cfg.row_group?.source ?? spec.sources[0]?.id ?? "s1");
+  const [rowField, setRowField] = useState<string>(cfg.row_group?.field ?? "");
+  const [colSource, setColSource] = useState<string>(cfg.col_group?.source ?? spec.sources[0]?.id ?? "s1");
+  const [colField, setColField] = useState<string>(cfg.col_group?.field ?? "");
 
   // Vue détaillée — colonnes du tableau + colonnes cherchables + aperçu.
   const [detailCols, setDetailCols] = useState<DetailCol[]>(
@@ -725,6 +733,7 @@ export function WidgetForm({ sources, widget, initialType, onSaved, onCancel }: 
       if (!title.trim()) { setErr("Titre requis."); return; }
       const se = specError(spec); if (se) { setErr(se); return; }
       if ((type === "groupby" || type === "table") && !groupField) { setErr("Choisissez la colonne de regroupement."); return; }
+      if (type === "pivot" && (!rowField || !colField)) { setErr("Choisissez les deux dimensions (lignes et colonnes)."); return; }
       if (type === "gauge" && !Number.isFinite(Number(target))) { setErr("Renseignez un objectif (cible) numérique."); return; }
       if ((type === "timeseries" || type === "trend") && !createdAtSources(sources, spec).some((s) => s.id === spec.periodSource)) {
         setErr("Choisissez un modèle avec created_at pour l'axe temporel."); return;
@@ -746,6 +755,8 @@ export function WidgetForm({ sources, widget, initialType, onSaved, onCancel }: 
             ? { ...common, config: { ...base, group, render, reference, order, others: others && measureIsAdditive, having, limit: Math.max(1, Math.min(Number(limit) || 10, 200)) } }
             : type === "table"
               ? { ...common, config: { ...base, group, limit: Math.max(1, Math.min(Number(limit) || 10, 200)), reference, order, others: others && measureIsAdditive, having } }
+            : type === "pivot"
+              ? { ...common, config: { ...base, row_group: { source: rowSource, field: rowField }, col_group: { source: colSource, field: colField }, render: render === "bar_stacked" ? "bar_stacked" : "table", limit: Math.max(1, Math.min(Number(limit) || 10, 200)) } }
               : type === "gauge"
                 ? { ...common, config: { ...base, target: Number(target), direction, thresholds } }
                 : { ...common, config: base };
@@ -924,6 +935,50 @@ export function WidgetForm({ sources, widget, initialType, onSaved, onCancel }: 
             </div>
           )}
 
+          {filled.length > 0 && type === "pivot" && (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="flex flex-col gap-1">
+                <label className="text-label-md font-medium text-on-surface-variant">Dimension lignes</label>
+                <div className="flex gap-2">
+                  {filled.length > 1 && (
+                    <select className={`${inputCls} w-auto`} value={rowSource} onChange={(e) => { setRowSource(e.target.value); setRowField(""); }}>
+                      {filled.map((s) => <option key={s.id} value={s.id}>{s.model}</option>)}
+                    </select>
+                  )}
+                  <select className={inputCls} value={rowField} onChange={(e) => setRowField(e.target.value)}>
+                    <option value="">Colonne…</option>
+                    {categoricalFields(fieldsOf(sources, spec.provider, filled.find((s) => s.id === rowSource)?.model ?? filled[0]?.model ?? "")).map((f) => <option key={f.name} value={f.name}>{f.name}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-label-md font-medium text-on-surface-variant">Dimension colonnes</label>
+                <div className="flex gap-2">
+                  {filled.length > 1 && (
+                    <select className={`${inputCls} w-auto`} value={colSource} onChange={(e) => { setColSource(e.target.value); setColField(""); }}>
+                      {filled.map((s) => <option key={s.id} value={s.id}>{s.model}</option>)}
+                    </select>
+                  )}
+                  <select className={inputCls} value={colField} onChange={(e) => setColField(e.target.value)}>
+                    <option value="">Colonne…</option>
+                    {categoricalFields(fieldsOf(sources, spec.provider, filled.find((s) => s.id === colSource)?.model ?? filled[0]?.model ?? "")).map((f) => <option key={f.name} value={f.name}>{f.name}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-label-md font-medium text-on-surface-variant">Rendu</label>
+                <select className={inputCls} value={render === "bar_stacked" ? "bar_stacked" : "table"} onChange={(e) => setRender(e.target.value)}>
+                  <option value="table">Tableau croisé</option>
+                  <option value="bar_stacked">Histogramme empilé</option>
+                </select>
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-label-md font-medium text-on-surface-variant">Nombre max de lignes</label>
+                <input type="number" min={1} max={200} className={inputCls} value={limit} onChange={(e) => setLimit(Number(e.target.value))} />
+              </div>
+            </div>
+          )}
+
           {filled.length > 0 && (type === "timeseries" || type === "trend") && (
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="flex flex-col gap-1">
@@ -991,10 +1046,10 @@ export function WidgetForm({ sources, widget, initialType, onSaved, onCancel }: 
               previewing={previewing}
             />
           )}
-          {filled.length > 0 && ["groupby", "table", "timeseries", "trend"].includes(type) && (
+          {filled.length > 0 && ["groupby", "table", "timeseries", "trend", "pivot"].includes(type) && (
             <p className="rounded-xl border border-outline-variant p-3 text-label-sm text-on-surface-variant/70">
               La vue détaillée (« Voir plus ») affichera automatiquement les <strong>données agrégées</strong> de ce widget
-              ({type === "timeseries" || type === "trend" ? "période → valeur" : "catégorie → valeur"}), avec recherche et export CSV.
+              ({type === "timeseries" || type === "trend" ? "période → valeur" : type === "pivot" ? "ligne × colonne → valeur" : "catégorie → valeur"}), avec recherche et export CSV.
             </p>
           )}
         </>

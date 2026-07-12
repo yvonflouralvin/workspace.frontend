@@ -328,6 +328,8 @@ export interface WidgetRowsQuery {
   q?: string;
   page?: number;
   page_size?: number;
+  drill_field?: string;
+  drill_value?: string;
 }
 
 function rowsQueryString(opts: WidgetRowsQuery): string {
@@ -337,6 +339,8 @@ function rowsQueryString(opts: WidgetRowsQuery): string {
   if (opts.q) qs.set("q", opts.q);
   if (opts.page) qs.set("page", String(opts.page));
   if (opts.page_size) qs.set("page_size", String(opts.page_size));
+  if (opts.drill_field) qs.set("drill_field", opts.drill_field);
+  if (opts.drill_value !== undefined && opts.drill_value !== "") qs.set("drill_value", opts.drill_value);
   return qs.toString();
 }
 

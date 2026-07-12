@@ -46,7 +46,13 @@ export default function WidgetDetailPage() {
   const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
   const [refreshMs, setRefreshMs] = useState(0);
+  const [drill, setDrill] = useState<{ field: string; value: string } | null>(null);
   const pageSize = 25;
+
+  const cfg = (widget?.config ?? {}) as { group?: { field?: string }; group_by?: string; row_group?: { field?: string } };
+  const groupField = widget ? (widget.type === "pivot" ? cfg.row_group?.field : cfg.group?.field || cfg.group_by) : undefined;
+  const drillKey = widget?.type === "pivot" ? "row" : "label";
+  const drillable = !!widget && ["groupby", "table", "pivot"].includes(widget.type) && !!groupField;
 
   useEffect(() => {
     getWidget(id)
@@ -72,10 +78,10 @@ export default function WidgetDetailPage() {
   // Le tableau (bas) suit période + recherche + pagination.
   const loadRows = useCallback(() => {
     if (!widget) return;
-    getWidgetRows(id, { from: from || undefined, to: to || undefined, q: q || undefined, page, page_size: pageSize })
+    getWidgetRows(id, { from: from || undefined, to: to || undefined, q: q || undefined, page, page_size: pageSize, drill_field: drill?.field, drill_value: drill?.value })
       .then((r) => { setRows(r); setRowsError(null); })
       .catch((e) => { setRows(null); setRowsError(e instanceof Error ? e.message : "Erreur."); });
-  }, [id, widget, from, to, q, page]);
+  }, [id, widget, from, to, q, page, drill]);
 
   useEffect(() => { loadRows(); }, [loadRows]);
 
@@ -92,8 +98,8 @@ export default function WidgetDetailPage() {
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
   const detailAvailable = widget ? !["comparison", "ratio"].includes(widget.type) : false;
   const exportHref = useMemo(
-    () => widgetExportUrl(id, { from: from || undefined, to: to || undefined, q: q || undefined }),
-    [id, from, to, q],
+    () => widgetExportUrl(id, { from: from || undefined, to: to || undefined, q: q || undefined, drill_field: drill?.field, drill_value: drill?.value }),
+    [id, from, to, q, drill],
   );
 
   return (
@@ -147,7 +153,10 @@ export default function WidgetDetailPage() {
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-outline-variant p-4">
                 <div className="min-w-0">
                   <p className="text-body-md font-semibold text-on-surface">Données détaillées</p>
-                  <p className="text-label-md text-on-surface-variant">{detailAvailable ? `${nf.format(total)} ligne(s)` : "—"}</p>
+                  <p className="text-label-md text-on-surface-variant">
+                    {detailAvailable ? `${nf.format(total)} ligne(s)` : "—"}
+                    {drillable && !drill ? " · cliquez une ligne pour voir le détail" : ""}
+                  </p>
                 </div>
                 {detailAvailable && (
                   <div className="flex items-center gap-2">
@@ -163,6 +172,13 @@ export default function WidgetDetailPage() {
                   </div>
                 )}
               </div>
+
+              {drill && (
+                <div className="flex items-center justify-between gap-2 border-b border-outline-variant bg-surface-container-low/40 px-4 py-2">
+                  <p className="text-label-md text-on-surface-variant">Détail de <span className="font-medium text-on-surface">{drill.field} = {drill.value}</span> — enregistrements bruts</p>
+                  <button type="button" onClick={() => { setDrill(null); setPage(1); }} className="text-label-md text-primary hover:opacity-70">↩ Revenir aux groupes</button>
+                </div>
+              )}
 
               {!detailAvailable ? (
                 <p className="p-6 text-body-sm text-on-surface-variant">Le tableau détaillé n&apos;est pas disponible pour ce type de widget (plusieurs sources indépendantes).</p>
@@ -184,11 +200,16 @@ export default function WidgetDetailPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {rows.rows.map((r, i) => (
-                        <tr key={i} className="border-b border-outline-variant/50 last:border-0">
+                      {rows.rows.map((r, i) => {
+                        const canDrill = drillable && !drill;
+                        return (
+                        <tr key={i}
+                          onClick={canDrill ? () => { setDrill({ field: groupField as string, value: String(r[drillKey] ?? "") }); setPage(1); } : undefined}
+                          className={`border-b border-outline-variant/50 last:border-0 ${canDrill ? "cursor-pointer hover:bg-surface-container/60" : ""}`}>
                           {rows.columns.map((c) => <td key={c.key} className="truncate px-4 py-2 text-on-surface tabular-nums" title={cell(r[c.key])}>{cell(r[c.key])}</td>)}
                         </tr>
-                      ))}
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>

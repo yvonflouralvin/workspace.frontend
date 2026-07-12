@@ -109,7 +109,7 @@ type UICondition = {
   colField: string;
 };
 
-type SpecSource = { id: string; model: string; join?: string };
+type SpecSource = { id: string; model: string; join?: string; provider?: string };
 
 type SubM = { measure: string; source: string; field: string };
 type FormulaState = { op: string; a: SubM; b: SubM };
@@ -171,7 +171,7 @@ function specFromRaw(raw: RawSpec | undefined, fp?: string, fm?: string): SpecSt
   let sources: SpecSource[];
   if (Array.isArray(r.sources) && r.sources.length) {
     provider = r.sources[0]?.provider ?? fp ?? "";
-    sources = r.sources.map((s, i) => ({ id: s.id || `s${i + 1}`, model: s.model ?? "", join: s.join }));
+    sources = r.sources.map((s, i) => ({ id: s.id || `s${i + 1}`, model: s.model ?? "", join: s.join, provider: s.provider }));
   } else {
     provider = r.provider ?? fp ?? "";
     sources = [{ id: "s1", model: r.model ?? fm ?? "" }];
@@ -206,11 +206,17 @@ function emptySpec(): SpecState {
 const modelsOf = (catalog: DataSourceApp[], provider: string): SourceModel[] => catalog.find((s) => s.app_key === provider)?.models ?? [];
 const fieldsOf = (catalog: DataSourceApp[], provider: string, model: string): SourceField[] => modelsOf(catalog, provider).find((m) => m.name === model)?.fields ?? [];
 const filledSources = (spec: SpecState) => spec.sources.filter((s) => s.model);
+// Provider effectif d'une source (cross-app : une source peut viser une autre app).
+const sourceProvider = (spec: SpecState, sid: string) => spec.sources.find((s) => s.id === sid)?.provider || spec.provider;
+const fieldsOfSource = (catalog: DataSourceApp[], spec: SpecState, sid: string) => {
+  const s = spec.sources.find((x) => x.id === sid);
+  return s ? fieldsOf(catalog, s.provider || spec.provider, s.model) : [];
+};
 const createdAtSources = (catalog: DataSourceApp[], spec: SpecState) =>
-  filledSources(spec).filter((s) => fieldsOf(catalog, spec.provider, s.model).some((f) => f.name === "created_at"));
+  filledSources(spec).filter((s) => fieldsOf(catalog, s.provider || spec.provider, s.model).some((f) => f.name === "created_at"));
 
 function packSpec(spec: SpecState, includePeriod: boolean) {
-  const sources = filledSources(spec).map((s, i) => (i === 0 ? { id: s.id, provider: spec.provider, model: s.model } : { id: s.id, provider: spec.provider, model: s.model, join: s.join || "inner" }));
+  const sources = filledSources(spec).map((s, i) => (i === 0 ? { id: s.id, provider: s.provider || spec.provider, model: s.model } : { id: s.id, provider: s.provider || spec.provider, model: s.model, join: s.join || "inner" }));
   const conditions = spec.conditions
     .filter((c) => c.source && c.field && c.operator)
     .map((c) => {
@@ -254,7 +260,7 @@ function specError(spec: SpecState): string | null {
 function SubMeasureField({ catalog, spec, value, onChange, label }: { catalog: DataSourceApp[]; spec: SpecState; value: SubM; onChange: (v: SubM) => void; label: string }) {
   const filled = filledSources(spec);
   const needsField = NEEDS_FIELD.has(value.measure);
-  const nums = numericFields(fieldsOf(catalog, spec.provider, filled.find((s) => s.id === value.source)?.model ?? filled[0]?.model ?? ""));
+  const nums = numericFields(fieldsOfSource(catalog, spec, value.source) || []);
   return (
     <div className="flex flex-wrap items-center gap-2">
       <span className="w-4 text-label-md font-semibold text-on-surface-variant">{label}</span>
@@ -279,7 +285,7 @@ function SubMeasureField({ catalog, spec, value, onChange, label }: { catalog: D
 
 function MeasureFields({ catalog, spec, onChange }: { catalog: DataSourceApp[]; spec: SpecState; onChange: (patch: Partial<SpecState>) => void }) {
   const filled = filledSources(spec);
-  const aggFields = numericFields(fieldsOf(catalog, spec.provider, filled.find((s) => s.id === spec.aggSource)?.model ?? ""));
+  const aggFields = numericFields(fieldsOfSource(catalog, spec, spec.aggSource) || []);
   return (
     <div className="space-y-2">
       <div className="grid gap-2 sm:grid-cols-3">
@@ -328,7 +334,7 @@ function MeasureFields({ catalog, spec, onChange }: { catalog: DataSourceApp[]; 
 
 function ConditionsEditor({ catalog, spec, onChange }: { catalog: DataSourceApp[]; spec: SpecState; onChange: (c: UICondition[]) => void }) {
   const filled = filledSources(spec);
-  const fieldsForSource = (sid: string) => fieldsOf(catalog, spec.provider, filled.find((s) => s.id === sid)?.model ?? "");
+  const fieldsForSource = (sid: string) => fieldsOfSource(catalog, spec, sid);
   const update = (i: number, patch: Partial<UICondition>) => onChange(spec.conditions.map((c, idx) => (idx === i ? { ...c, ...patch } : c)));
   const add = () => {
     const sid = filled[0]?.id ?? "s1";
@@ -386,7 +392,7 @@ function ConditionsEditor({ catalog, spec, onChange }: { catalog: DataSourceApp[
                       <option value="">Colonne…</option>
                       {filled.map((s) => (
                         <optgroup key={s.id} label={sourceLabel(s)}>
-                          {fieldsOf(catalog, spec.provider, s.model).map((f) => <option key={`${s.id}::${f.name}`} value={`${s.id}::${f.name}`}>{f.name}</option>)}
+                          {fieldsOf(catalog, s.provider || spec.provider, s.model).map((f) => <option key={`${s.id}::${f.name}`} value={`${s.id}::${f.name}`}>{f.name}</option>)}
                         </optgroup>
                       ))}
                     </select>
@@ -432,6 +438,10 @@ function SpecEditor({ catalog, spec, onChange, periodRequired = false, periodLab
     onChange({ sources: [...spec.sources, { id, model: "", join: "inner" }] });
   };
   const setJoin = (id: string, join: string) => onChange({ sources: spec.sources.map((x) => (x.id === id ? { ...x, join } : x)) });
+  const setSourceProvider = (id: string, provider: string) => onChange({
+    sources: spec.sources.map((x) => (x.id === id ? { ...x, provider, model: "" } : x)),
+    conditions: spec.conditions.filter((c) => c.source !== id && !(c.valueKind === "column" && c.colSource === id)),
+  });
   const removeSource = (id: string) => {
     const sources = spec.sources.filter((s) => s.id !== id);
     const primary = sources[0]?.id ?? "s1";
@@ -473,9 +483,14 @@ function SpecEditor({ catalog, spec, onChange, periodRequired = false, periodLab
                   <option value="left">externe (LEFT)</option>
                 </select>
               )}
+              {i > 0 && (
+                <select className={`${inputCls} w-auto`} value={s.provider || spec.provider} onChange={(e) => setSourceProvider(s.id, e.target.value)} title="Application (cross-app possible)">
+                  {catalog.map((a) => <option key={a.app_key} value={a.app_key}>{a.app_label}</option>)}
+                </select>
+              )}
               <select className={inputCls} value={s.model} onChange={(e) => setModel(s.id, e.target.value)}>
                 <option value="">Choisir un modèle…</option>
-                {modelsOf(catalog, spec.provider).map((m) => <option key={m.name} value={m.name}>{m.name}</option>)}
+                {modelsOf(catalog, s.provider || spec.provider).map((m) => <option key={m.name} value={m.name}>{m.name}</option>)}
               </select>
               {spec.sources.length > 1 && (
                 <button type="button" onClick={() => removeSource(s.id)}

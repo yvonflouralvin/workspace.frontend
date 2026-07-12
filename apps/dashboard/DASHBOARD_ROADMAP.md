@@ -6,6 +6,8 @@
 
 Légende : ⬜ à faire · 🔶 en cours · ✅ fait
 
+**✅ 15/15 items livrés, testés et commités.**
+
 ## Base (déjà livrée)
 - ✅ Widgets multi-sources (jointure même-app) — backend `11865b5`, frontend `61dce80`
 - ✅ Vue détaillée « Voir plus » (tableau paginé, recherche, export CSV, consciente de l'agrégation)
@@ -28,7 +30,7 @@ Légende : ⬜ à faire · 🔶 en cours · ✅ fait
 | 12 | **Mode plein écran / TV** | front | ✅ | Fullscreen API sur board |
 | 13 | **Export/envoi programmé** (CSV d'un widget par email) via boucle de fond | back+front | ✅ | `scheduled_reports` + PJ email |
 | 14 | **Jointures LEFT/externes** (aujourd'hui INNER only) | back+front | ✅ | `_from_where` (JOIN explicites), `source.join` |
-| 15 | **Widgets cross-app** (jointure en mémoire, multi-bases) | back+front | ⬜ | |
+| 15 | **Widgets cross-app** (jointure en mémoire, multi-bases) | back+front | ✅ | `cross_reader` + provider par source |
 
 ## Journal
 - (base) Multi-sources + vue détaillée livrés et testés.
@@ -41,6 +43,7 @@ Légende : ⬜ à faire · 🔶 en cours · ✅ fait
 - #6 cache TTL (`services/cache.py`, env `WIDGET_CACHE_TTL`=20s, clé inclut `updated_at` → invalidation auto à l'édition) sur /data et /rows ; timeout Postgres `statement_timeout` (env `WIDGET_STATEMENT_TIMEOUT_MS`=15000) sur les moteurs `direct_reader`. Test : 381 servi 2×, 32 après édition. Régression OK.
 - #12 plein écran/TV : bouton « Plein écran » sur `/boards/[id]` (Fullscreen API sur le conteneur du board) + auto-refresh existant. tsc OK.
 - #11 favoris/étiquettes : stockés dans `config.tags` (liste) + `config.favorite` (bool) — **aucune migration**. Form : champ étiquettes + case Favori. Grille : filtre par étiquette + « Favoris uniquement », étoile cliquable par carte (PATCH), favoris triés en tête. tsc OK.
+- #15 cross-app : `services/cross_reader.cross_aggregate` — jointure INNER **en mémoire** (fetch par source avec filtres/workspace/période en SQL, plafonné `WIDGET_CROSS_ROW_CAP`=50000, hash-join sur prédicats d'égalité colonne↔colonne, post-filtres non-égalité, agrégat scalaire count/sum/avg/min/max). `_aggregate_series` bascule en cross si providers différents ; `_validate_spec(allow_cross)` autorisé pour count/gauge/comparison/ratio, **rejeté** pour groupby/timeseries/pivot/table. Front : provider par source (non primaire) dans `SpecEditor` (défaut = provider primaire → same-app inchangé). Test hosto.patients⋈ventes.clients = 8, rejet groupby cross-app. Smoke mis à jour (cross count accepté). Régression OK.
 - #13 export programmé : **notifications** — support des pièces jointes (`attachments[]` base64 dans `mailer`/schema/dispatch). **dashboard** — `models/scheduled_report` + migration 0007, `services/scheduled_reports` (is_due daily/weekly/monthly, construit le CSV via `_detail_rows`, envoie via `notifications_client` avec PJ), router CRUD + `/run` (envoyer maintenant), boucle de fond (run_due dans la boucle d'alertes). Front : `ScheduledReportsPanel` sur la vue détaillée (widgets exportables). Test : run now → email réel avec CSV en PJ, is_due, rejets. Régression OK. (PDF WeasyPrint = évolution future ; CSV retenu.)
 - #14 jointures LEFT : `_from_where` unifié — INNER par défaut (`FROM a,b`), sinon JOIN explicites avec ON (prédicats liant la source + workspace/période de la source dans ON pour préserver LEFT ; filtres primaire en WHERE). `source.join`='inner'|'left'. aggregate/group_by/pivot ; timeseries/rows restent INNER. Front : sélecteur jointure/externe par source non primaire. Test commandes⟕factures INNER 14 vs LEFT 426. Régression OK.
 - #9 filtres globaux : `_inject_filter` (condition d'égalité `champ=valeur` ajoutée sur la source qui porte le champ ; ignoré si absent) sur `/data` (params `filter_field`/`filter_value`, clé de cache étendue). Front : `getWidgetData(..., filterField, filterValue)` + barre de filtre global sur `/boards/[id]` (période déjà partagée). Test 425→381, champ absent ignoré, groupby→1 groupe. Régression OK.

@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Modal } from "@repo/ui/Modal";
 import { RightDrawer } from "@repo/ui/RightDrawer";
+import { LineChart, type LineChartSeries } from "@repo/ui/charts/LineChart";
 import { AddOutlined, DeleteOutlined, FavoriteBorderOutlined } from "@mui/icons-material";
 import {
   createObservationsBatch,
@@ -64,10 +65,6 @@ const inputCls =
   "w-full rounded-xl border border-outline-variant bg-surface-container-lowest px-3 py-2 text-body-md text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary transition-colors";
 const labelCls = "text-label-md font-medium text-on-surface-variant";
 
-function fmtAxisDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" });
-}
-
 function fmtShort(iso: string): string {
   return new Date(iso).toLocaleDateString("fr-FR", {
     day: "2-digit",
@@ -88,165 +85,6 @@ function rangeFrom(range: Range): string | undefined {
   const d = new Date();
   d.setDate(d.getDate() - (range === "7j" ? 7 : 30));
   return d.toISOString();
-}
-
-// ─── Native SVG line chart (no external dependency) ──────────────────────────
-
-type SvgPoint = { t: string; v: number };
-type SvgSeries = { points: SvgPoint[]; color: string; label: string; unit: string };
-
-interface MiniLineChartProps {
-  series: SvgSeries[];
-  normal?: [number, number];
-}
-
-function MiniLineChart({ series, normal }: MiniLineChartProps) {
-  const W = 400;
-  const H = 120;
-  const PAD = { top: 6, right: 12, bottom: 28, left: 36 };
-  const cw = W - PAD.left - PAD.right;
-  const ch = H - PAD.top - PAD.bottom;
-
-  const allVals = [
-    ...series.flatMap((s) => s.points.map((p) => p.v)),
-    ...(normal ?? []),
-  ];
-  const allTs = series.flatMap((s) => s.points.map((p) => new Date(p.t).getTime()));
-
-  if (allTs.length === 0) return null;
-
-  const minV = Math.min(...allVals);
-  const maxV = Math.max(...allVals);
-  const pad = (maxV - minV) * 0.15 || 1;
-  const yMin = minV - pad;
-  const yMax = maxV + pad;
-
-  const tMin = Math.min(...allTs);
-  const tMax = Math.max(...allTs);
-  const tRange = tMax - tMin || 1;
-
-  const xOf = (iso: string) => PAD.left + ((new Date(iso).getTime() - tMin) / tRange) * cw;
-  const yOf = (v: number) => PAD.top + ch - ((v - yMin) / (yMax - yMin)) * ch;
-
-  // Pick 3-4 x-axis tick dates
-  const allSortedTs = [...new Set(allTs)].sort((a, b) => a - b);
-  const step = Math.max(1, Math.floor(allSortedTs.length / 3));
-  const tickIdxs = [0, step, step * 2, allSortedTs.length - 1].filter(
-    (i, pos, arr) => i < allSortedTs.length && arr.indexOf(i) === pos,
-  );
-
-  const [tooltip, setTooltip] = useState<{ x: number; y: number; lines: string[] } | null>(null);
-  const svgRef = useRef<SVGSVGElement>(null);
-
-  return (
-    <div className="relative w-full">
-      <svg
-        ref={svgRef}
-        viewBox={`0 0 ${W} ${H}`}
-        className="w-full"
-        preserveAspectRatio="xMidYMid meet"
-        style={{ height: 140 }}
-        onMouseLeave={() => setTooltip(null)}
-      >
-        {/* Normal band */}
-        {normal && (
-          <rect
-            x={PAD.left}
-            y={yOf(normal[1])}
-            width={cw}
-            height={Math.abs(yOf(normal[0]) - yOf(normal[1]))}
-            fill="var(--color-primary)"
-            fillOpacity={0.06}
-          />
-        )}
-
-        {/* Horizontal grid lines */}
-        {[0, 0.25, 0.5, 0.75, 1].map((f) => {
-          const y = PAD.top + ch * (1 - f);
-          const val = yMin + (yMax - yMin) * f;
-          return (
-            <g key={f}>
-              <line
-                x1={PAD.left} y1={y} x2={PAD.left + cw} y2={y}
-                stroke="var(--color-outline-variant)" strokeOpacity={0.4} strokeDasharray="3 3"
-              />
-              <text x={PAD.left - 4} y={y + 3} textAnchor="end" fontSize={9} fill="var(--color-on-surface-variant)">
-                {Number.isInteger(val) ? val : val.toFixed(1)}
-              </text>
-            </g>
-          );
-        })}
-
-        {/* X axis ticks */}
-        {tickIdxs.map((idx) => {
-          const iso = new Date(allSortedTs[idx]).toISOString();
-          const x = xOf(iso);
-          return (
-            <text key={idx} x={x} y={H - 6} textAnchor="middle" fontSize={9} fill="var(--color-on-surface-variant)">
-              {fmtAxisDate(iso)}
-            </text>
-          );
-        })}
-
-        {/* Series polylines */}
-        {series.map((s, si) => {
-          if (s.points.length < 2) return null;
-          const pts = s.points.map((p) => `${xOf(p.t)},${yOf(p.v)}`).join(" ");
-          return (
-            <polyline
-              key={si}
-              points={pts}
-              fill="none"
-              stroke={s.color}
-              strokeWidth={2}
-              strokeLinejoin="round"
-              strokeLinecap="round"
-            />
-          );
-        })}
-
-        {/* Data points (interactive) */}
-        {series.map((s, si) =>
-          s.points.map((p, pi) => (
-            <circle
-              key={`${si}-${pi}`}
-              cx={xOf(p.t)}
-              cy={yOf(p.v)}
-              r={4}
-              fill={s.color}
-              style={{ cursor: "default" }}
-              onMouseEnter={(e) => {
-                const svg = svgRef.current;
-                if (!svg) return;
-                const rect = svg.getBoundingClientRect();
-                const scaleX = rect.width / W;
-                const scaleY = rect.height / H;
-                const cx = xOf(p.t) * scaleX + rect.left;
-                const cy = yOf(p.v) * scaleY + rect.top;
-                const lines = series.map((ss) => {
-                  const match = ss.points.find((pp) => pp.t === p.t);
-                  return match ? `${ss.label}: ${match.v} ${ss.unit}` : null;
-                }).filter(Boolean) as string[];
-                setTooltip({ x: cx, y: cy, lines: [fmtShort(p.t), ...lines] });
-              }}
-            />
-          )),
-        )}
-      </svg>
-
-      {/* Floating tooltip */}
-      {tooltip && (
-        <div
-          className="fixed z-50 pointer-events-none rounded-xl border border-outline-variant bg-surface-container-low px-3 py-2 text-label-sm text-on-surface shadow-md"
-          style={{ left: tooltip.x + 12, top: tooltip.y - 8, transform: "translateY(-100%)" }}
-        >
-          {tooltip.lines.map((l, i) => (
-            <p key={i} className={i === 0 ? "text-on-surface-variant mb-0.5" : "font-medium"}>{l}</p>
-          ))}
-        </div>
-      )}
-    </div>
-  );
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -729,7 +567,7 @@ export function VitalsTab({
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {CHART_GROUPS.map((group) => {
-              const seriesData: SvgSeries[] = group.codes
+              const seriesData: LineChartSeries[] = group.codes
                 .map((code, i) => {
                   const obs = series[code] ?? [];
                   if (obs.length === 0) return null;
@@ -743,7 +581,7 @@ export function VitalsTab({
                     unit: UNITS[code],
                   };
                 })
-                .filter(Boolean) as SvgSeries[];
+                .filter(Boolean) as LineChartSeries[];
 
               if (seriesData.length === 0) return null;
 
@@ -769,7 +607,7 @@ export function VitalsTab({
                     )}
                   </div>
                   {hasEnoughData ? (
-                    <MiniLineChart series={seriesData} normal={normalRange} />
+                    <LineChart series={seriesData} normalBand={normalRange} />
                   ) : (
                     <div className="flex items-center justify-center h-[140px] rounded-xl border border-dashed border-outline-variant/60">
                       <p className="text-body-sm text-on-surface-variant/50">

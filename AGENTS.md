@@ -21,10 +21,12 @@ frontends/
     hr/           → port 3003  (module RH)
     approval-flows/ → port 3006  (création/gestion libre de workflows d'approbation)
     ventes/       → port 3011  (Facturation — nom d'affichage ; dossier/id restent "ventes")
+    dashboard/    → port 3012  (Rapports temps réel agrégés — contrat de reporting)
     web/                       (landing page)
     docs/                      (documentation)
   packages/
-    ui/                        (@repo/ui)
+    ui/                        (@repo/ui — inclut src/charts/ : LineChart, BarChart, Sparkline SVG)
+    reporting-widgets/         (@repo/reporting-widgets — KpiCard, ReportWidget, TableWidget…)
     auth/                      (@repo/auth)
     network/                   (@repo/network)
     design-system/             (@repo/design-system)
@@ -52,6 +54,7 @@ frontends/
 | `tiers`     | 3009 | Répertoire des clients et fournisseurs (backend `tiers` port 5008)   | —                                      |
 | `stock-inventaire` | 3010 | Gestion des stocks et inventaires — articles, catégories, mouvements (backend `stock` port 5009) |
 | `ventes`    | 3011 | **Facturation** (nom d'affichage ; id/backend restent `ventes`) — Clients, Produits (catégories, prix, TVA), Commandes, Factures, Paramètres. Produits/clients locaux, lien optionnel vers Stock/Tiers. Auto-enregistrement de produits par d'autres apps (ex. hosto) avec champs verrouillés. | — |
+| `dashboard` | 3012 | Rapports temps réel agrégés. Découvre le contrat de reporting de chaque app (backend `dashboard`), rend les rapports via `@repo/reporting-widgets` avec rafraîchissement live. Voir le contrat de reporting dans l'`AGENTS.md` racine. | — |
 | `web`       | —    | Landing page publique                              | —                                      |
 | `docs`      | —    | Documentation produit                              | —                                      |
 
@@ -95,6 +98,29 @@ import { AppShell, Sidebar, TopBar } from '@repo/ui/shell/AppShell'  // à const
 
 Exports configurés via `"exports": { "./*": "./src/*.tsx" }` — importer directement le fichier.
 MUI Icons et MUI Material sont disponibles dans ce package et dans toutes les apps.
+
+**Primitives de graphiques** (`src/charts/`, importées `@repo/ui/charts/LineChart`…) :
+`LineChart` (courbe temporelle), `BarChart` (histogramme catégoriel), `Sparkline` — **SVG
+natif, aucune dépendance de charting**, thémées via les tokens (`var(--color-*)`). Extraites
+des courbes maison d'hosto (constantes vitales / tendances labo). Toute nouvelle app qui trace
+une courbe doit réutiliser ces primitives plutôt que réécrire du SVG.
+
+### `@repo/reporting-widgets`
+
+Widgets de rapport **présentationnels** (données via props, aucun fetch → réutilisables par
+n'importe quelle app), bâtis sur `@repo/ui/charts`.
+
+```ts
+import { ReportWidget } from '@repo/reporting-widgets/ReportWidget'
+import { KpiCard } from '@repo/reporting-widgets/KpiCard'
+```
+
+`ReportWidget` (`{ report, data }`) est l'aiguilleur : il rend les sections présentes dans le
+payload (`kpis` → `KpiGrid`, `series` → `BarChartWidget`/`LineChart`, `table` → `TableWidget`).
+C'est la brique à embarquer pour afficher un rapport issu du contrat de reporting (cf.
+`AGENTS.md` racine). Consommé par l'app `dashboard` ; ajouter le package à `transpilePackages`
+et `@source ".../packages/reporting-widgets/src"` dans le `globals.css` de toute app
+consommatrice.
 
 ### `@repo/design-system`
 
@@ -354,6 +380,7 @@ Voir **`docs/TESTING.md`** pour la stratégie complète (niveaux 1→5, Vitest e
 
 - `docs/apps/auth/AUTH.md` — App auth : login, inscription, cookie trick, proxy API
 - `docs/apps/workspace/WORKSPACE.md` — Architecture dashboard workspace, shell partagé, composants
+- `docs/apps/dashboard/DASHBOARD.md` — App reporting/widgets : lecture directe des bases, sources de données, types de widget, roadmap
 - `docs/apps/hr/HR.md` — Module RH (état actuel et à venir)
 - `docs/apps/approval-flows/APPROVAL_FLOWS.md` — Création/gestion libre de workflows d'approbation
 - `docs/packages/UI.md` — Guide des composants @repo/ui

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
 import {
@@ -15,6 +15,7 @@ import { DashboardShell } from "@/components/DashboardShell";
 import { AllergyBanner } from "@/components/emr/AllergyBanner";
 import { ActesPanel } from "@/components/actes/ActesPanel";
 import { VitalsTab } from "@/components/emr/VitalsTab";
+import { MarDosesTable } from "@/components/mar/MarDosesTable";
 import {
   getFeuilleSurveillance,
   administrerDose,
@@ -29,19 +30,9 @@ import {
 
 const POLL_MS = 45_000;
 
-const STATUT_LABEL: Record<string, string> = {
-  A_DONNER: "À donner", DONNEE: "Donnée", OMISE: "Omise",
-  REFUSEE: "Refusée", SUSPENDUE: "Suspendue", ANNULEE: "Annulée",
-};
-
 const MOTIFS_OMISSION = [
   "Patient absent", "Vomissement", "À jeun", "Voie non disponible", "Patient endormi",
 ];
-
-function heureFr(iso: string | null): string {
-  if (!iso) return "";
-  return new Date(iso).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
-}
 
 // ─── Modale d'action sur une dose ───────────────────────────────────────────────
 function DoseActionModal({ dose, mode, onClose, onDone }: {
@@ -149,90 +140,6 @@ function DoseActionModal({ dose, mode, onClose, onDone }: {
   );
 }
 
-// ─── Carte d'une dose ───────────────────────────────────────────────────────────
-function DoseCard({ dose, canAdminister, canManagePlan, onAction, onPlan }: {
-  dose: DoseSurveillance;
-  canAdminister: boolean;
-  canManagePlan: boolean;
-  onAction: (mode: "administrer" | "omettre" | "refuser") => void;
-  onPlan: (planId: number, mode: "suspendre" | "reprendre" | "arreter") => void;
-}) {
-  const traitee = ["DONNEE", "OMISE", "REFUSEE"].includes(dose.status);
-  const inactive = ["SUSPENDUE", "ANNULEE"].includes(dose.status);
-  const statutTone =
-    dose.status === "DONNEE" ? "text-secondary"
-    : dose.status === "OMISE" || dose.status === "REFUSEE" ? "text-error"
-    : dose.en_retard ? "text-error" : "text-on-surface-variant";
-
-  return (
-    <div className={`rounded-2xl border px-4 py-3 ${
-      dose.en_retard ? "border-error/50 bg-error-container/25"
-      : inactive ? "border-outline-variant/60 bg-surface-container/40 opacity-70"
-      : "border-outline-variant bg-surface-container-lowest"
-    }`}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-body-lg font-semibold text-on-surface">
-            {dose.medication_name}
-          </p>
-          <p className="text-body-sm text-on-surface-variant">
-            {dose.dose_quantite != null ? `${dose.dose_quantite} ${dose.dose_unite ?? ""}` : ""}
-            {dose.voie ? ` · ${dose.voie}` : ""}
-          </p>
-        </div>
-        <span className={`shrink-0 text-label-md font-semibold ${statutTone}`}>
-          {dose.en_retard && dose.status === "A_DONNER" ? "En retard" : STATUT_LABEL[dose.status]}
-        </span>
-      </div>
-
-      {traitee && (
-        <p className="text-label-md text-on-surface-variant mt-1.5">
-          {dose.status === "DONNEE"
-            ? `Donnée à ${heureFr(dose.administered_at)}${dose.dose_reelle != null ? ` · ${dose.dose_reelle} ${dose.dose_unite ?? ""}` : ""}`
-            : `${STATUT_LABEL[dose.status]}${dose.motif ? ` — ${dose.motif}` : ""}`}
-        </p>
-      )}
-      {inactive && dose.motif && (
-        <p className="text-label-md text-on-surface-variant mt-1.5 italic">{dose.motif}</p>
-      )}
-
-      {canAdminister && dose.status === "A_DONNER" && (
-        <div className="flex gap-2 mt-3">
-          <button type="button" onClick={() => onAction("administrer")}
-            className="flex-1 py-2.5 rounded-xl bg-secondary text-on-secondary text-body-md font-semibold hover:opacity-90 transition-opacity">
-            Administrer
-          </button>
-          <button type="button" onClick={() => onAction("omettre")}
-            className="px-4 py-2.5 rounded-xl border border-outline-variant text-body-md text-on-surface-variant hover:bg-surface-container transition-colors">
-            Omettre
-          </button>
-          <button type="button" onClick={() => onAction("refuser")}
-            className="px-4 py-2.5 rounded-xl border border-outline-variant text-body-md text-on-surface-variant hover:bg-surface-container transition-colors">
-            Refus
-          </button>
-        </div>
-      )}
-
-      {/* Gestion du traitement (acte médical) */}
-      {canManagePlan && (dose.status === "A_DONNER" || dose.status === "SUSPENDUE") && (
-        <div className="flex gap-3 mt-2 text-label-md">
-          {dose.status === "SUSPENDUE" ? (
-            <button type="button" onClick={() => onPlan(dose.plan_id, "reprendre")}
-              className="text-tertiary hover:underline">Reprendre le traitement</button>
-          ) : (
-            <>
-              <button type="button" onClick={() => onPlan(dose.plan_id, "suspendre")}
-                className="text-on-surface-variant hover:text-tertiary hover:underline">Suspendre le traitement</button>
-              <button type="button" onClick={() => onPlan(dose.plan_id, "arreter")}
-                className="text-on-surface-variant hover:text-error hover:underline">Arrêter</button>
-            </>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ─── Modale d'action sur un plan (acte médical) ─────────────────────────────────
 function PlanActionModal({ planId, mode, onClose, onDone }: {
   planId: number;
@@ -330,16 +237,6 @@ export default function FeuilleSurveillancePage() {
     return () => { if (pollRef.current) clearTimeout(pollRef.current); };
   }, [load]);
 
-  // Doses groupées par heure prévue, triées chronologiquement.
-  const dosesParHeure = useMemo(() => {
-    const groups = new Map<string, DoseSurveillance[]>();
-    for (const d of feuille?.doses ?? []) {
-      if (!groups.has(d.heure)) groups.set(d.heure, []);
-      groups.get(d.heure)!.push(d);
-    }
-    return [...groups.entries()].sort((a, b) => a[0].localeCompare(b[0]));
-  }, [feuille]);
-
   if (!canView) {
     return (
       <DashboardShell>
@@ -434,25 +331,13 @@ export default function FeuilleSurveillancePage() {
                   <span className="text-label-sm text-on-surface-variant">(consultation seule)</span>
                 )}
               </div>
-              {dosesParHeure.length === 0 ? (
-                <p className="text-body-sm text-on-surface-variant">Aucune dose planifiée aujourd&apos;hui.</p>
-              ) : (
-                dosesParHeure.map(([heure, doses]) => (
-                  <div key={heure} className="space-y-2">
-                    <div className="flex items-center gap-2 text-body-md font-semibold text-on-surface">
-                      <ScheduleOutlined style={{ fontSize: 18 }} className="text-on-surface-variant" /> {heure}
-                    </div>
-                    <div className="space-y-2 pl-1">
-                      {doses.map((d) => (
-                        <DoseCard key={d.id} dose={d} canAdminister={canAdminister}
-                          canManagePlan={canManagePlan}
-                          onAction={(mode) => setAction({ dose: d, mode })}
-                          onPlan={(planId, mode) => setPlanAction({ planId, mode })} />
-                      ))}
-                    </div>
-                  </div>
-                ))
-              )}
+              <MarDosesTable
+                doses={feuille.doses}
+                canAdminister={canAdminister}
+                canManagePlan={canManagePlan}
+                onAction={(dose, mode) => setAction({ dose, mode })}
+                onPlan={(planId, mode) => setPlanAction({ planId, mode })}
+              />
             </section>
 
             {/* b) Soins et actes */}

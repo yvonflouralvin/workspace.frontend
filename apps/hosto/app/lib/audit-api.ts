@@ -20,11 +20,17 @@ export interface AuditLogEntry {
   created_at: string;
 }
 
+export interface AuditActor {
+  id: number;
+  name: string;
+}
+
 export interface AuditLogPage {
   items: AuditLogEntry[];
   total: number;
   page: number;
   pages: number;
+  actors: AuditActor[];
 }
 
 async function parseJson<T>(response: Response): Promise<T> {
@@ -41,7 +47,9 @@ export async function getPatientAudit(
   patientId: number | string,
   page = 1,
   pageSize = 20,
+  userId?: number | null,
 ): Promise<AuditLogPage> {
   const qs = new URLSearchParams({ page: String(page), page_size: String(pageSize) });
+  if (userId != null) qs.set("user_id", String(userId));
   return parseJson<AuditLogPage>(await apiFetch(`/api/patients/${patientId}/audit?${qs}`));
 }

@@ -95,16 +95,17 @@ export function AuditTab({ patientId }: { patientId: number }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
+  const [userFilter, setUserFilter] = useState<number | null>(null);
   const [selected, setSelected] = useState<AuditLogEntry | null>(null);
 
   const load = useCallback(() => {
     setLoading(true);
     setError(null);
-    getPatientAudit(patientId, page, PER_PAGE)
+    getPatientAudit(patientId, page, PER_PAGE, userFilter)
       .then(setData)
       .catch(() => setError("Impossible de charger l'historique."))
       .finally(() => setLoading(false));
-  }, [patientId, page]);
+  }, [patientId, page, userFilter]);
 
   useEffect(() => {
     load();
@@ -117,6 +118,25 @@ export function AuditTab({ patientId }: { patientId: number }) {
     <div className="space-y-3">
       {error && (
         <p className="text-body-sm text-error bg-error-container/40 rounded-xl px-4 py-3">{error}</p>
+      )}
+
+      {(data?.actors?.length ?? 0) > 0 && (
+        <div className="flex items-center gap-2">
+          <label className="text-body-sm text-on-surface-variant">Utilisateur :</label>
+          <select
+            value={userFilter ?? ""}
+            onChange={(e) => {
+              setUserFilter(e.target.value ? Number(e.target.value) : null);
+              setPage(1);
+            }}
+            className="rounded-xl border border-outline-variant bg-surface-container-lowest px-3 py-1.5 text-body-sm text-on-surface focus:outline-none focus:border-primary transition-colors"
+          >
+            <option value="">Tous les utilisateurs</option>
+            {data?.actors.map((a) => (
+              <option key={a.id} value={a.id}>{a.name}</option>
+            ))}
+          </select>
+        </div>
       )}
 
       {loading && !data ? (

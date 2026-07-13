@@ -164,6 +164,11 @@ export async function deletePatient(id: number): Promise<void> {
   }
 }
 
+export async function archivePatient(id: number): Promise<Patient> {
+  const response = await apiFetch(`/api/patients/${id}/archive`, { method: "POST", body: {} });
+  return parseResponse(response);
+}
+
 // ─── HR Employees ────────────────────────────────────────────────────────────
 
 export interface HREmployee {

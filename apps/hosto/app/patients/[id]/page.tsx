@@ -5,15 +5,17 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
 import { RightDrawer } from "@repo/ui/RightDrawer";
+import { Accordion } from "@repo/ui/Accordion";
 import { DashboardShell } from "@/components/DashboardShell";
-import { getPatient, updatePatient, deletePatient, type Patient } from "@/app/lib/api";
+import { getPatient, updatePatient, archivePatient, type Patient } from "@/app/lib/api";
 import {
+  ArchiveOutlined,
   ArrowBackOutlined,
   BadgeOutlined,
   BloodtypeOutlined,
   CakeOutlined,
-  DeleteOutlined,
   EditOutlined,
+  HistoryOutlined,
   EmailOutlined,
   ExpandMoreOutlined,
   HomeOutlined,
@@ -212,8 +214,8 @@ export default function PatientDetailPage() {
   const [patient, setPatient]       = useState<Patient | null>(null);
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState<string | null>(null);
-  const [confirmDelete, setConfirmDelete] = useState(false);
-  const [deleting, setDeleting]     = useState(false);
+  const [confirmArchive, setConfirmArchive] = useState(false);
+  const [archiving, setArchiving]   = useState(false);
 
   const [drawer, setDrawer]         = useState<DrawerType>(null);
   const [saving, setSaving]         = useState(false);
@@ -272,15 +274,15 @@ export default function PatientDetailPage() {
     }
   }
 
-  async function handleDelete() {
-    setDeleting(true);
+  async function handleArchive() {
+    setArchiving(true);
     try {
-      await deletePatient(Number(id));
+      await archivePatient(Number(id));
       router.push("/");
     } catch {
-      setError("Impossible de supprimer le patient.");
-      setDeleting(false);
-      setConfirmDelete(false);
+      setError("Impossible d'archiver le patient.");
+      setArchiving(false);
+      setConfirmArchive(false);
     }
   }
 
@@ -302,26 +304,6 @@ export default function PatientDetailPage() {
             </span>
           )}
         </div>
-
-        {/* ── Confirm delete ── */}
-        {confirmDelete && (
-          <div className="flex items-center gap-3 rounded-xl border border-error/40 bg-error-container/30 px-4 py-3">
-            <WarningAmberOutlined style={{ fontSize: 18 }} className="text-error shrink-0" />
-            <p className="text-body-sm text-on-surface flex-1">
-              Confirmer la suppression de ce dossier ? Cette action est irréversible.
-            </p>
-            <div className="flex gap-2 shrink-0">
-              <button onClick={() => setConfirmDelete(false)} disabled={deleting}
-                className="px-3 py-1.5 rounded-lg text-body-sm text-on-surface-variant hover:bg-surface-container transition-colors disabled:opacity-50">
-                Annuler
-              </button>
-              <button onClick={handleDelete} disabled={deleting}
-                className="px-3 py-1.5 rounded-lg text-body-sm bg-error text-white hover:opacity-90 disabled:opacity-50">
-                {deleting ? "Suppression…" : "Confirmer"}
-              </button>
-            </div>
-          </div>
-        )}
 
         {error && <p className="text-body-sm text-error bg-error-container/40 rounded-xl px-4 py-3">{error}</p>}
         {loading && <p className="text-body-sm text-on-surface-variant">Chargement…</p>}
@@ -367,13 +349,6 @@ export default function PatientDetailPage() {
                       <MedicalInformationOutlined style={{ fontSize: 15 }} />
                       Dossier médical
                     </Link>
-                  )}
-                  {canManage && !confirmDelete && (
-                    <button onClick={() => setConfirmDelete(true)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-body-sm text-on-surface-variant border border-outline-variant hover:border-error hover:text-error transition-colors">
-                      <DeleteOutlined style={{ fontSize: 15 }} />
-                      Supprimer
-                    </button>
                   )}
                 </div>
               </div>
@@ -526,6 +501,55 @@ export default function PatientDetailPage() {
               Enregistré le {formatDate(patient.created_at)}
               {patient.updated_at !== patient.created_at && <> · Modifié le {formatDate(patient.updated_at)}</>}
             </div>
+
+            {/* ── Options avancées ── */}
+            {(canManage || can("hosto.emr.tab.audit")) && (
+              <Accordion title="Options avancées">
+                <div className="p-4 space-y-2">
+                  {can("hosto.emr.tab.audit") && (
+                    <Link
+                      href={`/patients/${id}/audit`}
+                      className="flex items-center justify-between gap-3 rounded-xl border border-outline-variant px-4 py-3 hover:bg-surface-container transition-colors"
+                    >
+                      <span className="flex items-center gap-2 text-body-md text-on-surface">
+                        <HistoryOutlined style={{ fontSize: 18 }} className="text-on-surface-variant" />
+                        Journal d&apos;audit (historique du dossier)
+                      </span>
+                      <span className="text-body-sm text-primary shrink-0">Ouvrir →</span>
+                    </Link>
+                  )}
+
+                  {canManage && (
+                    confirmArchive ? (
+                      <div className="flex items-center gap-3 rounded-xl border border-error/40 bg-error-container/30 px-4 py-3">
+                        <WarningAmberOutlined style={{ fontSize: 18 }} className="text-error shrink-0" />
+                        <p className="text-body-sm text-on-surface flex-1">
+                          Archiver ce dossier ? Il sera masqué des listes (soft delete, récupérable en base).
+                        </p>
+                        <div className="flex gap-2 shrink-0">
+                          <button onClick={() => setConfirmArchive(false)} disabled={archiving}
+                            className="px-3 py-1.5 rounded-lg text-body-sm text-on-surface-variant hover:bg-surface-container transition-colors disabled:opacity-50">
+                            Annuler
+                          </button>
+                          <button onClick={handleArchive} disabled={archiving}
+                            className="px-3 py-1.5 rounded-lg text-body-sm bg-error text-white hover:opacity-90 disabled:opacity-50">
+                            {archiving ? "Archivage…" : "Confirmer"}
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setConfirmArchive(true)}
+                        className="w-full flex items-center gap-2 rounded-xl border border-outline-variant px-4 py-3 text-body-md text-on-surface hover:border-error hover:text-error transition-colors"
+                      >
+                        <ArchiveOutlined style={{ fontSize: 18 }} className="text-on-surface-variant" />
+                        Archiver le dossier (soft delete)
+                      </button>
+                    )
+                  )}
+                </div>
+              </Accordion>
+            )}
           </>
         )}
       </div>

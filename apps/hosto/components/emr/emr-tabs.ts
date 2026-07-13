@@ -14,8 +14,7 @@ export type EMRTabKey =
   | "examens"
   | "actes"
   | "hospitalisations"
-  | "timeline"
-  | "audit";
+  | "timeline";
 
 export interface EMRTabMeta {
   key: EMRTabKey;
@@ -39,7 +38,6 @@ export const EMR_TABS: EMRTabMeta[] = [
   { key: "actes",            label: "Actes",            permission: "hosto.actes.view" },
   { key: "hospitalisations", label: "Hospitalisations", permission: "hosto.admissions.view" },
   { key: "timeline",         label: "Timeline",         permission: "hosto.emr.tab.timeline" },
-  { key: "audit",            label: "Historique",       permission: "hosto.emr.tab.audit" },
 ];
 
 // Filtre les onglets par permission. `only` restreint au sous-ensemble d'onglets qu'un

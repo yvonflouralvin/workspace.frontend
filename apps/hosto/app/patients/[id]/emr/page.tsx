@@ -19,7 +19,6 @@ import { MedicationsTab } from "@/components/emr/MedicationsTab";
 import { VitalsTab } from "@/components/emr/VitalsTab";
 import { NotesTab } from "@/components/emr/NotesTab";
 import { TimelineTab } from "@/components/emr/TimelineTab";
-import { AuditTab } from "@/components/emr/AuditTab";
 import { PrescriptionsPanel } from "@/components/prescriptions/PrescriptionsPanel";
 import { LabRequestsPanel } from "@/components/lab/LabRequestsPanel";
 import { ActesPanel } from "@/components/actes/ActesPanel";
@@ -353,9 +352,6 @@ export default function EMRPage() {
           )}
           {activeTab === "timeline" && (
             <TimelineTab patientId={Number(id)} />
-          )}
-          {activeTab === "audit" && (
-            <AuditTab patientId={Number(id)} />
           )}
         </div>
 

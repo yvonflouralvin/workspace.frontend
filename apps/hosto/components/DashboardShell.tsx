@@ -35,14 +35,19 @@ const NAV_ITEMS: NavItem[] = [
     icon: <HomeOutlined style={{ fontSize: 20 }} />,
     exact: true,
   },
-  { label: "Patients",      href: "/",             icon: <PeopleAltOutlined style={{ fontSize: 20 }} /> },
-  { label: "Services",      href: "/services",     icon: <LocalHospitalOutlined style={{ fontSize: 20 }} /> },
-  { label: "Personnel",     href: "/staff",        icon: <MedicalServicesOutlined style={{ fontSize: 20 }} /> },
-  { label: "Réception",     href: "/reception",    icon: <SensorDoorOutlined style={{ fontSize: 20 }} /> },
-  { label: "Consultations", href: "/consultations",icon: <MedicalInformationOutlined style={{ fontSize: 20 }} /> },
-  { label: "Calendrier",    href: "/calendar",     icon: <CalendarMonthOutlined style={{ fontSize: 20 }} /> },
-  { label: "Horaires",      href: "/schedules",    icon: <ScheduleOutlined style={{ fontSize: 20 }} /> },
-  { label: "Laboratoire",   href: "/lab",          icon: <BiotechOutlined style={{ fontSize: 20 }} /> },
+  { label: "Patients",      href: "/",             icon: <PeopleAltOutlined style={{ fontSize: 20 }} />,        permission: "hosto.patients.view" },
+  { label: "Services",      href: "/services",     icon: <LocalHospitalOutlined style={{ fontSize: 20 }} />,    permission: "hosto.services.view" },
+  { label: "Personnel",     href: "/staff",        icon: <MedicalServicesOutlined style={{ fontSize: 20 }} />,  permission: "hosto.staff.view" },
+  { label: "Réception",     href: "/reception",    icon: <SensorDoorOutlined style={{ fontSize: 20 }} />,       permission: "hosto.reception.view" },
+  { label: "Consultations", href: "/consultations",icon: <MedicalInformationOutlined style={{ fontSize: 20 }} />, permission: "hosto.consultations.manage" },
+  { label: "Calendrier",    href: "/calendar",     icon: <CalendarMonthOutlined style={{ fontSize: 20 }} />,    permission: "hosto.appointments.view" },
+  { label: "Horaires",      href: "/schedules",    icon: <ScheduleOutlined style={{ fontSize: 20 }} />,         permission: "hosto.schedules.view" },
+  { label: "Laboratoire",   href: "/lab",          icon: <BiotechOutlined style={{ fontSize: 20 }} />,          permission: "hosto.lab.view" },
+  { label: "Actes",         href: "/actes",        icon: <HealingOutlined style={{ fontSize: 20 }} />,          permission: "hosto.actes.view" },
+  { label: "Occupation",    href: "/occupation",   icon: <GridViewOutlined style={{ fontSize: 20 }} />,         permission: "hosto.beds.view" },
+  { label: "Lits",          href: "/beds",         icon: <HotelOutlined style={{ fontSize: 20 }} />,            permission: "hosto.beds.view" },
+  { label: "Surveillance",  href: "/surveillance", icon: <MonitorHeartOutlined style={{ fontSize: 20 }} />,     permission: "hosto.mar.view" },
+  { label: "Paramètres",    href: "/parametres",   icon: <SettingsOutlined style={{ fontSize: 20 }} />,         permission: "hosto.settings.manage" },
 ];
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
@@ -57,26 +62,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
   const visibleApps = PLATFORM_APPS.filter((app) => can(`${app.id}.access`));
 
-  let baseNav = can("hosto.actes.view")
-    ? [...NAV_ITEMS, { label: "Actes", href: "/actes", icon: <HealingOutlined style={{ fontSize: 20 }} /> }]
-    : NAV_ITEMS;
-  if (can("hosto.beds.view")) {
-    baseNav = [
-      ...baseNav,
-      { label: "Occupation", href: "/occupation", icon: <GridViewOutlined style={{ fontSize: 20 }} /> },
-      { label: "Lits", href: "/beds", icon: <HotelOutlined style={{ fontSize: 20 }} /> },
-    ];
-  }
-  if (can("hosto.mar.view")) {
-    baseNav = [
-      ...baseNav,
-      { label: "Surveillance", href: "/surveillance", icon: <MonitorHeartOutlined style={{ fontSize: 20 }} /> },
-    ];
-  }
-
-  const navItems = can("hosto.settings.manage")
-    ? [...baseNav, { label: "Paramètres", href: "/parametres", icon: <SettingsOutlined style={{ fontSize: 20 }} /> }]
-    : baseNav;
+  const navItems = NAV_ITEMS.filter((item) => !item.permission || can(item.permission));
 
   return (
     <AppShell

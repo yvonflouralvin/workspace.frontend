@@ -24,6 +24,7 @@ import { LabRequestsPanel } from "@/components/lab/LabRequestsPanel";
 import { ActesPanel } from "@/components/actes/ActesPanel";
 import { SejoursPanel } from "@/components/hospitalisation/SejoursPanel";
 import { HospitalisationBanner } from "@/components/hospitalisation/HospitalisationBanner";
+import { visibleEmrTabs, type EMRTabKey, type EMRTabMeta } from "@/components/emr/emr-tabs";
 import {
   ArrowBackOutlined,
   BadgeOutlined,
@@ -48,33 +49,20 @@ function calcAge(dob: string): number {
   return age;
 }
 
-// ─── Tab definitions ─────────────────────────────────────────────────────────
-
-const EMR_TABS = [
-  { key: "summary",       label: "Résumé" },
-  { key: "history",       label: "Antécédents" },
-  { key: "allergies",     label: "Allergies" },
-  { key: "conditions",    label: "Problèmes" },
-  { key: "observations",  label: "Constantes" },
-  { key: "notes",         label: "Notes" },
-  { key: "medications",   label: "Traitements" },
-  { key: "prescriptions", label: "Prescriptions" },
-  { key: "examens",       label: "Examens" },
-  { key: "actes",         label: "Actes" },
-  { key: "hospitalisations", label: "Hospitalisations" },
-  { key: "timeline",      label: "Timeline" },
-] as const;
-
-type TabKey = (typeof EMR_TABS)[number]["key"];
-
-const VALID_KEYS = new Set<string>(EMR_TABS.map((t) => t.key));
-
 // ─── Controlled tab bar (same visual as @repo/ui Tabs, URL-driven) ───────────
 
-function EMRTabBar({ active, onChange }: { active: TabKey; onChange: (k: TabKey) => void }) {
+function EMRTabBar({
+  tabs,
+  active,
+  onChange,
+}: {
+  tabs: EMRTabMeta[];
+  active: EMRTabKey;
+  onChange: (k: EMRTabKey) => void;
+}) {
   return (
     <div className="flex items-center gap-1 border-b border-outline-variant overflow-x-auto">
-      {EMR_TABS.map((tab) => (
+      {tabs.map((tab) => (
         <button
           key={tab.key}
           type="button"
@@ -155,8 +143,10 @@ export default function EMRPage() {
   const searchParams = useSearchParams();
   const { can } = usePermissions();
 
+  const visibleTabs = visibleEmrTabs(can);
+  const visibleKeys = new Set<string>(visibleTabs.map((t) => t.key));
   const rawTab = searchParams.get("tab") ?? "summary";
-  const activeTab: TabKey = VALID_KEYS.has(rawTab) ? (rawTab as TabKey) : "summary";
+  const activeTab: EMRTabKey = visibleKeys.has(rawTab) ? (rawTab as EMRTabKey) : "summary";
 
   const [patient, setPatient] = useState<Patient | null>(null);
   const [summary, setSummary] = useState<EMRSummary | null>(null);
@@ -181,7 +171,7 @@ export default function EMRPage() {
     ? `${patient.nom} ${patient.postnom} ${patient.prenom}`.replace(/\s+/g, " ").trim()
     : "";
 
-  function setTab(key: TabKey) {
+  function setTab(key: EMRTabKey) {
     const params = new URLSearchParams(searchParams.toString());
     params.set("tab", key);
     router.replace(`?${params.toString()}`, { scroll: false });
@@ -269,7 +259,7 @@ export default function EMRPage() {
         )}
 
         {/* ── Tab bar ── */}
-        <EMRTabBar active={activeTab} onChange={setTab} />
+        <EMRTabBar tabs={visibleTabs} active={activeTab} onChange={setTab} />
 
         {/* ── Tab content ── */}
         <div className="pt-1">

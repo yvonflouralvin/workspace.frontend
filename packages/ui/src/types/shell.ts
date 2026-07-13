@@ -6,6 +6,9 @@ export interface NavItem {
   icon: ReactNode;
   badge?: number;
   exact?: boolean;
+  // Quand défini, l'entrée n'est rendue que si la session détient cette permission.
+  // Le filtrage est fait par l'app (le Sidebar reste agnostique de @repo/auth).
+  permission?: string;
 }
 
 export interface AppDefinition {

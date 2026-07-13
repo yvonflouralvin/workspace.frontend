@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
 import { LogoutOutlined, SwapHorizOutlined, CancelOutlined, WarningAmberOutlined } from "@mui/icons-material";
@@ -23,14 +24,19 @@ const DISCHARGE_OPTIONS: { value: DischargeType; label: string; grave?: boolean 
 const btn = "w-full inline-flex items-center justify-center gap-2 py-2.5 rounded-xl text-body-md font-medium transition-colors";
 const field = "w-full rounded-xl border border-outline-variant bg-surface-container-lowest px-3 py-2.5 text-body-md text-on-surface focus:outline-none focus:border-primary";
 
+// Porté dans document.body : le RightDrawer parent applique un `transform` (animation
+// de slide), qui capturerait un enfant `position: fixed` et confinerait la modale à la
+// largeur du drawer (~480px) au lieu du viewport. Le portal ré-ancre au viewport réel.
 function Modal({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
+  if (typeof document === "undefined") return null;
+  return createPortal(
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal>
       <div className="w-full max-w-md rounded-3xl bg-surface-container-lowest p-6 shadow-xl space-y-4 max-h-[90vh] overflow-y-auto">
         <h2 className="text-headline-sm font-display text-on-surface">{title}</h2>
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

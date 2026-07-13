@@ -6,9 +6,7 @@ import { usePermissions } from "@repo/auth/hooks/usePermissions";
 import {
   AddOutlined,
   BlockOutlined,
-  HealingOutlined,
   LockOutlined,
-  PlayCircleOutlineOutlined,
 } from "@mui/icons-material";
 import {
   getPatientActes,
@@ -16,127 +14,10 @@ import {
   annulerActe,
   type ActePrescrit,
 } from "@/app/lib/actes-api";
-import { StatusBadge, PaiementRequisNotice, actorLabel, fmtDate, fmtDateTime } from "./shared";
+import { ActesTable } from "./ActesTable";
 import { PrescrireDrawer } from "./PrescrireDrawer";
 import { RealiserDrawer } from "./RealiserDrawer";
 import { ActesHistoryView } from "./ActesHistoryView";
-
-// ─── Skeleton ─────────────────────────────────────────────────────────────────
-
-function Skeleton() {
-  return (
-    <div className="space-y-2" aria-busy>
-      {[1, 2, 3].map((i) => (
-        <div key={i} className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-4">
-          <div className="space-y-2">
-            <div className="h-4 w-40 rounded bg-surface-container animate-pulse" />
-            <div className="h-3 w-56 rounded bg-surface-container animate-pulse" />
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// ─── ActeCard ──────────────────────────────────────────────────────────────────
-
-function ActeCard({
-  acte,
-  canPrescribe,
-  canPerform,
-  onRealiser,
-  onAnnuler,
-}: {
-  acte: ActePrescrit;
-  canPrescribe: boolean;
-  canPerform: boolean;
-  onRealiser: () => void;
-  onAnnuler: () => void;
-}) {
-  const isCancelled = acte.status === "ANNULE";
-  const canCancel = canPrescribe && (acte.status === "PRESCRIT" || acte.status === "REALISABLE" || acte.status === "EN_ATTENTE_PAIEMENT");
-
-  return (
-    <div
-      className={`rounded-2xl border bg-surface-container-lowest px-5 py-4 ${
-        isCancelled ? "border-outline-variant/50 opacity-60" : "border-outline-variant"
-      }`}
-    >
-      <div className="flex items-start justify-between gap-3 flex-wrap">
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span
-              className={`text-body-md font-semibold text-on-surface ${isCancelled ? "line-through" : ""}`}
-            >
-              {acte.acte_libelle}
-            </span>
-            {acte.quantite > 1 && (
-              <span className="text-label-sm text-on-surface-variant">× {acte.quantite}</span>
-            )}
-            <StatusBadge status={acte.status} />
-          </div>
-          <p className="text-body-sm text-on-surface-variant mt-1">
-            Prescrit le {fmtDate(acte.prescribed_at)} · par{" "}
-            {actorLabel(acte.prescribed_by_name, acte.prescribed_by_role, acte.prescribed_by)}
-          </p>
-          {acte.indication && (
-            <p className="text-body-sm text-on-surface-variant/80 italic mt-0.5">{acte.indication}</p>
-          )}
-        </div>
-
-        {/* Actions */}
-        <div className="flex items-center gap-2 shrink-0">
-          {canPerform && acte.status === "REALISABLE" && (
-            <button
-              type="button"
-              onClick={onRealiser}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-secondary text-on-secondary text-body-sm font-medium hover:opacity-90 transition-opacity"
-            >
-              <PlayCircleOutlineOutlined style={{ fontSize: 16 }} />
-              Réaliser
-            </button>
-          )}
-          {canCancel && (
-            <button
-              type="button"
-              onClick={onAnnuler}
-              title="Annuler l'acte"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-error/40 text-error text-body-sm hover:bg-error/8 transition-colors"
-            >
-              <BlockOutlined style={{ fontSize: 15 }} />
-              Annuler
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Paiement requis */}
-      {acte.status === "EN_ATTENTE_PAIEMENT" && (
-        <div className="mt-3">
-          <PaiementRequisNotice message="Cet acte ne peut pas encore être réalisé : le patient doit d'abord régler le paiement." />
-        </div>
-      )}
-
-      {/* Réalisé */}
-      {acte.status === "REALISE" && acte.realise && (
-        <div className="mt-3 rounded-xl bg-secondary/5 border border-secondary/20 px-4 py-3">
-          <p className="text-body-sm text-secondary font-medium">
-            Réalisé le {fmtDateTime(acte.realise.performed_at)} · par{" "}
-            {actorLabel(acte.realise.performed_by_name, acte.realise.performed_by_role, acte.realise.performed_by)}
-          </p>
-          {acte.realise.observations && (
-            <p className="text-body-sm text-on-surface mt-1">{acte.realise.observations}</p>
-          )}
-          {acte.realise.complications && (
-            <p className="text-body-sm text-error mt-1">
-              <span className="font-medium">Complications :</span> {acte.realise.complications}
-            </p>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
 
 // ─── CancelModal ───────────────────────────────────────────────────────────────
 
@@ -378,38 +259,15 @@ export function ActesPanel({
       {error && (
         <p className="text-body-sm text-error bg-error-container/40 rounded-xl px-4 py-3 mb-4">{error}</p>
       )}
-
-      {/* Liste */}
-      {loading ? (
-        <Skeleton />
-      ) : items.length === 0 ? (
-        <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-12 flex flex-col items-center gap-3 text-center">
-          <HealingOutlined style={{ fontSize: 32 }} className="text-on-surface-variant/30" />
-          <p className="text-body-md text-on-surface-variant">Aucun acte.</p>
-          {canPrescribe && (
-            <button
-              type="button"
-              onClick={openPrescribe}
-              className="text-body-sm text-primary underline underline-offset-2 hover:opacity-70 transition-opacity"
-            >
-              Prescrire un acte
-            </button>
-          )}
-        </div>
-      ) : (
-        <div className="space-y-2">
-          {items.map((acte) => (
-            <ActeCard
-              key={acte.id}
-              acte={acte}
-              canPrescribe={canPrescribe}
-              canPerform={canPerform}
-              onRealiser={() => openRealise(acte)}
-              onAnnuler={() => setCancelActe(acte)}
-            />
-          ))}
-        </div>
-      )}
+      <ActesTable
+        items={items}
+        loading={loading}
+        canPrescribe={canPrescribe}
+        canPerform={canPerform}
+        onRealiser={openRealise}
+        onAnnuler={setCancelActe}
+        onPrescribe={openPrescribe}
+      />
         </>
       )}
 

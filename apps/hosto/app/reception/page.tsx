@@ -23,7 +23,7 @@ import {
   getQueuesOverview,
   triageVisite,
 } from "@/app/lib/reception-api";
-import { listPatients, listServices, type PatientSummary, type Service } from "@/app/lib/api";
+import { listPatients, listServices, getMyReceptionServices, type PatientSummary, type Service } from "@/app/lib/api";
 import { ApiError } from "@/app/lib/api";
 import { takeVisite } from "@/app/lib/consultation-api";
 import { useRouter } from "next/navigation";
@@ -575,6 +575,9 @@ export default function ReceptionPage() {
   const router = useRouter();
   const { can } = usePermissions();
   const canView    = can("hosto.reception.view");
+  // Sans view.all, le sélecteur de service est restreint aux services du staff courant
+  // (la sécurité réelle est côté serveur ; ceci n'est qu'un confort UX).
+  const canViewAll = can("hosto.menu.reception.view.all");
   const canManage  = can("hosto.reception.manage");
   const canTriage  = can("hosto.appointments.triage");
   const canConsult = can("hosto.consultations.manage");
@@ -680,7 +683,7 @@ export default function ReceptionPage() {
   }, [loadVisites, loadOverview, currentPage]);
 
   useEffect(() => {
-    listServices().then(setServices).catch(() => {});
+    (canViewAll ? listServices() : getMyReceptionServices()).then(setServices).catch(() => {});
     loadOverview();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 

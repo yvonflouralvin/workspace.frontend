@@ -173,6 +173,7 @@ export async function archivePatient(id: number): Promise<Patient> {
 
 export interface HREmployee {
   id: number;
+  user_id: number | null;
   first_name: string;
   last_name: string;
   email: string;
@@ -289,6 +290,7 @@ export interface HostoStaff {
 
 export interface StaffCreateInput {
   employee_id: number;
+  user_id?: number | null;
   nom_cache: string;
   prenom_cache: string;
   role: string;
@@ -325,6 +327,11 @@ export async function listStaff(params?: {
 
 export async function createStaff(data: StaffCreateInput): Promise<HostoStaff> {
   return parseResponse(await apiFetch("/api/staff", { method: "POST", body: data }));
+}
+
+// Services du staff médical courant (réception scopée). Vide si l'user n'est pas staff.
+export async function getMyReceptionServices(): Promise<Service[]> {
+  return parseResponse(await apiFetch("/api/reception/my-services"));
 }
 
 export async function updateStaff(id: number, data: StaffUpdateInput): Promise<HostoStaff> {

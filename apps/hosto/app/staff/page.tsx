@@ -267,7 +267,8 @@ export default function StaffPage() {
     setSaving(true); setFormError(null);
     try {
       await createStaff({
-        employee_id: form.employee_id, nom_cache: form.nom_cache, prenom_cache: form.prenom_cache,
+        employee_id: form.employee_id, user_id: selectedEmployee.user_id,
+        nom_cache: form.nom_cache, prenom_cache: form.prenom_cache,
         role: form.role, specialite: form.specialite || undefined, service_ids: form.service_ids,
       });
       resetForm();

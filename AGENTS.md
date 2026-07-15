@@ -147,6 +147,28 @@ export default { content: [...], presets: [sharedConfig] }
 
 Package Zustand partagé (dépendance racine). Toujours préférer les stores de `@repo/auth` pour la session.
 
+### `@repo/notifications`
+
+Notifications **in-app** entre utilisateurs (cloche + feed + configuration), branchées
+sur le hub `backends/notifications`. Modèle source (consommé via `transpilePackages` +
+`@source`), même esprit que `@repo/approval-flows`.
+
+```ts
+import { NotificationBell } from '@repo/notifications/NotificationBell'
+import { NotificationSettings } from '@repo/notifications/NotificationSettings'
+```
+
+`NotificationBell` (`{ basePath? }`, défaut `/api/notifications`) : cloche + badge non-lus
+(polling 30 s) + popover du feed ; à placer dans le slot `notifications` du `TopBar`.
+`NotificationSettings` (`{ appKey, basePath?, groupsPath?, permissionsPath? }`) : UI de
+configuration à embarquer dans les Paramètres d'une app — par type de notification,
+choix des canaux (in_app/email/whatsapp) et des destinataires (groupes + permissions).
+L'app consommatrice ajoute ses routes BFF sous `/api/notifications/*`
+(`route`, `unread-count`, `[id]/read`, `read-all`, `config`, `config/[typeKey]`,
+`groups`, `permissions`) qui `forwardToBackend` vers `NOTIFICATIONS_API_URL`. Intégrée
+dans `hosto` (cloche + section Paramètres › Notifications). Détail du hub et du contrat :
+`AGENTS.md` racine.
+
 ### `@repo/approval-flows`
 
 Composants/hooks/client API pour intégrer le service `approval_flows` (port 5005)
@@ -289,6 +311,7 @@ les 3 `.env` par app synchronisés pour les variables communes.
 | `NEXT_PUBLIC_AUTH_API_HR_DOMAIN`  | `http://localhost:3003` | Browser        |
 | `NEXT_PUBLIC_AUTH_API_APPROVAL_FLOWS_DOMAIN` | `http://localhost:3006` | Browser — utilisé par le sélecteur d'apps (`workspace`, `hr`) pour pointer vers `approval-flows` |
 | `HOSTO_API_URL`                   | `http://127.0.0.1:5007`| Server only — app `hosto`, proxy vers le backend FastAPI `hosto` |
+| `NOTIFICATIONS_API_URL`           | `http://wd_bk_notifications:5000`| Server only — proxy BFF vers le hub `notifications` (cloche in-app + config). Docker uniquement (pas de port localhost exposé) |
 | `NEXT_PUBLIC_WORKSPACE_DOMAIN`    | `http://localhost:3005` | Browser (auth) |
 | `AUTH_API_URL`                    | `http://127.0.0.1:5000`| Server only    |
 | `HR_API_URL`                      | `http://127.0.0.1:5001`| Server only — app `hr`, proxy vers le backend FastAPI `hr` |

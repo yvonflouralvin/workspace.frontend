@@ -11,7 +11,7 @@ if (process.env.HOSTO_APP_URL) {
 
 const nextConfig: NextConfig = {
   allowedDevOrigins,
-  transpilePackages: ["@repo/ui", "@repo/network", "@repo/auth"],
+  transpilePackages: ["@repo/ui", "@repo/network", "@repo/auth", "@repo/notifications"],
   output: "standalone",
   outputFileTracingIncludes: {
     "/**": ["./node_modules/next/dist/compiled/cookie/**"],

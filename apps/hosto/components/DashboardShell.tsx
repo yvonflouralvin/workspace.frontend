@@ -9,6 +9,7 @@ import { TopBar } from "@repo/ui/shell/TopBar";
 import { UserFooter } from "@repo/ui/shell/UserFooter";
 import { WorkspaceSwitcher } from "@repo/ui/WorkspaceSwitcher";
 import { PLATFORM_APPS, HOSTO_SHELL } from "@repo/ui/shell/platform";
+import { NotificationBell } from "@repo/notifications/NotificationBell";
 import { useSearch } from "@repo/ui/shell/useSearch";
 import {
   HomeOutlined,
@@ -79,6 +80,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           allAppsUrl="/"
           user={userSummary}
           preferencesUrl="/"
+          notifications={<NotificationBell basePath="/api/notifications" />}
           onLogout={handleLogout}
           onSearch={handleSearch}
           {...HOSTO_SHELL}

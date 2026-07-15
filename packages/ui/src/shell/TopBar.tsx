@@ -34,6 +34,9 @@ interface TopBarProps {
   user: UserSummary | null;
   preferencesUrl: string;
   notificationsCount?: number;
+  // Slot pour une cloche de notification autonome (ex. <NotificationBell/> de
+  // @repo/notifications). Si fourni, remplace le bouton cloche présentationnel.
+  notifications?: React.ReactNode;
   onLogout?: () => void;
   onSearch?: (q: string) => Promise<SearchSection[]>;
   appName?: string;
@@ -193,6 +196,7 @@ export function TopBar({
   user,
   preferencesUrl,
   notificationsCount = 0,
+  notifications,
   onLogout,
   onSearch,
   appName,
@@ -262,15 +266,17 @@ export function TopBar({
           )}
         </div>
 
-        <button
-          className="relative w-9 h-9 flex items-center justify-center rounded-xl text-on-surface-variant hover:bg-surface-container transition-colors"
-          title="Notifications"
-        >
-          <NotificationsOutlined style={{ fontSize: 20 }} />
-          {notificationsCount > 0 && (
-            <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-error" />
-          )}
-        </button>
+        {notifications ?? (
+          <button
+            className="relative w-9 h-9 flex items-center justify-center rounded-xl text-on-surface-variant hover:bg-surface-container transition-colors"
+            title="Notifications"
+          >
+            <NotificationsOutlined style={{ fontSize: 20 }} />
+            {notificationsCount > 0 && (
+              <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-error" />
+            )}
+          </button>
+        )}
 
         <div className="relative">
           <button

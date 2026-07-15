@@ -12,6 +12,7 @@ import {
   ApartmentOutlined,
   ScheduleOutlined,
   SettingsOutlined,
+  NotificationsOutlined,
   ChevronRightOutlined,
 } from "@mui/icons-material";
 
@@ -43,6 +44,13 @@ const SECTIONS: Entry[] = [
     description: "Horaires de prise pour le suivi des médicaments.",
     href: "/parametres/prescriptions-schemas",
     icon: <ScheduleOutlined style={{ fontSize: 22 }} />,
+  },
+  {
+    key: "notifications",
+    nom: "Notifications",
+    description: "Canaux et destinataires des notifications automatiques.",
+    href: "/parametres/notifications",
+    icon: <NotificationsOutlined style={{ fontSize: 22 }} />,
   },
 ];
 

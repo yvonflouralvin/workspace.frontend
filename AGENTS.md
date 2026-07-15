@@ -163,7 +163,10 @@ import { NotificationSettings } from '@repo/notifications/NotificationSettings'
 hook `useNotifications` ouvre un **WebSocket** (`/ws/notifications`, même origine, routé par
 nginx vers la gateway dédiée `wd_bk_notifications_realtime`) ; à réception d'un signal il
 refait le fetch chiffré du feed. Reconnexion backoff + **polling 30 s en fallback** si le WS
-tombe. Aucune config front : l'URL est dérivée de `window.location`.
+tombe. Aucune config front : l'URL est dérivée de `window.location`. À l'**arrivée** d'une
+notif temps réel : **son** (ding Web Audio synthétisé, pas de fichier) + **toast** en haut à
+droite (`NotificationToaster`, portalisé sur `body`, auto-dismiss 6 s, clic → navigation).
+Le hook détecte les nouvelles notifs par diff d'ids (aucun toast pour l'historique au chargement).
 `NotificationSettings` (`{ appKey, basePath?, groupsPath?, permissionsPath? }`) : UI de
 configuration à embarquer dans les Paramètres d'une app — par type de notification,
 choix des canaux (in_app/email/whatsapp) et des destinataires (groupes + permissions).

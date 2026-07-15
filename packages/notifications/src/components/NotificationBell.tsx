@@ -1,14 +1,45 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { NotificationsOutlined } from "@mui/icons-material";
 import { useNotifications } from "../hooks/useNotifications";
+import { playNotificationSound } from "../lib/sound";
 import { NotificationList } from "./NotificationList";
+import { NotificationToaster, type ToastItem } from "./NotificationToaster";
 
 export function NotificationBell({ basePath }: { basePath?: string }) {
   const [open, setOpen] = useState(false);
+  const [toasts, setToasts] = useState<ToastItem[]>([]);
   const ref = useRef<HTMLDivElement>(null);
-  const { items, unreadCount, loading, markRead, markAllRead, refetch } = useNotifications(basePath);
+  const router = useRouter();
+
+  const dismissToast = useCallback((id: number) => {
+    setToasts((list) => list.filter((t) => t.id !== id));
+  }, []);
+
+  // Arrivée temps réel d'une notification → son + toast (haut droite).
+  const handleNew = useCallback((n: { id: number; title: string; body: string | null; link: string | null }) => {
+    playNotificationSound();
+    setToasts((list) =>
+      list.some((t) => t.id === n.id)
+        ? list
+        : [...list, { id: n.id, title: n.title, body: n.body, link: n.link }],
+    );
+  }, []);
+
+  const { items, unreadCount, loading, markRead, markAllRead, refetch } = useNotifications(basePath, {
+    onNew: handleNew,
+  });
+
+  const onToastClick = useCallback(
+    (toast: ToastItem) => {
+      markRead(toast.id);
+      dismissToast(toast.id);
+      if (toast.link) router.push(toast.link);
+    },
+    [markRead, dismissToast, router],
+  );
 
   useEffect(() => {
     function onClick(e: MouseEvent) {
@@ -51,6 +82,8 @@ export function NotificationBell({ basePath }: { basePath?: string }) {
           />
         </div>
       )}
+
+      <NotificationToaster toasts={toasts} onDismiss={dismissToast} onClick={onToastClick} />
     </div>
   );
 }

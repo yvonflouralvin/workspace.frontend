@@ -4,9 +4,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { NotificationsOutlined } from "@mui/icons-material";
 import { useNotifications } from "../hooks/useNotifications";
-import { playNotificationSound } from "../lib/sound";
+import { playNotificationSound, unlockAudio } from "../lib/sound";
 import { NotificationList } from "./NotificationList";
 import { NotificationToaster, type ToastItem } from "./NotificationToaster";
+import { PushToggle } from "./PushToggle";
 
 export function NotificationBell({ basePath }: { basePath?: string }) {
   const [open, setOpen] = useState(false);
@@ -49,6 +50,17 @@ export function NotificationBell({ basePath }: { basePath?: string }) {
     return () => document.removeEventListener("mousedown", onClick);
   }, []);
 
+  // Débloque l'audio au premier geste (politique autoplay des navigateurs).
+  useEffect(() => {
+    const unlock = () => unlockAudio();
+    window.addEventListener("pointerdown", unlock, { once: true });
+    window.addEventListener("keydown", unlock, { once: true });
+    return () => {
+      window.removeEventListener("pointerdown", unlock);
+      window.removeEventListener("keydown", unlock);
+    };
+  }, []);
+
   return (
     <div ref={ref} className="relative">
       <button
@@ -80,6 +92,9 @@ export function NotificationBell({ basePath }: { basePath?: string }) {
             onMarkAll={markAllRead}
             onClose={() => setOpen(false)}
           />
+          <div className="border-t border-outline-variant">
+            <PushToggle basePath={basePath} />
+          </div>
         </div>
       )}
 

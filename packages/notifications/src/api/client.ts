@@ -63,6 +63,31 @@ export async function updateRule(
   );
 }
 
+// ─── Web Push ─────────────────────────────────────────────────────────────────
+
+export async function getPushPublicKey(basePath = DEFAULT_BASE_PATH): Promise<string> {
+  const data = await parseResponse(await apiFetch(`${basePath}/push/public-key`));
+  return data.public_key as string;
+}
+
+export async function savePushSubscription(
+  subscription: unknown,
+  basePath = DEFAULT_BASE_PATH,
+): Promise<void> {
+  await parseResponse(
+    await apiFetch(`${basePath}/push/subscribe`, { method: "POST", body: subscription as object }),
+  );
+}
+
+export async function deletePushSubscription(
+  endpoint: string,
+  basePath = DEFAULT_BASE_PATH,
+): Promise<void> {
+  await parseResponse(
+    await apiFetch(`${basePath}/push/unsubscribe`, { method: "POST", body: { endpoint } }),
+  );
+}
+
 // Listes de destinataires (résolues via les BFF auth de l'app consommatrice).
 export async function listGroups(path = "/api/notifications/groups"): Promise<WorkspaceGroup[]> {
   return parseResponse(await apiFetch(path));

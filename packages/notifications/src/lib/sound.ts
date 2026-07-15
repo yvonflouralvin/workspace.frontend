@@ -11,6 +11,14 @@ function getContext(): AudioContext | null {
   return ctx;
 }
 
+// À appeler sur le premier geste utilisateur (clic/touche) : crée + réveille l'AudioContext
+// dans le contexte d'un geste, seul moment où les navigateurs l'autorisent. Sans ça, le
+// tout premier `playNotificationSound` (déclenché par un signal WS, hors geste) reste muet.
+export function unlockAudio(): void {
+  const audio = getContext();
+  if (audio && audio.state === "suspended") audio.resume().catch(() => {});
+}
+
 export function playNotificationSound(): void {
   const audio = getContext();
   if (!audio) return;

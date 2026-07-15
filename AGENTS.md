@@ -167,6 +167,9 @@ tombe. Aucune config front : l'URL est dérivée de `window.location`. À l'**ar
 notif temps réel : **son** (ding Web Audio synthétisé, pas de fichier) + **toast** en haut à
 droite (`NotificationToaster`, portalisé sur `body`, auto-dismiss 6 s, clic → navigation).
 Le hook détecte les nouvelles notifs par diff d'ids (aucun toast pour l'historique au chargement).
+**Web Push** (notifs OS même page fermée) : `PushToggle` (bouton dans le popover) enregistre le
+Service Worker (`apps/<app>/public/sw.js`) + s'abonne via `PushManager` (clé VAPID récupérée du
+hub). Routes BFF `/api/notifications/push/{public-key,subscribe,unsubscribe}`. Requiert HTTPS.
 `NotificationSettings` (`{ appKey, basePath?, groupsPath?, permissionsPath? }`) : UI de
 configuration à embarquer dans les Paramètres d'une app — par type de notification,
 choix des canaux (in_app/email/whatsapp) et des destinataires (groupes + permissions).

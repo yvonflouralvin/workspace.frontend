@@ -159,7 +159,11 @@ import { NotificationSettings } from '@repo/notifications/NotificationSettings'
 ```
 
 `NotificationBell` (`{ basePath? }`, défaut `/api/notifications`) : cloche + badge non-lus
-(polling 30 s) + popover du feed ; à placer dans le slot `notifications` du `TopBar`.
++ popover du feed ; à placer dans le slot `notifications` du `TopBar`. **Temps réel** : le
+hook `useNotifications` ouvre un **WebSocket** (`/ws/notifications`, même origine, routé par
+nginx vers la gateway dédiée `wd_bk_notifications_realtime`) ; à réception d'un signal il
+refait le fetch chiffré du feed. Reconnexion backoff + **polling 30 s en fallback** si le WS
+tombe. Aucune config front : l'URL est dérivée de `window.location`.
 `NotificationSettings` (`{ appKey, basePath?, groupsPath?, permissionsPath? }`) : UI de
 configuration à embarquer dans les Paramètres d'une app — par type de notification,
 choix des canaux (in_app/email/whatsapp) et des destinataires (groupes + permissions).

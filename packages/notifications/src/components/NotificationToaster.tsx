@@ -87,7 +87,10 @@ export function NotificationToaster({
   if (!mounted || typeof document === "undefined") return null;
 
   return createPortal(
-    <div className="pointer-events-none fixed top-4 right-4 z-[100] flex flex-col gap-2">
+    <div
+      className="pointer-events-none flex flex-col gap-2"
+      style={{ position: "fixed", top: 16, right: 16, zIndex: 2147483000 }}
+    >
       {toasts.map((t) => (
         <Toast key={t.id} toast={t} onDismiss={onDismiss} onClick={onClick} />
       ))}

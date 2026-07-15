@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { CloseOutlined, NotificationsActiveOutlined } from "@mui/icons-material";
+import { CloseOutlined } from "@mui/icons-material";
+import { typeIcon } from "../lib/meta";
 
 export interface ToastItem {
   id: number;
+  type_key: string;
   title: string;
   body: string | null;
   link: string | null;
@@ -50,7 +52,7 @@ function Toast({
       }`}
     >
       <span className="mt-0.5 shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-primary/10 text-primary">
-        <NotificationsActiveOutlined style={{ fontSize: 18 }} />
+        {typeIcon(toast.type_key, 18)}
       </span>
       <div className="min-w-0 flex-1">
         <p className="text-body-sm font-semibold text-on-surface truncate">{toast.title}</p>

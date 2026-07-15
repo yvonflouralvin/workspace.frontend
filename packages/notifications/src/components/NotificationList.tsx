@@ -1,8 +1,8 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { DoneAllOutlined, NotificationsNoneOutlined } from "@mui/icons-material";
 import type { InAppNotification } from "../types/notification";
+import { typeIcon } from "../lib/meta";
 
 function relTime(iso: string): string {
   const then = new Date(iso).getTime();
@@ -19,24 +19,14 @@ function relTime(iso: string): string {
 export function NotificationList({
   items,
   loading,
-  onItemClick,
+  onSelect,
   onMarkAll,
-  onClose,
 }: {
   items: InAppNotification[];
   loading: boolean;
-  onItemClick: (id: number) => void | Promise<void>;
+  onSelect: (n: InAppNotification) => void;
   onMarkAll: () => void | Promise<void>;
-  onClose: () => void;
 }) {
-  const router = useRouter();
-
-  async function handle(n: InAppNotification) {
-    if (!n.read_at) await onItemClick(n.id);
-    onClose();
-    if (n.link) router.push(n.link);
-  }
-
   const hasUnread = items.some((n) => !n.read_at);
 
   return (
@@ -68,16 +58,23 @@ export function NotificationList({
             <button
               key={n.id}
               type="button"
-              onClick={() => handle(n)}
+              onClick={() => onSelect(n)}
               className={`w-full text-left px-4 py-3 border-b border-outline-variant last:border-0 flex gap-3 transition-colors hover:bg-surface-container-low ${
                 n.read_at ? "" : "bg-surface-container-low/60"
               }`}
             >
               <span
-                className={`mt-1.5 shrink-0 w-2 h-2 rounded-full ${n.read_at ? "bg-transparent" : "bg-primary"}`}
-              />
+                className={`mt-0.5 shrink-0 w-8 h-8 flex items-center justify-center rounded-full ${
+                  n.read_at ? "bg-surface-container text-on-surface-variant" : "bg-primary/10 text-primary"
+                }`}
+              >
+                {typeIcon(n.type_key, 18)}
+              </span>
               <span className="min-w-0 flex-1">
-                <span className="block text-body-sm font-medium text-on-surface">{n.title}</span>
+                <span className="flex items-center gap-2">
+                  {!n.read_at && <span className="shrink-0 w-2 h-2 rounded-full bg-primary" />}
+                  <span className="block text-body-sm font-medium text-on-surface truncate">{n.title}</span>
+                </span>
                 {n.body && (
                   <span className="block text-body-sm text-on-surface-variant truncate">{n.body}</span>
                 )}

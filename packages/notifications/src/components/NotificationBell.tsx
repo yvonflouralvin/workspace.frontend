@@ -5,13 +5,16 @@ import { useRouter } from "next/navigation";
 import { NotificationsOutlined } from "@mui/icons-material";
 import { useNotifications } from "../hooks/useNotifications";
 import { playNotificationSound, unlockAudio } from "../lib/sound";
+import type { InAppNotification } from "../types/notification";
 import { NotificationList } from "./NotificationList";
+import { NotificationDetail } from "./NotificationDetail";
 import { NotificationToaster, type ToastItem } from "./NotificationToaster";
 import { PushToggle } from "./PushToggle";
 
 export function NotificationBell({ basePath }: { basePath?: string }) {
   const [open, setOpen] = useState(false);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const [detail, setDetail] = useState<InAppNotification | null>(null);
   const ref = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
@@ -20,12 +23,12 @@ export function NotificationBell({ basePath }: { basePath?: string }) {
   }, []);
 
   // Arrivée temps réel d'une notification → son + toast (haut droite).
-  const handleNew = useCallback((n: { id: number; title: string; body: string | null; link: string | null }) => {
+  const handleNew = useCallback((n: InAppNotification) => {
     playNotificationSound();
     setToasts((list) =>
       list.some((t) => t.id === n.id)
         ? list
-        : [...list, { id: n.id, title: n.title, body: n.body, link: n.link }],
+        : [...list, { id: n.id, type_key: n.type_key, title: n.title, body: n.body, link: n.link }],
     );
   }, []);
 
@@ -33,13 +36,36 @@ export function NotificationBell({ basePath }: { basePath?: string }) {
     onNew: handleNew,
   });
 
+  // Sélection d'une notification → marque lu + ouvre l'aperçu détaillé.
+  const openDetail = useCallback(
+    (n: InAppNotification) => {
+      if (!n.read_at) markRead(n.id);
+      setDetail(n);
+      setOpen(false);
+    },
+    [markRead],
+  );
+
   const onToastClick = useCallback(
     (toast: ToastItem) => {
-      markRead(toast.id);
+      const full = items.find((n) => n.id === toast.id);
       dismissToast(toast.id);
-      if (toast.link) router.push(toast.link);
+      openDetail(
+        full ?? {
+          id: toast.id, type_key: toast.type_key, title: toast.title, body: toast.body,
+          link: toast.link, data: null, read_at: null, created_at: new Date().toISOString(),
+        },
+      );
     },
-    [markRead, dismissToast, router],
+    [items, dismissToast, openDetail],
+  );
+
+  const onOpenLink = useCallback(
+    (link: string) => {
+      setDetail(null);
+      router.push(link);
+    },
+    [router],
   );
 
   useEffect(() => {
@@ -88,14 +114,17 @@ export function NotificationBell({ basePath }: { basePath?: string }) {
           <NotificationList
             items={items}
             loading={loading}
-            onItemClick={markRead}
+            onSelect={openDetail}
             onMarkAll={markAllRead}
-            onClose={() => setOpen(false)}
           />
           <div className="border-t border-outline-variant">
             <PushToggle basePath={basePath} />
           </div>
         </div>
+      )}
+
+      {detail && (
+        <NotificationDetail notification={detail} onClose={() => setDetail(null)} onOpen={onOpenLink} />
       )}
 
       <NotificationToaster toasts={toasts} onDismiss={dismissToast} onClick={onToastClick} />

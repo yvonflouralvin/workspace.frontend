@@ -1,5 +1,10 @@
 // Service Worker — notifications Web Push (affichées même onglet/navigateur fermé).
 
+// Prise de contrôle immédiate : le SW s'active et contrôle la page sans attendre un reload,
+// pour que getSubscription()/pushManager fonctionnent dès l'activation.
+self.addEventListener("install", () => self.skipWaiting());
+self.addEventListener("activate", (event) => event.waitUntil(self.clients.claim()));
+
 self.addEventListener("push", (event) => {
   let data = {};
   try {

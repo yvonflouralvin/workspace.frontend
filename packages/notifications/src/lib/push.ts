@@ -24,17 +24,19 @@ export function isPushSupported(): boolean {
   );
 }
 
-export async function getPushState(swPath = "/sw.js"): Promise<PushState> {
+export async function getPushState(): Promise<PushState> {
   if (!isPushSupported()) return "unsupported";
   if (Notification.permission === "denied") return "denied";
   try {
-    const reg = await navigator.serviceWorker.getRegistration(swPath);
+    const reg = await navigator.serviceWorker.getRegistration();
     const sub = reg ? await reg.pushManager.getSubscription() : null;
-    if (sub && Notification.permission === "granted") return "granted";
+    // « granted » seulement s'il existe un abonnement réel — sinon on propose d'activer,
+    // même si la permission navigateur est déjà accordée (permission ≠ abonnement).
+    if (sub) return "granted";
   } catch {
     /* ignore */
   }
-  return Notification.permission === "granted" ? "granted" : "default";
+  return "default";
 }
 
 export async function enablePush(basePath?: string, swPath = "/sw.js"): Promise<PushState> {

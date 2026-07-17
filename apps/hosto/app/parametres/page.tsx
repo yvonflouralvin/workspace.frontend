@@ -13,6 +13,7 @@ import {
   ScheduleOutlined,
   SettingsOutlined,
   NotificationsOutlined,
+  ShieldOutlined,
   ChevronRightOutlined,
 } from "@mui/icons-material";
 
@@ -51,6 +52,13 @@ const SECTIONS: Entry[] = [
     description: "Canaux et destinataires des notifications automatiques.",
     href: "/parametres/notifications",
     icon: <NotificationsOutlined style={{ fontSize: 22 }} />,
+  },
+  {
+    key: "access-control",
+    nom: "Contrôle d'accès aux dossiers",
+    description: "Mode d'application (observation / blocage) et seuil de couverture staff↔service.",
+    href: "/parametres/access-control",
+    icon: <ShieldOutlined style={{ fontSize: 22 }} />,
   },
 ];
 

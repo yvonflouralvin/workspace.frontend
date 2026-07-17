@@ -248,6 +248,36 @@ export async function updateParametre<T>(cle: string, valeur: T): Promise<Parame
   );
 }
 
+// --- Contrôle d'accès aux dossiers patients (bascule SHADOW/ENFORCE + garde-fou) ---
+
+export type EnforcementMode = "SHADOW" | "ENFORCE";
+
+export interface CoverageReport {
+  total: number;
+  assigned: number;
+  unassigned: number;
+  rate: number;
+  unassigned_staff: { id: number; nom: string }[];
+}
+
+export async function getAccessCoverage(): Promise<CoverageReport> {
+  return parseResponse(await apiFetch("/api/patient-access/coverage"));
+}
+
+// Bascule dédiée : contrairement à updateParametre, elle remonte le detail (string) du
+// refus 422 du garde-fou de couverture — sinon le message avec les noms serait perdu.
+export async function setEnforcementMode(mode: EnforcementMode): Promise<void> {
+  const response = await apiFetch("/api/parametres/patient_access_enforcement", {
+    method: "PUT",
+    body: { valeur: { mode } },
+  });
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    const detail = typeof data.detail === "string" ? data.detail : undefined;
+    throw new ApiError(detail ?? data.message ?? "Erreur lors de la bascule.", response.status);
+  }
+}
+
 export async function createService(data: ServiceCreateInput): Promise<Service> {
   return parseResponse(await apiFetch("/api/services", { method: "POST", body: data }));
 }

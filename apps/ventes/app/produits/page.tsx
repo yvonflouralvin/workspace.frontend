@@ -219,7 +219,9 @@ export default function ProduitsPage() {
                       className="border-b border-outline-variant last:border-0 hover:bg-surface-container-low transition-colors cursor-pointer"
                     >
                       <td className="px-5 py-3 text-on-surface font-medium">{p.nom}</td>
-                      <td className="px-5 py-3 text-on-surface-variant">{p.categorie_nom ?? "—"}</td>
+                      <td className="px-5 py-3 text-on-surface-variant">
+                        {p.categories.length ? p.categories.map((c) => c.nom).join(", ") : "—"}
+                      </td>
                       <td className="px-5 py-3 text-on-surface-variant max-w-xs truncate">{p.description || "—"}</td>
                       <td className="px-5 py-3 text-on-surface text-right tabular-nums">{formatPrix(p.prix_vente, deviseBase)}</td>
                     </tr>

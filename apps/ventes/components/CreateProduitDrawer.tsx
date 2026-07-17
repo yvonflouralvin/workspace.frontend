@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { RightDrawer } from "@repo/ui/RightDrawer";
 import { createProduit, listCategories, type Produit, type Categorie } from "@/lib/ventes-api";
+import { CategorieMultiSelect } from "./CategorieMultiSelect";
 
 const inputCls =
   "w-full px-3 py-2 rounded-xl border border-outline-variant bg-surface-container-lowest text-body-md text-on-surface focus:outline-none focus:border-primary transition-colors";
@@ -18,7 +19,7 @@ export function CreateProduitDrawer({
   const [nom, setNom] = useState("");
   const [description, setDescription] = useState("");
   const [unite, setUnite] = useState("");
-  const [categorieId, setCategorieId] = useState("");
+  const [categorieIds, setCategorieIds] = useState<number[]>([]);
   const [prix, setPrix] = useState("");
   const [cats, setCats] = useState<Categorie[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -38,7 +39,7 @@ export function CreateProduitDrawer({
         nom: nom.trim(),
         description: description.trim() || null,
         unite: unite.trim() || null,
-        categorie_id: categorieId === "" ? null : Number(categorieId),
+        categorie_ids: categorieIds,
         prix_vente: prix.trim() === "" ? null : Number(prix),
       });
       onCreated(produit);
@@ -72,13 +73,8 @@ export function CreateProduitDrawer({
           />
         </div>
         <div>
-          <label className={labelCls}>Catégorie</label>
-          <select className={inputCls} value={categorieId} onChange={(e) => setCategorieId(e.target.value)}>
-            <option value="">— Aucune —</option>
-            {cats.map((c) => (
-              <option key={c.id} value={c.id}>{c.nom}</option>
-            ))}
-          </select>
+          <label className={labelCls}>Catégories</label>
+          <CategorieMultiSelect cats={cats} selected={categorieIds} onChange={setCategorieIds} />
         </div>
         <div>
           <label className={labelCls}>Unité</label>

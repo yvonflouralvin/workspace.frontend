@@ -135,9 +135,22 @@ function GeneralTab({
     <>
       <div className="rounded-xl border border-outline-variant bg-surface-container-lowest divide-y divide-outline-variant">
         <div className="flex items-center gap-4 px-4 py-3">
-          <span className="text-label-md text-on-surface-variant w-40 shrink-0">Catégorie</span>
+          <span className="text-label-md text-on-surface-variant w-40 shrink-0">Catégories</span>
           <div className="flex-1 min-w-0">
-            <span className="block text-body-md text-on-surface">{produit.categorie_nom ?? "—"}</span>
+            {produit.categories.length ? (
+              <div className="flex flex-wrap gap-1.5">
+                {produit.categories.map((c) => (
+                  <span
+                    key={c.id}
+                    className="text-label-md text-on-surface bg-surface-container border border-outline-variant rounded-full px-2.5 py-1"
+                  >
+                    {c.nom}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <span className="block text-body-md text-on-surface">—</span>
+            )}
           </div>
           <IconActions
             onInfo={() => setShowCatInfo(true)}

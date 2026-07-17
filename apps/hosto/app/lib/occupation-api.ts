@@ -24,7 +24,6 @@ export interface LitOccupant {
   patient_age: number | null;
   patient_sexe: string | null;
   admitted_at: string | null;
-  motif_admission: string | null;
   duree_jours: number;
 }
 

@@ -222,9 +222,6 @@ function ServiceDetail({ serviceId, onBack, refreshKey }: {
               <div><p className="text-label-sm text-on-surface-variant">Admis le</p><p className="text-on-surface">{fmtDateTime(occupant.occupant.admitted_at)}</p></div>
               <div><p className="text-label-sm text-on-surface-variant">Durée</p><p className="text-on-surface">{occupant.occupant.duree_jours} jour(s)</p></div>
             </div>
-            {occupant.occupant.motif_admission && (
-              <div><p className="text-label-sm text-on-surface-variant">Motif d&apos;admission</p><p className="text-on-surface">{occupant.occupant.motif_admission}</p></div>
-            )}
             <Link href={`/patients/${occupant.occupant.patient_id}/emr`}
               className="inline-flex items-center gap-1.5 text-body-sm text-primary hover:opacity-70 transition-opacity">
               Ouvrir le dossier médical →

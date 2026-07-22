@@ -11,7 +11,7 @@ if (process.env.APPROVAL_FLOWS_APP_URL) {
 
 const nextConfig: NextConfig = {
   allowedDevOrigins,
-  transpilePackages: ["@repo/ui", "@repo/network", "@repo/auth"],
+  transpilePackages: ["@repo/ui", "@repo/network", "@repo/auth", "@repo/notifications"],
   output: "standalone",
 };
 

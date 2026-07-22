@@ -1,6 +1,10 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useSessionStore } from "@repo/auth/store/session.store";
+import { useNotifications } from "@repo/notifications/hooks/useNotifications";
+import { projectsApi } from "@/app/lib/projects-api";
 import {
   GroupOutlined,
   FolderOpenOutlined,
@@ -9,9 +13,9 @@ import {
   PersonAddOutlined,
 } from "@mui/icons-material";
 
-function StatCard({ label, value, icon }: { label: string; value: string | number; icon: React.ReactNode }) {
-  return (
-    <div className="flex flex-col gap-3 p-5 rounded-2xl bg-surface-container-lowest border border-outline-variant">
+function StatCard({ label, value, icon, href }: { label: string; value: string | number; icon: React.ReactNode; href?: string }) {
+  const body = (
+    <>
       <div className="flex items-center justify-between">
         <p className="text-sm text-on-surface-variant">{label}</p>
         <span className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
@@ -19,8 +23,17 @@ function StatCard({ label, value, icon }: { label: string; value: string | numbe
         </span>
       </div>
       <p className="text-3xl font-bold text-on-surface">{value}</p>
-    </div>
+    </>
   );
+  const cls = "flex flex-col gap-3 p-5 rounded-2xl bg-surface-container-lowest border border-outline-variant";
+  if (href) {
+    return (
+      <Link href={href} className={`${cls} hover:border-primary/40 hover:bg-primary/5 transition-colors`}>
+        {body}
+      </Link>
+    );
+  }
+  return <div className={cls}>{body}</div>;
 }
 
 function QuickAction({ label, icon, href }: { label: string; icon: React.ReactNode; href: string }) {
@@ -37,6 +50,12 @@ function QuickAction({ label, icon, href }: { label: string; icon: React.ReactNo
 
 export default function DashboardPage() {
   const { user, activeWorkspace } = useSessionStore();
+  const { unreadCount } = useNotifications("/api/notifications");
+  const [projectCount, setProjectCount] = useState<number | "—">("—");
+
+  useEffect(() => {
+    projectsApi.listProjects().then((p) => setProjectCount(p.length)).catch(() => {});
+  }, []);
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Bonjour" : hour < 18 ? "Bon après-midi" : "Bonsoir";
@@ -62,13 +81,15 @@ export default function DashboardPage() {
         />
         <StatCard
           label="Projets"
-          value="—"
+          value={projectCount}
           icon={<FolderOpenOutlined style={{ fontSize: 20 }} />}
+          href="/projects"
         />
         <StatCard
           label="Notifications"
-          value="0"
+          value={unreadCount}
           icon={<NotificationsOutlined style={{ fontSize: 20 }} />}
+          href="/notifications"
         />
       </div>
 

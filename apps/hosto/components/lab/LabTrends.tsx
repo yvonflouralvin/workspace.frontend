@@ -9,6 +9,7 @@ import {
   type LabTrendPoint,
 } from "@/app/lib/lab-api";
 import { TimelineOutlined } from "@mui/icons-material";
+import { RightDrawer } from "@repo/ui/RightDrawer";
 
 const RANGES = [
   { key: "3m", label: "3 mois", months: 3 },
@@ -165,6 +166,7 @@ export function LabTrends({ patientId }: { patientId: number | string }) {
   const [loading, setLoading] = useState(true);
   const [seriesLoading, setSeriesLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showValues, setShowValues] = useState(false);
 
   useEffect(() => {
     getPatientLabParameters(patientId)
@@ -269,7 +271,64 @@ export function LabTrends({ patientId }: { patientId: number | string }) {
             )}
           </>
         )}
+        {points.length > 0 && (
+          <div className="mt-2 flex justify-end">
+            <button onClick={() => setShowValues(true)} className="text-label-md text-primary hover:underline">
+              Voir plus ›
+            </button>
+          </div>
+        )}
       </div>
+
+      {showValues && series && (
+        <RightDrawer title={series.name} onClose={() => setShowValues(false)} width="w-[440px] max-w-full">
+          <LabValuesTable series={series} />
+        </RightDrawer>
+      )}
     </div>
   );
+}
+
+// Tableau des valeurs chronologiques qui composent la courbe d'un paramètre labo.
+function LabValuesTable({ series }: { series: LabTrendSeries }) {
+  const rows = series.points
+    .filter((p) => p.value_numeric !== null)
+    .slice()
+    .sort((a, b) => new Date(b.date ?? 0).getTime() - new Date(a.date ?? 0).getTime());
+
+  if (rows.length === 0) {
+    return <p className="text-body-sm text-on-surface-variant italic">Aucune valeur.</p>;
+  }
+
+  return (
+    <div className="rounded-2xl border border-outline-variant overflow-hidden">
+      <div className="grid grid-cols-[1fr_auto] px-4 py-2 bg-surface-container border-b border-outline-variant text-label-sm text-on-surface-variant">
+        <span>Date</span>
+        <span>Valeur</span>
+      </div>
+      {rows.map((p, i) => (
+        <div
+          key={`${p.date}-${i}`}
+          className={`flex items-center px-4 py-2 gap-3 ${i % 2 === 0 ? "bg-surface-container-lowest" : "bg-surface-container-low"}`}
+        >
+          <span className="text-body-sm text-on-surface-variant whitespace-nowrap tabular-nums">{fmtDateTime(p.date)}</span>
+          {p.interpretation && p.interpretation !== "NORMAL" && (
+            <span className={`text-label-sm whitespace-nowrap ${p.abnormal ? "text-error" : "text-on-surface-variant"}`}>
+              {INTERP_LABEL[p.interpretation] ?? p.interpretation}
+            </span>
+          )}
+          <span className={`ml-auto text-body-md font-medium tabular-nums whitespace-nowrap ${p.abnormal ? "text-error" : "text-on-surface"}`}>
+            {p.value_numeric} {p.unit ?? series.unit ?? ""}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function fmtDateTime(iso: string | null): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleString("fr-FR", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
 }

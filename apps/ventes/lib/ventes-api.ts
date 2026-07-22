@@ -85,6 +85,7 @@ export interface Produit {
   unite: string | null;
   categorie_id: number | null;
   categorie_nom: string | null;
+  categories: { id: number; nom: string }[];
   prix_vente: string | number | null;
   tva_applicable: boolean;
   stock_item_id: number | null;
@@ -100,6 +101,7 @@ export interface ProduitInput {
   description?: string | null;
   unite?: string | null;
   categorie_id?: number | null;
+  categorie_ids?: number[];
   prix_vente?: number | null;
   tva_applicable?: boolean;
 }

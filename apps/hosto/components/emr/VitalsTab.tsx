@@ -340,6 +340,7 @@ export function VitalsTab({
   const [error, setError] = useState<string | null>(null);
 
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [valuesGroup, setValuesGroup] = useState<ChartGroup | null>(null);
 
   const [deleteTarget, setDeleteTarget] = useState<ObservationRead | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -617,6 +618,16 @@ export function VitalsTab({
                       </p>
                     </div>
                   )}
+                  {seriesData.some((s) => s.points.length > 0) && (
+                    <div className="mt-2 flex justify-end">
+                      <button
+                        onClick={() => setValuesGroup(group)}
+                        className="text-label-md text-primary hover:underline"
+                      >
+                        Voir plus ›
+                      </button>
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -667,8 +678,62 @@ export function VitalsTab({
           />
         </RightDrawer>
       )}
+
+      {/* ── Valeurs chronologiques d'une tendance (« Voir plus ») ── */}
+      {valuesGroup && (
+        <RightDrawer title={valuesGroup.title} onClose={() => setValuesGroup(null)} width="w-[440px] max-w-full">
+          <ChartValuesTable group={valuesGroup} series={series} />
+        </RightDrawer>
+      )}
     </>
   );
+}
+
+// Tableau des valeurs chronologiques qui composent une courbe de constante.
+function ChartValuesTable({ group, series }: { group: ChartGroup; series: SeriesMap }) {
+  const rows = group.codes
+    .flatMap((code) =>
+      (series[code] ?? []).map((o) => ({
+        date: o.measured_at,
+        code,
+        value: o.value,
+        unit: UNITS[code],
+        label: group.codes.length > 1 ? LABELS[code] : null,
+        abnormal: isAbnormal(code, o.value),
+      })),
+    )
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+  if (rows.length === 0) {
+    return <p className="text-body-sm text-on-surface-variant italic">Aucune valeur.</p>;
+  }
+
+  return (
+    <div className="rounded-2xl border border-outline-variant overflow-hidden">
+      <div className="grid grid-cols-[1fr_auto] px-4 py-2 bg-surface-container border-b border-outline-variant text-label-sm text-on-surface-variant">
+        <span>Date</span>
+        <span>Valeur</span>
+      </div>
+      {rows.map((r, i) => (
+        <div
+          key={`${r.code}-${r.date}-${i}`}
+          className={`flex items-center gap-3 px-4 py-2 ${i % 2 === 0 ? "bg-surface-container-lowest" : "bg-surface-container-low"}`}
+        >
+          <span className="text-body-sm text-on-surface-variant whitespace-nowrap tabular-nums">{fmtDateTime(r.date)}</span>
+          {r.label && <span className="text-label-sm text-on-surface-variant whitespace-nowrap">{r.label}</span>}
+          <span className={`ml-auto text-body-md font-medium whitespace-nowrap tabular-nums ${r.abnormal ? "text-error" : "text-on-surface"}`}>
+            {r.value} {r.unit}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function fmtDateTime(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleString("fr-FR", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
 // ─── Inline form field ────────────────────────────────────────────────────────

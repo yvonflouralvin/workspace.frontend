@@ -11,7 +11,7 @@ if (process.env.DASHBOARD_APP_URL) {
 
 const nextConfig: NextConfig = {
   allowedDevOrigins,
-  transpilePackages: ["@repo/ui", "@repo/network", "@repo/auth", "@repo/reporting-widgets"],
+  transpilePackages: ["@repo/ui", "@repo/network", "@repo/auth", "@repo/reporting-widgets", "@repo/notifications"],
   output: "standalone",
 };
 

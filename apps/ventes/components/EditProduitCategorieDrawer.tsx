@@ -3,9 +3,8 @@
 import { useEffect, useState } from "react";
 import { RightDrawer } from "@repo/ui/RightDrawer";
 import { updateProduit, listCategories, type Produit, type Categorie } from "@/lib/ventes-api";
+import { CategorieMultiSelect } from "./CategorieMultiSelect";
 
-const inputCls =
-  "w-full px-3 py-2 rounded-xl border border-outline-variant bg-surface-container-lowest text-body-md text-on-surface focus:outline-none focus:border-primary transition-colors";
 const labelCls = "block text-label-md font-medium text-on-surface-variant mb-1.5";
 
 export function EditProduitCategorieDrawer({
@@ -17,8 +16,8 @@ export function EditProduitCategorieDrawer({
   onClose: () => void;
   onSaved: (produit: Produit) => void;
 }) {
-  const [categorieId, setCategorieId] = useState<string>(
-    produit.categorie_id != null ? String(produit.categorie_id) : "",
+  const [categorieIds, setCategorieIds] = useState<number[]>(
+    produit.categories.map((c) => c.id),
   );
   const [cats, setCats] = useState<Categorie[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -34,7 +33,7 @@ export function EditProduitCategorieDrawer({
     setError(null);
     try {
       const updated = await updateProduit(produit.id, {
-        categorie_id: categorieId === "" ? null : Number(categorieId),
+        categorie_ids: categorieIds,
       });
       onSaved(updated);
       onClose();
@@ -46,30 +45,15 @@ export function EditProduitCategorieDrawer({
   }
 
   return (
-    <RightDrawer title="Catégorie du produit" onClose={onClose}>
+    <RightDrawer title="Catégories du produit" onClose={onClose}>
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && (
           <p className="text-body-sm text-error bg-error-container/40 rounded-lg px-3 py-2">{error}</p>
         )}
         <div>
-          <label className={labelCls}>Catégorie</label>
-          <select
-            className={inputCls}
-            value={categorieId}
-            onChange={(e) => setCategorieId(e.target.value)}
-            autoFocus
-          >
-            <option value="">— Aucune —</option>
-            {cats.map((c) => (
-              <option key={c.id} value={c.id}>{c.nom}</option>
-            ))}
-          </select>
+          <label className={labelCls}>Catégories</label>
+          <CategorieMultiSelect cats={cats} selected={categorieIds} onChange={setCategorieIds} />
         </div>
-        {cats.length === 0 && (
-          <p className="text-body-sm text-on-surface-variant">
-            Aucune catégorie définie. Créez-en depuis Produits › Catégories.
-          </p>
-        )}
         <div className="flex justify-end gap-2 pt-2">
           <button
             type="button"

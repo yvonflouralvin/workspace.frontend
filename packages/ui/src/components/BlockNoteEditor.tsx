@@ -1,6 +1,14 @@
 "use client";
 
 import { useCallback, useMemo } from "react";
+import {
+  FormatBoldOutlined,
+  FormatItalicOutlined,
+  FormatUnderlinedOutlined,
+  FormatListBulletedOutlined,
+  CheckBoxOutlined,
+  CodeOutlined,
+} from "@mui/icons-material";
 import type { Block, PartialBlock } from "@blocknote/core";
 import { fr } from "@blocknote/core/locales";
 import { useCreateBlockNote } from "@blocknote/react";
@@ -15,6 +23,8 @@ export interface BlockNoteEditorProps {
   fallbackText?: string | null;
   editable?: boolean;
   placeholder?: string;
+  /** Barre d'outils persistante au-dessus de la zone d'édition. */
+  toolbar?: boolean;
   onChange?: (json: string) => void;
   className?: string;
 }
@@ -43,6 +53,7 @@ export function BlockNoteEditor({
   fallbackText,
   editable = true,
   placeholder,
+  toolbar = true,
   onChange,
   className,
 }: BlockNoteEditorProps) {
@@ -66,14 +77,103 @@ export function BlockNoteEditor({
     onChange?.(JSON.stringify(editor.document as Block[]));
   }, [editor, onChange]);
 
+  const toggleStyle = useCallback(
+    (style: "bold" | "italic" | "underline" | "code") => {
+      editor.focus();
+      editor.toggleStyles({ [style]: true });
+    },
+    [editor],
+  );
+
+  const setBlockType = useCallback(
+    (update: PartialBlock) => {
+      editor.focus();
+      const { block } = editor.getTextCursorPosition();
+      editor.updateBlock(block, update);
+    },
+    [editor],
+  );
+
   return (
-    <BlockNoteView
-      editor={editor}
-      editable={editable}
-      onChange={onChange ? handleChange : undefined}
-      theme="light"
-      className={className}
-    />
+    <div className={className}>
+      {editable && toolbar && (
+        <div className="flex items-center gap-0.5 flex-wrap px-2 py-1.5 border-b border-outline-soft">
+          <ToolbarButton label="Gras" onClick={() => toggleStyle("bold")}>
+            <FormatBoldOutlined style={{ fontSize: 17 }} />
+          </ToolbarButton>
+          <ToolbarButton label="Italique" onClick={() => toggleStyle("italic")}>
+            <FormatItalicOutlined style={{ fontSize: 17 }} />
+          </ToolbarButton>
+          <ToolbarButton label="Souligné" onClick={() => toggleStyle("underline")}>
+            <FormatUnderlinedOutlined style={{ fontSize: 17 }} />
+          </ToolbarButton>
+
+          <span className="w-px h-4 bg-outline-soft mx-1" />
+
+          <ToolbarButton
+            label="Titre 1"
+            onClick={() => setBlockType({ type: "heading", props: { level: 1 } })}
+          >
+            <span className="text-[12px] font-semibold">H1</span>
+          </ToolbarButton>
+          <ToolbarButton
+            label="Titre 2"
+            onClick={() => setBlockType({ type: "heading", props: { level: 2 } })}
+          >
+            <span className="text-[12px] font-semibold">H2</span>
+          </ToolbarButton>
+
+          <span className="w-px h-4 bg-outline-soft mx-1" />
+
+          <ToolbarButton label="Liste" onClick={() => setBlockType({ type: "bulletListItem" })}>
+            <FormatListBulletedOutlined style={{ fontSize: 17 }} />
+          </ToolbarButton>
+          <ToolbarButton
+            label="Case à cocher"
+            onClick={() => setBlockType({ type: "checkListItem" })}
+          >
+            <CheckBoxOutlined style={{ fontSize: 17 }} />
+          </ToolbarButton>
+          <ToolbarButton label="Code" onClick={() => toggleStyle("code")}>
+            <CodeOutlined style={{ fontSize: 17 }} />
+          </ToolbarButton>
+
+          <span className="ml-auto pr-1 text-[11px] text-outline whitespace-nowrap">
+            Tapez « / » pour les blocs
+          </span>
+        </div>
+      )}
+
+      <BlockNoteView
+        editor={editor}
+        editable={editable}
+        onChange={onChange ? handleChange : undefined}
+        theme="light"
+      />
+    </div>
+  );
+}
+
+function ToolbarButton({
+  children,
+  label,
+  onClick,
+}: {
+  children: React.ReactNode;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      title={label}
+      aria-label={label}
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={onClick}
+      className="w-7 h-7 flex items-center justify-center rounded-md text-on-surface-variant hover:bg-surface-container-low hover:text-primary transition-colors"
+    >
+      {children}
+    </button>
   );
 }
 

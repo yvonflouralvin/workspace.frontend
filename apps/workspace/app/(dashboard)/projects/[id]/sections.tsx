@@ -1,5 +1,11 @@
 import type { ReactNode } from "react";
-import { NotesOutlined, ViewKanbanOutlined, ViewListOutlined } from "@mui/icons-material";
+import {
+  NotesOutlined,
+  ViewKanbanOutlined,
+  ViewListOutlined,
+  DescriptionOutlined,
+  TimelineOutlined,
+} from "@mui/icons-material";
 
 export interface ProjectSection {
   key: string;
@@ -7,13 +13,29 @@ export interface ProjectSection {
   path: string;
   label: string;
   icon: ReactNode;
+  /** Section annoncée mais pas encore livrée : onglet grisé, non cliquable. */
+  soon?: boolean;
 }
 
 // Ajouter une section = une entrée ici + le dossier de route correspondant.
 export const PROJECT_SECTIONS: ProjectSection[] = [
-  { key: "overview", path: "", label: "Aperçu", icon: <NotesOutlined style={{ fontSize: 18 }} /> },
-  { key: "board", path: "/board", label: "Board", icon: <ViewKanbanOutlined style={{ fontSize: 18 }} /> },
-  { key: "tasks", path: "/tasks", label: "Tâches", icon: <ViewListOutlined style={{ fontSize: 18 }} /> },
+  { key: "overview", path: "", label: "Aperçu", icon: <NotesOutlined style={{ fontSize: 17 }} /> },
+  { key: "board", path: "/board", label: "Board", icon: <ViewKanbanOutlined style={{ fontSize: 17 }} /> },
+  { key: "tasks", path: "/tasks", label: "Tâches", icon: <ViewListOutlined style={{ fontSize: 17 }} /> },
+  {
+    key: "documents",
+    path: "/documents",
+    label: "Documents",
+    icon: <DescriptionOutlined style={{ fontSize: 17 }} />,
+    soon: true,
+  },
+  {
+    key: "timeline",
+    path: "/timeline",
+    label: "Échéancier",
+    icon: <TimelineOutlined style={{ fontSize: 17 }} />,
+    soon: true,
+  },
 ];
 
 export function sectionForPathname(pathname: string, projectId: number): ProjectSection {

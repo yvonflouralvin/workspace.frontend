@@ -70,6 +70,34 @@ export const PRIORITY_LABELS: Record<string, string> = {
   AUCUNE: "Aucune", BASSE: "Basse", MOYENNE: "Moyenne", HAUTE: "Haute", URGENTE: "Urgente",
 };
 export const PRIORITY_ORDER = ["AUCUNE", "BASSE", "MOYENNE", "HAUTE", "URGENTE"];
+
+/** Niveau affiché par les barrettes de priorité (`@repo/ui/PriorityBars`). */
+export const PRIORITY_LEVELS: Record<string, 0 | 1 | 2 | 3 | 4> = {
+  AUCUNE: 0, BASSE: 1, MOYENNE: 2, HAUTE: 3, URGENTE: 4,
+};
+
+/** Badge de statut : point + fond « soft », tokens `status-*`. */
+export const STATUS_TONES: Record<string, { dot: string; chip: string }> = {
+  BACKLOG:  { dot: "bg-status-backlog", chip: "bg-status-backlog-container text-status-backlog-on" },
+  A_FAIRE:  { dot: "bg-status-todo",    chip: "bg-status-todo-container text-status-todo-on" },
+  EN_COURS: { dot: "bg-status-doing",   chip: "bg-status-doing-container text-status-doing" },
+  EN_REVUE: { dot: "bg-status-review",  chip: "bg-status-review-container text-status-review" },
+  TERMINE:  { dot: "bg-status-done",    chip: "bg-status-done-container text-status-done" },
+};
+
+export const PROJECT_STATUS_LABELS: Record<string, string> = {
+  ACTIF: "Actif", EN_PAUSE: "En pause", ARCHIVE: "Archivé",
+};
+export const PROJECT_STATUS_ORDER = ["ACTIF", "EN_PAUSE", "ARCHIVE"];
+export const PROJECT_STATUS_DOTS: Record<string, string> = {
+  ACTIF: "bg-status-done", EN_PAUSE: "bg-member-invited", ARCHIVE: "bg-status-backlog",
+};
+
+/** Nuancier proposé pour la couleur d'un projet. */
+export const PROJECT_COLORS = [
+  "#3525cd", "#4f46e5", "#004598", "#0b7285", "#006c49",
+  "#b45309", "#ba1a1a", "#7c3aed", "#be185d", "#464555",
+];
 /** Classe de fond du point de statut — tokens `status-*` du design system. */
 export const STATUS_DOTS: Record<string, string> = {
   BACKLOG: "bg-status-backlog",

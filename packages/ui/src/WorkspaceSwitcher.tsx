@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { CheckOutlined, ExpandMoreOutlined, AddOutlined } from "@mui/icons-material";
+import { CheckOutlined, UnfoldMoreOutlined, AddOutlined } from "@mui/icons-material";
 import Link from "next/link";
 import { useSessionStore } from "@repo/auth/store/session.store";
 const COLORS = ["#3525cd", "#006c49", "#004598", "#b91c1c", "#a16207", "#7c3aed"];
@@ -12,8 +12,11 @@ function workspaceColor(id: number): string {
 
 export function WorkspaceSwitcher({
   filterPermission,
+  subtitle = "Workspace",
 }: {
   filterPermission?: string;
+  /** Ligne secondaire sous le nom du workspace. */
+  subtitle?: string;
 }) {
   const { activeWorkspace, workspaces, switchWorkspace } = useSessionStore();
   const [open, setOpen] = useState(false);
@@ -50,15 +53,18 @@ export function WorkspaceSwitcher({
 
   if (restricted) {
     return (
-      <div className="w-full flex items-center gap-2.5 px-2 py-2 rounded-xl">
+      <div className="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-[10px] border border-outline-soft">
         <span
-          className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+          className="w-[30px] h-[30px] rounded-lg flex-none flex items-center justify-center text-on-primary font-display font-bold text-[15px]"
           style={{ backgroundColor: color }}
         >
           {initial}
         </span>
-        <span className="flex-1 text-sm font-semibold text-on-surface text-left truncate">
-          {activeWorkspace.name}
+        <span className="flex-1 min-w-0 text-left leading-tight">
+          <span className="block font-display font-semibold text-body-sm text-on-surface truncate">
+            {activeWorkspace.name}
+          </span>
+          <span className="block text-[11px] text-on-surface-variant truncate">{subtitle}</span>
         </span>
       </div>
     );
@@ -72,21 +78,21 @@ export function WorkspaceSwitcher({
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center gap-2.5 px-2 py-2 rounded-xl hover:bg-surface-container transition-colors"
+        className="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-[10px] border border-outline-soft hover:bg-surface-container-low transition-colors"
       >
         <span
-          className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+          className="w-[30px] h-[30px] rounded-lg flex-none flex items-center justify-center text-on-primary font-display font-bold text-[15px]"
           style={{ backgroundColor: color }}
         >
           {initial}
         </span>
-        <span className="flex-1 text-sm font-semibold text-on-surface text-left truncate">
-          {activeWorkspace.name}
+        <span className="flex-1 min-w-0 text-left leading-tight">
+          <span className="block font-display font-semibold text-body-sm text-on-surface truncate">
+            {activeWorkspace.name}
+          </span>
+          <span className="block text-[11px] text-on-surface-variant truncate">{subtitle}</span>
         </span>
-        <ExpandMoreOutlined
-          style={{ fontSize: 18 }}
-          className={`text-on-surface-variant transition-transform duration-200 ${open ? "rotate-180" : ""}`}
-        />
+        <UnfoldMoreOutlined style={{ fontSize: 15 }} className="flex-none text-outline" />
       </button>
 
       {open && (

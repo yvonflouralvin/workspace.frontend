@@ -13,6 +13,7 @@ import {
 import Link from "next/link";
 import { AppDefinition, UserSummary } from "../types/shell";
 import { AppSelector } from "./AppSelector";
+import { Avatar } from "../Avatar";
 
 export interface SearchResult {
   id: number | string;
@@ -45,6 +46,12 @@ interface TopBarProps {
   appColor?: string;
   routeLabels?: Record<string, string>;
   routeIcons?: Record<string, React.ReactNode>;
+  /**
+   * `"search-first"` = disposition du design system : pilule de recherche à
+   * gauche, actions à droite, pas de fil d'Ariane. `"breadcrumbs"` conserve la
+   * disposition historique, le temps que les autres apps basculent.
+   */
+  variant?: "breadcrumbs" | "search-first";
 }
 
 interface BreadcrumbSegment {
@@ -205,6 +212,7 @@ export function TopBar({
   appColor,
   routeLabels,
   routeIcons,
+  variant = "breadcrumbs",
 }: TopBarProps) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [appSelectorOpen, setAppSelectorOpen] = useState(false);
@@ -226,76 +234,102 @@ export function TopBar({
     return () => document.removeEventListener("keydown", onKey);
   }, []);
 
-  const initials = user?.username ? user.username.slice(0, 2).toUpperCase() : "??";
+  const searchFirst = variant === "search-first";
+
+  const searchPill = onSearch && (
+    <button
+      onClick={() => setSearchOpen(true)}
+      className={
+        searchFirst
+          ? "flex flex-1 max-w-[420px] items-center gap-2 h-9 px-3 rounded-lg bg-background border border-outline-soft text-outline hover:border-primary/40 transition-colors"
+          : "flex items-center gap-2 px-3 h-9 min-w-[200px] rounded-lg bg-background border border-outline-soft text-outline hover:border-primary/40 transition-colors"
+      }
+    >
+      <SearchOutlined style={{ fontSize: 16 }} />
+      <span className="flex-1 text-left text-body-sm whitespace-nowrap">
+        Rechercher dans le workspace…
+      </span>
+      <kbd className="text-[11px] font-mono text-outline bg-surface-container-lowest border border-outline-soft rounded-sm px-[5px] leading-4">
+        ⌘K
+      </kbd>
+    </button>
+  );
+
+  const actions = (
+    <div className="flex items-center gap-1.5 shrink-0">
+      <div className="relative">
+        <button
+          onClick={() => setAppSelectorOpen((v) => !v)}
+          className="w-9 h-9 flex items-center justify-center rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors"
+          title="Applications"
+        >
+          <AppsOutlined style={{ fontSize: 18 }} />
+        </button>
+        {appSelectorOpen && (
+          <AppSelector
+            apps={apps}
+            allAppsUrl={allAppsUrl}
+            onClose={() => setAppSelectorOpen(false)}
+          />
+        )}
+      </div>
+
+      {notifications ?? (
+        <button
+          className="relative w-9 h-9 flex items-center justify-center rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors"
+          title="Notifications"
+        >
+          <NotificationsOutlined style={{ fontSize: 18 }} />
+          {notificationsCount > 0 && (
+            <span className="absolute top-1.5 right-2 w-[7px] h-[7px] rounded-full bg-error border-2 border-surface-container-lowest" />
+          )}
+        </button>
+      )}
+
+      <div className="relative">
+        <button
+          onClick={() => setUserMenuOpen((v) => !v)}
+          className="rounded-full hover:opacity-90 transition-opacity ml-0.5"
+          title={user?.username ?? "Profil"}
+        >
+          <Avatar name={user?.username ?? user?.email} size={32} variant="solid" />
+        </button>
+        {userMenuOpen && (
+          <UserMenu
+            user={user}
+            preferencesUrl={preferencesUrl}
+            onClose={() => setUserMenuOpen(false)}
+            onLogout={onLogout}
+          />
+        )}
+      </div>
+    </div>
+  );
 
   return (
-    <div className="flex items-center w-full px-4 gap-3 h-full">
-      <div className="flex-1 min-w-0">
-        <Breadcrumbs appName={appName} appHref={appHref} appIcon={appIcon} appColor={appColor} routeLabels={routeLabels} routeIcons={routeIcons} />
-      </div>
-
-      <div className="flex items-center gap-1 shrink-0">
-        {onSearch && (
-          <button
-            onClick={() => setSearchOpen(true)}
-            className="flex items-center gap-2 px-3 h-9 rounded-xl bg-surface-container text-on-surface-variant text-sm hover:bg-surface-container-low transition-colors"
-            style={{ minWidth: "200px" }}
-          >
-            <SearchOutlined style={{ fontSize: 18 }} />
-            <span className="flex-1 text-left">Rechercher…</span>
-            <kbd className="text-xs text-outline bg-surface-container-low rounded px-1.5 py-0.5 font-mono">
-              ⌘K
-            </kbd>
-          </button>
-        )}
-
-        <div className="relative">
-          <button
-            onClick={() => setAppSelectorOpen((v) => !v)}
-            className="w-9 h-9 flex items-center justify-center rounded-xl text-on-surface-variant hover:bg-surface-container transition-colors"
-            title="Applications"
-          >
-            <AppsOutlined style={{ fontSize: 20 }} />
-          </button>
-          {appSelectorOpen && (
-            <AppSelector
-              apps={apps}
-              allAppsUrl={allAppsUrl}
-              onClose={() => setAppSelectorOpen(false)}
+    <div className="flex items-center w-full h-full px-5 gap-4">
+      {searchFirst ? (
+        <>
+          {searchPill}
+          <div className="flex-1" />
+        </>
+      ) : (
+        <>
+          <div className="flex-1 min-w-0">
+            <Breadcrumbs
+              appName={appName}
+              appHref={appHref}
+              appIcon={appIcon}
+              appColor={appColor}
+              routeLabels={routeLabels}
+              routeIcons={routeIcons}
             />
-          )}
-        </div>
+          </div>
+          {searchPill}
+        </>
+      )}
 
-        {notifications ?? (
-          <button
-            className="relative w-9 h-9 flex items-center justify-center rounded-xl text-on-surface-variant hover:bg-surface-container transition-colors"
-            title="Notifications"
-          >
-            <NotificationsOutlined style={{ fontSize: 20 }} />
-            {notificationsCount > 0 && (
-              <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-error" />
-            )}
-          </button>
-        )}
-
-        <div className="relative">
-          <button
-            onClick={() => setUserMenuOpen((v) => !v)}
-            className="w-8 h-8 rounded-full bg-primary text-white text-xs font-semibold flex items-center justify-center hover:opacity-90 transition-opacity ml-1"
-            title={user?.username ?? "Profil"}
-          >
-            {initials}
-          </button>
-          {userMenuOpen && (
-            <UserMenu
-              user={user}
-              preferencesUrl={preferencesUrl}
-              onClose={() => setUserMenuOpen(false)}
-              onLogout={onLogout}
-            />
-          )}
-        </div>
-      </div>
+      {actions}
 
       {searchOpen && (
         <SearchModal onClose={() => setSearchOpen(false)} onSearch={onSearch} />

@@ -61,11 +61,11 @@ export function PermissionPicker({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Rechercher un groupe ou un droit…"
-          className="w-full pl-9 pr-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface"
+          className="w-full h-9 pl-9 pr-3 rounded-lg border border-outline-soft bg-surface text-body-sm text-on-surface outline-none focus:border-primary"
         />
       </div>
 
-      <div className="rounded-xl border border-outline-variant divide-y divide-outline-variant max-h-72 overflow-y-auto">
+      <div className="rounded-xl border border-outline-soft divide-y divide-hairline max-h-72 overflow-y-auto">
         {visibleGroups.length === 0 && (
           <p className="text-sm text-on-surface-variant px-3 py-3">Aucun résultat.</p>
         )}
@@ -81,9 +81,9 @@ export function PermissionPicker({
               <button
                 type="button"
                 onClick={() => setOpenKey((prev) => (prev === groupKey ? null : groupKey))}
-                className="w-full flex items-center justify-between px-3 py-2.5 text-left hover:bg-surface-container transition-colors"
+                className="w-full flex items-center justify-between px-3 py-2.5 text-left hover:bg-surface-container-low transition-colors"
               >
-                <span className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide">
+                <span className="text-label-sm uppercase text-on-surface-variant">
                   {group.name}
                   {checkedCount > 0 && (
                     <span className="ml-1.5 text-primary">({checkedCount})</span>
@@ -103,8 +103,8 @@ export function PermissionPicker({
                       key={permission.id}
                       checked={selectedIds.includes(permission.id)}
                       onChange={() => onToggle(permission.id)}
-                      label={permission.name}
-                      description={permission.description ?? undefined}
+                      label={permission.description ?? permission.name}
+                      description={permission.description ? permission.name : undefined}
                     />
                   ))}
                 </div>

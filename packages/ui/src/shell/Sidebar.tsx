@@ -11,27 +11,21 @@ interface SidebarProps {
 
 export function Sidebar({ topSlot, navItems, secondaryItems, bottomSlot }: SidebarProps) {
   return (
-    <div className="flex flex-col h-full">
-      {topSlot && (
-        <div className="px-3 pt-3 pb-2 border-b border-outline-variant">
-          {topSlot}
-        </div>
-      )}
+    <div className="flex flex-col h-full px-3 py-3.5">
+      {topSlot}
 
-      <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-1">
+      <div className="flex-1 overflow-y-auto mt-3.5 -mx-1 px-1">
         <SidebarNav items={navItems} />
 
         {secondaryItems && secondaryItems.length > 0 && (
           <>
-            <div className="my-3 border-t border-outline-variant" />
+            <div className="h-px bg-surface-container-low mx-1.5 my-3.5" />
             <SidebarNav items={secondaryItems} />
           </>
         )}
-      </nav>
-
-      <div className="border-t border-outline-variant px-3 py-3">
-        {bottomSlot}
       </div>
+
+      <div className="mt-auto pt-3 border-t border-surface-container-low">{bottomSlot}</div>
     </div>
   );
 }

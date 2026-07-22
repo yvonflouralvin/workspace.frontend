@@ -7,7 +7,7 @@ import { usePermissions } from "@repo/auth/hooks/usePermissions";
 import { apiFetch } from "@repo/network/client";
 import {
   ArrowBackOutlined, AddOutlined, ViewKanbanOutlined, ViewListOutlined,
-  ScheduleOutlined, DeleteOutlineOutlined,
+  ScheduleOutlined, DeleteOutlineOutlined, ExpandMoreOutlined,
 } from "@mui/icons-material";
 import {
   projectsApi, STATUS_LABELS, STATUS_ORDER, PRIORITY_LABELS, PRIORITY_ORDER, priorityTone,
@@ -73,39 +73,43 @@ function ProjectDetailInner() {
   if (!project) return <div className="p-8 text-sm text-error">Projet introuvable.</div>;
 
   return (
-    <div className="p-8 max-w-6xl mx-auto space-y-5">
-      <button onClick={() => router.push("/projects")} className="inline-flex items-center gap-1.5 text-sm text-on-surface-variant hover:text-on-surface">
-        <ArrowBackOutlined style={{ fontSize: 16 }} /> Projets
-      </button>
+    <div className="h-full flex flex-col p-8 gap-5">
+      <div className="shrink-0 space-y-5">
+        <button onClick={() => router.push("/projects")} className="inline-flex items-center gap-1.5 text-sm text-on-surface-variant hover:text-on-surface">
+          <ArrowBackOutlined style={{ fontSize: 16 }} /> Projets
+        </button>
 
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex items-center gap-3">
-          <span className="w-11 h-11 rounded-xl flex items-center justify-center text-lg"
-            style={{ background: (project.color ?? "#3525cd") + "1a", color: project.color ?? "#3525cd" }}>
-            {project.icon ?? project.key.slice(0, 2)}
-          </span>
-          <div>
-            <h1 className="text-xl font-bold text-on-surface">{project.name}</h1>
-            <p className="text-xs text-on-surface-variant font-mono">{project.key} · {tasks.length} tâche(s)</p>
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div className="flex items-center gap-3">
+            <span className="w-11 h-11 rounded-xl flex items-center justify-center text-lg"
+              style={{ background: (project.color ?? "#3525cd") + "1a", color: project.color ?? "#3525cd" }}>
+              {project.icon ?? project.key.slice(0, 2)}
+            </span>
+            <div>
+              <h1 className="text-xl font-bold text-on-surface">{project.name}</h1>
+              <p className="text-xs text-on-surface-variant font-mono">{project.key} · {tasks.length} tâche(s)</p>
+            </div>
           </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="flex rounded-xl border border-outline-variant overflow-hidden">
-            <button onClick={() => setView("liste")} title="Liste" className={`px-3 py-2 ${view === "liste" ? "bg-primary text-on-primary" : "text-on-surface-variant"}`}><ViewListOutlined style={{ fontSize: 18 }} /></button>
-            <button onClick={() => setView("kanban")} title="Kanban" className={`px-3 py-2 ${view === "kanban" ? "bg-primary text-on-primary" : "text-on-surface-variant"}`}><ViewKanbanOutlined style={{ fontSize: 18 }} /></button>
+          <div className="flex items-center gap-2">
+            <div className="flex rounded-xl border border-outline-variant overflow-hidden">
+              <button onClick={() => setView("liste")} title="Liste" className={`px-3 py-2 ${view === "liste" ? "bg-primary text-on-primary" : "text-on-surface-variant"}`}><ViewListOutlined style={{ fontSize: 18 }} /></button>
+              <button onClick={() => setView("kanban")} title="Kanban" className={`px-3 py-2 ${view === "kanban" ? "bg-primary text-on-primary" : "text-on-surface-variant"}`}><ViewKanbanOutlined style={{ fontSize: 18 }} /></button>
+            </div>
+            {canManage && (
+              <button onClick={() => setEditing("new")} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-on-primary text-sm font-medium">
+                <AddOutlined style={{ fontSize: 18 }} /> Nouvelle tâche
+              </button>
+            )}
           </div>
-          {canManage && (
-            <button onClick={() => setEditing("new")} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-on-primary text-sm font-medium">
-              <AddOutlined style={{ fontSize: 18 }} /> Nouvelle tâche
-            </button>
-          )}
         </div>
       </div>
 
       {view === "kanban" ? (
         <KanbanBoard tasks={tasks} canManage={canManage} onMove={moveTask} onOpen={setEditing} projectKey={project.key} />
       ) : (
-        <ListView tasks={tasks} onOpen={setEditing} projectKey={project.key} />
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          <ListView tasks={tasks} onOpen={setEditing} projectKey={project.key} />
+        </div>
       )}
 
       {editing && (
@@ -127,19 +131,19 @@ function KanbanBoard({ tasks, canManage, onMove, onOpen, projectKey }: {
 }) {
   const [drag, setDrag] = useState<Task | null>(null);
   return (
-    <div className="flex gap-3 overflow-x-auto pb-2">
+    <div className="flex-1 min-h-0 flex gap-3 overflow-x-auto overscroll-x-contain pb-2">
       {STATUS_ORDER.map((status) => {
         const col = tasks.filter((t) => t.status === status);
         return (
           <div key={status}
             onDragOver={(e) => { if (drag) e.preventDefault(); }}
             onDrop={() => { if (drag && drag.status !== status) onMove(drag, status); setDrag(null); }}
-            className="w-72 shrink-0 rounded-2xl bg-surface-container/50 border border-outline-variant p-2">
-            <div className="flex items-center justify-between px-2 py-1.5">
+            className="w-72 shrink-0 flex flex-col max-h-full rounded-2xl bg-surface-container/50 border border-outline-variant">
+            <div className="flex items-center justify-between px-3 py-2 shrink-0">
               <span className="text-sm font-medium text-on-surface-variant">{STATUS_LABELS[status]}</span>
               <span className="text-xs text-on-surface-variant/60">{col.length}</span>
             </div>
-            <div className="space-y-2 min-h-[40px]">
+            <div className="flex-1 min-h-0 overflow-y-auto space-y-2 px-2 pb-2">
               {col.map((t) => (
                 <div key={t.id} draggable={canManage} onDragStart={() => setDrag(t)} onDragEnd={() => setDrag(null)}
                   onClick={() => onOpen(t)}
@@ -161,26 +165,37 @@ function KanbanBoard({ tasks, canManage, onMove, onOpen, projectKey }: {
 }
 
 function ListView({ tasks, onOpen, projectKey }: { tasks: Task[]; onOpen: (t: Task) => void; projectKey: string }) {
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const toggle = (s: string) => setCollapsed((cur) => {
+    const next = new Set(cur);
+    next.has(s) ? next.delete(s) : next.add(s);
+    return next;
+  });
+  const active = STATUS_ORDER.filter((s) => tasks.some((t) => t.status === s));
+  if (active.length === 0) return <p className="text-sm text-on-surface-variant py-10 text-center">Aucune tâche pour le moment.</p>;
   return (
-    <div className="space-y-5">
-      {STATUS_ORDER.map((status) => {
+    <div className="space-y-3">
+      {active.map((status) => {
         const rows = tasks.filter((t) => t.status === status);
-        if (rows.length === 0) return null;
+        const isOpen = !collapsed.has(status);
         return (
-          <div key={status}>
-            <h3 className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-2">{STATUS_LABELS[status]} · {rows.length}</h3>
-            <div className="rounded-2xl border border-outline-variant overflow-hidden">
-              {rows.map((t, i) => (
-                <button key={t.id} onClick={() => onOpen(t)}
-                  className={`w-full text-left flex items-center gap-3 px-4 py-3 border-b border-outline-variant last:border-0 hover:bg-surface-container-low ${i % 2 === 0 ? "bg-surface-container-lowest" : "bg-surface-container-low/50"}`}>
-                  <span className="text-xs font-mono text-on-surface-variant w-16 shrink-0">{projectKey}-{t.number}</span>
-                  <span className="flex-1 text-sm text-on-surface truncate">{t.title}</span>
-                  {t.priority !== "AUCUNE" && <span className={`text-xs ${priorityTone(t.priority)}`}>{PRIORITY_LABELS[t.priority]}</span>}
-                  {t.assignee_name && <span className="text-xs text-on-surface-variant">{t.assignee_name}</span>}
-                  {t.due_date && <span className="text-xs text-on-surface-variant flex items-center gap-1"><ScheduleOutlined style={{ fontSize: 13 }} />{new Date(t.due_date).toLocaleDateString("fr-FR", { day: "2-digit", month: "short" })}</span>}
-                </button>
-              ))}
-            </div>
+          <div key={status} className="rounded-2xl border border-outline-variant overflow-hidden">
+            <button onClick={() => toggle(status)}
+              className="w-full flex items-center gap-2 px-4 py-2.5 bg-surface-container-low hover:bg-surface-container text-left">
+              <ExpandMoreOutlined style={{ fontSize: 18 }} className={`text-on-surface-variant transition-transform ${isOpen ? "" : "-rotate-90"}`} />
+              <span className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">{STATUS_LABELS[status]}</span>
+              <span className="text-xs text-on-surface-variant/60">{rows.length}</span>
+            </button>
+            {isOpen && rows.map((t, i) => (
+              <button key={t.id} onClick={() => onOpen(t)}
+                className={`w-full text-left flex items-center gap-3 px-4 py-3 border-t border-outline-variant hover:bg-surface-container-low ${i % 2 === 0 ? "bg-surface-container-lowest" : "bg-surface-container-low/50"}`}>
+                <span className="text-xs font-mono text-on-surface-variant w-16 shrink-0">{projectKey}-{t.number}</span>
+                <span className="flex-1 text-sm text-on-surface truncate">{t.title}</span>
+                {t.priority !== "AUCUNE" && <span className={`text-xs ${priorityTone(t.priority)}`}>{PRIORITY_LABELS[t.priority]}</span>}
+                {t.assignee_name && <span className="text-xs text-on-surface-variant">{t.assignee_name}</span>}
+                {t.due_date && <span className="text-xs text-on-surface-variant flex items-center gap-1"><ScheduleOutlined style={{ fontSize: 13 }} />{new Date(t.due_date).toLocaleDateString("fr-FR", { day: "2-digit", month: "short" })}</span>}
+              </button>
+            ))}
           </div>
         );
       })}
@@ -227,14 +242,14 @@ function TaskDrawer({ task, projectId, members, canManage, onClose, onSaved }: {
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-black/40" onClick={onClose}>
-      <div className="w-full max-w-md h-full bg-surface-container-lowest border-l border-outline-variant p-6 space-y-4 overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+      <div className="w-full max-w-[36rem] h-full bg-surface-container-lowest border-l border-outline-variant p-6 space-y-4 overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-on-surface">{task ? "Tâche" : "Nouvelle tâche"}</h2>
           <button onClick={onClose} className="text-on-surface-variant hover:text-on-surface">✕</button>
         </div>
         {error && <p className="text-sm text-error">{error}</p>}
         <input className={inputCls} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Titre de la tâche" disabled={readOnly} autoFocus />
-        <textarea className={inputCls} rows={4} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Description…" disabled={readOnly} />
+        <textarea className={inputCls} rows={5} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Description…" disabled={readOnly} />
         <div className="grid grid-cols-2 gap-3">
           <Sel label="Statut" value={status} onChange={setStatus} options={STATUS_ORDER.map((s) => [s, STATUS_LABELS[s]])} disabled={readOnly} />
           <Sel label="Priorité" value={priority} onChange={setPriority} options={PRIORITY_ORDER.map((p) => [p, PRIORITY_LABELS[p]])} disabled={readOnly} />

@@ -578,6 +578,47 @@ application (`MultiSelect`, alimentés par les facets).
 
 ---
 
+## Projets — détail d'un projet (`app/(dashboard)/projects/[id]/`)
+
+Le détail d'un projet est découpé en **sections** servies par des sous-routes, sous un
+**layout commun** qui porte l'entête et le sélecteur de section.
+
+```
+app/(dashboard)/projects/[id]/
+  layout.tsx           entête (icône, nom, clé · N tâches) + DropdownMenu de navigation
+  project-context.tsx  contexte { project, tasks, members, canManage, reloadTasks… }
+  sections.tsx         PROJECT_SECTIONS — la liste des sections
+  page.tsx             « Aperçu » — nom éditable + description riche (autosave)
+  board/page.tsx       « Board » — Kanban
+  tasks/page.tsx       « Tâches » — liste groupée par statut
+```
+
+- **`sections.tsx`** est le seul endroit à toucher pour ajouter une section : une entrée
+  `{ key, path, label, icon }` + le dossier de route correspondant. Le dropdown, le
+  libellé courant et la détection de section actives en découlent.
+- **`layout.tsx`** charge le projet, ses tâches et les membres du workspace **une fois**,
+  puis les expose via `ProjectProvider`. Les pages de section ne refetchent rien ; elles
+  consomment `useProject()`.
+- **Composants de tâches** (`components/projects/`) : `KanbanBoard`, `TaskListView`,
+  `TaskDrawer` et `TasksView` (chapeau : bouton « Nouvelle tâche », drawer, deep link
+  `?task=<id>`). `TasksView` prend `mode: "kanban" | "liste"` — c'est tout ce qui
+  distingue `/board` de `/tasks`.
+
+### Aperçu — nom + description riche
+
+- **Nom** : `<input>` sans bordure sur le titre. Le champ vide n'est jamais envoyé.
+- **Description** : `RichTextEditor` (`@repo/ui`, BlockNote — voir
+  `docs/packages/UI.md`). Le contenu est stocké en JSON dans `project.description_rich` ;
+  `project.description` reste le **texte brut dérivé côté backend**, utilisé par les
+  cartes de la liste et la recherche `ilike` (`backends/projects/services/rich_text.py`).
+- **Autosave** : les modifications sont accumulées dans un `pending` puis envoyées en un
+  seul `PATCH /api/projects/[id]` après **800 ms** d'inactivité. Le démontage de la page
+  (changement de section) flush ce qui reste. Indicateur `Enregistrement… / Enregistré /
+  Échec` à droite du nom.
+- Tout est en lecture seule sans la permission `projects.manage`.
+
+---
+
 ## Ordre d'implémentation
 
 1. `packages/ui/src/types/shell.ts` — types

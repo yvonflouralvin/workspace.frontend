@@ -99,6 +99,13 @@ import { AppShell, Sidebar, TopBar } from '@repo/ui/shell/AppShell'  // à const
 Exports configurés via `"exports": { "./*": "./src/*.tsx" }` — importer directement le fichier.
 MUI Icons et MUI Material sont disponibles dans ce package et dans toutes les apps.
 
+**Éditeur de texte riche** (`src/RichTextEditor.tsx`, importé `@repo/ui/RichTextEditor`) :
+éditeur type Notion bâti sur **BlockNote** (menu slash, blocs déplaçables, tableaux),
+thémé sur les tokens du design system. Rendu client uniquement (`next/dynamic`,
+`ssr: false`) et **non contrôlé après montage** — l'appelant debounce lui-même les
+sauvegardes. Toute app qui a besoin d'un champ texte riche doit passer par ce composant
+plutôt que d'ajouter un autre éditeur. Détail : `docs/packages/UI.md`.
+
 **Primitives de graphiques** (`src/charts/`, importées `@repo/ui/charts/LineChart`…) :
 `LineChart` (courbe temporelle), `BarChart` (histogramme catégoriel), `Sparkline` — **SVG
 natif, aucune dépendance de charting**, thémées via les tokens (`var(--color-*)`). Extraites

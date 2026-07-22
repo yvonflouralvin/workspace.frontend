@@ -16,6 +16,7 @@
     "@repo/approval-flows": "*",
     "@repo/auth": "*",
     "@repo/network": "*",
+    "@repo/notifications": "*",
     "@repo/ui": "*",
     "auth": "^0.1.0",
     "next": "16.2.6",

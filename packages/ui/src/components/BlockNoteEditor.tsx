@@ -97,7 +97,7 @@ export function BlockNoteEditor({
   return (
     <div className={className}>
       {editable && toolbar && (
-        <div className="flex items-center gap-0.5 flex-wrap px-3 py-1.5 border-b border-outline-soft">
+        <div className="flex items-center gap-0.5 flex-wrap px-10 py-2 border-b border-outline-soft">
           <ToolbarButton label="Gras" onClick={() => toggleStyle("bold")}>
             <FormatBoldOutlined style={{ fontSize: 17 }} />
           </ToolbarButton>
@@ -138,7 +138,7 @@ export function BlockNoteEditor({
             <CodeOutlined style={{ fontSize: 17 }} />
           </ToolbarButton>
 
-          <span className="ml-auto pr-1 text-[11px] text-outline whitespace-nowrap">
+          <span className="ml-auto text-[11px] text-outline whitespace-nowrap">
             Tapez « / » pour les blocs
           </span>
         </div>

@@ -513,6 +513,39 @@ paramètres de la même façon**.
   actuelles — les deux autres attendent que le backend marque les paramètres.
 - `Switch` est l'interrupteur 40×24 du design system, réutilisé par `SettingRow` et par
   les blocs de politique du panneau Général.
+### `RichTextEditor` (`src/RichTextEditor.tsx`)
+
+Éditeur de texte riche « à la Notion », bâti sur **BlockNote** (`@blocknote/core`,
+`@blocknote/react`, `@blocknote/mantine`) : blocs déplaçables, menu slash `/`, titres,
+listes, tableaux, code.
+
+```tsx
+<RichTextEditor
+  value={project.description_rich}     // document BlockNote sérialisé (JSON)
+  fallbackText={project.description}   // texte brut legacy, converti en paragraphes
+  editable={canManage}
+  placeholder="Décrivez le projet — tapez « / » pour les blocs…"
+  onChange={(json) => queue({ description_rich: json })}
+/>
+```
+
+- **Non contrôlé après montage** : `value` n'est lu qu'au premier rendu. L'éditeur est
+  ensuite la source de vérité — sinon chaque sauvegarde replacerait le curseur au début.
+  Corollaire : pour recharger un autre document, remonter la `key` du composant.
+- `onChange` émet à chaque frappe (JSON sérialisé) — **c'est à l'appelant de debouncer**
+  avant d'appeler l'API (cf. l'aperçu projet dans `apps/workspace`, debounce 800 ms).
+- **Rendu client uniquement** : le composant est un wrapper `next/dynamic` avec
+  `ssr: false` autour de `src/components/BlockNoteEditor.tsx` (BlockNote monte
+  ProseMirror sur le DOM). L'import dynamique utilise le spécifieur de package
+  (`@repo/ui/components/BlockNoteEditor`) et non un chemin relatif : sous
+  `moduleResolution: NodeNext`, un `import()` relatif exigerait une extension `.js`
+  explicite que le bundler ne sait pas remapper vers `.tsx`.
+- **Thème** : `src/components/blocknote-theme.css` remappe les variables `--bn-*` de
+  BlockNote sur les tokens du design system. Ne pas surcharger les sélecteurs internes
+  de BlockNote (ils changent d'une version à l'autre).
+- Stockage recommandé : une colonne `*_rich` (Text) pour le JSON + la colonne texte
+  brut existante pour les listes et la recherche, dérivée côté backend (cf.
+  `backends/projects/services/rich_text.py`).
 
 ---
 
@@ -522,6 +555,7 @@ paramètres de la même façon**.
 - `@emotion/react` + `@emotion/styled` — styling MUI
 - `tailwindcss` v4 — classes utilitaires
 - `react` 19, `react-dom` 19
+- `@blocknote/core` + `@blocknote/react` + `@blocknote/mantine` — éditeur riche (`RichTextEditor`)
 
 ---
 

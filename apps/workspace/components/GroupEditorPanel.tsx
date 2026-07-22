@@ -1,9 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { LockOutlined } from "@mui/icons-material";
 import { PermissionPicker } from "@repo/ui/PermissionPicker";
-import { updateGroup, deleteGroup, setGroupPermissions, ApiError } from "@/app/lib/api";
+import { updateGroup, setGroupPermissions, ApiError } from "@/app/lib/api";
 import type { Group, AppPermissionGroup } from "@/app/lib/types";
+
+const LABEL = "block text-label-sm uppercase text-outline mb-1.5";
+const FIELD =
+  "w-full rounded-lg border border-outline-soft text-body-md text-on-surface outline-none focus:border-primary transition-colors disabled:bg-background disabled:text-on-surface-variant";
 
 export function GroupEditorPanel({
   workspaceId,
@@ -11,22 +16,21 @@ export function GroupEditorPanel({
   hasChildren,
   permissionCatalog,
   onUpdated,
-  onDeleted,
+  onRequestDelete,
+  onError,
 }: {
   workspaceId: number;
   group: Group;
   hasChildren: boolean;
   permissionCatalog: AppPermissionGroup[];
   onUpdated: (group: Group) => void;
-  onDeleted: (groupId: number) => void;
+  onRequestDelete: () => void;
+  onError: (message: string) => void;
 }) {
   const [name, setName] = useState(group.name);
   const [description, setDescription] = useState(group.description ?? "");
-  const [permissionIds, setPermissionIds] = useState<number[]>(
-    group.permissions.map((p) => p.id)
-  );
-  const [error, setError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
+  const [permissionIds, setPermissionIds] = useState<number[]>(group.permissions.map((p) => p.id));
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     setName(group.name);
@@ -35,103 +39,79 @@ export function GroupEditorPanel({
   }, [group]);
 
   function togglePermission(id: number) {
-    setPermissionIds((prev) =>
-      prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]
-    );
+    setPermissionIds((prev) => (prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]));
   }
 
-  async function handleSave() {
-    setError(null);
-    setSubmitting(true);
+  async function save() {
+    setSaving(true);
     try {
       if (!group.is_system) {
         await updateGroup(workspaceId, group.id, { name, description });
       }
-      const updated = await setGroupPermissions(workspaceId, group.id, permissionIds);
-      onUpdated(updated);
+      onUpdated(await setGroupPermissions(workspaceId, group.id, permissionIds));
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Une erreur est survenue");
+      onError(err instanceof ApiError ? err.message : "Une erreur est survenue");
     } finally {
-      setSubmitting(false);
+      setSaving(false);
     }
   }
 
-  async function handleDelete() {
-    if (!confirm(`Supprimer le groupe "${group.name}" ?`)) return;
-    setSubmitting(true);
-    try {
-      await deleteGroup(workspaceId, group.id);
-      onDeleted(group.id);
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Une erreur est survenue");
-      setSubmitting(false);
-    }
-  }
-
-  const isSystem = group.is_system;
+  const locked = group.is_system;
 
   return (
-    <div className="space-y-5">
-      {error && (
-        <p className="text-sm text-error bg-error-container/40 rounded-lg px-3 py-2">
-          {error}
-        </p>
+    <div>
+      {locked && (
+        <div className="flex gap-2.5 px-3.5 py-3 rounded-[10px] bg-surface-container-low text-label-md text-on-surface-variant mb-4.5">
+          <LockOutlined style={{ fontSize: 15 }} className="flex-none text-primary" />
+          Groupe système — le nom et la description sont verrouillés.
+        </div>
       )}
 
-      {isSystem && (
-        <p className="text-sm text-on-surface-variant bg-surface-container rounded-lg px-3 py-2">
-          Groupe système — le nom et la description ne sont pas modifiables.
-        </p>
-      )}
+      <label className={LABEL} htmlFor="group-name">
+        Nom
+      </label>
+      <input
+        id="group-name"
+        type="text"
+        value={name}
+        disabled={locked}
+        onChange={(e) => setName(e.target.value)}
+        className={`${FIELD} h-[38px] px-3`}
+      />
 
-      <div className="space-y-1">
-        <label className="text-sm font-medium text-on-surface">Nom</label>
-        <input
-          type="text"
-          value={name}
-          disabled={isSystem}
-          onChange={(e) => setName(e.target.value)}
-          className="w-full px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface disabled:opacity-60"
-        />
-      </div>
+      <label className={`${LABEL} mt-4`} htmlFor="group-description">
+        Description
+      </label>
+      <textarea
+        id="group-description"
+        value={description}
+        disabled={locked}
+        onChange={(e) => setDescription(e.target.value)}
+        className={`${FIELD} h-[60px] px-3 py-2.5 resize-none`}
+      />
 
-      <div className="space-y-1">
-        <label className="text-sm font-medium text-on-surface">Description</label>
-        <textarea
-          value={description}
-          disabled={isSystem}
-          onChange={(e) => setDescription(e.target.value)}
-          rows={2}
-          className="w-full px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface resize-none disabled:opacity-60"
-        />
-      </div>
+      <p className={`${LABEL} mt-4`}>Permissions</p>
+      <PermissionPicker
+        groups={permissionCatalog}
+        selectedIds={permissionIds}
+        onToggle={togglePermission}
+      />
 
-      <div className="space-y-1">
-        <p className="text-sm font-medium text-on-surface">Permissions</p>
-        <PermissionPicker
-          groups={permissionCatalog}
-          selectedIds={permissionIds}
-          onToggle={togglePermission}
-        />
-      </div>
-
-      <div className="flex justify-between gap-2 pt-2">
-        {!isSystem && (
-          <button
-            onClick={handleDelete}
-            disabled={submitting || hasChildren}
-            title={hasChildren ? "Supprimez d'abord les sous-groupes" : undefined}
-            className="px-4 py-2 rounded-xl text-sm font-medium text-error hover:bg-error-container/40 transition-colors disabled:opacity-40"
-          >
-            Supprimer
-          </button>
-        )}
+      <div className="flex justify-between mt-5">
         <button
-          onClick={handleSave}
-          disabled={submitting}
-          className="px-4 py-2 rounded-xl text-sm font-medium bg-primary text-on-primary disabled:opacity-50 ml-auto"
+          onClick={onRequestDelete}
+          disabled={locked || hasChildren || saving}
+          title={hasChildren ? "Supprimez d'abord les sous-groupes" : undefined}
+          className="h-9 px-3.5 rounded-lg text-body-sm font-semibold text-error hover:bg-error-container disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
         >
-          {submitting ? "Enregistrement…" : "Enregistrer"}
+          Supprimer
+        </button>
+        <button
+          onClick={save}
+          disabled={saving}
+          className="h-9 px-5 rounded-lg bg-primary text-on-primary text-body-sm font-semibold shadow-button hover:bg-primary-container disabled:opacity-50 transition-colors"
+        >
+          {saving ? "Enregistrement…" : "Enregistrer"}
         </button>
       </div>
     </div>

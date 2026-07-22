@@ -5,6 +5,10 @@ import { Modal } from "@repo/ui/Modal";
 import { createGroup, ApiError } from "@/app/lib/api";
 import type { Group } from "@/app/lib/types";
 
+const FIELD =
+  "w-full rounded-lg border border-outline-soft bg-surface-container-lowest text-body-md text-on-surface outline-none focus:border-primary transition-colors";
+const LABEL = "block text-label-md font-semibold text-on-surface mb-1.5";
+
 export function CreateGroupModal({
   workspaceId,
   parent,
@@ -21,14 +25,18 @@ export function CreateGroupModal({
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  async function submit(e?: React.FormEvent) {
+    e?.preventDefault();
     setError(null);
+    if (!name.trim()) {
+      setError("Le nom est requis.");
+      return;
+    }
     setSubmitting(true);
     try {
       const group = await createGroup(workspaceId, {
-        name,
-        description: description || undefined,
+        name: name.trim(),
+        description: description.trim() || undefined,
         parent_id: parent?.id ?? null,
       });
       onCreated(group);
@@ -41,50 +49,58 @@ export function CreateGroupModal({
   }
 
   return (
-    <Modal title={parent ? `Sous-groupe de ${parent.name}` : "Nouveau groupe"} onClose={onClose}>
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {error && (
-          <p className="text-sm text-error bg-error-container/40 rounded-lg px-3 py-2">
-            {error}
-          </p>
-        )}
-
-        <div className="space-y-1">
-          <label className="text-sm font-medium text-on-surface">Nom</label>
-          <input
-            type="text"
-            required
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="w-full px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface"
-          />
-        </div>
-
-        <div className="space-y-1">
-          <label className="text-sm font-medium text-on-surface">Description</label>
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            rows={2}
-            className="w-full px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface resize-none"
-          />
-        </div>
-
-        <div className="flex justify-end gap-2 pt-2">
+    <Modal
+      title={parent ? `Sous-groupe de ${parent.name}` : "Nouveau groupe"}
+      onClose={onClose}
+      width="max-w-[32rem]"
+      footer={
+        <>
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 rounded-xl text-sm font-medium text-on-surface-variant hover:bg-surface-container transition-colors"
+            disabled={submitting}
+            className="h-[38px] px-4 rounded-lg border border-outline-soft bg-surface-container-lowest text-body-sm font-semibold text-on-surface-variant hover:bg-surface-container-low transition-colors"
           >
             Annuler
           </button>
           <button
-            type="submit"
+            type="button"
+            onClick={() => submit()}
             disabled={submitting}
-            className="px-4 py-2 rounded-xl text-sm font-medium bg-primary text-on-primary disabled:opacity-50"
+            className="ml-auto h-[38px] px-5 rounded-lg bg-primary text-on-primary text-body-sm font-semibold shadow-button hover:bg-primary-container disabled:opacity-50 transition-colors"
           >
             {submitting ? "Création…" : "Créer"}
           </button>
+        </>
+      }
+    >
+      <form onSubmit={submit} className="space-y-4">
+        {error && (
+          <p className="text-body-sm text-error bg-error-container/40 rounded-lg px-3 py-2">
+            {error}
+          </p>
+        )}
+
+        <div>
+          <label className={LABEL}>Nom</label>
+          <input
+            type="text"
+            autoFocus
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Ingénierie"
+            className={`${FIELD} h-[38px] px-3`}
+          />
+        </div>
+
+        <div>
+          <label className={LABEL}>Description</label>
+          <textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            rows={2}
+            className={`${FIELD} px-3 py-2.5 resize-none`}
+          />
         </div>
       </form>
     </Modal>

@@ -124,7 +124,26 @@ consommatrice.
 
 ### `@repo/design-system`
 
-Tokens de design (couleurs, espacements, typographie, border-radius) compilés depuis `src/` vers `dist/`.
+**`src/tokens.css` est la source unique des tokens** (`@theme` Tailwind v4) : couleurs,
+filets, statuts, priorités, rôles, espacements, typographie, ombres, animations. Chaque
+app l'importe depuis son `globals.css` :
+
+```css
+@import "tailwindcss";
+@import "../../../packages/design-system/src/tokens.css";
+@source "../../../packages/ui/src";
+```
+
+**Ne jamais redéclarer un bloc `@theme` dans une app** — les 8 apps portaient auparavant
+une copie identique du même bloc, qui divergeait dès qu'on en modifiait une seule. Un
+nouveau token s'ajoute dans `tokens.css`, point.
+
+Les familles de polices sont chargées par le `layout.tsx` de chaque app via `next/font`
+(`--font-geist-sans`, `--font-geist-mono`, `--font-inter`) ; `tokens.css` s'y branche avec
+un repli littéral. Une app qui ne charge pas encore Inter retombe sur la police système.
+
+Le reste du package (tokens TS compilés vers `dist/`) alimente l'ancienne config Tailwind
+et n'est pas consommé par les apps.
 
 ```ts
 // consommé via packages/tailwind-config
@@ -219,12 +238,26 @@ Le design system expose ses tokens comme classes Tailwind. Les voici référenc�
 | `surface-container-lowest` | `#ffffff`   | Blanc pur                          |
 | `on-surface`               | `#0b1c30`   | Texte principal                    |
 | `on-surface-variant`       | `#464555`   | Texte secondaire                   |
-| `outline`                  | `#777587`   | Bordures, séparateurs              |
-| `outline-variant`          | `#c7c4d8`   | Bordures légères                   |
+| `outline`                  | `#777587`   | Bordures marquées                  |
+| `outline-variant`          | `#c7c4d8`   | Séparations de structure (sidebar, top bar) |
+| `outline-soft`             | `#e5eeff`   | **Bordure par défaut** des cartes, inputs, boutons secondaires |
+| `hairline`                 | `#f1f5ff`   | Filet entre lignes de liste        |
+| `hairline-soft`            | `#f7f9ff`   | Filet interne le plus léger        |
+| `surface-row-alt`          | `#fbfcff`   | Entête de tableau, zébrage         |
+| `overlay`                  | `rgb(11 28 48 / .4)` | Fond des drawers et modales |
+| `track`                    | `#dce0ea`   | Jauges et barres inactives         |
 | `secondary`                | `#006c49`   | Accents verts                      |
 | `tertiary`                 | `#004598`   | Accents bleus                      |
 | `error`                    | `#ba1a1a`   | États d'erreur                     |
 | `error-container`          | `#ffdad6`   | Fond d'erreur                      |
+
+**Tokens sémantiques métier** (mêmes conventions `x` / `x-container`) :
+`status-{backlog,todo,doing,review,done}` (statuts de tâche),
+`priority-{urgent,high,medium,low,none}`,
+`role-{owner,admin,member}`, `member-{active,invited}`.
+
+**Ombres** : `shadow-button`, `shadow-card`, `shadow-drawer`, `shadow-modal`, `shadow-toast`.
+**Animations** : `animate-overlay-in`, `animate-drawer-in`, `animate-pop-in`, `animate-toast-in`.
 
 ### Espacements (usage : `p-md`, `gap-lg`, etc.)
 
@@ -260,10 +293,18 @@ Familles : `font-display` → Geist, `font-body-*` → Inter.
 
 | Token           | Valeur    |
 |-----------------|-----------|
-| `rounded`       | 0.125rem  |
-| `rounded-lg`    | 0.25rem   |
-| `rounded-xl`    | 0.5rem    |
-| `rounded-full`  | 0.75rem   |
+| `rounded-sm`    | 4px       |
+| `rounded-lg`    | 8px       |
+| `rounded-xl`    | 12px      |
+| `rounded-2xl`   | 16px      |
+| `rounded-full`  | 9999px    |
+
+Cartes = `rounded-2xl`, contrôles et inputs = `rounded-lg`, petites cartes internes =
+`rounded-xl`, pastilles = `rounded-full`.
+
+> ⚠️ **Piège largeurs.** Les tokens `--spacing-*` écrasent l'échelle des largeurs nommées :
+> `max-w-md` vaut **16px**, pas 28rem. Toujours une valeur arbitraire pour une modale ou un
+> drawer (`max-w-[28rem]`, `w-[460px]`).
 
 ---
 

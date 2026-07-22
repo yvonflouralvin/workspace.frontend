@@ -446,6 +446,45 @@ interface UserSummary {
 }
 ```
 
+### `Avatar` (`src/Avatar.tsx`)
+
+Pastille d'initiales. `variant="soft"` (fond de l'accent à 10 %, texte accent) dans les
+listes et les fiches, `variant="solid"` (fond plein, texte `on-primary`) dans le shell.
+`letters` vaut 2 par défaut ; les tableaux du design utilisent `letters={1}`.
+
+```tsx
+<Avatar name="Thomas Diallo" letters={1} size={32} />
+<Avatar name={user.username} size={30} variant="solid" />
+```
+
+### `Chip` (`src/Chip.tsx`)
+
+Badge court, adossé aux tokens sémantiques. `tone` : `neutral` (groupes, étiquettes),
+`primary` / `info` (rôles), `success` / `warning` (statuts), `danger`. `size="sm"` pour les
+chips secondaires (11/500), `"md"` pour les badges porteurs de sens (12/600).
+
+Distinct de `Badge`, qui reste la pilule `primary/10` historique.
+
+### `SearchField` (`src/SearchField.tsx`)
+
+Champ de recherche contrôlé, hauteur 38, bordure `outline-soft`, icône à gauche. Le
+debounce est à la charge de l'appelant (300 ms côté serveur sur la page Membres).
+
+### `ConfirmDialog` (`src/ConfirmDialog.tsx`) et `Toast` (`src/Toast.tsx`)
+
+**Remplacent `window.confirm` et `window.alert`** — plus aucun dialogue natif dans les apps.
+`ConfirmDialog` : icône, titre, message, `Annuler` + action colorée (`tone="danger"` par
+défaut), fermeture à l'Échap et au clic extérieur, `busy` pendant l'appel. `Toast` :
+notification éphémère sur `inverse-surface`, auto-dismiss 2,6 s, `tone` `success` | `error`.
+
+```tsx
+{pending && (
+  <ConfirmDialog title={`Retirer ${pending.name} ?`} message="…"
+    confirmLabel="Retirer" busy={busy} onConfirm={remove} onCancel={() => setPending(null)} />
+)}
+{toast && <Toast message={toast.message} tone={toast.tone} onDismiss={() => setToast(null)} />}
+```
+
 ---
 
 ## Dépendances disponibles dans le package

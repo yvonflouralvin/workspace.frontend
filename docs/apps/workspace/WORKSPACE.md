@@ -578,6 +578,56 @@ application (`MultiSelect`, alimentés par les facets).
 
 ---
 
+## Shell — variante « search-first »
+
+`TopBar` accepte `variant` : `"breadcrumbs"` (défaut, disposition historique conservée
+pour les autres apps) ou **`"search-first"`**, la disposition du design system — pilule de
+recherche à gauche (largeur max 420), actions à droite (grille d'apps, cloche, avatar 32),
+pas de fil d'Ariane. L'app `workspace` est la première à l'adopter ; les autres basculeront
+au fur et à mesure.
+
+Le `UserFooter` affiche une **ligne de rôle** sous le nom (`subtitle`). Le service auth ne
+stocke pas de rôle : `DashboardShell` le déduit — propriétaire du workspace, sinon
+`workspace.settings.manage` ou `members.manage` → « Administrateur », sinon « Membre ».
+La même dérivation alimente la colonne Rôle de la page Membres (`app/lib/members.ts`).
+
+---
+
+## Membres — page refondue
+
+**Annuaire** (`app/(dashboard)/members/page.tsx` + `components/members/MembersTable.tsx`) :
+recherche 300 px debouncée 300 ms côté serveur, puis une carte `rounded-2xl` contenant
+l'entête `label-sm` MAJUSCULES sur `surface-row-alt`, les lignes cliquables, et la
+pagination serveur (20/page) en pied. Colonnes : **Membre** (avatar + nom + email, suffixe
+« (vous) ») · **Rôle** · **Groupes** · **Dernière connexion** · **Statut**. Squelette
+shimmer pendant le chargement.
+
+> **Données manquantes côté auth.** `last_login_at` et `is_active` ne sont pas servis par
+> `_serialize_member` (`backends/auth/routes/members.py`) : les champs sont **optionnels**
+> dans `Member` et les colonnes affichent « — » et « Actif » tant qu'ils sont absents.
+> `last_login_at` demande en plus une colonne et une écriture au login.
+
+**Drawer de détail** (`components/MemberDetailDrawer.tsx`, largeur 460) : identité,
+Rôle / Statut / Dernière connexion, groupes en chips, puis les **permissions effectives
+groupées par application** — libellé lisible (`permission.description`, la clé technique
+passe en `title`) et provenance : point + chip `Direct`, ou chip gris portant le nom du
+groupe qui apporte le droit (`app/lib/members.ts#effectivePermissions` croise le catalogue,
+`member.permissions`, `member.direct_permissions` et les permissions des groupes).
+
+**Pas d'empilement de surfaces** : « Gérer les permissions » et « Réinitialiser le mot de
+passe » ouvrent un **panneau inline** dans le drawer, pas une modale par-dessus.
+`MemberPermissionsModal` a été supprimé ; le panneau porte à la fois les groupes
+(`MultiSelect`) et les permissions directes (`PermissionPicker`).
+
+**Ajout d'un membre** : modale 2 étapes avec indicateur « Étape n/2 » — email seul et
+vérification serveur, puis nom complet + mot de passe (bouton **Générer**) + groupes, ou
+une simple carte de rappel si le compte existe déjà.
+
+**Confirmations et erreurs** : `ConfirmDialog` et `Toast` de `@repo/ui`. Plus aucun
+`confirm()` / `alert()` natif sur cette page.
+
+---
+
 ## Ordre d'implémentation
 
 1. `packages/ui/src/types/shell.ts` — types

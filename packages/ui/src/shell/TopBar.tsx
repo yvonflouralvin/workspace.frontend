@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   SearchOutlined,
   AppsOutlined,
+  MenuOutlined,
   NotificationsOutlined,
   SettingsOutlined,
   LogoutOutlined,
@@ -13,6 +14,7 @@ import {
 import Link from "next/link";
 import { AppDefinition, UserSummary } from "../types/shell";
 import { AppSelector } from "./AppSelector";
+import { useShell } from "./AppShell";
 import { Avatar } from "../Avatar";
 
 export interface SearchResult {
@@ -235,6 +237,21 @@ export function TopBar({
   }, []);
 
   const searchFirst = variant === "search-first";
+  const { setMobileNavOpen } = useShell();
+  const pathname = usePathname();
+  // Sur mobile la barre se réduit à : hamburger + titre de page + cloche.
+  // On remonte le chemin jusqu'au libellé connu le plus proche : /projects/12/board
+  // n'a pas d'entrée propre mais doit afficher « Projets ».
+  const rawTitle = (() => {
+    if (!routeLabels) return "";
+    const segments = pathname.split("/").filter(Boolean);
+    for (let i = segments.length; i > 0; i--) {
+      const label = routeLabels["/" + segments.slice(0, i).join("/")];
+      if (label) return label;
+    }
+    return routeLabels["/"] ?? "";
+  })();
+  const mobileTitle = rawTitle ? rawTitle.charAt(0).toUpperCase() + rawTitle.slice(1) : appName;
 
   const searchPill = onSearch && (
     <button
@@ -307,7 +324,19 @@ export function TopBar({
   );
 
   return (
-    <div className="flex items-center w-full h-full px-5 gap-4">
+    <div className="flex items-center w-full h-full px-4 md:px-5 gap-3 md:gap-4">
+      <button
+        onClick={() => setMobileNavOpen(true)}
+        aria-label="Ouvrir la navigation"
+        className="md:hidden w-11 h-11 -ml-2 flex-none flex items-center justify-center rounded-lg text-on-surface-variant"
+      >
+        <MenuOutlined style={{ fontSize: 22 }} />
+      </button>
+      <span className="md:hidden flex-1 min-w-0 truncate font-display text-[17px] font-semibold text-on-surface">
+        {mobileTitle}
+      </span>
+
+      <div className="hidden md:contents">
       {searchFirst ? (
         <>
           {searchPill}
@@ -329,7 +358,11 @@ export function TopBar({
         </>
       )}
 
-      {actions}
+      </div>
+
+      <div className="md:hidden flex-none flex items-center">{notifications}</div>
+
+      <div className="hidden md:flex">{actions}</div>
 
       {searchOpen && (
         <SearchModal onClose={() => setSearchOpen(false)} onSearch={onSearch} />

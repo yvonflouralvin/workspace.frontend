@@ -76,7 +76,7 @@ export function NotificationChannelDrawer({
     <RightDrawer
       title={`Notifications — ${CHANNEL_LABELS[channelConfig.channel]}`}
       onClose={onClose}
-      width="w-[400px] max-w-[92vw]"
+      width="md:w-[400px] md:max-w-[92vw]"
       footer={
         <>
           <button

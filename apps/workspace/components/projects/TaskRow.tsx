@@ -32,14 +32,14 @@ export function TaskRow({
 
   const content = (
     <>
-      <span className="w-16 flex-none font-mono text-label-md text-outline">
+      <span className="w-14 md:w-16 flex-none font-mono text-label-md text-outline">
         {task.project_key}-{task.number}
       </span>
       <span className="flex-1 min-w-0 truncate text-left text-body-md text-on-surface">
         {task.title}
       </span>
       {task.priority !== "AUCUNE" && (
-        <span className="flex-none inline-flex items-center gap-1.5">
+        <span className="hidden sm:inline-flex flex-none items-center gap-1.5">
           <PriorityBars
             level={PRIORITY_LEVELS[task.priority] ?? 0}
             label={PRIORITY_LABELS[task.priority]}
@@ -47,13 +47,13 @@ export function TaskRow({
         </span>
       )}
       <span
-        className={`flex-none inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-semibold ${tone?.chip ?? ""}`}
+        className={`hidden sm:inline-flex flex-none items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-semibold ${tone?.chip ?? ""}`}
       >
         <span className={`w-1.5 h-1.5 rounded-full ${tone?.dot ?? ""}`} />
         {STATUS_LABELS[task.status]}
       </span>
       <span
-        className={`w-[86px] flex-none inline-flex items-center justify-end gap-1 text-label-md ${
+        className={`w-[64px] md:w-[86px] flex-none inline-flex items-center justify-end gap-1 text-label-md ${
           overdue ? "text-error font-semibold" : "text-outline"
         }`}
       >
@@ -70,7 +70,7 @@ export function TaskRow({
     </>
   );
 
-  const className = `w-full flex items-center gap-3 px-4 py-3 border-b border-hairline last:border-b-0 hover:bg-surface-container-low transition-colors ${
+  const className = `w-full flex items-center gap-2.5 md:gap-3 px-4 py-3 border-b border-hairline last:border-b-0 hover:bg-surface-container-low transition-colors ${
     index % 2 === 1 ? "bg-surface-row-alt" : ""
   }`;
 

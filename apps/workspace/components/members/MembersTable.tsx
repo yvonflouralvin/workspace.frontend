@@ -38,7 +38,7 @@ export function MembersTable({
 
   return (
     <div className="rounded-2xl border border-outline-soft bg-surface-container-lowest overflow-hidden">
-      <div className="flex items-center gap-4 px-5 py-2.5 bg-surface-row-alt border-b border-surface-container-low text-label-sm uppercase text-outline">
+      <div className="hidden md:flex items-center gap-4 px-5 py-2.5 bg-surface-row-alt border-b border-surface-container-low text-label-sm uppercase text-outline">
         <span className="flex-1">Membre</span>
         {COLUMNS.map((c) => (
           <span key={c.key} className={`${c.width} flex-none`}>
@@ -60,9 +60,9 @@ export function MembersTable({
             <button
               key={member.id}
               onClick={() => onOpen(member)}
-              className="w-full flex items-center gap-4 px-5 py-3 text-left border-b border-hairline hover:bg-surface-container-low transition-colors"
+              className="w-full flex flex-wrap md:flex-nowrap items-start md:items-center gap-x-4 gap-y-2 px-4 md:px-5 py-3.5 md:py-3 text-left border-b border-hairline hover:bg-surface-container-low transition-colors"
             >
-              <span className="flex-1 min-w-0 flex items-center gap-3">
+              <span className="w-full md:flex-1 min-w-0 flex items-center gap-3">
                 <Avatar name={member.user.username} letters={1} size={32} />
                 <span className="min-w-0">
                   <span className="block text-body-md font-medium text-on-surface truncate">
@@ -77,13 +77,13 @@ export function MembersTable({
                 </span>
               </span>
 
-              <span className="w-24 flex-none">
+              <span className="md:w-24 flex-none">
                 <Chip tone={ROLE_TONES[role]}>{ROLE_LABELS[role]}</Chip>
               </span>
 
-              <span className="w-[150px] flex-none flex flex-wrap gap-1">
+              <span className="md:w-[150px] flex-none flex flex-wrap gap-1">
                 {member.groups.length === 0 ? (
-                  <span className="text-label-md text-outline">—</span>
+                  <span className="hidden md:inline text-label-md text-outline">—</span>
                 ) : (
                   member.groups.map((g) => (
                     <Chip key={g.id} size="sm">
@@ -93,7 +93,7 @@ export function MembersTable({
                 )}
               </span>
 
-              <span className="w-[120px] flex-none text-body-sm text-on-surface-variant">
+              <span className="hidden md:inline w-[120px] flex-none text-body-sm text-on-surface-variant">
                 {member.last_login_at
                   ? new Date(member.last_login_at).toLocaleDateString("fr-FR", {
                       day: "2-digit",
@@ -102,7 +102,7 @@ export function MembersTable({
                   : "—"}
               </span>
 
-              <span className="w-24 flex-none">
+              <span className="md:w-24 flex-none">
                 {member.is_active === false ? (
                   <Chip tone="warning">Suspendu</Chip>
                 ) : (
@@ -114,7 +114,7 @@ export function MembersTable({
         })
       )}
 
-      <div className="flex items-center justify-between px-5 py-3 text-body-sm text-outline">
+      <div className="flex items-center justify-between px-4 md:px-5 py-3 text-body-sm text-outline">
         <span>
           {total === 0 ? "Aucun membre" : `${from}–${to} sur ${total}`}
         </span>
@@ -167,7 +167,7 @@ function SkeletonRows() {
   return (
     <div>
       {Array.from({ length: 6 }, (_, i) => (
-        <div key={i} className="flex items-center gap-4 px-5 py-3 border-b border-hairline">
+        <div key={i} className="flex items-center gap-4 px-4 md:px-5 py-3 border-b border-hairline">
           <div className="flex-1 flex items-center gap-3">
             <div className="w-8 h-8 rounded-full bg-surface-container-low animate-pulse" />
             <div className="space-y-1.5">
@@ -175,10 +175,10 @@ function SkeletonRows() {
               <div className="h-2.5 w-40 rounded bg-surface-container-low animate-pulse" />
             </div>
           </div>
-          <div className="w-24 h-5 rounded bg-surface-container-low animate-pulse" />
-          <div className="w-[150px] h-5 rounded bg-surface-container-low animate-pulse" />
-          <div className="w-[120px] h-4 rounded bg-surface-container-low animate-pulse" />
-          <div className="w-24 h-5 rounded bg-surface-container-low animate-pulse" />
+          <div className="hidden md:block w-24 h-5 rounded bg-surface-container-low animate-pulse" />
+          <div className="hidden md:block w-[150px] h-5 rounded bg-surface-container-low animate-pulse" />
+          <div className="hidden md:block w-[120px] h-4 rounded bg-surface-container-low animate-pulse" />
+          <div className="hidden md:block w-24 h-5 rounded bg-surface-container-low animate-pulse" />
         </div>
       ))}
     </div>

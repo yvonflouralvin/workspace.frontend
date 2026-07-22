@@ -111,7 +111,7 @@ export function TaskDrawer({
     <RightDrawer
       title={task ? `${projectKey}-${task.number}` : "Nouvelle tâche"}
       onClose={onClose}
-      width="w-[448px] max-w-[92vw]"
+      width="md:w-[448px] md:max-w-[92vw]"
       footer={
         readOnly ? undefined : (
           <>

@@ -67,7 +67,7 @@ export default function GroupsPage() {
 
   if (!canManage) {
     return (
-      <div className="p-8 max-w-[1024px] mx-auto">
+      <div className="p-4 md:p-8 max-w-[1024px] mx-auto">
         <h1 className="font-display text-headline-md text-on-surface">Groupes</h1>
         <p className="text-body-md text-on-surface-variant mt-0.5">
           Vous n&apos;avez pas accès à cette page.
@@ -82,7 +82,7 @@ export default function GroupsPage() {
     : false;
 
   return (
-    <div className="p-8 max-w-[1024px] mx-auto">
+    <div className="p-4 md:p-8 max-w-[1024px] mx-auto">
       <Link
         href="/members"
         className="inline-flex items-center gap-1.5 text-body-sm font-medium text-on-surface-variant hover:text-primary transition-colors mb-4"
@@ -100,7 +100,7 @@ export default function GroupsPage() {
         </div>
         <button
           onClick={() => setCreateParent(null)}
-          className="inline-flex items-center gap-1.5 h-[38px] px-4 rounded-lg bg-primary text-on-primary text-body-sm font-semibold shadow-button hover:bg-primary-container transition-colors"
+          className="inline-flex items-center justify-center gap-1.5 h-11 md:h-[38px] px-4 rounded-lg bg-primary text-on-primary text-body-sm font-semibold shadow-button hover:bg-primary-container transition-colors whitespace-nowrap"
         >
           <AddOutlined style={{ fontSize: 16 }} />
           Nouveau groupe

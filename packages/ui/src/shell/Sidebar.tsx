@@ -1,6 +1,9 @@
+"use client";
+
 import { ReactNode } from "react";
 import { NavItem } from "../types/shell";
 import { SidebarNav } from "./SidebarNav";
+import { useSidebarMode } from "./AppShell";
 
 interface SidebarProps {
   topSlot?: ReactNode;
@@ -10,8 +13,10 @@ interface SidebarProps {
 }
 
 export function Sidebar({ topSlot, navItems, secondaryItems, bottomSlot }: SidebarProps) {
+  const expanded = useSidebarMode() === "expanded";
+
   return (
-    <div className="flex flex-col h-full px-3 py-3.5">
+    <div className={`flex flex-col h-full py-3.5 ${expanded ? "px-3" : "px-2 lg:px-3"}`}>
       {topSlot}
 
       <div className="flex-1 overflow-y-auto mt-3.5 -mx-1 px-1">

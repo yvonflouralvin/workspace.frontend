@@ -43,7 +43,7 @@ export function TasksView({ mode }: { mode: "kanban" | "liste" }) {
         <div className="flex justify-end">
           <button
             onClick={() => setEditing("new")}
-            className="inline-flex items-center gap-1.5 h-[38px] px-4 rounded-lg bg-primary text-on-primary text-body-sm font-semibold shadow-button hover:bg-primary-container transition-colors"
+            className="inline-flex items-center justify-center gap-1.5 h-11 md:h-[38px] px-4 rounded-lg bg-primary text-on-primary text-body-sm font-semibold shadow-button hover:bg-primary-container transition-colors whitespace-nowrap"
           >
             <AddOutlined style={{ fontSize: 16 }} />
             Nouvelle tâche

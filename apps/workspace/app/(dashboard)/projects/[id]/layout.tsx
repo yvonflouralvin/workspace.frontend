@@ -57,17 +57,17 @@ export default function ProjectLayout({ children }: { children: ReactNode }) {
   }, [activeWorkspace]);
 
   if (loading) {
-    return <div className="p-8 text-body-md text-on-surface-variant">Chargement…</div>;
+    return <div className="p-4 md:p-8 text-body-md text-on-surface-variant">Chargement…</div>;
   }
   if (!project) {
-    return <div className="p-8 text-body-md text-error">Projet introuvable.</div>;
+    return <div className="p-4 md:p-8 text-body-md text-error">Projet introuvable.</div>;
   }
 
   const current = sectionForPathname(pathname, projectId);
   const color = project.color ?? "#3525cd";
 
   return (
-    <div className="p-8 max-w-[1152px] mx-auto">
+    <div className="p-4 md:p-8 max-w-[1152px] mx-auto">
       <Link
         href="/projects"
         className="inline-flex items-center gap-1.5 text-body-sm font-medium text-on-surface-variant hover:text-primary transition-colors mb-4"

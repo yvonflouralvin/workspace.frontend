@@ -233,7 +233,7 @@ export default function SettingsPage() {
 
   if (!canManage) {
     return (
-      <div className="p-8 max-w-[1024px] mx-auto">
+      <div className="p-4 md:p-8 max-w-[1024px] mx-auto">
         <h1 className="font-display text-headline-md text-on-surface">Paramètres</h1>
         <p className="text-body-md text-on-surface-variant mt-0.5">
           Vous n&apos;avez pas accès à cette page.
@@ -243,8 +243,8 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="p-8 max-w-[1024px] mx-auto">
-      <div className="mb-6">
+    <div className="p-4 md:p-8 max-w-[1024px] mx-auto">
+      <div className="hidden md:block mb-6">
         <h1 className="font-display text-headline-md text-on-surface">Paramètres</h1>
         <p className="text-body-md text-on-surface-variant mt-0.5">
           Paramètres globaux du workspace et de chaque application.
@@ -260,8 +260,27 @@ export default function SettingsPage() {
       {loading ? (
         <p className="text-body-md text-on-surface-variant">Chargement…</p>
       ) : (
-        <div className="grid grid-cols-[256px_1fr] gap-6 items-start">
+        <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] lg:grid-cols-[256px_1fr] gap-4 md:gap-6 items-start">
           <div>
+            <label className="md:hidden block">
+              <span className="sr-only">Application</span>
+              <select
+                value={selectedKey}
+                onChange={(e) => {
+                  setSelectedKey(e.target.value);
+                  setSettingQuery("");
+                }}
+                className="w-full h-11 px-3 rounded-lg border border-outline-soft bg-surface-container-lowest text-body-md font-semibold text-primary outline-none focus:border-primary"
+              >
+                {groups.map((group) => (
+                  <option key={group.key ?? GENERAL_KEY} value={group.key ?? GENERAL_KEY}>
+                    {group.name} ({group.settings.length})
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <div className="hidden md:block">
             <SearchField
               value={appQuery}
               onChange={setAppQuery}
@@ -306,9 +325,10 @@ export default function SettingsPage() {
                 );
               })}
             </div>
+            </div>
           </div>
 
-          <div className="relative rounded-2xl border border-outline-soft bg-surface-container-lowest p-5">
+          <div className="relative rounded-2xl border border-outline-soft bg-surface-container-lowest p-4 md:p-5">
             {selectedKey === GENERAL_KEY ? (
               <div className="flex flex-col gap-4">
                 {workspaceDetail?.type === "organization" && (
@@ -375,7 +395,7 @@ export default function SettingsPage() {
             )}
 
             {dirtyCount > 0 && (
-              <div className="sticky bottom-0 -mx-5 -mb-5 mt-5 flex items-center gap-3 px-5 py-3 bg-surface-container-low border-t border-primary-fixed-dim rounded-b-2xl animate-toast-in">
+              <div className="sticky bottom-0 -mx-4 md:-mx-5 -mb-4 md:-mb-5 mt-5 flex flex-wrap items-center gap-3 px-4 md:px-5 py-3 bg-surface-container-low border-t border-primary-fixed-dim rounded-b-2xl animate-toast-in">
                 <span className="w-2 h-2 rounded-full bg-primary" />
                 <span className="flex-1 text-body-sm font-medium text-primary">
                   {dirtyCount} modification{dirtyCount > 1 ? "s" : ""} non enregistrée

@@ -136,7 +136,7 @@ export default function HomePage() {
   }
 
   return (
-    <div className="p-8 max-w-[1024px] mx-auto">
+    <div className="p-4 md:p-8 max-w-[1024px] mx-auto">
       <div className="mb-7">
         <h1 className="font-display text-headline-md text-on-surface">
           {greeting()}, {user?.username ?? "…"}
@@ -157,7 +157,7 @@ export default function HomePage() {
         />
       ) : (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-7">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-7">
             <KpiCard
               label="Mes tâches ouvertes"
               value={loading ? "—" : tasks.length}

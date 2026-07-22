@@ -31,7 +31,7 @@ function progress(p: Project): number {
 
 export default function ProjectsPage() {
   return (
-    <Suspense fallback={<div className="p-8 text-body-md text-on-surface-variant">Chargement…</div>}>
+    <Suspense fallback={<div className="p-4 md:p-8 text-body-md text-on-surface-variant">Chargement…</div>}>
       <ProjectsInner />
     </Suspense>
   );
@@ -86,9 +86,9 @@ function ProjectsInner() {
   }, [projects, query, sort]);
 
   return (
-    <div className="p-8 max-w-[1152px] mx-auto">
+    <div className="p-4 md:p-8 max-w-[1152px] mx-auto">
       <div className="flex items-start gap-4 mb-6">
-        <div className="flex-1">
+        <div className="hidden md:block flex-1">
           <h1 className="font-display text-headline-md text-on-surface">Projets</h1>
           <p className="text-body-md text-on-surface-variant mt-0.5">
             Organisez le travail de votre workspace.
@@ -97,7 +97,7 @@ function ProjectsInner() {
         {canManage && (
           <button
             onClick={() => setShowCreate(true)}
-            className="inline-flex items-center gap-1.5 h-[38px] px-4 rounded-lg bg-primary text-on-primary text-body-sm font-semibold shadow-button hover:bg-primary-container transition-colors"
+            className="inline-flex items-center justify-center gap-1.5 h-11 md:h-[38px] px-4 rounded-lg bg-primary text-on-primary text-body-sm font-semibold shadow-button hover:bg-primary-container transition-colors whitespace-nowrap"
           >
             <AddOutlined style={{ fontSize: 16 }} />
             Nouveau projet
@@ -135,7 +135,7 @@ function ProjectsInner() {
               value={query}
               onChange={setQuery}
               placeholder="Rechercher un projet…"
-              className="w-[240px] ml-auto"
+              className="flex-1 min-w-[180px] md:flex-none md:w-[240px] md:ml-auto"
             />
             <label className="inline-flex items-center gap-1.5 h-[38px] px-3 rounded-lg border border-outline-soft bg-surface-container-lowest text-outline">
               <SwapVertOutlined style={{ fontSize: 16 }} />
@@ -168,7 +168,7 @@ function ProjectsInner() {
             Aucun projet ne correspond à « {query} ».
           </p>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {visible.map((p) => (
               <ProjectCard key={p.id} project={p} />
             ))}
@@ -259,7 +259,7 @@ function MyTasksList({ tasks, loading }: { tasks: Task[]; loading: boolean }) {
 
 function SkeletonGrid() {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {Array.from({ length: 6 }, (_, i) => (
         <div
           key={i}

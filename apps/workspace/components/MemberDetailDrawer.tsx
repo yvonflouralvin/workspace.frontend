@@ -67,7 +67,7 @@ export function MemberDetailDrawer({
     <RightDrawer
       title={member.user.username}
       onClose={onClose}
-      width="w-[460px] max-w-[92vw]"
+      width="md:w-[460px] md:max-w-[92vw]"
       footer={
         canManage || canRemove ? (
           <>

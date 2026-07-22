@@ -35,7 +35,7 @@ export function KanbanBoard({
   const childCount = (task: Task) => tasks.filter((t) => t.parent_task_id === task.id);
 
   return (
-    <div className="flex gap-3 overflow-x-auto pb-2">
+    <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory md:snap-none -mx-4 px-4 md:mx-0 md:px-0">
       {STATUS_ORDER.map((status) => {
         const col = roots.filter((t) => t.status === status);
         const tone = STATUS_TONES[status];
@@ -54,7 +54,7 @@ export function KanbanBoard({
               setDrag(null);
               setOver(null);
             }}
-            className={`w-72 shrink-0 rounded-2xl bg-surface-container/50 p-3 transition-colors ${
+            className={`w-[85vw] max-w-[300px] md:w-72 shrink-0 snap-center md:snap-align-none rounded-2xl bg-surface-container/50 p-3 transition-colors ${
               over === status ? "ring-2 ring-primary/40" : ""
             }`}
           >

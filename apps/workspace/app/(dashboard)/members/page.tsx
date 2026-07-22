@@ -19,7 +19,7 @@ const PAGE_SIZE = 20;
 
 export default function MembersPage() {
   return (
-    <Suspense fallback={<div className="p-8 text-body-md text-on-surface-variant">Chargement…</div>}>
+    <Suspense fallback={<div className="p-4 md:p-8 text-body-md text-on-surface-variant">Chargement…</div>}>
       <MembersInner />
     </Suspense>
   );
@@ -104,7 +104,7 @@ function MembersInner() {
 
   if (!canView) {
     return (
-      <div className="p-8 max-w-[1024px] mx-auto">
+      <div className="p-4 md:p-8 max-w-[1024px] mx-auto">
         <h1 className="font-display text-headline-md text-on-surface">Membres</h1>
         <p className="text-body-md text-on-surface-variant mt-0.5">
           Vous n&apos;avez pas accès à cette page.
@@ -114,19 +114,19 @@ function MembersInner() {
   }
 
   return (
-    <div className="p-8 max-w-[1024px] mx-auto">
+    <div className="p-4 md:p-8 max-w-[1024px] mx-auto">
       <div className="flex items-start gap-4 mb-6">
-        <div className="flex-1">
+        <div className="hidden md:block flex-1">
           <h1 className="font-display text-headline-md text-on-surface">Membres</h1>
           <p className="text-body-md text-on-surface-variant mt-0.5">
             {total} membre{total > 1 ? "s" : ""}
           </p>
         </div>
-        <div className="flex gap-2.5">
+        <div className="flex flex-1 md:flex-none gap-2.5">
           {can("groups.manage") && (
             <Link
               href="/members/groups"
-              className="inline-flex items-center gap-1.5 h-[38px] px-3.5 rounded-lg border border-outline-soft bg-surface-container-lowest text-body-sm font-semibold text-on-surface-variant hover:bg-surface-container-low transition-colors"
+              className="inline-flex flex-1 md:flex-none justify-center items-center gap-1.5 h-11 md:h-[38px] px-3.5 rounded-lg border border-outline-soft bg-surface-container-lowest text-body-sm font-semibold text-on-surface-variant hover:bg-surface-container-low transition-colors whitespace-nowrap"
             >
               <TuneOutlined style={{ fontSize: 16 }} />
               Gérer les groupes
@@ -135,7 +135,7 @@ function MembersInner() {
           {can("members.invite") && (
             <button
               onClick={() => setShowAddModal(true)}
-              className="inline-flex items-center gap-1.5 h-[38px] px-4 rounded-lg bg-primary text-on-primary text-body-sm font-semibold shadow-button hover:bg-primary-container transition-colors"
+              className="inline-flex flex-1 md:flex-none justify-center items-center gap-1.5 h-11 md:h-[38px] px-4 rounded-lg bg-primary text-on-primary text-body-sm font-semibold shadow-button hover:bg-primary-container transition-colors whitespace-nowrap"
             >
               <PersonAddOutlined style={{ fontSize: 16 }} />
               Ajouter un membre

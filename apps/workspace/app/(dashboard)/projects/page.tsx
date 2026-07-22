@@ -171,8 +171,8 @@ function CreateProjectModal({ onClose, onCreated }: { onClose: () => void; onCre
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
-      <div className="w-full max-w-md rounded-2xl bg-surface-container-lowest border border-outline-variant p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-start justify-center pt-24 bg-black/40 backdrop-blur-sm p-4" onClick={onClose}>
+      <div className="w-full max-w-[36rem] rounded-2xl bg-surface-container-lowest border border-outline-variant shadow-2xl p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
         <h2 className="text-lg font-semibold text-on-surface">Nouveau projet</h2>
         {error && <p className="text-sm text-error">{error}</p>}
         <Field label="Nom *"><input className={inputCls} value={name} onChange={(e) => setName(e.target.value)} placeholder="Refonte du site" autoFocus /></Field>

@@ -27,6 +27,10 @@ export interface Member {
   direct_permissions: GroupRef[];
   permissions: string[];
   is_owner: boolean;
+  // Non encore exposés par le service auth — la colonne affiche « — » / « Actif »
+  // tant qu'ils sont absents.
+  is_active?: boolean;
+  last_login_at?: string | null;
 }
 
 export interface Group {

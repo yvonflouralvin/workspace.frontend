@@ -1,8 +1,10 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSessionStore } from "@repo/auth/store/session.store";
 import { useNotifications } from "@repo/notifications/hooks/useNotifications";
+import { projectsApi } from "@/app/lib/projects-api";
 import {
   GroupOutlined,
   FolderOpenOutlined,
@@ -49,6 +51,11 @@ function QuickAction({ label, icon, href }: { label: string; icon: React.ReactNo
 export default function DashboardPage() {
   const { user, activeWorkspace } = useSessionStore();
   const { unreadCount } = useNotifications("/api/notifications");
+  const [projectCount, setProjectCount] = useState<number | "—">("—");
+
+  useEffect(() => {
+    projectsApi.listProjects().then((p) => setProjectCount(p.length)).catch(() => {});
+  }, []);
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Bonjour" : hour < 18 ? "Bon après-midi" : "Bonsoir";
@@ -74,8 +81,9 @@ export default function DashboardPage() {
         />
         <StatCard
           label="Projets"
-          value="—"
+          value={projectCount}
           icon={<FolderOpenOutlined style={{ fontSize: 20 }} />}
+          href="/projects"
         />
         <StatCard
           label="Notifications"

@@ -320,6 +320,52 @@ pour le cas d'usage prévu (les deux sont conçus pour fonctionner ensemble, mai
 `DataList` n'a aucune dépendance dure à ce hook — n'importe quelle source de données
 externe paginée peut l'alimenter en mode serveur).
 
+### `SearchInput` / `Pagination` / `ViewToggle` — briques de liste autonomes
+
+`DataList` est un bloc **tout-en-un** (recherche + tableau + pagination). Quand la liste
+n'est pas un tableau, ou quand recherche et pagination doivent encadrer **plusieurs
+rendus** (cartes *et* tableau), utiliser ces trois briques séparées à la place.
+
+#### `SearchInput` (`src/SearchInput.tsx`)
+
+Champ de recherche contrôlé, **debouncé** (300 ms par défaut) : `onChange` n'est appelé
+qu'à la fin de la frappe — l'appelant peut donc déclencher son fetch directement, sans
+gérer de timer. Bouton d'effacement (et `Escape`) qui émet immédiatement `""`.
+
+```tsx
+<SearchInput value={search} onChange={handleSearch} placeholder="Nom, clé…" className="w-72" />
+```
+
+Le parent reste maître de la valeur : la resynchronisation externe (reset de filtres)
+est prise en charge sans écraser la frappe en cours.
+
+#### `Pagination` (`src/Pagination.tsx`)
+
+Contrôles de page **1-indexés** (`page` / `pages`, comme les réponses `Page<T>` des
+backends). Ne rend rien si `pages <= 1`. Les numéros sont affichés dans une fenêtre
+autour de la page courante avec ellipses au-delà de 7 pages — une liste de 50 pages ne
+produit pas 50 boutons. `label` personnalise le décompte à gauche.
+
+```tsx
+<Pagination page={page} pages={pages} total={total} onPageChange={handlePage}
+  label={(n) => `${n} projet${n > 1 ? "s" : ""}`} />
+```
+
+#### `ViewToggle` (`src/ViewToggle.tsx`)
+
+Segmented control générique (icônes) pour basculer entre plusieurs rendus. Générique sur
+le type de clé — `ViewToggle<"cards" | "list">`.
+
+```tsx
+<ViewToggle<ViewMode> value={viewMode} onChange={changeViewMode} options={[
+  { key: "cards", label: "Vue cartes", icon: <GridViewOutlined style={{ fontSize: 18 }} /> },
+  { key: "list",  label: "Vue liste",  icon: <ViewListOutlined style={{ fontSize: 18 }} /> },
+]} />
+```
+
+Les trois sont utilisés ensemble par la liste des projets de `apps/workspace`
+(`app/(dashboard)/projects/page.tsx`) — voir `docs/apps/workspace/WORKSPACE.md`.
+
 ### `useGraphQLRecords` (`src/hooks/useGraphQLRecords.tsx`)
 
 Hook découplé de tout rendu — centralise le fetch vers le gateway GraphQL générique

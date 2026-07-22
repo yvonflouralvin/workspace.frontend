@@ -578,6 +578,38 @@ application (`MultiSelect`, alimentés par les facets).
 
 ---
 
+## Projets — liste (`app/(dashboard)/projects/page.tsx`)
+
+Deux onglets : **Projets** (liste des projets du workspace) et **Mes tâches**
+(tâches assignées, `GET /api/tasks/mine`, non paginé).
+
+**Deux vues** pour l'onglet Projets, via `ViewToggle` (`@repo/ui`) :
+- **Cartes** — grille responsive 1/2/3 colonnes, `ProjectCard` (avatar coloré, clé,
+  description tronquée, compteur de tâches, barre d'avancement).
+- **Liste** — tableau `ProjectsTable` (Projet, Description, Tâches `fait/total`,
+  Avancement, Échéance), lignes cliquables. Colonnes secondaires masquées sous
+  `md`/`sm`.
+
+Le choix est persisté dans `localStorage` (`workspace.projects.viewMode`) et **lu
+après montage seulement** — un initialiseur d'état ferait diverger le HTML SSR de
+l'hydratation.
+
+**Recherche et pagination côté serveur** (12 par page) — `SearchInput` (debounce
+300 ms intégré) et `Pagination` de `@repo/ui`, partagés par les deux vues. Chaque
+frappe/changement de page refait un fetch ; la liste courante reste affichée en
+opacité réduite pendant le chargement (pas de flash « Chargement… »). Deux états
+vides distincts : aucun projet (invite à créer) vs aucun résultat de recherche
+(bouton « Effacer la recherche »).
+
+**Client (`app/lib/projects-api.ts`)** : `projectsApi.listProjects({ q, page,
+page_size, include_archived })` → `Page<Project>` (`items`/`total`/`page`/`pages`),
+même contrat que les listes paginées de `ventes`/`tiers`. Le backend `projects`
+cherche sur le nom, la clé et la description. ⚠️ `listProjects` ne renvoie plus un
+tableau brut — le compteur de la home (`app/(dashboard)/page.tsx`) lit `total` avec
+`page_size: 1`.
+
+---
+
 ## Ordre d'implémentation
 
 1. `packages/ui/src/types/shell.ts` — types

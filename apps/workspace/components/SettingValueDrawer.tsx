@@ -3,53 +3,63 @@
 import { useState } from "react";
 import { RightDrawer } from "@repo/ui/RightDrawer";
 import { MultiSelect } from "@repo/ui/MultiSelect";
-import { updateWorkspaceSettings, ApiError } from "@/app/lib/api";
-import type { AppSettingGroup, SettingDef } from "@/app/lib/types";
+import type { SettingDef } from "@/app/lib/types";
 
+const FIELD =
+  "w-full h-9 px-3 rounded-lg border border-outline-soft bg-surface-container-lowest text-body-sm text-on-surface outline-none focus:border-primary transition-colors";
+
+/**
+ * Éditeur des types qui ne tiennent pas en ligne (`text`, `date`, `multi_choice`).
+ * Le drawer n'écrit pas au serveur : il rend la valeur au panneau, qui l'ajoute
+ * aux modifications en attente — la barre « non enregistrées » commet le tout.
+ */
 export function SettingValueDrawer({
-  workspaceId,
   setting,
+  value: initialValue,
+  onApply,
   onClose,
-  onSaved,
 }: {
-  workspaceId: number;
   setting: SettingDef;
+  value: unknown;
+  onApply: (value: unknown) => void;
   onClose: () => void;
-  onSaved: (groups: AppSettingGroup[]) => void;
 }) {
-  const [value, setValue] = useState<unknown>(setting.value);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function handleSave() {
-    setSaving(true);
-    setError(null);
-    try {
-      const res = await updateWorkspaceSettings(workspaceId, [
-        { app_setting_id: setting.id, value: value ?? null },
-      ]);
-      onSaved(res.groups);
-      onClose();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Une erreur est survenue");
-    } finally {
-      setSaving(false);
-    }
-  }
+  const [value, setValue] = useState<unknown>(initialValue);
 
   return (
-    <RightDrawer title={setting.name} onClose={onClose}>
+    <RightDrawer
+      title={setting.name}
+      onClose={onClose}
+      width="w-[400px] max-w-[92vw]"
+      footer={
+        <>
+          <button
+            onClick={onClose}
+            className="h-[34px] px-3.5 rounded-lg border border-outline-soft text-label-md font-semibold text-on-surface-variant hover:bg-surface-container-low transition-colors"
+          >
+            Annuler
+          </button>
+          <button
+            onClick={() => onApply(value ?? null)}
+            className="ml-auto h-[34px] px-4 rounded-lg bg-primary text-on-primary text-label-md font-semibold shadow-button hover:bg-primary-container transition-colors"
+          >
+            Appliquer
+          </button>
+        </>
+      }
+    >
       <div className="space-y-4">
         {setting.description && (
-          <p className="text-sm text-on-surface-variant">{setting.description}</p>
+          <p className="text-body-sm text-on-surface-variant">{setting.description}</p>
         )}
 
         {setting.type === "text" && (
           <input
             type="text"
+            autoFocus
             value={typeof value === "string" ? value : ""}
             onChange={(e) => setValue(e.target.value)}
-            className="w-full px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface"
+            className={FIELD}
           />
         )}
 
@@ -58,7 +68,7 @@ export function SettingValueDrawer({
             type="date"
             value={typeof value === "string" ? value : ""}
             onChange={(e) => setValue(e.target.value)}
-            className="w-full px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface"
+            className={FIELD}
           />
         )}
 
@@ -66,7 +76,7 @@ export function SettingValueDrawer({
           <select
             value={typeof value === "string" ? value : ""}
             onChange={(e) => setValue(e.target.value || null)}
-            className="w-full px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface"
+            className={FIELD}
           >
             <option value="">—</option>
             {(setting.options ?? []).map((option) => (
@@ -85,17 +95,9 @@ export function SettingValueDrawer({
           />
         )}
 
-        {error && (
-          <p className="text-sm text-error bg-error-container/40 rounded-lg px-3 py-2">{error}</p>
-        )}
-
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="px-4 py-2 rounded-xl bg-primary text-on-primary text-sm font-medium disabled:opacity-50"
-        >
-          {saving ? "Enregistrement…" : "Enregistrer"}
-        </button>
+        <p className="text-label-md text-outline">
+          La modification n&apos;est appliquée qu&apos;après « Enregistrer » dans le panneau.
+        </p>
       </div>
     </RightDrawer>
   );

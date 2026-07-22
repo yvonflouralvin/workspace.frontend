@@ -73,33 +73,46 @@ export function NotificationChannelDrawer({
   }
 
   return (
-    <RightDrawer title={`Notifications — ${CHANNEL_LABELS[channelConfig.channel]}`} onClose={onClose}>
+    <RightDrawer
+      title={`Notifications — ${CHANNEL_LABELS[channelConfig.channel]}`}
+      onClose={onClose}
+      width="w-[400px] max-w-[92vw]"
+      footer={
+        <>
+          <button
+            onClick={onClose}
+            className="h-[34px] px-3.5 rounded-lg border border-outline-soft text-label-md font-semibold text-on-surface-variant hover:bg-surface-container-low transition-colors"
+          >
+            Annuler
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="ml-auto h-[34px] px-4 rounded-lg bg-primary text-on-primary text-label-md font-semibold shadow-button hover:bg-primary-container disabled:opacity-50 transition-colors"
+          >
+            {saving ? "Enregistrement…" : "Enregistrer"}
+          </button>
+        </>
+      }
+    >
       <div className="space-y-4">
         {fields.map((field) => (
           <div key={field.key}>
-            <label className="block text-xs font-medium text-on-surface-variant mb-1">
+            <label className="block text-[11px] font-semibold text-on-surface-variant mb-1.5">
               {field.label}
             </label>
             <input
               type={field.type}
               value={values[field.key]}
               onChange={(e) => setValues((prev) => ({ ...prev, [field.key]: e.target.value }))}
-              className="w-full px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface"
+              className="w-full h-9 px-3 rounded-lg border border-outline-soft bg-surface-container-lowest text-body-sm text-on-surface outline-none focus:border-primary transition-colors"
             />
           </div>
         ))}
 
         {error && (
-          <p className="text-sm text-error bg-error-container/40 rounded-lg px-3 py-2">{error}</p>
+          <p className="text-body-sm text-error bg-error-container/40 rounded-lg px-3 py-2">{error}</p>
         )}
-
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="px-4 py-2 rounded-xl bg-primary text-on-primary text-sm font-medium disabled:opacity-50"
-        >
-          {saving ? "Enregistrement…" : "Enregistrer"}
-        </button>
       </div>
     </RightDrawer>
   );

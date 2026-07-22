@@ -1,0 +1,38 @@
+/* Alignement de BlockNote sur les tokens du design system.
+   BlockNote expose son thème via des variables --bn-* : on les remappe plutôt que
+   de surcharger ses sélecteurs, qui changent d'une version à l'autre. */
+.bn-container {
+  --bn-font-family: var(--font-body, inherit);
+  --bn-border-radius: 0.5rem;
+
+  --bn-colors-editor-text: var(--color-on-surface);
+  --bn-colors-editor-background: transparent;
+
+  --bn-colors-menu-text: var(--color-on-surface);
+  --bn-colors-menu-background: var(--color-surface-container-lowest);
+
+  --bn-colors-tooltip-text: var(--color-on-surface);
+  --bn-colors-tooltip-background: var(--color-surface-container);
+
+  --bn-colors-hovered-text: var(--color-on-surface);
+  --bn-colors-hovered-background: var(--color-surface-container);
+
+  --bn-colors-selected-text: var(--color-on-primary);
+  --bn-colors-selected-background: var(--color-primary);
+
+  --bn-colors-disabled-text: var(--color-on-surface-variant);
+  --bn-colors-disabled-background: var(--color-surface-container-low);
+
+  --bn-colors-border: var(--color-outline-variant);
+  --bn-colors-side-menu: var(--color-on-surface-variant);
+  --bn-colors-shadow: rgb(0 0 0 / 0.08);
+}
+
+.bn-container .bn-editor {
+  padding-inline: 0;
+}
+
+.bn-container [data-node-type="blockContainer"] [data-placeholder]::before {
+  color: var(--color-on-surface-variant);
+  opacity: 0.7;
+}

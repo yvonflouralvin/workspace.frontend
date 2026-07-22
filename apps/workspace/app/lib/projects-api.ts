@@ -68,6 +68,15 @@ export const PRIORITY_LABELS: Record<string, string> = {
   AUCUNE: "Aucune", BASSE: "Basse", MOYENNE: "Moyenne", HAUTE: "Haute", URGENTE: "Urgente",
 };
 export const PRIORITY_ORDER = ["AUCUNE", "BASSE", "MOYENNE", "HAUTE", "URGENTE"];
+/** Classe de fond du point de statut — tokens `status-*` du design system. */
+export const STATUS_DOTS: Record<string, string> = {
+  BACKLOG: "bg-status-backlog",
+  A_FAIRE: "bg-status-todo",
+  EN_COURS: "bg-status-doing",
+  EN_REVUE: "bg-status-review",
+  TERMINE: "bg-status-done",
+};
+
 export function priorityTone(p: string): string {
   if (p === "URGENTE") return "text-error";
   if (p === "HAUTE") return "text-tertiary";

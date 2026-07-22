@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { PersonAddOutlined, TuneOutlined } from "@mui/icons-material";
 import { useSessionStore } from "@repo/auth/store/session.store";
@@ -17,6 +18,14 @@ import { MembersTable } from "@/components/members/MembersTable";
 const PAGE_SIZE = 20;
 
 export default function MembersPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-body-md text-on-surface-variant">Chargement…</div>}>
+      <MembersInner />
+    </Suspense>
+  );
+}
+
+function MembersInner() {
   const activeWorkspace = useSessionStore((s) => s.activeWorkspace);
   const user = useSessionStore((s) => s.user);
   const { can } = usePermissions();
@@ -41,6 +50,11 @@ export default function MembersPage() {
 
   const workspaceId = activeWorkspace?.id;
   const canView = can("members.view");
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    if (searchParams.get("add") === "1" && can("members.invite")) setShowAddModal(true);
+  }, [searchParams, can]);
 
   useEffect(() => {
     const timeout = setTimeout(() => setDebouncedQuery(query), 300);

@@ -73,6 +73,13 @@ const CHANNEL_ICONS: Record<string, ReactNode> = {
 
 const SECTION_LABEL = "text-label-sm uppercase text-outline";
 
+function sameValue(a: unknown, b: unknown): boolean {
+  if (Array.isArray(a) && Array.isArray(b)) {
+    return a.length === b.length && a.every((v, i) => v === b[i]);
+  }
+  return (a ?? null) === (b ?? null);
+}
+
 function isEmptyValue(value: unknown): boolean {
   if (value === null || value === undefined || value === "") return true;
   return Array.isArray(value) && value.length === 0;
@@ -104,6 +111,7 @@ export default function SettingsPage() {
   const [channels, setChannels] = useState<NotificationChannelConfig[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [channelsError, setChannelsError] = useState(false);
 
   const [appQuery, setAppQuery] = useState("");
   const [settingQuery, setSettingQuery] = useState("");
@@ -126,18 +134,21 @@ export default function SettingsPage() {
       setLoading(false);
       return;
     }
+    // Chaque source est chargée séparément : un service indisponible ne doit pas
+    // vider tout le catalogue de paramètres.
     Promise.all([
-      listWorkspaceSettings(workspaceId),
-      getWorkspace(workspaceId),
-      listNotificationChannels(workspaceId),
+      listWorkspaceSettings(workspaceId).then((res) => setGroups(res.groups)),
+      getWorkspace(workspaceId).then(setWorkspaceDetail),
     ])
-      .then(([settingsRes, workspaceRes, channelsRes]) => {
-        setGroups(settingsRes.groups);
-        setWorkspaceDetail(workspaceRes);
-        setChannels(channelsRes.channels);
-      })
       .catch((err) => setError(err instanceof ApiError ? err.message : "Une erreur est survenue"))
       .finally(() => setLoading(false));
+
+    listNotificationChannels(workspaceId)
+      .then((res) => {
+        setChannels(res.channels);
+        setChannelsError(false);
+      })
+      .catch(() => setChannelsError(true));
   }, [workspaceId, canManage]);
 
   const selectedGroup = useMemo(
@@ -182,6 +193,17 @@ export default function SettingsPage() {
     (setting: SettingDef) => (setting.id in pending ? pending[setting.id] : setting.value),
     [pending]
   );
+
+  // Revenir à la valeur d'origine retire la modification du tampon : la barre
+  // ne doit pas signaler un changement qui n'en est pas un.
+  const queueChange = useCallback((setting: SettingDef, value: unknown) => {
+    setPending((prev) => {
+      const next = { ...prev };
+      if (sameValue(value, setting.value)) delete next[setting.id];
+      else next[setting.id] = value;
+      return next;
+    });
+  }, []);
 
   const dirtyCount = Object.keys(pending).length;
 
@@ -313,6 +335,7 @@ export default function SettingsPage() {
 
                 <NotificationsBlock
                   channels={channels}
+                  unavailable={channelsError}
                   onEdit={setEditingChannel}
                 />
 
@@ -320,9 +343,7 @@ export default function SettingsPage() {
                   <SettingsSections
                     sections={sections}
                     valueOf={valueOf}
-                    onInlineChange={(setting, value) =>
-                      setPending((p) => ({ ...p, [setting.id]: value }))
-                    }
+                    onInlineChange={queueChange}
                     onEdit={setEditingSetting}
                   />
                 )}
@@ -346,9 +367,7 @@ export default function SettingsPage() {
                   <SettingsSections
                     sections={sections}
                     valueOf={valueOf}
-                    onInlineChange={(setting, value) =>
-                      setPending((p) => ({ ...p, [setting.id]: value }))
-                    }
+                    onInlineChange={queueChange}
                     onEdit={setEditingSetting}
                   />
                 )}
@@ -387,7 +406,7 @@ export default function SettingsPage() {
           setting={editingSetting}
           value={valueOf(editingSetting)}
           onApply={(value) => {
-            setPending((p) => ({ ...p, [editingSetting.id]: value }));
+            queueChange(editingSetting, value);
             setEditingSetting(null);
           }}
           onClose={() => setEditingSetting(null)}
@@ -617,12 +636,26 @@ function AuthProviderBlock({
 
 function NotificationsBlock({
   channels,
+  unavailable,
   onEdit,
 }: {
   channels: NotificationChannelConfig[];
+  unavailable: boolean;
   onEdit: (channel: NotificationChannelConfig) => void;
 }) {
   const [open, setOpen] = useState(true);
+
+  if (unavailable) {
+    return (
+      <div className="rounded-xl border border-outline-soft px-4 py-3.5">
+        <p className="text-body-md font-semibold text-on-surface">Notifications</p>
+        <p className="text-label-md text-outline mt-0.5">
+          Service de notifications injoignable — la configuration des canaux est
+          momentanément indisponible.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="rounded-xl border border-outline-soft overflow-hidden">

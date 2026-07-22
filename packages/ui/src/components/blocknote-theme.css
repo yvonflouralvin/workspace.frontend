@@ -28,8 +28,12 @@
   --bn-colors-shadow: rgb(0 0 0 / 0.08);
 }
 
+/* Gouttière du texte. 3rem laisse la place à la poignée de bloc et au bouton «+»
+   de BlockNote, qui se positionnent à gauche du texte : en dessous, ils sortent
+   de la carte et se font rogner par son `overflow-hidden`. */
 .bn-container .bn-editor {
-  padding-inline: 0;
+  padding-inline: 3rem;
+  padding-block: 0.75rem;
 }
 
 .bn-container [data-node-type="blockContainer"] [data-placeholder]::before {

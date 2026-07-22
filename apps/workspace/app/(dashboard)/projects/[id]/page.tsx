@@ -92,7 +92,7 @@ export default function ProjectOverviewPage() {
             fallbackText={project.description}
             editable={canManage}
             placeholder="Décrivez le projet…"
-            className="min-h-[16rem] py-3"
+            className="min-h-[16rem]"
             onChange={canManage ? (json) => queue({ description_rich: json }) : undefined}
           />
         </div>

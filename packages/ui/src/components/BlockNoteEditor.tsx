@@ -97,7 +97,7 @@ export function BlockNoteEditor({
   return (
     <div className={className}>
       {editable && toolbar && (
-        <div className="flex items-center gap-0.5 flex-wrap px-2 py-1.5 border-b border-outline-soft">
+        <div className="flex items-center gap-0.5 flex-wrap px-3 py-1.5 border-b border-outline-soft">
           <ToolbarButton label="Gras" onClick={() => toggleStyle("bold")}>
             <FormatBoldOutlined style={{ fontSize: 17 }} />
           </ToolbarButton>

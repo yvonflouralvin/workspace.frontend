@@ -641,6 +641,10 @@ restriction est active, écriture immédiate), et l'accordéon Notifications (Em
 WhatsApp avec point d'état + crayon → drawer 400). Les paramètres du groupe Général
 s'affichent ensuite comme ceux des autres apps.
 
+Chaque source est chargée **séparément** : le catalogue et le détail du workspace d'un
+côté, les canaux de notification de l'autre. Un service indisponible dégrade son seul bloc
+(message « service injoignable ») au lieu de vider toute la page.
+
 **Autres apps** : recherche de paramètre, titre `label-sm` MAJUSCULES, puis les paramètres
 sans section dans un cadre et ceux avec section sous un sous-titre — via
 `@repo/ui/SettingRow` (voir `docs/packages/UI.md`).
@@ -657,6 +661,43 @@ tableau de valeurs).
 C'est un changement de comportement : avant, chaque drawer écrivait immédiatement au
 serveur. Les deux blocs de politique du panneau Général restent en écriture immédiate —
 ce sont des endpoints distincts, pas des `app_setting`.
+
+---
+
+## Accueil — page refondue
+
+**Régime établi** : trois `KpiCard` (`@repo/ui`) — *Mes tâches ouvertes*, *Projets actifs*,
+*Notifications non lues* — puis deux colonnes `1fr / 320px`. À gauche « Mon travail » (mes
+tâches triées par échéance, échéance dépassée en `error`) et « Mes approbations » ; à
+droite « Accès rapides » et « Activité récente ».
+
+**Premier jour** : si le workspace n'a aucun projet et que l'utilisateur peut créer un
+projet ou inviter, une carte d'onboarding remplace les KPI. Les cinq étapes se cochent
+d'après l'état réel (équipe = plus d'un membre, notifications = un canal configuré) ; les
+liens d'action ne s'affichent qu'avec la permission correspondante.
+
+**Adaptation au rôle** — une seule page, pas de variante. Chaque bloc est gardé par sa
+permission (`audit_logs.view`, `members.view`, `workspace.settings.manage`…) et **chaque
+source échoue en silence** : un bloc sans droit ou sans donnée disparaît, il ne casse
+jamais la page. Les accès rapides sont filtrés par `projects.manage`, `members.invite`,
+`workspace.settings.manage`.
+
+**Sources** : `projectsApi.listProjects` / `myTasks`, `useNotifications`, `listAuditLogs`
+(feed d'activité), `listMembers` et `listNotificationChannels` (onboarding), et
+`@repo/approval-flows/api/client` pour les approbations.
+
+> **Pas de sparkline.** Les cartes du handoff en prévoient une ; aucune API n'expose de
+> série temporelle. `KpiCard` accepte un `visual` optionnel — à remplir le jour où la
+> donnée existe. En attendant, l'indice sous la valeur est **calculé** (« 2 en retard »,
+> « 9 tâches au total »), pas décoratif.
+
+### `approval_flows` dans l'app workspace
+
+Deux routes BFF ajoutées (`app/api/approval-flows/requests/route.ts` et
+`.../requests/[id]/decide/route.ts`) qui `forwardToBackend` vers `APPROVAL_FLOWS_API_URL`,
+plus `@repo/approval-flows` en dépendance et dans `transpilePackages`. La page consomme le
+client du package et rend ses propres cartes — pas les composants du package — donc pas de
+`@source` à ajouter.
 
 ---
 

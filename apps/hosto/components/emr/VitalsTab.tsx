@@ -717,13 +717,11 @@ function ChartValuesTable({ group, series }: { group: ChartGroup; series: Series
       {rows.map((r, i) => (
         <div
           key={`${r.code}-${r.date}-${i}`}
-          className={`grid grid-cols-[1fr_auto] items-center px-4 py-2.5 ${i % 2 === 0 ? "bg-surface-container-lowest" : "bg-surface-container-low"}`}
+          className={`flex items-center gap-3 px-4 py-2 ${i % 2 === 0 ? "bg-surface-container-lowest" : "bg-surface-container-low"}`}
         >
-          <div>
-            <p className="text-body-sm text-on-surface">{fmtDateTime(r.date)}</p>
-            {r.label && <p className="text-label-sm text-on-surface-variant">{r.label}</p>}
-          </div>
-          <span className={`text-body-md font-medium ${r.abnormal ? "text-error" : "text-on-surface"}`}>
+          <span className="text-body-sm text-on-surface-variant whitespace-nowrap tabular-nums">{fmtDateTime(r.date)}</span>
+          {r.label && <span className="text-label-sm text-on-surface-variant whitespace-nowrap">{r.label}</span>}
+          <span className={`ml-auto text-body-md font-medium whitespace-nowrap tabular-nums ${r.abnormal ? "text-error" : "text-on-surface"}`}>
             {r.value} {r.unit}
           </span>
         </div>

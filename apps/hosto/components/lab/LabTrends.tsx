@@ -309,17 +309,15 @@ function LabValuesTable({ series }: { series: LabTrendSeries }) {
       {rows.map((p, i) => (
         <div
           key={`${p.date}-${i}`}
-          className={`grid grid-cols-[1fr_auto] items-center px-4 py-2.5 gap-3 ${i % 2 === 0 ? "bg-surface-container-lowest" : "bg-surface-container-low"}`}
+          className={`flex items-center px-4 py-2 gap-3 ${i % 2 === 0 ? "bg-surface-container-lowest" : "bg-surface-container-low"}`}
         >
-          <div>
-            <p className="text-body-sm text-on-surface">{fmtDateTime(p.date)}</p>
-            {p.interpretation && p.interpretation !== "NORMAL" && (
-              <p className={`text-label-sm ${p.abnormal ? "text-error" : "text-on-surface-variant"}`}>
-                {INTERP_LABEL[p.interpretation] ?? p.interpretation}
-              </p>
-            )}
-          </div>
-          <span className={`text-body-md font-medium tabular-nums ${p.abnormal ? "text-error" : "text-on-surface"}`}>
+          <span className="text-body-sm text-on-surface-variant whitespace-nowrap tabular-nums">{fmtDateTime(p.date)}</span>
+          {p.interpretation && p.interpretation !== "NORMAL" && (
+            <span className={`text-label-sm whitespace-nowrap ${p.abnormal ? "text-error" : "text-on-surface-variant"}`}>
+              {INTERP_LABEL[p.interpretation] ?? p.interpretation}
+            </span>
+          )}
+          <span className={`ml-auto text-body-md font-medium tabular-nums whitespace-nowrap ${p.abnormal ? "text-error" : "text-on-surface"}`}>
             {p.value_numeric} {p.unit ?? series.unit ?? ""}
           </span>
         </div>

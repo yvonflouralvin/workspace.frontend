@@ -38,6 +38,20 @@ export interface Task {
 export interface MetaOption { key: string; label: string }
 export interface ProjectsMeta { statuses: MetaOption[]; priorities: MetaOption[] }
 
+export interface Page<T> {
+  items: T[];
+  total: number;
+  page: number;
+  pages: number;
+}
+
+export interface ListProjectsParams {
+  q?: string;
+  page?: number;
+  page_size?: number;
+  include_archived?: boolean;
+}
+
 async function json<T>(res: Response): Promise<T> {
   if (!res.ok) throw new Error((await res.json().catch(() => ({})))?.detail || `Erreur ${res.status}`);
   return res.status === 204 ? (undefined as T) : res.json();
@@ -46,8 +60,15 @@ async function json<T>(res: Response): Promise<T> {
 export const projectsApi = {
   meta: () => apiFetch("/api/projects/meta").then((r) => json<ProjectsMeta>(r)),
 
-  listProjects: (includeArchived = false) =>
-    apiFetch(`/api/projects${includeArchived ? "?include_archived=true" : ""}`).then((r) => json<Project[]>(r)),
+  listProjects: (params: ListProjectsParams = {}) => {
+    const qs = new URLSearchParams();
+    if (params.q) qs.set("q", params.q);
+    if (params.page) qs.set("page", String(params.page));
+    if (params.page_size) qs.set("page_size", String(params.page_size));
+    if (params.include_archived) qs.set("include_archived", "true");
+    const suffix = qs.toString();
+    return apiFetch(`/api/projects${suffix ? `?${suffix}` : ""}`).then((r) => json<Page<Project>>(r));
+  },
   getProject: (id: number) => apiFetch(`/api/projects/${id}`).then((r) => json<Project>(r)),
   createProject: (body: Partial<Project>) => apiFetch("/api/projects", { method: "POST", body }).then((r) => json<Project>(r)),
   updateProject: (id: number, body: Partial<Project>) => apiFetch(`/api/projects/${id}`, { method: "PATCH", body }).then((r) => json<Project>(r)),

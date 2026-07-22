@@ -54,7 +54,7 @@ export default function DashboardPage() {
   const [projectCount, setProjectCount] = useState<number | "—">("—");
 
   useEffect(() => {
-    projectsApi.listProjects().then((p) => setProjectCount(p.length)).catch(() => {});
+    projectsApi.listProjects({ page_size: 1 }).then((p) => setProjectCount(p.total)).catch(() => {});
   }, []);
 
   const hour = new Date().getHours();

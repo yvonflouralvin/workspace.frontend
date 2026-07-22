@@ -628,6 +628,38 @@ une simple carte de rappel si le compte existe déjà.
 
 ---
 
+## Paramètres — page refondue
+
+Corps en `grid 256px / 1fr`. **Colonne gauche** : recherche d'application puis le catalogue
+dans un cadre `rounded-xl` scrollable (max 448) — icône (mappée par clé d'app dans la page,
+`WidgetsOutlined` en repli), nom, compteur ; ligne active en `primary/10`. **Colonne
+droite** : le panneau de l'application, carte `rounded-2xl`.
+
+**Général** empile trois blocs distincts : restriction des membres (interrupteur
+`@repo/ui/Switch`, écriture immédiate), authentification de l'organisation (affichée si la
+restriction est active, écriture immédiate), et l'accordéon Notifications (Email / SMS /
+WhatsApp avec point d'état + crayon → drawer 400). Les paramètres du groupe Général
+s'affichent ensuite comme ceux des autres apps.
+
+**Autres apps** : recherche de paramètre, titre `label-sm` MAJUSCULES, puis les paramètres
+sans section dans un cadre et ceux avec section sous un sous-titre — via
+`@repo/ui/SettingRow` (voir `docs/packages/UI.md`).
+
+### Modifications en attente
+
+Le panneau tient un **tampon `pending`** indexé par identifiant de paramètre. L'édition en
+ligne (`toggle`, `single_choice`) **et** le drawer y écrivent — le drawer dit d'ailleurs
+« Appliquer », pas « Enregistrer », pour lever l'ambiguïté. Une **barre collante** en bas du
+panneau annonce le nombre de modifications non enregistrées et propose `Annuler` (vide le
+tampon) / `Enregistrer` (un seul `PUT` groupé sur `/settings`, l'API acceptant déjà un
+tableau de valeurs).
+
+C'est un changement de comportement : avant, chaque drawer écrivait immédiatement au
+serveur. Les deux blocs de politique du panneau Général restent en écriture immédiate —
+ce sont des endpoints distincts, pas des `app_setting`.
+
+---
+
 ## Ordre d'implémentation
 
 1. `packages/ui/src/types/shell.ts` — types

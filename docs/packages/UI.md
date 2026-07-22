@@ -485,6 +485,35 @@ notification éphémère sur `inverse-surface`, auto-dismiss 2,6 s, `tone` `succ
 {toast && <Toast message={toast.message} tone={toast.tone} onDismiss={() => setToast(null)} />}
 ```
 
+### `SettingRow` (`src/SettingRow.tsx`) et `Switch` (`src/Switch.tsx`)
+
+`SettingRow` est le motif central des Paramètres — « nom + état + description + valeur +
+contrôle » — extrait du design system pour que **toute app du catalogue affiche ses
+paramètres de la même façon**.
+
+```tsx
+<SettingRow
+  name={setting.name}
+  description={setting.description}
+  type={setting.type}          // text | date | single_choice | multi_choice | toggle
+  value={value}
+  displayValue={formatValue(setting, value)}
+  options={setting.options}
+  state={isEmpty(value) ? "unset" : "ok"}
+  onChange={isInlineSetting(setting.type) ? (v) => queue(setting, v) : undefined}
+  onEdit={() => openDrawer(setting)}
+/>
+```
+
+- **Édition en ligne pour `toggle` et `single_choice`** (`isInlineSetting(type)` le dit) ;
+  les autres types affichent la valeur formatée + un crayon qui ouvre un drawer côté
+  appelant. Un interrupteur ne mérite pas un drawer.
+- `state` orne la ligne : `unset` (point orange « Non configuré » + valeur en italique
+  atténuée), `default` et `critical` (chips). Seul `unset` est dérivable des données
+  actuelles — les deux autres attendent que le backend marque les paramètres.
+- `Switch` est l'interrupteur 40×24 du design system, réutilisé par `SettingRow` et par
+  les blocs de politique du panneau Général.
+
 ---
 
 ## Dépendances disponibles dans le package

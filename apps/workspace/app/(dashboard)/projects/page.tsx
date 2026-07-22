@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
@@ -62,16 +62,26 @@ function ProjectsInner() {
     window.localStorage.setItem(VIEW_MODE_KEY, mode);
   }
 
+  // Deux fetchs rapprochés (frappe puis changement de page) peuvent revenir dans le
+  // désordre : seule la réponse de la dernière requête émise a le droit d'écrire.
+  const requestSeq = useRef(0);
+
   const fetchProjects = useCallback((q: string, p: number) => {
+    const seq = ++requestSeq.current;
     setLoading(true);
     return projectsApi.listProjects({ q: q || undefined, page: p, page_size: PAGE_SIZE })
       .then((data) => {
+        if (seq !== requestSeq.current) return;
         setProjects(data.items);
         setTotal(data.total);
         setPages(data.pages);
         setPage(data.page);
       })
-      .finally(() => { setLoading(false); setReady(true); });
+      .finally(() => {
+        if (seq !== requestSeq.current) return;
+        setLoading(false);
+        setReady(true);
+      });
   }, []);
 
   useEffect(() => {

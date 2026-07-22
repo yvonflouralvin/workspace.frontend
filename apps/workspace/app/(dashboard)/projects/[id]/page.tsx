@@ -73,12 +73,12 @@ function ProjectDetailInner() {
   if (!project) return <div className="p-8 text-sm text-error">Projet introuvable.</div>;
 
   return (
-    <div className="h-full flex flex-col p-8 gap-5">
-      <div className="shrink-0 space-y-5">
-        <button onClick={() => router.push("/projects")} className="inline-flex items-center gap-1.5 text-sm text-on-surface-variant hover:text-on-surface">
-          <ArrowBackOutlined style={{ fontSize: 16 }} /> Projets
-        </button>
+    <div className="p-8 space-y-5">
+      <button onClick={() => router.push("/projects")} className="inline-flex items-center gap-1.5 text-sm text-on-surface-variant hover:text-on-surface">
+        <ArrowBackOutlined style={{ fontSize: 16 }} /> Projets
+      </button>
 
+      <div className="space-y-5">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-3">
             <span className="w-11 h-11 rounded-xl flex items-center justify-center text-lg"
@@ -107,9 +107,7 @@ function ProjectDetailInner() {
       {view === "kanban" ? (
         <KanbanBoard tasks={tasks} canManage={canManage} onMove={moveTask} onOpen={setEditing} projectKey={project.key} />
       ) : (
-        <div className="flex-1 min-h-0 overflow-y-auto">
-          <ListView tasks={tasks} onOpen={setEditing} projectKey={project.key} />
-        </div>
+        <ListView tasks={tasks} onOpen={setEditing} projectKey={project.key} />
       )}
 
       {editing && (
@@ -131,19 +129,19 @@ function KanbanBoard({ tasks, canManage, onMove, onOpen, projectKey }: {
 }) {
   const [drag, setDrag] = useState<Task | null>(null);
   return (
-    <div className="flex-1 min-h-0 flex gap-3 overflow-x-auto overscroll-x-contain pb-2">
+    <div className="flex gap-3 overflow-x-auto overscroll-x-contain items-start pb-3">
       {STATUS_ORDER.map((status) => {
         const col = tasks.filter((t) => t.status === status);
         return (
           <div key={status}
             onDragOver={(e) => { if (drag) e.preventDefault(); }}
             onDrop={() => { if (drag && drag.status !== status) onMove(drag, status); setDrag(null); }}
-            className="w-72 shrink-0 flex flex-col max-h-full rounded-2xl bg-surface-container/50 border border-outline-variant">
+            className="w-72 shrink-0 flex flex-col max-h-[70vh] rounded-2xl bg-surface-container/50 border border-outline-variant">
             <div className="flex items-center justify-between px-3 py-2 shrink-0">
               <span className="text-sm font-medium text-on-surface-variant">{STATUS_LABELS[status]}</span>
               <span className="text-xs text-on-surface-variant/60">{col.length}</span>
             </div>
-            <div className="flex-1 min-h-0 overflow-y-auto space-y-2 px-2 pb-2">
+            <div className="min-h-[3.5rem] overflow-y-auto space-y-2 px-2 pb-2">
               {col.map((t) => (
                 <div key={t.id} draggable={canManage} onDragStart={() => setDrag(t)} onDragEnd={() => setDrag(null)}
                   onClick={() => onOpen(t)}

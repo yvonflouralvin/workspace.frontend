@@ -716,6 +716,10 @@ app/(dashboard)/projects/[id]/
 - **`sections.tsx`** est le seul endroit à toucher pour ajouter une section : une entrée
   `{ key, path, label, icon }` + le dossier de route correspondant. Le dropdown, le
   libellé courant et la détection de section actives en découlent.
+- **Navigation par onglets soulignés** sous l'entête (et non un dropdown) : le handoff
+  retient la barre d'onglets parce qu'elle tient quand les sections se multiplient.
+  `Documents` et `Échéancier` y figurent déjà, grisés avec une pastille « Bientôt » —
+  `soon: true` dans `sections.tsx` suffit à les rendre non cliquables.
 - **`layout.tsx`** charge le projet, ses tâches et les membres du workspace **une fois**,
   puis les expose via `ProjectProvider`. Les pages de section ne refetchent rien ; elles
   consomment `useProject()`.
@@ -736,6 +740,29 @@ app/(dashboard)/projects/[id]/
   (changement de section) flush ce qui reste. Indicateur `Enregistrement… / Enregistré /
   Échec` à droite du nom.
 - Tout est en lecture seule sans la permission `projects.manage`.
+
+---
+
+## Projets — liste, rail de métadonnées et sous-tâches
+
+**Liste (`/projects`)** : onglets `Projets | Mes tâches (n)`, recherche live, tri
+(Récents / A→Z / Avancement), et les quatre états — squelette shimmer, erreur avec
+`Réessayer`, vide, aucun résultat de recherche. La modale de création est extraite dans
+`components/projects/CreateProjectModal.tsx`.
+
+**Rail de métadonnées de l'Aperçu** (colonne 300 px) : il rend éditables des champs
+présents en base mais qu'aucun écran n'exposait — `status`, `lead_user_id`, `start_date`,
+`due_date` et `color` (nuancier `PROJECT_COLORS`). Tout passe par le même autosave 800 ms
+que le nom et la description. La progression est calculée sur les tâches déjà chargées par
+le layout, `getProject` ne renvoyant pas de compteurs.
+
+**Sous-tâches** : `parent_task_id` existait sans aucune UI. Les enfants ne sont plus des
+cartes autonomes du board — ils sont filtrés de la liste et du Kanban, comptés sur la carte
+parente (`2/7`) et édités en checklist dans le drawer (cocher bascule le statut,
+`estimate` s'affiche en points).
+
+**Priorités et statuts** : `@repo/ui/PriorityBars` (trois barrettes colorées jusqu'au
+niveau) et les badges point + fond soft dérivés de `STATUS_TONES` — tokens `status-*`.
 
 ---
 

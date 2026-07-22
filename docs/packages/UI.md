@@ -534,6 +534,10 @@ listes, tableaux, code.
   Corollaire : pour recharger un autre document, remonter la `key` du composant.
 - `onChange` émet à chaque frappe (JSON sérialisé) — **c'est à l'appelant de debouncer**
   avant d'appeler l'API (cf. l'aperçu projet dans `apps/workspace`, debounce 800 ms).
+- **Barre d'outils persistante** (`toolbar`, activée par défaut) : gras / italique /
+  souligné, H1, H2, liste, case à cocher, code, plus le rappel « Tapez / pour les blocs ».
+  Elle pilote l'éditeur par son API (`toggleStyles`, `updateBlock`) — le menu slash et les
+  poignées de bloc de BlockNote restent disponibles.
 - **Rendu client uniquement** : le composant est un wrapper `next/dynamic` avec
   `ssr: false` autour de `src/components/BlockNoteEditor.tsx` (BlockNote monte
   ProseMirror sur le DOM). L'import dynamique utilise le spécifieur de package
@@ -546,6 +550,14 @@ listes, tableaux, code.
 - Stockage recommandé : une colonne `*_rich` (Text) pour le JSON + la colonne texte
   brut existante pour les listes et la recherche, dérivée côté backend (cf.
   `backends/projects/services/rich_text.py`).
+
+### `PriorityBars`, `Switch`, `KpiCard`
+
+`PriorityBars` — trois barrettes (4/7/10 px) colorées jusqu'au niveau `0–4`, adossées aux
+tokens `priority-*`. `Switch` — interrupteur 40×24 du design system. `KpiCard` — carte
+d'indicateur (libellé + pastille d'icône + grande valeur + indice), avec `visual` optionnel
+pour une `Sparkline` le jour où une série temporelle existe, et `href` pour la rendre
+cliquable.
 
 ---
 

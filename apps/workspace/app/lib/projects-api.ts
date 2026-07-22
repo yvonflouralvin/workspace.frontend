@@ -5,6 +5,8 @@ export interface Project {
   name: string;
   key: string;
   description: string | null;
+  /** Document BlockNote sérialisé ; `description` en est le texte brut dérivé. */
+  description_rich: string | null;
   color: string | null;
   icon: string | null;
   status: string;

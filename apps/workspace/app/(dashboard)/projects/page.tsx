@@ -121,7 +121,7 @@ function MyTasksList({ tasks }: { tasks: Task[] }) {
   return (
     <div className="rounded-2xl border border-outline-variant overflow-hidden">
       {tasks.map((t, i) => (
-        <button key={t.id} onClick={() => router.push(`/projects/${t.project_id}?task=${t.id}`)}
+        <button key={t.id} onClick={() => router.push(`/projects/${t.project_id}/tasks?task=${t.id}`)}
           className={`w-full text-left flex items-center gap-3 px-4 py-3 border-b border-outline-variant last:border-0 hover:bg-surface-container-low ${i % 2 === 0 ? "bg-surface-container-lowest" : "bg-surface-container-low/50"}`}>
           <span className="text-xs font-mono text-on-surface-variant w-16 shrink-0">{t.project_key}-{t.number}</span>
           <span className="flex-1 text-sm text-on-surface truncate">{t.title}</span>

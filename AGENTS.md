@@ -434,7 +434,8 @@ Si oui (bouton, badge, carte, input, modal, avatar, popover, spinner, toast, etc
 fond `locked-surface`), `ActiveFilters` (résumé des filtres actifs + réinitialisation),
 `SettingRow` (nom + description + valeur + contrôle), `KpiCard`, `PriorityBars`,
 `ConfirmDialog` / `Toast` (**plus aucun `confirm()` ni `alert()` natif**), `SearchField`,
-`Avatar`, `Chip`, `Switch`.
+`Avatar`, `Chip`, `Switch`, `Pagination` (numéros fenêtrés + ellipses — ne jamais rendre
+les `pages` numéros d'un coup, la barre déborde).
 
 **Exception :** un composant reste dans l'app uniquement s'il est **intrinsèquement couplé à la logique métier de cette app** (ex: `WorkspaceSwitcher` dans workspace — il lit `useSessionStore` et connaît le concept de workspace). La règle de bon sens : si on doit l'expliquer avec le nom de l'app pour le décrire, il reste dans l'app.
 

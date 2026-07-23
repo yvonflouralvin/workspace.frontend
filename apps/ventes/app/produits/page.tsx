@@ -6,6 +6,7 @@ import Link from "next/link";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
 import { DashboardShell } from "@/components/DashboardShell";
 import { LockedBadge } from "@repo/ui/LockedBadge";
+import { Pagination } from "@repo/ui/Pagination";
 import { CreateProduitDrawer } from "@/components/CreateProduitDrawer";
 import { listProduits, listCategories, getFacturationConfig, type Produit, type Categorie } from "@/lib/ventes-api";
 import {
@@ -255,40 +256,11 @@ export default function ProduitsPage() {
             </div>
 
             {pages > 1 && (
-              <div className="flex items-center justify-between pt-1">
-                <p className="text-body-sm text-on-surface-variant">
+              <div className="flex items-center justify-between gap-3 pt-1 min-w-0">
+                <p className="text-body-sm text-on-surface-variant truncate">
                   {total} produit{total > 1 ? "s" : ""}
                 </p>
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => handlePage(page - 1)}
-                    disabled={page === 1}
-                    className="px-3 py-1.5 rounded-lg text-body-sm text-on-surface-variant hover:bg-surface-container disabled:opacity-40 disabled:cursor-default transition-colors"
-                  >
-                    ← Précédent
-                  </button>
-                  {Array.from({ length: pages }, (_, i) => i + 1).map((n) => (
-                    <button
-                      key={n}
-                      onClick={() => handlePage(n)}
-                      className={[
-                        "w-8 h-8 rounded-lg text-body-sm font-medium transition-colors",
-                        n === page
-                          ? "bg-primary text-on-primary"
-                          : "text-on-surface-variant hover:bg-surface-container",
-                      ].join(" ")}
-                    >
-                      {n}
-                    </button>
-                  ))}
-                  <button
-                    onClick={() => handlePage(page + 1)}
-                    disabled={page === pages}
-                    className="px-3 py-1.5 rounded-lg text-body-sm text-on-surface-variant hover:bg-surface-container disabled:opacity-40 disabled:cursor-default transition-colors"
-                  >
-                    Suivant →
-                  </button>
-                </div>
+                <Pagination page={page} pages={pages} onChange={handlePage} className="flex-none" />
               </div>
             )}
           </>

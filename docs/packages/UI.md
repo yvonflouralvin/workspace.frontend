@@ -470,6 +470,15 @@ Distinct de `Badge`, qui reste la pilule `primary/10` historique.
 Champ de recherche contrôlé, hauteur 38, bordure `outline-soft`, icône à gauche. Le
 debounce est à la charge de l'appelant (300 ms côté serveur sur la page Membres).
 
+### `Pagination` (`src/Pagination.tsx`)
+
+`{ page, pages, onChange, className? }` — barre de pagination des listes paginées.
+**Fenêtre les numéros** (première, dernière, courante ±1, ellipses) : rendre les `pages`
+numéros d'un coup faisait déborder la barre hors de l'écran dès une quinzaine de pages.
+En dessous de `md`, les numéros disparaissent au profit de `« page / total »` entre les
+deux flèches. Rend `null` si `pages <= 1`. Toute liste paginée passe par ce composant —
+ne pas réécrire la boucle `Array.from({ length: pages })`.
+
 ### `ConfirmDialog` (`src/ConfirmDialog.tsx`) et `Toast` (`src/Toast.tsx`)
 
 **Remplacent `window.confirm` et `window.alert`** — plus aucun dialogue natif dans les apps.

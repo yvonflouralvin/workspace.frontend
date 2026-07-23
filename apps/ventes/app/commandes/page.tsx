@@ -9,6 +9,7 @@ import { STATUTS, STATUT_LABEL, STATUT_CLASS, STATUT_CHART_COLOR } from "@/lib/c
 import { useDevise } from "@/components/DeviseProvider";
 import { SearchField } from "@repo/ui/SearchField";
 import { ActiveFilters } from "@repo/ui/FilterBar";
+import { Pagination } from "@repo/ui/Pagination";
 import { ShoppingCartOutlined, AddOutlined } from "@mui/icons-material";
 
 const PAGE_SIZE = 20;
@@ -232,13 +233,13 @@ export default function CommandesPage() {
         {canView && !loading && !error && items.length > 0 && (
           <>
             <div className="rounded-2xl border border-outline-soft bg-surface-container-lowest overflow-hidden">
-              <div className="hidden lg:flex items-center gap-4 px-5 py-2.5 bg-surface-row-alt border-b border-surface-container-low text-label-sm uppercase text-outline">
-                <span className="w-[130px] flex-none">Code</span>
+              <div className="hidden md:flex items-center gap-3 xl:gap-4 px-5 py-2.5 bg-surface-row-alt border-b border-surface-container-low text-label-sm uppercase text-outline">
+                <span className="w-[110px] xl:w-[130px] flex-none">Code</span>
                 <span className="flex-1 min-w-0">Client</span>
-                <span className="w-[150px] flex-none">Paiement</span>
-                <span className="w-[110px] flex-none">Statut</span>
-                <span className="w-[100px] flex-none">Date</span>
-                <span className="w-[160px] flex-none text-right">Montant</span>
+                <span className="hidden xl:block w-[150px] flex-none">Paiement</span>
+                <span className="w-[100px] xl:w-[110px] flex-none">Statut</span>
+                <span className="hidden xl:block w-[100px] flex-none">Date</span>
+                <span className="w-[130px] xl:w-[160px] flex-none text-right">Montant</span>
               </div>
 
               {items.map((c, i) => {
@@ -247,18 +248,18 @@ export default function CommandesPage() {
                   <button
                     key={c.id}
                     onClick={() => router.push(`/commandes/${c.id}`)}
-                    className={`w-full flex flex-wrap lg:flex-nowrap items-start lg:items-center gap-x-4 gap-y-2 px-4 md:px-5 py-3 text-left border-b border-hairline last:border-b-0 hover:bg-surface-container-low transition-colors ${
+                    className={`w-full flex flex-wrap md:flex-nowrap items-start md:items-center gap-x-3 xl:gap-x-4 gap-y-2 px-4 md:px-5 py-3 text-left border-b border-hairline last:border-b-0 hover:bg-surface-container-low transition-colors ${
                       i % 2 === 1 ? "bg-surface-row-alt" : ""
                     }`}
                   >
-                    <span className="w-full lg:w-[130px] flex-none truncate font-mono text-label-md font-medium text-primary">
+                    <span className="w-full md:w-[110px] xl:w-[130px] flex-none truncate font-mono text-label-md font-medium text-primary">
                       {c.code}
                     </span>
-                    <span className="lg:flex-1 lg:min-w-0 truncate text-body-md text-on-surface">
+                    <span className="md:flex-1 md:min-w-0 truncate text-body-md text-on-surface">
                       {c.client_nom ?? "—"}
                     </span>
 
-                    <span className="w-full lg:w-[150px] flex-none">
+                    <span className="w-full xl:w-[150px] flex-none md:hidden xl:block">
                       {pct === null ? (
                         <span className="text-label-md text-outline">—</span>
                       ) : (
@@ -281,17 +282,17 @@ export default function CommandesPage() {
                       )}
                     </span>
 
-                    <span className="lg:w-[110px] flex-none">
+                    <span className="md:w-[100px] xl:w-[110px] flex-none">
                       <span
                         className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap ${STATUT_CLASS[c.statut]}`}
                       >
                         {STATUT_LABEL[c.statut]}
                       </span>
                     </span>
-                    <span className="lg:w-[100px] flex-none whitespace-nowrap font-mono text-label-md text-on-surface-variant">
+                    <span className="xl:w-[100px] flex-none md:hidden xl:block whitespace-nowrap font-mono text-label-md text-on-surface-variant">
                       {c.date_commande ?? "—"}
                     </span>
-                    <span className="lg:w-[160px] flex-none lg:text-right whitespace-nowrap tabular-nums font-mono text-body-sm font-semibold text-on-surface">
+                    <span className="md:w-[130px] xl:w-[160px] flex-none md:text-right whitespace-nowrap tabular-nums font-mono text-body-sm font-semibold text-on-surface">
                       {format(c.montant_total)}
                     </span>
                   </button>
@@ -300,27 +301,11 @@ export default function CommandesPage() {
             </div>
 
             {pages > 1 && (
-              <div className="flex items-center justify-between pt-1">
-                <p className="text-body-sm text-on-surface-variant">
+              <div className="flex items-center justify-between gap-3 pt-1 min-w-0">
+                <p className="text-body-sm text-on-surface-variant truncate">
                   {total} commande{total > 1 ? "s" : ""}
                 </p>
-                <div className="flex items-center gap-1">
-                  <button onClick={() => handlePage(page - 1)} disabled={page === 1}
-                    className="px-3 py-1.5 rounded-lg text-body-sm text-on-surface-variant hover:bg-surface-container disabled:opacity-40 disabled:cursor-default transition-colors">
-                    ← Précédent
-                  </button>
-                  {Array.from({ length: pages }, (_, i) => i + 1).map((n) => (
-                    <button key={n} onClick={() => handlePage(n)}
-                      className={["w-8 h-8 rounded-lg text-body-sm font-medium transition-colors",
-                        n === page ? "bg-primary text-on-primary" : "text-on-surface-variant hover:bg-surface-container"].join(" ")}>
-                      {n}
-                    </button>
-                  ))}
-                  <button onClick={() => handlePage(page + 1)} disabled={page === pages}
-                    className="px-3 py-1.5 rounded-lg text-body-sm text-on-surface-variant hover:bg-surface-container disabled:opacity-40 disabled:cursor-default transition-colors">
-                    Suivant →
-                  </button>
-                </div>
+                <Pagination page={page} pages={pages} onChange={handlePage} className="flex-none" />
               </div>
             )}
           </>

@@ -11,6 +11,7 @@ import { UserFooter } from "@repo/ui/shell/UserFooter";
 import { WorkspaceSwitcher } from "@repo/ui/WorkspaceSwitcher";
 import { PLATFORM_APPS, VENTES_SHELL } from "@repo/ui/shell/platform";
 import {
+  QueryStatsOutlined,
   HomeOutlined,
   PeopleAltOutlined,
   Inventory2Outlined,
@@ -27,6 +28,7 @@ const NAV_ITEMS: NavItem[] = [
     icon: <HomeOutlined style={{ fontSize: 20 }} />,
     exact: true,
   },
+  { label: "Tableau de bord", href: "/tableau-de-bord", icon: <QueryStatsOutlined style={{ fontSize: 20 }} /> },
   { label: "Clients",    href: "/clients",    icon: <PeopleAltOutlined style={{ fontSize: 20 }} /> },
   { label: "Produits",   href: "/produits",   icon: <Inventory2Outlined style={{ fontSize: 20 }} /> },
   { label: "Commandes",  href: "/commandes",  icon: <ShoppingCartOutlined style={{ fontSize: 20 }} /> },

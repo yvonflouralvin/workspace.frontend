@@ -17,11 +17,20 @@ export const STATUT_LABEL: Record<StatutCommande, string> = {
 };
 
 export const STATUT_CLASS: Record<StatutCommande, string> = {
-  BROUILLON: "bg-surface-container-high text-on-surface-variant",
-  VALIDEE: "bg-tertiary/10 text-tertiary",
-  PARTIELLE: "bg-primary/10 text-primary",
-  PAYEE: "bg-secondary/10 text-secondary",
-  ANNULEE: "bg-error-container/50 text-error",
+  BROUILLON: "bg-role-member-container text-role-member",
+  VALIDEE: "bg-role-admin-container text-role-admin",
+  PARTIELLE: "bg-role-owner-container text-role-owner",
+  PAYEE: "bg-member-active-container text-member-active",
+  ANNULEE: "bg-error-container text-on-error-container",
+};
+
+/** Couleurs de tracé pour les graphiques — mêmes teintes que les pastilles. */
+export const STATUT_CHART_COLOR: Record<StatutCommande, string> = {
+  BROUILLON: "var(--color-outline-variant)",
+  VALIDEE: "var(--color-tertiary)",
+  PARTIELLE: "var(--color-primary)",
+  PAYEE: "var(--color-secondary)",
+  ANNULEE: "var(--color-error)",
 };
 
 export function formatMontant(v: string | number | null, devise?: string): string {

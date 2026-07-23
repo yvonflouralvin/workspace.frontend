@@ -97,9 +97,9 @@ export default function CommandesPage() {
 
   return (
     <DashboardShell>
-      <div className="p-8 max-w-6xl mx-auto space-y-6">
+      <div className="p-4 md:p-8 max-w-[1152px] mx-auto space-y-5">
         <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div>
+          <div className="hidden md:block">
             <h1 className="text-headline-md font-display text-on-surface">Commandes</h1>
             <p className="text-body-sm text-on-surface-variant mt-1">
               Commandes de vente de ce workspace.
@@ -109,7 +109,7 @@ export default function CommandesPage() {
             <button
               onClick={handleCreate}
               disabled={creating}
-              className="inline-flex items-center gap-1.5 bg-primary text-on-primary text-body-md font-medium px-4 py-2 rounded-xl hover:bg-primary-container transition-colors shrink-0 disabled:opacity-50"
+              className="inline-flex flex-1 md:flex-none justify-center items-center gap-1.5 h-11 md:h-[38px] px-4 rounded-lg bg-primary text-on-primary text-body-sm font-semibold shadow-button hover:bg-primary-container transition-colors whitespace-nowrap disabled:opacity-50"
             >
               <AddOutlined style={{ fontSize: 18 }} />
               {creating ? "Création…" : "Nouvelle commande"}

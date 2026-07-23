@@ -5,6 +5,9 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
 import { DashboardShell } from "@/components/DashboardShell";
+import { StockGauge } from "@/components/StockGauge";
+import { LockedBadge } from "@repo/ui/LockedBadge";
+import { ActiveFilters } from "@repo/ui/FilterBar";
 import {
   listItems,
   TYPE_ITEM_LABELS,
@@ -130,9 +133,9 @@ export default function ItemsPage() {
 
   return (
     <DashboardShell>
-      <div className="p-6 space-y-4">
+      <div className="p-4 md:p-6 max-w-[1152px] mx-auto space-y-4">
         <div className="flex items-center justify-between gap-4">
-          <div>
+          <div className="hidden md:block">
             <h1 className="text-headline-md font-display text-on-surface">Articles</h1>
             <p className="text-body-sm text-on-surface-variant mt-0.5">
               Catalogue des articles, produits et services du workspace.
@@ -141,7 +144,7 @@ export default function ItemsPage() {
           {canCreate && (
             <Link
               href="/items/new"
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-on-primary text-body-md font-medium hover:bg-primary-container transition-colors shrink-0"
+              className="inline-flex flex-1 md:flex-none justify-center items-center gap-1.5 h-11 md:h-[38px] px-4 rounded-lg bg-primary text-on-primary text-body-sm font-semibold shadow-button hover:bg-primary-container transition-colors whitespace-nowrap"
             >
               <AddOutlined style={{ fontSize: 18 }} />
               Nouvel article
@@ -211,6 +214,21 @@ export default function ItemsPage() {
           </div>
         </div>
 
+        <ActiveFilters
+          filters={[
+            ...selectedTypes.map((t) => ({
+              key: t,
+              label: TYPE_ITEM_LABELS[t],
+              onClear: () => toggleType(t),
+            })),
+            ...(search ? [{ key: "q", label: `« ${search} »`, onClear: () => handleSearch("") }] : []),
+          ]}
+          onClearAll={() => {
+            clearTypes();
+            handleSearch("");
+          }}
+        />
+
         {!canView ? (
           <p className="text-body-sm text-on-surface-variant py-8 text-center">
             Vous n&apos;avez pas accès au catalogue d&apos;articles.
@@ -231,64 +249,56 @@ export default function ItemsPage() {
           </div>
         ) : (
           <>
-            <div className="bg-surface-container-lowest rounded-xl border border-outline-variant overflow-hidden">
-              <table className="w-full text-body-md">
-                <thead>
-                  <tr className="border-b border-outline-variant bg-surface-container-low">
-                    <th className="text-left px-4 py-3 text-label-md font-semibold text-on-surface-variant">Code</th>
-                    <th className="text-left px-4 py-3 text-label-md font-semibold text-on-surface-variant">Nom</th>
-                    <th className="text-left px-4 py-3 text-label-md font-semibold text-on-surface-variant">Type</th>
-                    <th className="text-left px-4 py-3 text-label-md font-semibold text-on-surface-variant">Catégorie</th>
-                    <th className="text-right px-4 py-3 text-label-md font-semibold text-on-surface-variant">Stock</th>
-                    <th className="text-right px-4 py-3 text-label-md font-semibold text-on-surface-variant">Prix de vente</th>
-                    <th className="text-left px-4 py-3 text-label-md font-semibold text-on-surface-variant">Réf.</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {items.map((item) => {
-                    const stockAlert =
-                      item.gestion_stock &&
-                      item.stock_minimum != null &&
-                      item.stock_actuel <= item.stock_minimum;
-                    return (
-                      <tr
-                        key={item.id}
-                        onClick={() => router.push(`/items/${item.id}`)}
-                        className="border-b border-outline-variant/50 hover:bg-surface-container-low cursor-pointer transition-colors last:border-0"
-                      >
-                        <td className="px-4 py-3 font-mono text-body-sm text-on-surface-variant">{item.code}</td>
-                        <td className="px-4 py-3 font-medium text-on-surface">{item.nom}</td>
-                        <td className="px-4 py-3">
-                          <span className={`px-2 py-0.5 rounded-full text-label-md font-medium ${TYPE_COLORS[item.type]}`}>
-                            {TYPE_ITEM_LABELS[item.type]}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-on-surface-variant">{item.categorie_nom ?? "—"}</td>
-                        <td className="px-4 py-3 text-right">
-                          {item.gestion_stock ? (
-                            <span className={`flex items-center justify-end gap-1 ${stockAlert ? "text-error" : "text-on-surface"}`}>
-                              {stockAlert && <WarningAmberOutlined style={{ fontSize: 14 }} />}
-                              {Number(item.stock_actuel)} {item.unite}
-                            </span>
-                          ) : (
-                            <span className="text-on-surface-variant">—</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-right text-on-surface">
-                          {item.est_vendu && item.prix_vente != null
-                            ? `${Number(item.prix_vente).toLocaleString("fr-CD")} CDF`
-                            : "—"}
-                        </td>
-                        <td className="px-4 py-3 text-body-sm text-on-surface-variant font-mono">{item.reference ?? "—"}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+            <div className="bg-surface-container-lowest rounded-2xl border border-outline-soft overflow-hidden">
+              <div className="hidden md:flex items-center gap-4 px-5 py-2.5 bg-surface-row-alt border-b border-surface-container-low text-label-sm uppercase text-outline">
+                <span className="w-24 flex-none">Code</span>
+                <span className="flex-1">Article</span>
+                <span className="w-[130px] flex-none">Type</span>
+                <span className="w-[160px] flex-none">Stock</span>
+                <span className="w-[120px] flex-none text-right">Prix</span>
+              </div>
+
+              {items.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => router.push(`/items/${item.id}`)}
+                  className={`w-full flex flex-wrap md:flex-nowrap items-start md:items-center gap-x-4 gap-y-2 px-4 md:px-5 py-3.5 md:py-3 text-left border-b border-hairline last:border-b-0 hover:bg-surface-container-low transition-colors ${
+                    item.owner_app_key ? "bg-locked-surface" : ""
+                  } ${item.is_active ? "" : "opacity-60"}`}
+                >
+                  <span className="hidden md:block w-24 flex-none font-mono text-label-md text-outline">
+                    {item.code}
+                  </span>
+                  <span className="w-full md:flex-1 min-w-0">
+                    <span className="flex items-center gap-2">
+                      <span className="text-body-md font-medium text-on-surface truncate">{item.nom}</span>
+                      {item.owner_app_key && <LockedBadge appLabel={item.owner_app_key} />}
+                    </span>
+                    <span className="block text-label-md text-outline truncate">
+                      <span className="md:hidden font-mono">{item.code} · </span>
+                      {item.categorie_nom ?? "Sans catégorie"}
+                      {item.reference ? ` · ${item.reference}` : ""}
+                    </span>
+                  </span>
+                  <span className="md:w-[130px] flex-none">
+                    <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold ${TYPE_COLORS[item.type]}`}>
+                      {TYPE_ITEM_LABELS[item.type]}
+                    </span>
+                  </span>
+                  <span className="w-full md:w-[160px] flex-none">
+                    <StockGauge item={item} />
+                  </span>
+                  <span className="md:w-[120px] flex-none md:text-right text-body-sm text-on-surface tabular-nums">
+                    {item.est_vendu && item.prix_vente != null
+                      ? `${Number(item.prix_vente).toLocaleString("fr-FR")} FC`
+                      : "—"}
+                  </span>
+                </button>
+              ))}
             </div>
 
             <div className="flex items-center justify-between">
-              <p className="text-body-sm text-on-surface-variant">
+              <p className="text-body-sm text-outline">
                 {total} article{total > 1 ? "s" : ""}
               </p>
               {pages > 1 && (

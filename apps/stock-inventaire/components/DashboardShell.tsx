@@ -12,6 +12,7 @@ import { WorkspaceSwitcher } from "@repo/ui/WorkspaceSwitcher";
 import { PLATFORM_APPS, STOCK_SHELL } from "@repo/ui/shell/platform";
 import { useSearch } from "@repo/ui/shell/useSearch";
 import {
+  DashboardOutlined,
   HomeOutlined,
   Inventory2Outlined,
   CategoryOutlined,
@@ -20,6 +21,7 @@ import type { NavItem } from "@repo/ui/types/shell";
 
 const NAV_ITEMS: NavItem[] = [
   { label: "Accueil",    href: process.env.NEXT_PUBLIC_WORKSPACE_DOMAIN ?? "http://localhost:3005", icon: <HomeOutlined style={{ fontSize: 20 }} />, exact: true },
+  { label: "Inventaire", href: "/",           icon: <DashboardOutlined style={{ fontSize: 20 }} />, exact: true },
   { label: "Articles",   href: "/items",      icon: <Inventory2Outlined style={{ fontSize: 20 }} /> },
   { label: "Catégories", href: "/categories", icon: <CategoryOutlined style={{ fontSize: 20 }} /> },
 ];

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
-import { DashboardShell } from "@/components/DashboardShell";
+import { ParametresLayout } from "@/components/ParametresLayout";
 import { DeviseDrawer } from "@/components/DeviseDrawer";
 import { getParametre, updateParametre, type DeviseEntry, type DeviseValeur } from "@/lib/ventes-api";
 import {
@@ -86,14 +86,8 @@ export default function DeviseSettingsPage() {
   }
 
   return (
-    <DashboardShell>
-      <div className="p-8 max-w-3xl mx-auto space-y-6">
-        <Link
-          href="/parametres"
-          className="inline-flex items-center gap-1.5 text-body-sm text-on-surface-variant hover:text-on-surface transition-colors"
-        >
-          <ArrowBackOutlined style={{ fontSize: 16 }} /> Retour aux paramètres
-        </Link>
+    <ParametresLayout>
+      <div className="space-y-5">
 
         <div>
           <h1 className="text-headline-md font-display text-on-surface">Devise</h1>
@@ -219,6 +213,6 @@ export default function DeviseSettingsPage() {
           onSave={handleDeviseSave}
         />
       )}
-    </DashboardShell>
+    </ParametresLayout>
   );
 }

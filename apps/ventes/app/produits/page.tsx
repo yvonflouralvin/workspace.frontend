@@ -109,7 +109,7 @@ export default function ProduitsPage() {
 
   return (
     <DashboardShell>
-      <div className="p-8 max-w-6xl mx-auto space-y-6">
+      <div className="p-4 md:p-8 max-w-[1152px] mx-auto space-y-5">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             <h1 className="text-headline-md font-display text-on-surface">Produits</h1>
@@ -188,52 +188,70 @@ export default function ProduitsPage() {
 
         {canView && !loading && !error && items.length > 0 && (
           <>
-            <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest overflow-hidden">
-              <table className="w-full text-body-sm">
-                <thead>
-                  <tr className="border-b border-outline-variant text-left text-on-surface-variant">
-                    <th className="px-5 py-3 font-medium">Nom</th>
-                    <th className="px-5 py-3 font-medium">Catégorie</th>
-                    <th className="px-5 py-3 font-medium">Description</th>
-                    <th className="px-5 py-3 font-medium text-right">
-                      <button
-                        onClick={handleSortPrix}
-                        className="inline-flex items-center gap-1 font-medium hover:text-on-surface transition-colors"
-                      >
-                        Prix de vente
-                        {sort === "prix_asc" ? (
-                          <ArrowUpwardOutlined style={{ fontSize: 15 }} />
-                        ) : sort === "prix_desc" ? (
-                          <ArrowDownwardOutlined style={{ fontSize: 15 }} />
-                        ) : (
-                          <SwapVertOutlined style={{ fontSize: 15, opacity: 0.5 }} />
-                        )}
-                      </button>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {items.map((p) => (
-                    <tr
-                      key={p.id}
-                      onClick={() => router.push(`/produits/${p.id}`)}
-                      className={`border-b border-outline-variant last:border-0 hover:bg-surface-container-low transition-colors cursor-pointer ${p.owner_app_key ? "bg-locked-surface" : ""}`}
-                    >
-                      <td className="px-5 py-3 text-on-surface font-medium">
-                        <span className="inline-flex items-center gap-2">
-                          {p.nom}
-                          {p.owner_app_key && <LockedBadge appLabel={p.owner_app_key} />}
+            <div className="rounded-2xl border border-outline-soft bg-surface-container-lowest overflow-hidden">
+              <div className="hidden md:flex items-center gap-4 px-5 py-2.5 bg-surface-row-alt border-b border-surface-container-low text-label-sm uppercase text-outline">
+                <span className="flex-1 min-w-0">Produit</span>
+                <span className="w-[200px] flex-none">Catégories</span>
+                <span className="w-[70px] flex-none text-center">TVA</span>
+                <span className="w-[150px] flex-none text-right">
+                  <button
+                    onClick={handleSortPrix}
+                    className="inline-flex items-center gap-1 uppercase hover:text-on-surface transition-colors"
+                  >
+                    Prix
+                    {sort === "prix_asc" ? (
+                      <ArrowUpwardOutlined style={{ fontSize: 14 }} />
+                    ) : sort === "prix_desc" ? (
+                      <ArrowDownwardOutlined style={{ fontSize: 14 }} />
+                    ) : (
+                      <SwapVertOutlined style={{ fontSize: 14, opacity: 0.5 }} />
+                    )}
+                  </button>
+                </span>
+              </div>
+
+              {items.map((p) => (
+                <button
+                  key={p.id}
+                  onClick={() => router.push(`/produits/${p.id}`)}
+                  className={`w-full flex flex-wrap md:flex-nowrap items-start md:items-center gap-x-4 gap-y-2 px-4 md:px-5 py-3 text-left border-b border-hairline last:border-b-0 hover:bg-surface-container-low transition-colors ${
+                    p.owner_app_key ? "bg-locked-surface" : ""
+                  }`}
+                >
+                  <span className="w-full md:flex-1 md:min-w-0">
+                    <span className="flex items-center gap-2">
+                      <span className="text-body-md font-medium text-on-surface truncate">{p.nom}</span>
+                      {p.owner_app_key && <LockedBadge appLabel={p.owner_app_key} />}
+                    </span>
+                    <span className="block text-label-md text-outline truncate">
+                      {p.unite || p.description || "—"}
+                    </span>
+                  </span>
+
+                  <span className="md:w-[200px] flex-none flex flex-wrap gap-1">
+                    {p.categories.length ? (
+                      p.categories.map((c) => (
+                        <span
+                          key={c.id}
+                          className="rounded-md bg-role-member-container px-1.5 py-0.5 text-[11px] font-medium text-role-member whitespace-nowrap"
+                        >
+                          {c.nom}
                         </span>
-                      </td>
-                      <td className="px-5 py-3 text-on-surface-variant">
-                        {p.categories.length ? p.categories.map((c) => c.nom).join(", ") : "—"}
-                      </td>
-                      <td className="px-5 py-3 text-on-surface-variant max-w-xs truncate">{p.description || "—"}</td>
-                      <td className="px-5 py-3 text-on-surface text-right tabular-nums">{formatPrix(p.prix_vente, deviseBase)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                      ))
+                    ) : (
+                      <span className="text-label-md text-outline">—</span>
+                    )}
+                  </span>
+
+                  <span className="md:w-[70px] flex-none md:text-center text-body-sm text-on-surface-variant">
+                    {p.tva_applicable ? "Oui" : "Non"}
+                  </span>
+
+                  <span className="md:w-[150px] flex-none md:text-right whitespace-nowrap tabular-nums font-mono text-body-sm font-semibold text-on-surface">
+                    {formatPrix(p.prix_vente, deviseBase)}
+                  </span>
+                </button>
+              ))}
             </div>
 
             {pages > 1 && (

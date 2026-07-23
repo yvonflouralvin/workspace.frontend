@@ -103,7 +103,7 @@ export default function ExamenDetailPage() {
 
   return (
     <DashboardShell>
-      <div className="p-8 max-w-3xl mx-auto space-y-6">
+      <div className="p-4 md:p-8 max-w-3xl mx-auto space-y-6">
         <Link
           href="/parametres/prestations/examens-medicaux"
           className="inline-flex items-center gap-1.5 text-body-sm text-on-surface-variant hover:text-on-surface transition-colors"

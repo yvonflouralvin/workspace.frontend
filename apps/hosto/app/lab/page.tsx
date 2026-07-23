@@ -113,7 +113,7 @@ export default function LaboratoryPage() {
 
   return (
     <DashboardShell>
-      <div className="p-6 max-w-5xl mx-auto space-y-5">
+      <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-5">
 
         {/* Header */}
         <div className="flex items-start justify-between gap-4 flex-wrap">

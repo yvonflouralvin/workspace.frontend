@@ -33,7 +33,7 @@ export default function PatientAuditPage() {
 
   return (
     <DashboardShell>
-      <div className="p-6 max-w-4xl mx-auto space-y-4">
+      <div className="p-4 md:p-6 max-w-4xl mx-auto space-y-4">
         <nav className="flex items-center gap-2 text-body-sm text-on-surface-variant" aria-label="Fil d'Ariane">
           <Link href="/" className="hover:text-on-surface transition-colors flex items-center gap-1">
             <ArrowBackOutlined style={{ fontSize: 16 }} /> Patients

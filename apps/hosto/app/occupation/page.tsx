@@ -412,7 +412,7 @@ export default function OccupationPage() {
 
   return (
     <DashboardShell>
-      <div className="p-8 max-w-5xl mx-auto space-y-6">
+      <div className="p-4 md:p-8 max-w-5xl mx-auto space-y-6">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             <h1 className="text-headline-md font-display text-on-surface flex items-center gap-2">

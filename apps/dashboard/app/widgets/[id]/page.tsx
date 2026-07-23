@@ -105,7 +105,7 @@ export default function WidgetDetailPage() {
 
   return (
     <DashboardShell>
-      <div className="p-6 max-w-[1100px] mx-auto w-full">
+      <div className="p-4 md:p-6 max-w-[1100px] mx-auto w-full">
         <div className="mb-4 flex items-center justify-between gap-3">
           <button type="button" onClick={() => router.push("/widgets")}
             className="inline-flex items-center gap-1.5 text-body-sm text-on-surface-variant transition-colors hover:text-on-surface">

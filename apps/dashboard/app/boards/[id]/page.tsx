@@ -86,7 +86,7 @@ export default function BoardPage() {
 
   return (
     <DashboardShell>
-      <div ref={boardRef} className="p-6 max-w-[1200px] mx-auto w-full overflow-auto bg-background">
+      <div ref={boardRef} className="p-4 md:p-6 max-w-[1200px] mx-auto w-full overflow-auto bg-background">
         <div className="mb-4 flex items-center justify-between gap-3">
           <button type="button" onClick={() => router.push("/boards")} className="inline-flex items-center gap-1.5 text-body-sm text-on-surface-variant hover:text-on-surface">
             <ArrowBackOutlined style={{ fontSize: 18 }} /> Tableaux de bord

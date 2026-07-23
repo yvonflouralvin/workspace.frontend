@@ -243,22 +243,22 @@ function RegisterForm() {
         <div className="relative z-10">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 mb-md">
             <span className="flex h-2 w-2 rounded-full bg-secondary-fixed"></span>
-            <span className="font-label-sm text-label-sm text-white uppercase tracking-wider">Enterprise Ready</span>
+            <span className="font-label-sm text-label-sm text-white uppercase tracking-wider">Plateforme de gestion</span>
           </div>
           <h1 className="font-display text-display text-white mb-md leading-tight">
-            Built for Scale.<br />Designed for Speed.
+            Toute votre gestion,<br />au même endroit.
           </h1>
           <p className="font-body-lg text-body-lg text-white/80 leading-relaxed mb-xl">
-            Experience the next generation of collaborative productivity. Imani Workspace integrates high-performance tools with a minimalist interface to keep your team in the flow.
+            Facturation, dossiers patients, stock, ressources humaines, approbations et tableaux de bord — une seule plateforme, un seul compte, les mêmes droits partout.
           </p>
           <div className="grid grid-cols-2 gap-lg border-t border-white/10 pt-xl">
             <div>
-              <span className="block font-display text-headline-sm text-white font-bold">99.9%</span>
-              <span className="font-label-md text-label-md text-white/60">Uptime Reliability</span>
+              <span className="block font-display text-headline-sm text-white font-bold">10 apps</span>
+              <span className="font-label-md text-label-md text-white/60">Métiers couverts</span>
             </div>
             <div>
-              <span className="block font-display text-headline-sm text-white font-bold">256-bit</span>
-              <span className="font-label-md text-label-md text-white/60">AES Encryption</span>
+              <span className="block font-display text-headline-sm text-white font-bold">RDC</span>
+              <span className="font-label-md text-label-md text-white/60">Franc congolais, Mobile Money</span>
             </div>
           </div>
         </div>
@@ -347,7 +347,7 @@ function RegisterForm() {
 
               <form className="space-y-lg" onSubmit={handleEmailSubmit}>
                 <div className="space-y-xs">
-                  <label className="font-label-md text-label-md text-on-surface-variant ml-1" htmlFor="email">Work Email</label>
+                  <label className="font-label-md text-label-md text-on-surface-variant ml-1" htmlFor="email">Adresse email</label>
                   <div className="relative group">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                       <AlternateEmail />
@@ -636,7 +636,7 @@ function RegisterForm() {
           )}
 
           <p className="text-center font-body-sm text-body-sm text-on-surface-variant">
-            Already have an account?{" "}
+            Vous avez déjà un compte ?{" "}
             <Link className="text-primary font-semibold hover:underline" href="/">Sign in</Link>
           </p>
         </div>

@@ -22,7 +22,7 @@ function NewWidgetInner() {
   const back = () => router.push("/widgets");
 
   return (
-    <div className="p-6 max-w-[800px] mx-auto w-full">
+    <div className="p-4 md:p-6 max-w-[800px] mx-auto w-full">
       <button type="button" onClick={back}
         className="mb-4 inline-flex items-center gap-1.5 text-body-sm text-on-surface-variant transition-colors hover:text-on-surface">
         <ArrowBackOutlined style={{ fontSize: 18 }} /> Widgets

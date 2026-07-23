@@ -248,22 +248,37 @@ export default function CommandesPage() {
                   <button
                     key={c.id}
                     onClick={() => router.push(`/commandes/${c.id}`)}
-                    className={`w-full flex flex-wrap md:flex-nowrap items-start md:items-center gap-x-3 xl:gap-x-4 gap-y-2 px-4 md:px-5 py-3 text-left border-b border-hairline last:border-b-0 hover:bg-surface-container-low transition-colors ${
+                    className={`w-full block text-left border-b border-hairline last:border-b-0 hover:bg-surface-container-low transition-colors ${
                       i % 2 === 1 ? "bg-surface-row-alt" : ""
                     }`}
                   >
-                    <span className="w-full md:w-[110px] xl:w-[130px] flex-none truncate font-mono text-label-md font-medium text-primary">
-                      {c.code}
-                    </span>
-                    <span className="md:flex-1 md:min-w-0 truncate text-body-md text-on-surface">
-                      {c.client_nom ?? "—"}
-                    </span>
-
-                    <span className="w-full xl:w-[150px] flex-none md:hidden xl:block">
-                      {pct === null ? (
-                        <span className="text-label-md text-outline">—</span>
-                      ) : (
-                        <>
+                    {/* Carte (mobile) et rangée (bureau) sont deux blocs distincts :
+                        une seule rangée pilotée par des variantes md:/xl: retombait en
+                        pile dès qu'une de ces règles manquait. */}
+                    <span className="md:hidden block px-4 py-3 space-y-1.5">
+                      <span className="flex items-center justify-between gap-3">
+                        <span className="truncate font-mono text-label-md font-medium text-primary">
+                          {c.code}
+                        </span>
+                        <span
+                          className={`inline-flex flex-none items-center rounded-md px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap ${STATUT_CLASS[c.statut]}`}
+                        >
+                          {STATUT_LABEL[c.statut]}
+                        </span>
+                      </span>
+                      <span className="block truncate text-body-md text-on-surface">
+                        {c.client_nom ?? "—"}
+                      </span>
+                      <span className="flex items-center justify-between gap-3">
+                        <span className="font-mono text-label-md text-on-surface-variant">
+                          {c.date_commande ?? "—"}
+                        </span>
+                        <span className="tabular-nums font-mono text-body-sm font-semibold text-on-surface">
+                          {format(c.montant_total)}
+                        </span>
+                      </span>
+                      {pct !== null && (
+                        <span className="block pt-0.5">
                           <span className="flex items-center justify-between text-[11px] mb-1">
                             <span className="text-outline">Encaissé</span>
                             <span
@@ -278,22 +293,54 @@ export default function CommandesPage() {
                               style={{ width: `${pct}%` }}
                             />
                           </span>
-                        </>
+                        </span>
                       )}
                     </span>
 
-                    <span className="md:w-[100px] xl:w-[110px] flex-none">
-                      <span
-                        className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap ${STATUT_CLASS[c.statut]}`}
-                      >
-                        {STATUT_LABEL[c.statut]}
+                    <span className="hidden md:flex items-center gap-3 xl:gap-4 px-5 py-3">
+                      <span className="w-[110px] xl:w-[130px] flex-none truncate font-mono text-label-md font-medium text-primary">
+                        {c.code}
                       </span>
-                    </span>
-                    <span className="xl:w-[100px] flex-none md:hidden xl:block whitespace-nowrap font-mono text-label-md text-on-surface-variant">
-                      {c.date_commande ?? "—"}
-                    </span>
-                    <span className="md:w-[130px] xl:w-[160px] flex-none md:text-right whitespace-nowrap tabular-nums font-mono text-body-sm font-semibold text-on-surface">
-                      {format(c.montant_total)}
+                      <span className="flex-1 min-w-0 truncate text-body-md text-on-surface">
+                        {c.client_nom ?? "—"}
+                      </span>
+
+                      <span className="hidden xl:block w-[150px] flex-none">
+                        {pct === null ? (
+                          <span className="text-label-md text-outline">—</span>
+                        ) : (
+                          <>
+                            <span className="flex items-center justify-between text-[11px] mb-1">
+                              <span className="text-outline">Encaissé</span>
+                              <span
+                                className={`font-semibold ${pct >= 100 ? "text-member-active" : "text-on-surface-variant"}`}
+                              >
+                                {pct} %
+                              </span>
+                            </span>
+                            <span className="block h-1.5 rounded-full bg-surface-container-low overflow-hidden">
+                              <span
+                                className={`block h-full rounded-full ${pct >= 100 ? "bg-secondary" : "bg-primary"}`}
+                                style={{ width: `${pct}%` }}
+                              />
+                            </span>
+                          </>
+                        )}
+                      </span>
+
+                      <span className="w-[100px] xl:w-[110px] flex-none">
+                        <span
+                          className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap ${STATUT_CLASS[c.statut]}`}
+                        >
+                          {STATUT_LABEL[c.statut]}
+                        </span>
+                      </span>
+                      <span className="hidden xl:block w-[100px] flex-none whitespace-nowrap font-mono text-label-md text-on-surface-variant">
+                        {c.date_commande ?? "—"}
+                      </span>
+                      <span className="w-[130px] xl:w-[160px] flex-none text-right whitespace-nowrap tabular-nums font-mono text-body-sm font-semibold text-on-surface">
+                        {format(c.montant_total)}
+                      </span>
                     </span>
                   </button>
                 );

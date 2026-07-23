@@ -24,7 +24,7 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
 
   return (
     <DashboardShell>
-      <div className="p-8 max-w-3xl mx-auto space-y-6">
+      <div className="p-4 md:p-8 max-w-3xl mx-auto space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-on-surface">
             {flow && flow.workspace_id === null ? "Configurer" : "Modifier"} {flow?.title ?? id}

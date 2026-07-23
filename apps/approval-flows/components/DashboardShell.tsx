@@ -15,10 +15,10 @@ import { HomeOutlined, AccountTreeOutlined, AssignmentTurnedInOutlined, OutboxOu
 import type { NavItem } from "@repo/ui/types/shell";
 
 const NAV_ITEMS: NavItem[] = [
-  { label: "MyRequest", href: "/", icon: <HomeOutlined style={{ fontSize: 20 }} />, exact: true },
-  { label: "Requests", href: "/requests", icon: <AssignmentTurnedInOutlined style={{ fontSize: 20 }} /> },
-  { label: "Flows", href: "/flows", icon: <AccountTreeOutlined style={{ fontSize: 20 }} /> },
-  { label: "Submission", href: "/submissions", icon: <OutboxOutlined style={{ fontSize: 20 }} /> },
+  { label: "Mes demandes", href: "/", icon: <HomeOutlined style={{ fontSize: 20 }} />, exact: true },
+  { label: "À traiter", href: "/requests", icon: <AssignmentTurnedInOutlined style={{ fontSize: 20 }} /> },
+  { label: "Flux", href: "/flows", icon: <AccountTreeOutlined style={{ fontSize: 20 }} /> },
+  { label: "Soumissions", href: "/submissions", icon: <OutboxOutlined style={{ fontSize: 20 }} /> },
 ];
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {

@@ -24,7 +24,7 @@ export default function SubmitFlowPage({ params }: { params: Promise<{ id: strin
 
   return (
     <DashboardShell>
-      <div className="p-8 max-w-2xl mx-auto space-y-6">
+      <div className="p-4 md:p-8 max-w-2xl mx-auto space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-on-surface">Nouvelle demande</h1>
           <p className="text-sm text-on-surface-variant mt-1">

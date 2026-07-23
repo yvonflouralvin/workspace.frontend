@@ -63,7 +63,7 @@ export default function RequestDetailPage({ params }: { params: Promise<{ id: st
 
   return (
     <DashboardShell>
-      <div className="p-8 max-w-3xl mx-auto space-y-6">
+      <div className="p-4 md:p-8 max-w-[1024px] mx-auto space-y-5">
         {error && (
           <p className="text-sm text-error bg-error-container/40 rounded-lg px-3 py-2">{error}</p>
         )}

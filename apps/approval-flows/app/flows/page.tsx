@@ -6,6 +6,7 @@ import { AddOutlined } from "@mui/icons-material";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
 import { DataList, type DataListColumn } from "@repo/ui/DataList";
 import { DashboardShell } from "@/components/DashboardShell";
+import { ConsoleTabs } from "@/components/ConsoleTabs";
 import { listFlows, ApiError } from "@/app/lib/api";
 import type { FlowSummary } from "@repo/approval-flows/types/flow";
 
@@ -53,7 +54,8 @@ export default function FlowsPage() {
 
   return (
     <DashboardShell>
-      <div className="p-8 max-w-4xl mx-auto space-y-6">
+      <div className="p-4 md:p-8 max-w-[1024px] mx-auto space-y-5">
+        <ConsoleTabs />
         <div className="flex items-start justify-between">
           <div>
             <h1 className="text-2xl font-bold text-on-surface">Flows d&apos;approbation</h1>

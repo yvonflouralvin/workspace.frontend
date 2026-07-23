@@ -215,41 +215,82 @@ export default function ProduitsPage() {
                 <button
                   key={p.id}
                   onClick={() => router.push(`/produits/${p.id}`)}
-                  className={`w-full flex flex-wrap md:flex-nowrap items-start md:items-center gap-x-4 gap-y-2 px-4 md:px-5 py-3 text-left border-b border-hairline last:border-b-0 hover:bg-surface-container-low transition-colors ${
+                  className={`w-full block text-left border-b border-hairline last:border-b-0 hover:bg-surface-container-low transition-colors ${
                     p.owner_app_key ? "bg-locked-surface" : ""
                   }`}
                 >
-                  <span className="w-full md:flex-1 md:min-w-0">
-                    <span className="flex items-center gap-2">
-                      <span className="text-body-md font-medium text-on-surface truncate">{p.nom}</span>
-                      {p.owner_app_key && <LockedBadge appLabel={p.owner_app_key} />}
-                    </span>
-                    <span className="block text-label-md text-outline truncate">
-                      {p.unite || p.description || "—"}
-                    </span>
-                  </span>
-
-                  <span className="md:w-[200px] flex-none flex flex-wrap gap-1">
-                    {p.categories.length ? (
-                      p.categories.map((c) => (
-                        <span
-                          key={c.id}
-                          className="rounded-md bg-role-member-container px-1.5 py-0.5 text-[11px] font-medium text-role-member whitespace-nowrap"
-                        >
-                          {c.nom}
+                  {/* Carte (mobile) et rangée (bureau) sont deux blocs distincts :
+                      une seule rangée pilotée par des variantes md: retombait en pile
+                      dès qu'une de ces règles manquait. */}
+                  <span className="md:hidden block px-4 py-3 space-y-1.5">
+                    <span className="flex items-start justify-between gap-3">
+                      <span className="min-w-0">
+                        <span className="flex items-center gap-2">
+                          <span className="text-body-md font-medium text-on-surface truncate">
+                            {p.nom}
+                          </span>
+                          {p.owner_app_key && <LockedBadge appLabel={p.owner_app_key} />}
                         </span>
-                      ))
-                    ) : (
-                      <span className="text-label-md text-outline">—</span>
+                        <span className="block text-label-md text-outline truncate">
+                          {p.unite || p.description || "—"}
+                        </span>
+                      </span>
+                      <span className="flex-none whitespace-nowrap tabular-nums font-mono text-body-sm font-semibold text-on-surface">
+                        {formatPrix(p.prix_vente, deviseBase)}
+                      </span>
+                    </span>
+                    {(p.categories.length > 0 || p.tva_applicable) && (
+                      <span className="flex flex-wrap items-center gap-1">
+                        {p.categories.map((c) => (
+                          <span
+                            key={c.id}
+                            className="rounded-md bg-role-member-container px-1.5 py-0.5 text-[11px] font-medium text-role-member whitespace-nowrap"
+                          >
+                            {c.nom}
+                          </span>
+                        ))}
+                        {p.tva_applicable && (
+                          <span className="rounded-md bg-surface-container px-1.5 py-0.5 text-[11px] font-medium text-on-surface-variant">
+                            TVA
+                          </span>
+                        )}
+                      </span>
                     )}
                   </span>
 
-                  <span className="md:w-[70px] flex-none md:text-center text-body-sm text-on-surface-variant">
-                    {p.tva_applicable ? "Oui" : "Non"}
-                  </span>
+                  <span className="hidden md:flex items-center gap-4 px-5 py-3">
+                    <span className="flex-1 min-w-0">
+                      <span className="flex items-center gap-2">
+                        <span className="text-body-md font-medium text-on-surface truncate">{p.nom}</span>
+                        {p.owner_app_key && <LockedBadge appLabel={p.owner_app_key} />}
+                      </span>
+                      <span className="block text-label-md text-outline truncate">
+                        {p.unite || p.description || "—"}
+                      </span>
+                    </span>
 
-                  <span className="md:w-[150px] flex-none md:text-right whitespace-nowrap tabular-nums font-mono text-body-sm font-semibold text-on-surface">
-                    {formatPrix(p.prix_vente, deviseBase)}
+                    <span className="w-[200px] flex-none flex flex-wrap gap-1">
+                      {p.categories.length ? (
+                        p.categories.map((c) => (
+                          <span
+                            key={c.id}
+                            className="rounded-md bg-role-member-container px-1.5 py-0.5 text-[11px] font-medium text-role-member whitespace-nowrap"
+                          >
+                            {c.nom}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-label-md text-outline">—</span>
+                      )}
+                    </span>
+
+                    <span className="w-[70px] flex-none text-center text-body-sm text-on-surface-variant">
+                      {p.tva_applicable ? "Oui" : "Non"}
+                    </span>
+
+                    <span className="w-[150px] flex-none text-right whitespace-nowrap tabular-nums font-mono text-body-sm font-semibold text-on-surface">
+                      {formatPrix(p.prix_vente, deviseBase)}
+                    </span>
                   </span>
                 </button>
               ))}

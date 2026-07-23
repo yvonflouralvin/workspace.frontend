@@ -10,7 +10,6 @@ import { EditProduitPrixDrawer } from "@/components/EditProduitPrixDrawer";
 import { EditProduitTvaDrawer } from "@/components/EditProduitTvaDrawer";
 import { EditProduitInfoDrawer } from "@/components/EditProduitInfoDrawer";
 import { EditProduitCategorieDrawer } from "@/components/EditProduitCategorieDrawer";
-import { Tabs } from "@repo/ui/Tabs";
 import { RightDrawer } from "@repo/ui/RightDrawer";
 import {
   getProduit,
@@ -134,7 +133,8 @@ function GeneralTab({
 
   return (
     <>
-      <div className="rounded-xl border border-outline-variant bg-surface-container-lowest divide-y divide-outline-variant">
+      <p className="text-label-sm uppercase text-outline mb-2">Catégories</p>
+      <div className="rounded-2xl border border-outline-soft bg-surface-container-lowest divide-y divide-hairline mb-5">
         <div className="flex items-center gap-4 px-4 py-3">
           <span className="text-label-md text-on-surface-variant w-40 shrink-0">Catégories</span>
           <div className="flex-1 min-w-0">
@@ -161,6 +161,10 @@ function GeneralTab({
           />
         </div>
 
+      </div>
+
+      <p className="text-label-sm uppercase text-outline mb-2">Prix &amp; TVA</p>
+      <div className="rounded-2xl border border-outline-soft bg-surface-container-lowest divide-y divide-hairline">
         <div className="flex items-center gap-4 px-4 py-3">
           <span className="text-label-md text-on-surface-variant w-40 shrink-0">Prix de vente</span>
           <div className="flex-1 min-w-0">
@@ -368,23 +372,13 @@ export default function ProduitDetailPage() {
               </div>
             </div>
 
-            <Tabs
-              tabs={[
-                {
-                  key: "general",
-                  label: "Général",
-                  content: (
-                    <GeneralTab
-                      produit={produit}
-                      canManage={canManage}
-                      baseDevise={baseDevise}
-                      devises={devises}
-                      tvaDefaut={tvaDefaut}
-                      onSaved={setProduit}
-                    />
-                  ),
-                },
-              ]}
+            <GeneralTab
+              produit={produit}
+              canManage={canManage}
+              baseDevise={baseDevise}
+              devises={devises}
+              tvaDefaut={tvaDefaut}
+              onSaved={setProduit}
             />
 
             {editingInfo && (

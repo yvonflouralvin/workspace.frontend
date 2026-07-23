@@ -6,6 +6,7 @@ import { useLogout } from "@repo/auth/hooks/useLogout";
 import { AppShell } from "@repo/ui/shell/AppShell";
 import { Sidebar } from "@repo/ui/shell/Sidebar";
 import { TopBar } from "@repo/ui/shell/TopBar";
+import { DeviseSelector } from "@/components/DeviseProvider";
 import { NotificationBell } from "@repo/notifications/NotificationBell";
 import { UserFooter } from "@repo/ui/shell/UserFooter";
 import { WorkspaceSwitcher } from "@repo/ui/WorkspaceSwitcher";
@@ -58,6 +59,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       }
       topBar={
         <TopBar
+          extraActions={<DeviseSelector />}
           notifications={<NotificationBell basePath="/api/notifications" />}
           apps={visibleApps}
           allAppsUrl="/"

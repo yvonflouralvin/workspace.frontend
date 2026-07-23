@@ -40,6 +40,8 @@ interface TopBarProps {
   // Slot pour une cloche de notification autonome (ex. <NotificationBell/> de
   // @repo/notifications). Si fourni, remplace le bouton cloche présentationnel.
   notifications?: React.ReactNode;
+  /** Contrôles propres à l'app, posés à gauche des actions communes. */
+  extraActions?: React.ReactNode;
   onLogout?: () => void;
   onSearch?: (q: string) => Promise<SearchSection[]>;
   appName?: string;
@@ -206,6 +208,7 @@ export function TopBar({
   preferencesUrl,
   notificationsCount = 0,
   notifications,
+  extraActions,
   onLogout,
   onSearch,
   appName,
@@ -274,6 +277,7 @@ export function TopBar({
 
   const actions = (
     <div className="flex items-center gap-1.5 shrink-0">
+      {extraActions}
       <div className="relative">
         <button
           onClick={() => setAppSelectorOpen((v) => !v)}

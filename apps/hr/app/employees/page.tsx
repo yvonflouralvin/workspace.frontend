@@ -61,7 +61,7 @@ export default function EmployeesPage() {
 
   return (
     <DashboardShell>
-      <div className="p-8 max-w-4xl mx-auto space-y-6">
+      <div className="p-4 md:p-8 max-w-4xl mx-auto space-y-6">
         <div className="flex items-start justify-between">
           <div>
             <h1 className="text-2xl font-bold text-on-surface">Employés</h1>

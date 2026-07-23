@@ -4,7 +4,7 @@ import { GroupFolderView } from "@/components/GroupFolderView";
 export default function GroupsPage() {
   return (
     <DashboardShell>
-      <div className="p-8 max-w-4xl mx-auto space-y-6">
+      <div className="p-4 md:p-8 max-w-4xl mx-auto space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-on-surface">Groupes / Départements</h1>
           <p className="text-sm text-on-surface-variant mt-1">

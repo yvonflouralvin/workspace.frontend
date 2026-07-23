@@ -17,7 +17,7 @@ import type { NavItem } from "@repo/ui/types/shell";
 const NAV_ITEMS: NavItem[] = [
   { label: "Accueil", href: process.env.NEXT_PUBLIC_WORKSPACE_DOMAIN ?? "http://localhost:3005", icon: <HomeOutlined style={{ fontSize: 20 }} />, exact: true },
   { label: "Employés", href: "/employees", icon: <PeopleAltOutlined style={{ fontSize: 20 }} /> },
-  { label: "Groupes/Départements", href: "/groups", icon: <FolderOutlined style={{ fontSize: 20 }} /> },
+  { label: "Organisation", href: "/groups", icon: <FolderOutlined style={{ fontSize: 20 }} /> },
   { label: "Démo approbation", href: "/demo-approval", icon: <FactCheckOutlined style={{ fontSize: 20 }} /> },
 ];
 

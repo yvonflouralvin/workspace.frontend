@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
 import { DashboardShell } from "@/components/DashboardShell";
+import { LockedBadge } from "@repo/ui/LockedBadge";
 import { CreateProduitDrawer } from "@/components/CreateProduitDrawer";
 import { listProduits, listCategories, getFacturationConfig, type Produit, type Categorie } from "@/lib/ventes-api";
 import {
@@ -216,9 +217,14 @@ export default function ProduitsPage() {
                     <tr
                       key={p.id}
                       onClick={() => router.push(`/produits/${p.id}`)}
-                      className="border-b border-outline-variant last:border-0 hover:bg-surface-container-low transition-colors cursor-pointer"
+                      className={`border-b border-outline-variant last:border-0 hover:bg-surface-container-low transition-colors cursor-pointer ${p.owner_app_key ? "bg-locked-surface" : ""}`}
                     >
-                      <td className="px-5 py-3 text-on-surface font-medium">{p.nom}</td>
+                      <td className="px-5 py-3 text-on-surface font-medium">
+                        <span className="inline-flex items-center gap-2">
+                          {p.nom}
+                          {p.owner_app_key && <LockedBadge appLabel={p.owner_app_key} />}
+                        </span>
+                      </td>
                       <td className="px-5 py-3 text-on-surface-variant">
                         {p.categories.length ? p.categories.map((c) => c.nom).join(", ") : "—"}
                       </td>

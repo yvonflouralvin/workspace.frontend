@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
 import { DashboardShell } from "@/components/DashboardShell";
+import { LockedBadge, LockedBanner } from "@repo/ui/LockedBadge";
 import { EditProduitPrixDrawer } from "@/components/EditProduitPrixDrawer";
 import { EditProduitTvaDrawer } from "@/components/EditProduitTvaDrawer";
 import { EditProduitInfoDrawer } from "@/components/EditProduitInfoDrawer";
@@ -295,7 +296,7 @@ export default function ProduitDetailPage() {
 
   return (
     <DashboardShell>
-      <div className="p-8 max-w-4xl mx-auto space-y-6">
+      <div className="p-4 md:p-8 max-w-4xl mx-auto space-y-5">
         <Link
           href="/produits"
           className="inline-flex items-center gap-1.5 text-body-sm text-on-surface-variant hover:text-on-surface transition-colors"
@@ -315,7 +316,9 @@ export default function ProduitDetailPage() {
 
         {canView && !loading && produit && (
           <>
-            <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-6">
+            {produit.owner_app_key && <LockedBanner appLabel={produit.owner_app_key} />}
+
+            <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-4 md:p-6">
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
@@ -325,11 +328,7 @@ export default function ProduitDetailPage() {
                         Lié à Stock
                       </span>
                     )}
-                    {produit.owner_app_key && (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-label-sm font-medium bg-surface-container text-on-surface-variant">
-                        <LockOutlined style={{ fontSize: 13 }} /> Géré par {produit.owner_app_key}
-                      </span>
-                    )}
+                    {produit.owner_app_key && <LockedBadge appLabel={produit.owner_app_key} />}
                   </div>
                   {produit.description && (
                     <p className="text-body-sm text-on-surface-variant mt-1">{produit.description}</p>

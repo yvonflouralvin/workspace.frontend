@@ -766,6 +766,25 @@ niveau) et les badges point + fond soft dérivés de `STATUS_TONES` — tokens `
 
 ---
 
+## Responsive — trois régimes
+
+- **< 768 px** : sidebar en off-canvas ouverte par le hamburger de la TopBar, TopBar réduite
+  à hamburger + titre de page + cloche, drawers et modales en **bottom-sheet** (poignée,
+  coins arrondis), cibles tactiles à 44 px.
+- **768–1023 px** : **rail d'icônes de 72 px**.
+- **≥ 1024 px** : sidebar complète de 260 px, géométrie inchangée par rapport à l'existant.
+
+Le régime « déplié » passe par un contexte (`useSidebarMode`) et non par des classes `lg:` :
+dans l'off-canvas mobile les variantes `lg:` ne s'appliquent pas alors qu'on veut précisément
+la version complète, libellés compris.
+
+Côté écrans : grilles en 1 → 2 → 3 colonnes, tableau des membres en **liste de cartes** sous
+768 px, catalogue des Paramètres en menu déroulant, Kanban en **scroll-snap** une colonne à
+la fois. Les titres de page qui font doublon avec celui de la TopBar mobile sont masqués sous
+la tablette.
+
+---
+
 ## Ordre d'implémentation
 
 1. `packages/ui/src/types/shell.ts` — types

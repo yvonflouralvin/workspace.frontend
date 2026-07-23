@@ -68,6 +68,14 @@
   --color-overlay:                  rgb(11 28 48 / 0.4);
   --color-track:                    #dce0ea;
 
+  /* ── Objets appartenant à une autre application ──
+     Teinte ambre volontairement hors palette : elle doit se distinguer des
+     statuts métier partout où un objet est publié par une autre app. */
+  --color-locked:           #8a6d1f;
+  --color-locked-container: #f4ecd6;
+  --color-locked-surface:   #fdfcf7;
+  --color-locked-field:     #f7f2e6;
+
   /* ── Statuts de tâche (progression froide → verte) ── */
   --color-status-backlog:           #a3a1af;
   --color-status-backlog-on:        #5c5b6b;

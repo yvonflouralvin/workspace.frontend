@@ -30,6 +30,24 @@ export interface TiersDetail extends TiersSummary {
   updated_at: string;
 }
 
+export const TYPE_LABELS: Record<TypeTiers, string> = {
+  CLIENT: "Client",
+  FOURNISSEUR: "Fournisseur",
+  LES_DEUX: "Client & fournisseur",
+};
+
+/** Ton du badge de type — tokens du design system. */
+export const TYPE_TONES: Record<TypeTiers, string> = {
+  CLIENT: "bg-role-admin-container text-role-admin",
+  FOURNISSEUR: "bg-member-active-container text-member-active",
+  LES_DEUX: "bg-role-owner-container text-role-owner",
+};
+
+export const CATEGORIE_LABELS: Record<CategorieTiers, string> = {
+  ENTREPRISE: "Entreprise",
+  PARTICULIER: "Particulier",
+};
+
 export interface TiersPage {
   items: TiersSummary[];
   total: number;

@@ -22,7 +22,19 @@ import {
   ArrowBackOutlined,
   CheckOutlined,
   OpenInNewOutlined,
+  RestartAltOutlined,
 } from "@mui/icons-material";
+
+/** Squelettes insérables — les types que sait rendre le moteur WeasyPrint. */
+const BLOCK_SNIPPETS: { type: string; snippet: string }[] = [
+  { type: "TEXT", snippet: '{ "type": "TEXT", "text": "" }' },
+  { type: "LABEL_VALUE", snippet: '{ "type": "LABEL_VALUE", "label": "", "variable": "" }' },
+  { type: "TABLE", snippet: '{ "type": "TABLE", "variable": "", "columns": [] }' },
+  { type: "IMAGE", snippet: '{ "type": "IMAGE", "variable": "" }' },
+  { type: "COLUMNS", snippet: '{ "type": "COLUMNS", "columns": [{ "width": "50%", "blocks": [] }] }' },
+  { type: "DIVIDER", snippet: '{ "type": "DIVIDER" }' },
+  { type: "SPACER", snippet: '{ "type": "SPACER", "height": 8 }' },
+];
 
 type Tab = "variables" | "presentation" | "settings";
 
@@ -219,85 +231,179 @@ function PresentationTab({
     }
   };
 
+  // L'aperçu se recompose tout seul après une modification valide : le design
+  // demande un aperçu continu, pas un bouton à cliquer.
+  useEffect(() => {
+    if (jsonError || !jsonText) return;
+    const timer = setTimeout(() => void handlePreview(), 900);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jsonText, jsonError]);
+
+  /** Insère un fragment JSON à la position du curseur dans l'éditeur. */
+  function insertAtCursor(fragment: string) {
+    const el = document.getElementById("layout-json") as HTMLTextAreaElement | null;
+    if (!el) return;
+    const start = el.selectionStart ?? jsonText.length;
+    const end = el.selectionEnd ?? start;
+    const next = jsonText.slice(0, start) + fragment + jsonText.slice(end);
+    handleJsonChange(next);
+    requestAnimationFrame(() => {
+      el.focus();
+      el.setSelectionRange(start + fragment.length, start + fragment.length);
+    });
+  }
+
+  async function restoreDefault() {
+    if (!template.default_layout) return;
+    const text = JSON.stringify(template.default_layout, null, 2);
+    handleJsonChange(text);
+  }
+
   return (
-    <div className="space-y-md">
+    <div className="space-y-4">
       {layoutData?.is_default && (
-        <div className="rounded-xl bg-surface-container border border-outline-variant p-sm text-body-sm text-on-surface-variant">
-          Aucun layout personnalisé pour ce workspace — affichage du layout par défaut du
-          template. Modifiez le JSON ci-dessous et sauvegardez pour créer votre version.
+        <div className="rounded-xl bg-surface-container-low border border-outline-soft px-3.5 py-3 text-body-sm text-on-surface-variant">
+          Aucune mise en page personnalisée pour ce workspace — c&apos;est le modèle par
+          défaut qui s&apos;affiche. Enregistrez pour créer votre version.
         </div>
       )}
 
-      <div className="flex items-center gap-sm">
+      <div className="flex items-center gap-2.5 flex-wrap">
         {canManage && (
           <button
             onClick={handleSave}
             disabled={saving || !!jsonError}
-            className="inline-flex items-center gap-xs rounded-lg bg-primary text-on-primary px-md py-sm text-body-sm font-medium disabled:opacity-50 hover:bg-primary-container transition-colors"
+            className="inline-flex items-center gap-1.5 h-11 md:h-[38px] px-4 rounded-lg bg-primary text-on-primary text-body-sm font-semibold shadow-button disabled:opacity-50 hover:bg-primary-container transition-colors"
           >
             {saved && <CheckOutlined style={{ fontSize: 16 }} />}
-            {saving ? "Sauvegarde…" : saved ? "Sauvegardé" : "Sauvegarder"}
+            {saving ? "Enregistrement…" : saved ? "Enregistré" : "Enregistrer"}
           </button>
         )}
-        <button
-          onClick={handlePreview}
-          disabled={previewing || !!jsonError}
-          className="inline-flex items-center gap-xs rounded-lg border border-outline-variant text-on-surface px-md py-sm text-body-sm font-medium disabled:opacity-50 hover:bg-surface-container transition-colors"
-        >
-          <OpenInNewOutlined style={{ fontSize: 16 }} />
-          {previewing ? "Génération…" : "Prévisualiser"}
-        </button>
+        {canManage && template.default_layout && (
+          <button
+            onClick={restoreDefault}
+            className="inline-flex items-center gap-1.5 h-11 md:h-[38px] px-3.5 rounded-lg border border-outline-soft bg-surface-container-lowest text-body-sm font-semibold text-on-surface-variant hover:bg-surface-container-low transition-colors"
+          >
+            <RestartAltOutlined style={{ fontSize: 16 }} />
+            Revenir au défaut
+          </button>
+        )}
         {previewUrl && (
           <a
             href={previewUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-xs rounded-lg border border-secondary text-secondary px-md py-sm text-body-sm font-medium hover:bg-secondary/10 transition-colors"
+            className="inline-flex items-center gap-1.5 h-11 md:h-[38px] px-3.5 rounded-lg border border-outline-soft text-body-sm font-semibold text-on-surface-variant hover:bg-surface-container-low transition-colors"
           >
             <OpenInNewOutlined style={{ fontSize: 16 }} />
             Ouvrir le PDF
           </a>
         )}
+        <span className="text-label-md text-outline">
+          {previewing ? "Aperçu en cours…" : jsonError ? "" : "Aperçu à jour"}
+        </span>
       </div>
 
-      {jsonError && (
-        <p className="text-body-sm text-error">{jsonError}</p>
-      )}
+      {jsonError && <p className="text-body-sm text-error">{jsonError}</p>}
 
-      <div className="rounded-xl border border-outline-variant overflow-hidden">
-        <div className="bg-surface-container px-md py-sm border-b border-outline-variant">
-          <span className="text-label-md text-on-surface-variant font-medium">
-            Layout JSON (CSS Paged Media — WeasyPrint)
-          </span>
-        </div>
-        <textarea
-          value={jsonText}
-          onChange={(e) => handleJsonChange(e.target.value)}
-          readOnly={!canManage}
-          rows={28}
-          spellCheck={false}
-          className="w-full p-md font-mono text-body-sm text-on-surface bg-surface-container-lowest resize-y outline-none border-none"
-        />
-      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-[220px_1fr_400px] gap-4 items-start">
+        {/* Palette : blocs et variables insérables */}
+        <aside className="rounded-2xl border border-outline-soft bg-surface-container-lowest p-3 space-y-4">
+          <div>
+            <p className="text-label-sm uppercase text-outline mb-2">Blocs</p>
+            <div className="flex flex-wrap gap-1.5">
+              {BLOCK_SNIPPETS.map((b) => (
+                <button
+                  key={b.type}
+                  type="button"
+                  disabled={!canManage}
+                  onClick={() => insertAtCursor(b.snippet)}
+                  title={`Insérer un bloc ${b.type}`}
+                  className="rounded-md bg-primary/5 px-2 py-1 font-mono text-label-sm text-primary hover:bg-primary/10 disabled:opacity-50 transition-colors"
+                >
+                  {b.type}
+                </button>
+              ))}
+            </div>
+          </div>
 
-      <div className="rounded-xl bg-surface-container border border-outline-variant p-md">
-        <p className="text-label-md font-semibold text-on-surface-variant mb-sm">
-          Blocs disponibles
-        </p>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-xs text-body-sm text-on-surface-variant">
-          {["TEXT", "LABEL_VALUE", "TABLE", "IMAGE", "COLUMNS", "DIVIDER", "SPACER"].map((b) => (
-            <code key={b} className="font-mono text-primary text-label-sm bg-primary/5 rounded px-xs py-0.5">
-              {b}
-            </code>
-          ))}
+          <div>
+            <p className="text-label-sm uppercase text-outline mb-2">Variables</p>
+            <div className="flex flex-col gap-1 max-h-[420px] overflow-y-auto">
+              {template.variables.map((v) => (
+                <button
+                  key={v.key}
+                  type="button"
+                  disabled={!canManage}
+                  onClick={() =>
+                    insertAtCursor(`{ "type": "TEXT", "variable": "${v.key}" }`)
+                  }
+                  title={`Insérer ${v.key}`}
+                  className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-left hover:bg-surface-container-low disabled:opacity-50 transition-colors"
+                >
+                  <span
+                    className={`w-1.5 h-1.5 flex-none rounded-full ${
+                      v.source === "entity" ? "bg-tertiary" : "bg-primary"
+                    }`}
+                    title={v.source === "entity" ? "Fournie par l'app" : "Saisie par le workspace"}
+                  />
+                  <span className="flex-1 min-w-0 truncate text-body-sm text-on-surface">
+                    {v.label}
+                  </span>
+                </button>
+              ))}
+            </div>
+            <p className="text-[11px] text-outline mt-2">
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-tertiary align-middle" />{" "}
+              fournie par l&apos;app ·{" "}
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary align-middle" />{" "}
+              saisie par le workspace
+            </p>
+          </div>
+        </aside>
+
+        {/* Source de la mise en page */}
+        <div className="rounded-2xl border border-outline-soft overflow-hidden">
+          <div className="flex items-center gap-2 bg-surface-row-alt px-4 py-2.5 border-b border-outline-soft">
+            <span className="text-label-sm uppercase text-outline">Mise en page</span>
+            <span className="ml-auto text-[11px] text-outline">
+              Sections : body · header_all · header_first · footer_all · footer_last
+            </span>
+          </div>
+          <textarea
+            id="layout-json"
+            value={jsonText}
+            onChange={(e) => handleJsonChange(e.target.value)}
+            readOnly={!canManage}
+            rows={26}
+            spellCheck={false}
+            className="w-full p-4 font-mono text-body-sm text-on-surface bg-surface-container-lowest resize-y outline-none border-none"
+          />
         </div>
-        <p className="text-label-sm text-on-surface-variant mt-sm">
-          Sections : <code className="font-mono">body</code>, <code className="font-mono">header_all</code>,{" "}
-          <code className="font-mono">header_first</code>, <code className="font-mono">footer_all</code>,{" "}
-          <code className="font-mono">footer_last</code>
-        </p>
+
+        {/* Aperçu continu */}
+        <aside className="rounded-2xl border border-outline-soft bg-surface-container-lowest overflow-hidden">
+          <div className="flex items-center gap-2 bg-surface-row-alt px-4 py-2.5 border-b border-outline-soft">
+            <span className="text-label-sm uppercase text-outline">Aperçu</span>
+            {previewing && <span className="ml-auto text-[11px] text-outline">génération…</span>}
+          </div>
+          {previewUrl ? (
+            <iframe
+              key={previewUrl}
+              src={previewUrl}
+              title="Aperçu du document"
+              className="w-full h-[560px] bg-surface-container-low"
+            />
+          ) : (
+            <p className="px-4 py-8 text-center text-body-sm text-on-surface-variant">
+              L&apos;aperçu se génère automatiquement après chaque modification valide.
+            </p>
+          )}
+        </aside>
       </div>
     </div>
+
   );
 }
 

@@ -66,9 +66,9 @@ function ClientCommandesTab({ clientId }: { clientId: number }) {
     <div className="rounded-2xl border border-outline-soft bg-surface-container-lowest overflow-hidden">
       <div className="hidden md:flex items-center gap-4 px-5 py-2.5 bg-surface-row-alt border-b border-surface-container-low text-label-sm uppercase text-outline">
         <span className="w-[150px] flex-none">Code</span>
-        <span className="flex-1">Statut</span>
-        <span className="w-[110px] flex-none">Date</span>
-        <span className="w-[130px] flex-none text-right">Montant</span>
+        <span className="flex-1 min-w-0">Statut</span>
+        <span className="w-[100px] flex-none">Date</span>
+        <span className="w-[170px] flex-none text-right">Montant</span>
       </div>
       {items.map((c) => (
         <Link
@@ -76,18 +76,18 @@ function ClientCommandesTab({ clientId }: { clientId: number }) {
           href={`/commandes/${c.id}`}
           className="flex flex-wrap md:flex-nowrap items-start md:items-center gap-x-4 gap-y-2 px-4 md:px-5 py-3 border-b border-hairline last:border-b-0 hover:bg-surface-container-low transition-colors"
         >
-          <span className="w-full md:w-[150px] flex-none font-mono text-label-md font-medium text-primary">
+          <span className="w-full md:w-[150px] flex-none truncate font-mono text-label-md font-medium text-primary">
             {c.code}
           </span>
-          <span className="md:flex-1">
+          <span className="md:flex-1 md:min-w-0">
             <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold ${STATUT_CLASS[c.statut]}`}>
               {STATUT_LABEL[c.statut]}
             </span>
           </span>
-          <span className="md:w-[110px] flex-none font-mono text-label-md text-on-surface-variant">
+          <span className="md:w-[100px] flex-none whitespace-nowrap font-mono text-label-md text-on-surface-variant">
             {c.date_commande ?? "—"}
           </span>
-          <span className="md:w-[130px] flex-none md:text-right font-mono text-body-sm font-semibold text-on-surface">
+          <span className="md:w-[170px] flex-none md:text-right whitespace-nowrap tabular-nums font-mono text-body-sm font-semibold text-on-surface">
             {format(c.montant_total)}
           </span>
         </Link>
@@ -113,27 +113,30 @@ function ClientFacturesTab({ clientId }: { clientId: number }) {
     return <p className="text-body-sm text-on-surface-variant">Aucune facture pour ce client.</p>;
 
   return (
-    <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest overflow-hidden">
-      <table className="w-full text-body-sm">
-        <thead>
-          <tr className="border-b border-outline-variant text-left text-on-surface-variant">
-            <th className="px-5 py-3 font-medium">Code</th>
-            <th className="px-5 py-3 font-medium">Statut</th>
-            <th className="px-5 py-3 font-medium">Échéance</th>
-            <th className="px-5 py-3 font-medium text-right">Montant</th>
-          </tr>
-        </thead>
-        <tbody>
-          {items.map((f) => (
-            <tr key={f.id} className="border-b border-outline-variant last:border-0">
-              <td className="px-5 py-3 font-mono text-label-md text-on-surface-variant">{f.code}</td>
-              <td className="px-5 py-3 text-on-surface-variant">{f.statut}</td>
-              <td className="px-5 py-3 text-on-surface-variant">{f.date_echeance ?? "—"}</td>
-              <td className="px-5 py-3 text-on-surface text-right tabular-nums">{format(f.montant_total)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="rounded-2xl border border-outline-soft bg-surface-container-lowest overflow-hidden">
+      <div className="hidden md:flex items-center gap-4 px-5 py-2.5 bg-surface-row-alt border-b border-surface-container-low text-label-sm uppercase text-outline">
+        <span className="w-[150px] flex-none">Code</span>
+        <span className="flex-1 min-w-0">Statut</span>
+        <span className="w-[100px] flex-none">Échéance</span>
+        <span className="w-[170px] flex-none text-right">Montant</span>
+      </div>
+      {items.map((f) => (
+        <div
+          key={f.id}
+          className="flex flex-wrap md:flex-nowrap items-start md:items-center gap-x-4 gap-y-2 px-4 md:px-5 py-3 border-b border-hairline last:border-b-0"
+        >
+          <span className="w-full md:w-[150px] flex-none truncate font-mono text-label-md text-on-surface-variant">
+            {f.code}
+          </span>
+          <span className="md:flex-1 md:min-w-0 text-body-sm text-on-surface-variant">{f.statut}</span>
+          <span className="md:w-[100px] flex-none whitespace-nowrap font-mono text-label-md text-on-surface-variant">
+            {f.date_echeance ?? "—"}
+          </span>
+          <span className="md:w-[170px] flex-none md:text-right whitespace-nowrap tabular-nums font-mono text-body-sm font-semibold text-on-surface">
+            {format(f.montant_total)}
+          </span>
+        </div>
+      ))}
     </div>
   );
 }

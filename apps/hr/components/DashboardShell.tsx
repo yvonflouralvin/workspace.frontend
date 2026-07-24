@@ -11,14 +11,19 @@ import { UserFooter } from "@repo/ui/shell/UserFooter";
 import { WorkspaceSwitcher } from "@repo/ui/WorkspaceSwitcher";
 import { PLATFORM_APPS, HR_SHELL } from "@repo/ui/shell/platform";
 import { useSearch } from "@repo/ui/shell/useSearch";
-import { HomeOutlined, PeopleAltOutlined, FolderOutlined, FactCheckOutlined } from "@mui/icons-material";
+import {
+  HomeOutlined,
+  PeopleAltOutlined,
+  CorporateFareOutlined,
+  AccountTreeOutlined,
+} from "@mui/icons-material";
 import type { NavItem } from "@repo/ui/types/shell";
 
 const NAV_ITEMS: NavItem[] = [
   { label: "Accueil", href: process.env.NEXT_PUBLIC_WORKSPACE_DOMAIN ?? "http://localhost:3005", icon: <HomeOutlined style={{ fontSize: 20 }} />, exact: true },
+  { label: "Départements", href: "/", icon: <CorporateFareOutlined style={{ fontSize: 20 }} />, exact: true },
+  { label: "Organigramme", href: "/groups", icon: <AccountTreeOutlined style={{ fontSize: 20 }} /> },
   { label: "Employés", href: "/employees", icon: <PeopleAltOutlined style={{ fontSize: 20 }} /> },
-  { label: "Organisation", href: "/groups", icon: <FolderOutlined style={{ fontSize: 20 }} /> },
-  { label: "Démo approbation", href: "/demo-approval", icon: <FactCheckOutlined style={{ fontSize: 20 }} /> },
 ];
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {

@@ -18,8 +18,6 @@ import {
   Inventory2Outlined,
   CategoryOutlined,
   GroupsOutlined,
-  FolderOutlined,
-  FactCheckOutlined,
   AssignmentTurnedInOutlined,
   AccountTreeOutlined,
   OutboxOutlined,
@@ -212,13 +210,11 @@ export const HR_SHELL: AppShellConfig = {
   appColor: "#006c49",
   routeLabels: {
     "/employees":    "Employés",
-    "/groups":       "Groupes/Départements",
-    "/demo-approval":"Démo approbation",
+    "/groups":       "Organigramme",
   },
   routeIcons: {
     "/employees":    <PeopleAltOutlined style={s(15)} />,
-    "/groups":       <FolderOutlined style={s(15)} />,
-    "/demo-approval":<FactCheckOutlined style={s(15)} />,
+    "/groups":       <AccountTreeOutlined style={s(15)} />,
   },
 };
 

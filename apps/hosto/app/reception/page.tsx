@@ -45,25 +45,27 @@ import {
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
-const PRIORITY_CONFIG: Record<VisitePriority, { badge: string; dot: string; border: string }> = {
-  CRITIQUE:    { badge: "bg-error text-on-error",                        dot: "bg-error",       border: "border-error/50" },
-  TRES_URGENT: { badge: "bg-orange-500 text-white",                      dot: "bg-orange-500",  border: "border-orange-300" },
-  URGENT:      { badge: "bg-yellow-500 text-yellow-900",                 dot: "bg-yellow-500",  border: "border-yellow-300" },
-  NORMAL:      { badge: "bg-surface-container text-on-surface-variant",  dot: "bg-secondary",   border: "border-outline-variant" },
+// Priorités sur les tokens du design (aucun token orange → arbitraire pour
+// « très urgent »). `leftBorder` = accent de bordure gauche de ligne.
+const PRIORITY_CONFIG: Record<VisitePriority, { badge: string; dot: string; border: string; leftBorder: string }> = {
+  CRITIQUE:    { badge: "bg-error-container text-error",                 dot: "bg-error",             border: "border-error/50",             leftBorder: "border-l-error" },
+  TRES_URGENT: { badge: "bg-[#ffe6d0] text-[#8a3d12]",                   dot: "bg-[#c2410c]",         border: "border-[#c2410c]/50",         leftBorder: "border-l-[#c2410c]" },
+  URGENT:      { badge: "bg-tertiary/10 text-tertiary",                  dot: "bg-tertiary",          border: "border-tertiary/50",          leftBorder: "border-l-tertiary" },
+  NORMAL:      { badge: "bg-surface-container text-on-surface-variant",  dot: "bg-outline-variant",   border: "border-outline-variant",      leftBorder: "border-l-outline-variant" },
 };
 
 const STATUS_CONFIG: Record<VisiteStatus, { badge: string }> = {
-  ARRIVE:          { badge: "bg-blue-100 text-blue-700" },
-  EN_ATTENTE:      { badge: "bg-yellow-100 text-yellow-800" },
-  EN_CONSULTATION: { badge: "bg-green-100 text-green-800" },
+  ARRIVE:          { badge: "bg-tertiary/10 text-tertiary" },
+  EN_ATTENTE:      { badge: "bg-surface-container text-on-surface-variant" },
+  EN_CONSULTATION: { badge: "bg-secondary/15 text-secondary" },
   TERMINE:         { badge: "bg-surface-container text-on-surface-variant" },
   PARTI:           { badge: "bg-surface-container text-on-surface-variant" },
 };
 
 const PAIEMENT_CONFIG: Record<string, { label: string; badge: string }> = {
-  EN_ATTENTE_PAIEMENT: { label: "En attente de paiement", badge: "bg-red-100 text-red-700" },
-  PARTIEL:             { label: "Paiement partiel",       badge: "bg-amber-100 text-amber-800" },
-  PAYE:                { label: "Payé",                   badge: "bg-green-100 text-green-800" },
+  EN_ATTENTE_PAIEMENT: { label: "En attente de paiement", badge: "bg-locked-container text-locked" },
+  PARTIEL:             { label: "Paiement partiel",       badge: "bg-locked-container text-locked" },
+  PAYE:                { label: "Payé",                   badge: "bg-secondary/15 text-secondary" },
 };
 
 const PRIORITIES: VisitePriority[] = ["NORMAL", "URGENT", "TRES_URGENT", "CRITIQUE"];
@@ -84,7 +86,7 @@ function WaitBadge({ minutes }: { minutes: number }) {
   const cls  = long
     ? "text-error font-semibold"
     : minutes >= 15
-      ? "text-yellow-600"
+      ? "text-locked"
       : "text-on-surface-variant";
   const label = minutes < 60
     ? `${minutes} min`
@@ -263,7 +265,7 @@ function ConstantesDrawer({
       {canWrite && !showForm && (
         <button
           onClick={() => { setShowForm(true); setMeasuredAt(nowLocal()); }}
-          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border-2 border-dashed border-primary/40 text-primary text-body-sm font-medium hover:bg-primary/5 transition-colors">
+          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border-2 border-dashed border-tertiary/40 text-tertiary text-body-sm font-medium hover:bg-tertiary/5 transition-colors">
           <AddOutlined style={{ fontSize: 18 }} />
           Nouvelle prise de constantes
         </button>
@@ -287,7 +289,7 @@ function ConstantesDrawer({
               type="datetime-local"
               value={measuredAt}
               onChange={(e) => setMeasuredAt(e.target.value)}
-              className="w-full rounded-xl border border-outline-variant bg-surface px-3 py-2 text-body-md text-on-surface focus:outline-none focus:border-primary" />
+              className="w-full rounded-xl border border-outline-variant bg-surface px-3 py-2 text-body-md text-on-surface focus:outline-none focus:border-tertiary" />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -307,7 +309,7 @@ function ConstantesDrawer({
                   }}
                   placeholder="—"
                   className={`w-full rounded-xl border px-3 py-2 text-body-md text-on-surface focus:outline-none transition-colors ${
-                    errors[code] ? "border-error focus:border-error" : "border-outline-variant focus:border-primary"
+                    errors[code] ? "border-error focus:border-error" : "border-outline-variant focus:border-tertiary"
                   } bg-surface`} />
                 {errors[code] && <p className="text-label-sm text-error mt-0.5">{errors[code]}</p>}
               </div>
@@ -321,7 +323,7 @@ function ConstantesDrawer({
           <button
             type="submit"
             disabled={saving}
-            className="w-full py-2.5 rounded-xl bg-primary text-on-primary text-body-sm font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors">
+            className="w-full py-2.5 rounded-xl bg-tertiary text-on-primary text-body-sm font-medium hover:bg-tertiary-container disabled:opacity-50 transition-colors">
             {saving ? "Enregistrement…" : "Enregistrer les constantes"}
           </button>
         </form>
@@ -465,7 +467,7 @@ function VisiteActionsMenu({
           {canConsult && isActive && visite.status === "EN_ATTENTE" && (
             <button
               onClick={() => act(onTake)}
-              className="flex items-center gap-2.5 w-full px-3 py-2 text-body-sm text-primary font-medium hover:bg-primary/5 transition-colors">
+              className="flex items-center gap-2.5 w-full px-3 py-2 text-body-sm text-tertiary font-medium hover:bg-tertiary/5 transition-colors">
               <span className="text-base">▶</span>
               Prendre en charge
             </button>
@@ -553,7 +555,7 @@ function StatusFilterDropdown({
                 onClick={() => onToggle(s)}
                 className="flex items-center gap-2.5 w-full px-3 py-2 text-body-sm text-on-surface hover:bg-surface-container transition-colors text-left">
                 <span className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors ${
-                  checked ? "bg-primary border-primary" : "border-outline-variant"
+                  checked ? "bg-tertiary border-tertiary" : "border-outline-variant"
                 }`}>
                   {checked && <span className="text-on-primary text-[10px] leading-none">✓</span>}
                 </span>
@@ -832,9 +834,9 @@ export default function ReceptionPage() {
         {/* Header */}
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
-            <h1 className="text-headline-sm font-display text-on-surface">Réception</h1>
+            <h1 className="text-headline-md font-display text-on-surface">Réception</h1>
             <p className="text-body-sm text-on-surface-variant mt-0.5">
-              {totalWaiting} patient{totalWaiting !== 1 ? "s" : ""} en attente · {overview.length} service{overview.length !== 1 ? "s" : ""}
+              File d&apos;attente temps réel · {totalWaiting} patient{totalWaiting !== 1 ? "s" : ""} en attente
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -847,7 +849,7 @@ export default function ReceptionPage() {
             {canManage && (
               <button
                 onClick={openDrawer}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-on-primary text-body-sm font-medium hover:bg-primary/90 transition-colors">
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-tertiary text-on-primary text-body-sm font-semibold shadow-button hover:bg-tertiary-container transition-colors">
                 <AddOutlined style={{ fontSize: 18 }} />
                 Enregistrer une arrivée
               </button>
@@ -859,30 +861,31 @@ export default function ReceptionPage() {
           <p className="text-body-sm text-error bg-error-container/40 rounded-xl px-4 py-3">{error}</p>
         )}
 
-        {/* Tabs */}
-        <div className="flex gap-1 border-b border-outline-variant">
-          {(["visites", "services"] as ActiveTab[]).map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`px-4 py-2.5 text-body-sm font-medium border-b-2 -mb-px transition-colors ${
-                activeTab === tab
-                  ? "border-primary text-primary"
-                  : "border-transparent text-on-surface-variant hover:text-on-surface"
-              }`}>
-              {tab === "visites" ? "Liste des visites" : "Services"}
-              {tab === "visites" && visitePage && (
-                <span className="ml-1.5 px-1.5 py-0.5 rounded-full text-label-xs bg-surface-container text-on-surface-variant tabular-nums">
-                  {visitePage.total}
-                </span>
-              )}
-              {tab === "services" && (
-                <span className="ml-1.5 px-1.5 py-0.5 rounded-full text-label-xs bg-surface-container text-on-surface-variant tabular-nums">
-                  {overview.length}
-                </span>
-              )}
-            </button>
-          ))}
+        {/* Tabs — segmented pill (design) */}
+        <div className="inline-flex p-[3px] rounded-full bg-surface-container-low border border-outline-soft">
+          {(["visites", "services"] as ActiveTab[]).map((tab) => {
+            const count = tab === "visites" ? visitePage?.total : overview.length;
+            return (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-body-sm font-semibold transition-colors ${
+                  activeTab === tab
+                    ? "bg-tertiary text-on-primary"
+                    : "text-on-surface-variant hover:text-on-surface"
+                }`}>
+                {tab === "visites" ? "Liste des visites" : "Services"}
+                {count != null && (
+                  <span
+                    className={`px-1.5 rounded-full text-label-xs tabular-nums ${
+                      activeTab === tab ? "bg-white/20" : "bg-surface-container text-on-surface-variant"
+                    }`}>
+                    {count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
 
         {/* ── Tab: Liste des visites ───────────────────────────────────────── */}
@@ -901,7 +904,7 @@ export default function ReceptionPage() {
                   value={visiteSearch}
                   onChange={(e) => setVisiteSearch(e.target.value)}
                   placeholder="Nom, dossier…"
-                  className="w-full pl-9 pr-3 py-2 rounded-xl border border-outline-variant bg-surface text-body-md text-on-surface focus:outline-none focus:border-primary" />
+                  className="w-full pl-9 pr-3 py-2 rounded-xl border border-outline-variant bg-surface text-body-md text-on-surface focus:outline-none focus:border-tertiary" />
               </div>
 
               {/* Statut — dropdown multi-select custom */}
@@ -915,7 +918,7 @@ export default function ReceptionPage() {
               <select
                 value={serviceFilter ?? ""}
                 onChange={(e) => setServiceFilter(e.target.value ? Number(e.target.value) : null)}
-                className="rounded-xl border border-outline-variant bg-surface px-3 py-2 text-body-sm text-on-surface focus:outline-none focus:border-primary shrink-0">
+                className="rounded-xl border border-outline-variant bg-surface px-3 py-2 text-body-sm text-on-surface focus:outline-none focus:border-tertiary shrink-0">
                 <option value="">Tous les services</option>
                 {services.filter((s) => s.active).map((s) => (
                   <option key={s.id} value={s.id}>{s.nom}</option>
@@ -952,7 +955,7 @@ export default function ReceptionPage() {
                       const mins = isActive ? waitMinutes(v.arrived_at) : null;
                       return (
                         <tr key={v.id} className="bg-surface hover:bg-surface-container/30 transition-colors">
-                          <td className="px-4 py-3">
+                          <td className={`px-4 py-3 border-l-4 ${pcfg.leftBorder}`}>
                             <div className="font-medium text-on-surface">
                               {v.patient.prenom} {v.patient.nom}
                             </div>
@@ -1041,7 +1044,7 @@ export default function ReceptionPage() {
                           onClick={() => setCurrentPage(p as number)}
                           className={`px-3 py-1.5 rounded-xl text-body-sm transition-colors ${
                             currentPage === p
-                              ? "bg-primary text-on-primary"
+                              ? "bg-tertiary text-on-primary"
                               : "border border-outline-variant text-on-surface-variant hover:bg-surface-container"
                           }`}>
                           {p}
@@ -1073,7 +1076,7 @@ export default function ReceptionPage() {
                 value={svcSearch}
                 onChange={(e) => { setSvcSearch(e.target.value); setSvcPage(1); }}
                 placeholder="Nom ou code…"
-                className="w-full pl-9 pr-3 py-2 rounded-xl border border-outline-variant bg-surface text-body-md text-on-surface focus:outline-none focus:border-primary" />
+                className="w-full pl-9 pr-3 py-2 rounded-xl border border-outline-variant bg-surface text-body-md text-on-surface focus:outline-none focus:border-tertiary" />
             </div>
 
             {loadingOverview ? (
@@ -1118,7 +1121,7 @@ export default function ReceptionPage() {
                               )}
                             </td>
                             <td className="px-4 py-3 text-right">
-                              <span className={`text-body-md font-bold tabular-nums ${waiting_count > 0 ? "text-primary" : "text-on-surface-variant"}`}>
+                              <span className={`text-body-md font-bold tabular-nums ${waiting_count > 0 ? "text-tertiary" : "text-on-surface-variant"}`}>
                                 {waiting_count}
                               </span>
                             </td>
@@ -1184,7 +1187,7 @@ export default function ReceptionPage() {
                           onClick={() => setSvcPage(p)}
                           className={`px-3 py-1.5 rounded-xl text-body-sm transition-colors ${
                             svcPage === p
-                              ? "bg-primary text-on-primary"
+                              ? "bg-tertiary text-on-primary"
                               : "border border-outline-variant text-on-surface-variant hover:bg-surface-container"
                           }`}>
                           {p}
@@ -1232,7 +1235,7 @@ export default function ReceptionPage() {
               <select
                 value={serviceId ?? ""}
                 onChange={(e) => setServiceId(e.target.value ? Number(e.target.value) : null)}
-                className="w-full rounded-xl border border-outline-variant bg-surface px-3 py-2 text-body-md text-on-surface focus:outline-none focus:border-primary">
+                className="w-full rounded-xl border border-outline-variant bg-surface px-3 py-2 text-body-md text-on-surface focus:outline-none focus:border-tertiary">
                 <option value="">Non orienté pour l&apos;instant</option>
                 {services.filter((s) => s.active).map((s) => (
                   <option key={s.id} value={s.id}>{s.nom}</option>
@@ -1262,7 +1265,7 @@ export default function ReceptionPage() {
               <label className="text-label-md text-on-surface-variant font-medium">Motif de venue</label>
               <input type="text" value={reason} onChange={(e) => setReason(e.target.value)}
                 placeholder="Ex : douleur abdominale, fièvre…" maxLength={255}
-                className="w-full rounded-xl border border-outline-variant bg-surface px-3 py-2 text-body-md text-on-surface focus:outline-none focus:border-primary" />
+                className="w-full rounded-xl border border-outline-variant bg-surface px-3 py-2 text-body-md text-on-surface focus:outline-none focus:border-tertiary" />
             </div>
             <div className="flex gap-3 pt-2">
               <button type="button" onClick={() => setDrawerOpen(false)}
@@ -1270,7 +1273,7 @@ export default function ReceptionPage() {
                 Annuler
               </button>
               <button type="submit" disabled={submitting || !patientId}
-                className="flex-1 px-4 py-2 rounded-xl bg-primary text-on-primary text-body-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-40">
+                className="flex-1 px-4 py-2 rounded-xl bg-tertiary text-on-primary text-body-sm font-medium hover:bg-tertiary-container transition-colors disabled:opacity-40">
                 {submitting ? "Enregistrement…" : "Enregistrer l'arrivée"}
               </button>
             </div>
@@ -1322,7 +1325,7 @@ export default function ReceptionPage() {
               <label className="text-label-md text-on-surface-variant font-medium">Note de triage</label>
               <textarea value={triageNote} onChange={(e) => setTriageNote(e.target.value)}
                 rows={3} placeholder="Observations du triage…"
-                className="w-full rounded-xl border border-outline-variant bg-surface px-3 py-2 text-body-md text-on-surface focus:outline-none focus:border-primary resize-none" />
+                className="w-full rounded-xl border border-outline-variant bg-surface px-3 py-2 text-body-md text-on-surface focus:outline-none focus:border-tertiary resize-none" />
             </div>
             <div className="flex gap-3 pt-2">
               <button type="button" onClick={() => setTriageTarget(null)}
@@ -1330,7 +1333,7 @@ export default function ReceptionPage() {
                 Annuler
               </button>
               <button type="submit" disabled={triageSubmitting}
-                className="flex-1 px-4 py-2 rounded-xl bg-primary text-on-primary text-body-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-40">
+                className="flex-1 px-4 py-2 rounded-xl bg-tertiary text-on-primary text-body-sm font-medium hover:bg-tertiary-container transition-colors disabled:opacity-40">
                 {triageSubmitting ? "Enregistrement…" : "Confirmer le triage"}
               </button>
             </div>
@@ -1351,7 +1354,7 @@ export default function ReceptionPage() {
               </label>
               <select value={orientSvcId ?? ""}
                 onChange={(e) => setOrientSvcId(e.target.value ? Number(e.target.value) : null)}
-                className="w-full rounded-xl border border-outline-variant bg-surface px-3 py-2 text-body-md text-on-surface focus:outline-none focus:border-primary">
+                className="w-full rounded-xl border border-outline-variant bg-surface px-3 py-2 text-body-md text-on-surface focus:outline-none focus:border-tertiary">
                 <option value="">— choisir un service —</option>
                 {services.filter((s) => s.active && s.id !== orientTarget.service_id).map((s) => (
                   <option key={s.id} value={s.id}>{s.nom}</option>
@@ -1364,7 +1367,7 @@ export default function ReceptionPage() {
                 Annuler
               </button>
               <button type="submit" disabled={orientSubmitting || !orientSvcId}
-                className="flex-1 px-4 py-2 rounded-xl bg-primary text-on-primary text-body-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-40">
+                className="flex-1 px-4 py-2 rounded-xl bg-tertiary text-on-primary text-body-sm font-medium hover:bg-tertiary-container transition-colors disabled:opacity-40">
                 {orientSubmitting ? "Réorientation…" : "Confirmer"}
               </button>
             </div>

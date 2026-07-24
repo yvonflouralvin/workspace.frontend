@@ -26,6 +26,14 @@ const SECTION_LABEL = "text-label-sm uppercase text-outline";
 // Palette d'accents pour les barres d'effectif — stable par rang.
 const BAR_COLORS = ["#3525cd", "#006c49", "#004598", "#7c3aed", "#0e7490", "#a16207"];
 
+// Congés en attente — DONNÉES SIMULÉES en attendant le service réel (cf. la
+// note d'endpoints). À remplacer par un fetch dès que l'API congés existe.
+const CONGES_DEMO = [
+  { id: 1, name: "Aline Mbaki", dates: "12 – 16 août", color: "#7c3aed" },
+  { id: 2, name: "Serge Ilunga", dates: "19 – 23 août", color: "#0e7490" },
+  { id: 3, name: "Josée Kalonji", dates: "26 – 27 août", color: "#9a3412" },
+];
+
 export default function HomePage() {
   const { can } = usePermissions();
   const activeWorkspace = useSessionStore((s) => s.activeWorkspace);
@@ -116,7 +124,7 @@ export default function HomePage() {
           </p>
         )}
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-7">
+        <div className="grid grid-cols-2 gap-4 mb-7">
           <KpiCard
             label="Effectif"
             value={loading ? "—" : effectif}
@@ -187,33 +195,83 @@ export default function HomePage() {
             </div>
           </section>
 
-          <section>
-            <h2 className={`${SECTION_LABEL} mb-2.5`}>Effectif par département</h2>
-            <div className="rounded-2xl border border-outline-soft bg-surface-container-lowest p-4">
-              {loading ? (
-                <p className="text-body-sm text-on-surface-variant">Chargement…</p>
-              ) : deptBars.length === 0 ? (
-                <p className="text-body-sm text-on-surface-variant">Aucun effectif à afficher.</p>
-              ) : (
-                <div className="flex flex-col gap-3">
-                  {deptBars.map((d) => (
-                    <div key={d.id}>
-                      <div className="flex items-center justify-between text-label-md mb-1">
-                        <span className="text-on-surface truncate">{d.name}</span>
-                        <span className="font-semibold text-on-surface-variant tabular-nums">{d.count}</span>
-                      </div>
-                      <div className="h-1.5 rounded-full bg-surface-container-low overflow-hidden">
-                        <div
-                          className="h-full rounded-full"
-                          style={{ width: d.width, background: d.color }}
-                        />
+          <div className="flex flex-col gap-6">
+            <section>
+              <div className="flex items-center gap-2 mb-2.5">
+                <h2 className={SECTION_LABEL}>Congés en attente</h2>
+                <span className="inline-flex items-center rounded-full bg-locked-container px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-locked">
+                  Démo
+                </span>
+              </div>
+              <div className="flex flex-col gap-2.5">
+                {CONGES_DEMO.map((l) => (
+                  <div
+                    key={l.id}
+                    className="rounded-2xl border border-outline-soft bg-surface-container-lowest p-3.5"
+                  >
+                    <div className="flex items-center gap-2.5 mb-3">
+                      <Avatar name={l.name} letters={2} size={30} variant="solid" color={l.color} />
+                      <div className="min-w-0">
+                        <p className="text-body-sm font-medium text-on-surface truncate">{l.name}</p>
+                        <p className="text-label-md text-outline">{l.dates}</p>
                       </div>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </section>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        disabled
+                        title="Données simulées — intégration des congés à venir"
+                        className="flex-1 h-8 rounded-lg border border-outline-soft text-label-md font-semibold text-on-surface-variant opacity-70 cursor-not-allowed"
+                      >
+                        Refuser
+                      </button>
+                      <button
+                        type="button"
+                        disabled
+                        title="Données simulées — intégration des congés à venir"
+                        className="flex-1 h-8 rounded-lg bg-secondary text-on-primary text-label-md font-semibold opacity-70 cursor-not-allowed"
+                      >
+                        Approuver
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p className="text-label-md text-outline mt-2">
+                Données simulées — l&apos;intégration des congés arrivera avec le service dédié.
+              </p>
+            </section>
+
+            <section>
+              <h2 className={`${SECTION_LABEL} mb-2.5`}>Effectif par département</h2>
+              <div className="rounded-2xl border border-outline-soft bg-surface-container-lowest p-4">
+                {loading ? (
+                  <p className="text-body-sm text-on-surface-variant">Chargement…</p>
+                ) : deptBars.length === 0 ? (
+                  <p className="text-body-sm text-on-surface-variant">Aucun effectif à afficher.</p>
+                ) : (
+                  <div className="flex flex-col gap-3">
+                    {deptBars.map((d) => (
+                      <div key={d.id}>
+                        <div className="flex items-center justify-between text-label-md mb-1">
+                          <span className="text-on-surface truncate">{d.name}</span>
+                          <span className="font-semibold text-on-surface-variant tabular-nums">
+                            {d.count}
+                          </span>
+                        </div>
+                        <div className="h-1.5 rounded-full bg-surface-container-low overflow-hidden">
+                          <div
+                            className="h-full rounded-full"
+                            style={{ width: d.width, background: d.color }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </section>
+          </div>
         </div>
       </div>
     </DashboardShell>

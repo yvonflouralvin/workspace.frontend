@@ -13,6 +13,7 @@ import { NotificationBell } from "@repo/notifications/NotificationBell";
 import { useSearch } from "@repo/ui/shell/useSearch";
 import {
   HomeOutlined,
+  SpaceDashboardOutlined,
   BiotechOutlined,
   HealingOutlined,
   HotelOutlined,
@@ -36,6 +37,7 @@ const NAV_ITEMS: NavItem[] = [
     icon: <HomeOutlined style={{ fontSize: 20 }} />,
     exact: true,
   },
+  { label: "Tableau de bord", href: "/tableau-de-bord", icon: <SpaceDashboardOutlined style={{ fontSize: 20 }} />, exact: true },
   { label: "Patients",      href: "/",             icon: <PeopleAltOutlined style={{ fontSize: 20 }} />,        permission: "hosto.menu.patients.access" },
   { label: "Services",      href: "/services",     icon: <LocalHospitalOutlined style={{ fontSize: 20 }} />,    permission: "hosto.menu.services.access" },
   { label: "Personnel",     href: "/staff",        icon: <MedicalServicesOutlined style={{ fontSize: 20 }} />,  permission: "hosto.menu.staff.access" },

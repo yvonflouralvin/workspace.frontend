@@ -1,6 +1,7 @@
 import React from "react";
 import {
   HomeOutlined,
+  SpaceDashboardOutlined,
   FolderOpenOutlined,
   GroupOutlined,
   InboxOutlined,
@@ -150,6 +151,7 @@ export const HOSTO_SHELL: AppShellConfig = {
   appIcon: "P",
   appColor: "#0e7490",
   routeLabels: {
+    "/tableau-de-bord": "Tableau de bord",
     "/patients":      "Patients",
     "/services":      "Services",
     "/staff":         "Personnel",
@@ -162,6 +164,7 @@ export const HOSTO_SHELL: AppShellConfig = {
     "/parametres/synchro":    "Synchronisation",
   },
   routeIcons: {
+    "/tableau-de-bord": <SpaceDashboardOutlined style={s(15)} />,
     "/patients":      <PeopleAltOutlined style={s(15)} />,
     "/services":      <LocalHospitalOutlined style={s(15)} />,
     "/staff":         <MedicalServicesOutlined style={s(15)} />,

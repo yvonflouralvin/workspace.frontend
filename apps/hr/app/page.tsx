@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
+import { useSessionStore } from "@repo/auth/store/session.store";
 import { KpiCard } from "@repo/ui/KpiCard";
 import { Avatar } from "@repo/ui/Avatar";
 import { DashboardShell } from "@/components/DashboardShell";
@@ -27,6 +28,7 @@ const BAR_COLORS = ["#3525cd", "#006c49", "#004598", "#7c3aed", "#0e7490", "#a16
 
 export default function HomePage() {
   const { can } = usePermissions();
+  const activeWorkspace = useSessionStore((s) => s.activeWorkspace);
   const canView = can("hr.departments.view");
   const canViewEmployees = can("hr.employees.view");
 
@@ -102,7 +104,9 @@ export default function HomePage() {
         <div className="hidden md:block mb-6">
           <h1 className="font-display text-headline-md text-on-surface">Ressources humaines</h1>
           <p className="text-body-md text-on-surface-variant mt-0.5">
-            Organisation et effectif du workspace.
+            {[activeWorkspace?.name, loading ? null : `${effectif} employé${effectif > 1 ? "s" : ""}`]
+              .filter(Boolean)
+              .join(" · ") || "Organisation et effectif du workspace."}
           </p>
         </div>
 

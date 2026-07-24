@@ -120,21 +120,23 @@ export function GroupFolderView({ groupId }: { groupId?: number }) {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-start gap-3 flex-wrap">
-        <div className="basis-full md:basis-0 md:flex-1 min-w-0">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
           <h1 className="font-display text-headline-md text-on-surface">Organigramme</h1>
           <p className="text-body-md text-on-surface-variant mt-0.5">
             Structure de l&apos;organisation, responsables et effectifs.
           </p>
         </div>
-        {toggle}
-        {menuItems.length > 0 && (
-          <DropdownMenu
-            label="Options"
-            icon={<MoreHorizOutlined style={{ fontSize: 18 }} />}
-            items={menuItems}
-          />
-        )}
+        <div className="flex items-center gap-2 flex-none">
+          {menuItems.length > 0 && (
+            <DropdownMenu
+              label="Options"
+              icon={<MoreHorizOutlined style={{ fontSize: 18 }} />}
+              items={menuItems}
+            />
+          )}
+          {toggle}
+        </div>
       </div>
 
       {/* Fil d'Ariane */}
@@ -286,66 +288,121 @@ function ChartView({
   const children = group.children;
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // L'arbre est plus large que l'écran dès qu'il y a beaucoup d'unités : on
-  // centre le défilement sur la racine pour qu'elle soit visible au chargement.
+  // L'arbre (bureau) est plus large que l'écran dès qu'il y a beaucoup d'unités :
+  // on centre le défilement sur la racine pour qu'elle soit visible au chargement.
   useEffect(() => {
     const el = scrollRef.current;
     if (el) el.scrollLeft = (el.scrollWidth - el.clientWidth) / 2;
   }, [group.id, children.length]);
 
   return (
-    <div
-      ref={scrollRef}
-      className="rounded-2xl border border-outline-soft bg-surface-container-lowest p-6 md:p-8 overflow-x-auto"
-    >
-      <div className="flex flex-col items-center min-w-max mx-auto">
-        <NodeCard
-          id={group.id}
-          title={group.name}
-          subtitle={managerName}
-          count={totalEmployees}
-          width={220}
-          highlight
-        />
+    <>
+      {/* Mobile : carte racine + pile de sous-unités (design responsive). */}
+      <div className="md:hidden">
+        <div className="rounded-2xl border border-primary/40 bg-primary/[0.04] p-4 text-center shadow-card">
+          <Avatar
+            name={group.name}
+            letters={1}
+            size={44}
+            variant="solid"
+            color={accentFor(group.id)}
+            className="mx-auto mb-2"
+          />
+          <p className="text-body-md font-semibold text-on-surface">{group.name}</p>
+          {managerName && <p className="text-label-md text-outline">{managerName}</p>}
+          <p className="text-label-md font-semibold text-primary mt-1">
+            {totalEmployees} employé{totalEmployees > 1 ? "s" : ""}
+          </p>
+        </div>
 
-        {children.length > 0 && (
+        {children.length > 0 ? (
           <>
-            <div className="w-0.5 h-6 bg-track" />
-            <div className="relative flex justify-center gap-6">
-              {children.length > 1 && (
-                <div className="absolute top-0 h-0.5 bg-track" style={{ left: 90, right: 90 }} />
-              )}
+            <div className="mx-auto w-0.5 h-4 bg-track" />
+            <div className="rounded-2xl border border-outline-soft bg-surface-container-lowest overflow-hidden">
               {children.map((child) => (
-                <div key={child.id} className="flex flex-col items-center">
-                  <div className="w-0.5 h-6 bg-track" />
-                  <NodeCard
-                    id={child.id}
-                    title={child.name}
-                    subtitle={null}
-                    count={child.employee_count}
-                    countSuffix={
-                      child.subgroup_count > 0
-                        ? `· ${child.subgroup_count} s-grp`
-                        : undefined
-                    }
-                    width={180}
-                    onClick={() => onOpen(child.id)}
-                  />
-                </div>
+                <button
+                  key={child.id}
+                  onClick={() => onOpen(child.id)}
+                  className="w-full flex items-center gap-3 px-4 py-3 border-b border-hairline last:border-b-0 hover:bg-surface-container-low transition-colors text-left"
+                >
+                  <Avatar name={child.name} letters={1} size={32} variant="solid" color={accentFor(child.id)} />
+                  <span className="flex-1 min-w-0">
+                    <span className="block text-body-md font-medium text-on-surface truncate">
+                      {child.name}
+                    </span>
+                    <span className="block text-label-md text-outline">
+                      {child.employee_count} employé{child.employee_count > 1 ? "s" : ""}
+                      {child.subgroup_count > 0
+                        ? ` · ${child.subgroup_count} sous-groupe${child.subgroup_count > 1 ? "s" : ""}`
+                        : ""}
+                    </span>
+                  </span>
+                  <ChevronRightOutlined style={{ fontSize: 18 }} className="text-outline flex-none" />
+                </button>
               ))}
             </div>
           </>
-        )}
-
-        {children.length === 0 && (
-          <p className="mt-4 text-body-sm text-on-surface-variant">
+        ) : (
+          <p className="mt-3 text-center text-body-sm text-on-surface-variant">
             Aucune sous-unité. {group.employees.length} employé
             {group.employees.length > 1 ? "s" : ""} rattaché
             {group.employees.length > 1 ? "s" : ""} directement.
           </p>
         )}
       </div>
-    </div>
+
+      {/* Bureau : arbre horizontal défilable. */}
+      <div
+        ref={scrollRef}
+        className="hidden md:block rounded-2xl border border-outline-soft bg-surface-container-lowest p-8 overflow-x-auto"
+      >
+        <div className="flex flex-col items-center min-w-max mx-auto">
+          <NodeCard
+            id={group.id}
+            title={group.name}
+            subtitle={managerName}
+            count={totalEmployees}
+            width={220}
+            highlight
+          />
+
+          {children.length > 0 && (
+            <>
+              <div className="w-0.5 h-6 bg-track" />
+              <div className="relative flex justify-center gap-6">
+                {children.length > 1 && (
+                  <div className="absolute top-0 h-0.5 bg-track" style={{ left: 90, right: 90 }} />
+                )}
+                {children.map((child) => (
+                  <div key={child.id} className="flex flex-col items-center">
+                    <div className="w-0.5 h-6 bg-track" />
+                    <NodeCard
+                      id={child.id}
+                      title={child.name}
+                      subtitle={null}
+                      count={child.employee_count}
+                      countSuffix={
+                        child.subgroup_count > 0 ? `· ${child.subgroup_count} s-grp` : undefined
+                      }
+                      width={180}
+                      onClick={() => onOpen(child.id)}
+                    />
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {children.length === 0 && (
+            <p className="mt-4 text-body-sm text-on-surface-variant">
+              Aucune sous-unité. {group.employees.length} employé
+              {group.employees.length > 1 ? "s" : ""} rattaché
+              {group.employees.length > 1 ? "s" : ""} directement.
+            </p>
+          )}
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -360,9 +417,9 @@ function FolderView({
 }) {
   return (
     <div className="rounded-2xl border border-outline-soft bg-surface-container-lowest overflow-hidden">
-      <div className="flex flex-col md:flex-row md:min-h-[360px]">
+      <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] md:min-h-[360px]">
         {/* Sous-groupes */}
-        <div className="flex-1 md:border-r border-hairline p-2">
+        <div className="md:border-r border-hairline p-2 min-w-0">
           <p className="text-label-sm uppercase text-outline px-2.5 py-2">Sous-groupes</p>
           {group.children.length === 0 ? (
             <p className="px-2.5 py-4 text-body-sm text-on-surface-variant">Aucun sous-groupe.</p>
@@ -385,7 +442,7 @@ function FolderView({
         </div>
 
         {/* Employés */}
-        <div className="md:flex-[1.4] p-2 border-t md:border-t-0 border-hairline">
+        <div className="p-2 border-t md:border-t-0 border-hairline min-w-0">
           <p className="text-label-sm uppercase text-outline px-2.5 py-2 truncate">
             Employés · {group.name}
           </p>

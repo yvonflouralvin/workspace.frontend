@@ -33,9 +33,9 @@ function fmtDuration(started: string | null, ended: string | null): string {
 }
 
 const STATUS_CLS: Record<string, string> = {
-  EN_COURS: "bg-green-100 text-green-800",
+  EN_COURS: "bg-secondary/15 text-secondary",
   CLOS:     "bg-surface-container text-on-surface-variant",
-  PLANIFIE: "bg-blue-100 text-blue-700",
+  PLANIFIE: "bg-tertiary/10 text-tertiary",
 };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -100,11 +100,11 @@ export default function ConsultationsListPage() {
 
   return (
     <DashboardShell>
-      <div className="max-w-5xl mx-auto px-4 py-6 space-y-5">
+      <div className="max-w-[1152px] mx-auto px-4 md:px-8 py-6 space-y-5">
 
         {/* ── En-tête ── */}
         <div>
-          <h1 className="text-headline-sm font-semibold text-on-surface">Mes consultations</h1>
+          <h1 className="text-headline-md font-display text-on-surface">Consultations</h1>
           <p className="text-body-sm text-on-surface-variant mt-0.5">
             Historique des consultations que vous avez initiées
           </p>
@@ -121,7 +121,7 @@ export default function ConsultationsListPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Nom ou numéro de dossier…"
-              className="w-full pl-9 pr-3 py-2 rounded-xl border border-outline-variant bg-surface text-body-md text-on-surface focus:outline-none focus:border-primary" />
+              className="w-full pl-9 pr-3 py-2 rounded-xl border border-outline-variant bg-surface text-body-md text-on-surface focus:outline-none focus:border-tertiary" />
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
@@ -130,7 +130,7 @@ export default function ConsultationsListPage() {
               type="date"
               value={fromDate}
               onChange={(e) => { setFromDate(e.target.value); setPage(1); }}
-              className="rounded-xl border border-outline-variant bg-surface px-3 py-2 text-body-sm text-on-surface focus:outline-none focus:border-primary" />
+              className="rounded-xl border border-outline-variant bg-surface px-3 py-2 text-body-sm text-on-surface focus:outline-none focus:border-tertiary" />
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
@@ -139,7 +139,7 @@ export default function ConsultationsListPage() {
               type="date"
               value={toDate}
               onChange={(e) => { setToDate(e.target.value); setPage(1); }}
-              className="rounded-xl border border-outline-variant bg-surface px-3 py-2 text-body-sm text-on-surface focus:outline-none focus:border-primary" />
+              className="rounded-xl border border-outline-variant bg-surface px-3 py-2 text-body-sm text-on-surface focus:outline-none focus:border-tertiary" />
           </div>
 
           {(fromDate || toDate || debouncedSearch) && (

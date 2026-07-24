@@ -127,7 +127,7 @@ export function ResultsDrawer({
                   <span className="text-body-sm font-semibold text-on-surface">{item.lab_test_name_cache}</span>
                   <div className="flex items-center gap-2">
                     {isValide && <CheckCircleOutlined style={{ fontSize: 16 }} className="text-secondary" />}
-                    {hasSaisi && !isValide && <span className="text-label-xs px-1.5 py-0.5 rounded-full bg-yellow-100 text-yellow-800">Saisi</span>}
+                    {hasSaisi && !isValide && <span className="text-label-xs px-1.5 py-0.5 rounded-full bg-locked-container text-locked">Saisi</span>}
                     {!collected && <span className="text-label-xs px-1.5 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant">Non prélevé</span>}
                     <span className="text-on-surface-variant text-xs">{isOpen ? "▲" : "▼"}</span>
                   </div>
@@ -167,7 +167,7 @@ export function ResultsDrawer({
                                 value={formValues[p.id] ?? existingVal}
                                 onChange={(e) => setFormValues((prev) => ({ ...prev, [p.id]: e.target.value }))}
                                 placeholder="—"
-                                className="flex-1 rounded-xl border border-outline-variant bg-surface px-3 py-2 text-body-md text-on-surface focus:outline-none focus:border-primary" />
+                                className="flex-1 rounded-xl border border-outline-variant bg-surface px-3 py-2 text-body-md text-on-surface focus:outline-none focus:border-tertiary" />
                             </div>
                           );
                         })}
@@ -177,7 +177,7 @@ export function ResultsDrawer({
                         <button
                           onClick={() => handleSaveItem(item.id, testDetail, currentResult ?? null)}
                           disabled={saving}
-                          className="w-full py-2 rounded-xl bg-primary text-on-primary text-body-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-40">
+                          className="w-full py-2 rounded-xl bg-secondary text-on-primary text-body-sm font-semibold hover:bg-secondary/90 transition-colors disabled:opacity-40">
                           {saving ? "Enregistrement…" : "Enregistrer"}
                         </button>
                       </div>

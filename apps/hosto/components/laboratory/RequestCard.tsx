@@ -3,10 +3,10 @@
 import type { LabRequest } from "@/app/lib/lab-api";
 
 const STATUS_BADGE: Record<string, string> = {
-  DEMANDE:    "bg-blue-100 text-blue-700",
-  PRELEVE:    "bg-yellow-100 text-yellow-800",
-  EN_ANALYSE: "bg-orange-100 text-orange-800",
-  VALIDE:     "bg-green-100 text-green-800",
+  DEMANDE:    "bg-tertiary/10 text-tertiary",
+  PRELEVE:    "bg-locked-container text-locked",
+  EN_ANALYSE: "bg-[#ffe6d0] text-[#8a3d12]",
+  VALIDE:     "bg-secondary/15 text-secondary",
   ANNULE:     "bg-surface-container text-on-surface-variant",
 };
 
@@ -62,7 +62,7 @@ export function RequestCard({
         {!actionDisabled && (
           <button
             onClick={onAction}
-            className="shrink-0 px-3 py-1.5 rounded-xl bg-primary text-on-primary text-body-sm font-medium hover:bg-primary/90 transition-colors">
+            className="shrink-0 px-3 py-1.5 rounded-xl bg-tertiary text-on-primary text-body-sm font-semibold hover:bg-tertiary-container transition-colors">
             {actionLabel}
           </button>
         )}

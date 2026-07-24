@@ -281,7 +281,7 @@ export function LabTrends({ patientId }: { patientId: number | string }) {
       </div>
 
       {showValues && series && (
-        <RightDrawer title={series.name} onClose={() => setShowValues(false)} width="w-[440px] max-w-full">
+        <RightDrawer title={series.name} onClose={() => setShowValues(false)} width="md:w-[440px] md:max-w-[92vw]">
           <LabValuesTable series={series} />
         </RightDrawer>
       )}

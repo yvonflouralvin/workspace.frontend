@@ -301,7 +301,7 @@ export function PrescrireDrawer({
 
   if (bare) return inner;
   return (
-    <RightDrawer title={title} onClose={onClose} width="w-[600px] max-w-full">
+    <RightDrawer title={title} onClose={onClose} width="md:w-[600px] md:max-w-[92vw]">
       {inner}
     </RightDrawer>
   );

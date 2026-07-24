@@ -76,7 +76,7 @@ export function CollectDrawer({
     <RightDrawer
       title={`Prélèvement — ${req.patient?.prenom} ${req.patient?.nom}`}
       onClose={close}
-      width="w-[560px] max-w-full"
+      width="md:w-[560px] md:max-w-[92vw]"
       contentClassName="px-6 py-5 overflow-y-auto space-y-5"
     >
       {req.clinical_info && (

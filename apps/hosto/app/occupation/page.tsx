@@ -222,7 +222,7 @@ function ServiceDetail({ serviceId, onBack, refreshKey }: {
 
       {occupant?.occupant && (
         <RightDrawer title={`Lit ${occupant.numero} — ${occupant.occupant.patient_nom}`}
-          onClose={() => setOccupant(null)} width="w-[480px] max-w-full">
+          onClose={() => setOccupant(null)} width="md:w-[480px] md:max-w-[92vw]">
           <div className="space-y-4 text-body-sm">
             <div className="grid grid-cols-2 gap-3">
               <div><p className="text-label-sm text-on-surface-variant">Dossier</p><p className="text-on-surface">{occupant.occupant.patient_dossier}</p></div>
@@ -333,7 +333,7 @@ function AdmitDrawer({ lit, onClose, onDone }: { lit: LitLibre; onClose: () => v
   }
 
   return (
-    <RightDrawer title="Admettre un patient" onClose={onClose} width="w-[480px] max-w-full">
+    <RightDrawer title="Admettre un patient" onClose={onClose} width="md:w-[480px] md:max-w-[92vw]">
       <div className="h-full flex flex-col overflow-hidden">
         <div className="flex-1 overflow-y-auto pr-1 space-y-4">
           <div className="rounded-xl bg-surface-container px-4 py-3 text-body-sm text-on-surface">

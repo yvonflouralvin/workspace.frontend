@@ -202,7 +202,7 @@ function ConstantesDrawer({
     <RightDrawer
       title={`Constantes — ${patientName}`}
       onClose={onClose}
-      width="w-[480px] max-w-full"
+      width="md:w-[480px] md:max-w-[92vw]"
       contentClassName="px-6 py-5 overflow-y-auto"
     >
       {/* ── Dernières constantes ── */}
@@ -1210,7 +1210,7 @@ export default function ReceptionPage() {
 
       {/* ── Drawer enregistrement arrivée ───────────────────────────────────── */}
       {drawerOpen && (
-        <RightDrawer title="Enregistrer une arrivée" onClose={() => setDrawerOpen(false)} width="w-[480px] max-w-full">
+        <RightDrawer title="Enregistrer une arrivée" onClose={() => setDrawerOpen(false)} width="md:w-[480px] md:max-w-[92vw]">
           <form onSubmit={handleSubmitArrivee} className="space-y-5">
             {formError && (
               <div className="flex items-start gap-2 rounded-xl bg-error-container/40 px-4 py-3 text-body-sm text-error">
@@ -1297,7 +1297,7 @@ export default function ReceptionPage() {
         <RightDrawer
           title={`Triage — ${triageTarget.patient.prenom} ${triageTarget.patient.nom}`}
           onClose={() => setTriageTarget(null)}
-          width="w-[440px] max-w-full">
+          width="md:w-[440px] md:max-w-[92vw]">
           <form onSubmit={handleTriage} className="space-y-5">
             <p className="text-body-sm text-on-surface-variant">
               Priorité actuelle : <span className="font-medium">{VISITE_PRIORITY_LABELS[triageTarget.priority]}</span>
@@ -1346,7 +1346,7 @@ export default function ReceptionPage() {
         <RightDrawer
           title={`Orienter — ${orientTarget.patient.prenom} ${orientTarget.patient.nom}`}
           onClose={() => setOrientTarget(null)}
-          width="w-[380px] max-w-full">
+          width="md:w-[380px] md:max-w-[92vw]">
           <form onSubmit={handleOrient} className="space-y-5">
             <div className="space-y-1.5">
               <label className="text-label-md text-on-surface-variant font-medium">

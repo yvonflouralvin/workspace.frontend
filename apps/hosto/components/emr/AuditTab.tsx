@@ -218,7 +218,7 @@ export function AuditTab({ patientId }: { patientId: number }) {
         <RightDrawer
           title={`${actionLabel(selected.action)} — ${entityLabel(selected.entity_type)}`}
           onClose={() => setSelected(null)}
-          width="w-[520px] max-w-full"
+          width="md:w-[520px] md:max-w-[92vw]"
         >
           <div className="space-y-5 text-body-sm">
             <div className="grid grid-cols-2 gap-3">

@@ -320,7 +320,7 @@ function CreateChambreDrawer({ serviceId, onClose, onDone }: {
   }
 
   return (
-    <RightDrawer title="Nouvelle chambre" onClose={onClose} width="w-[480px] max-w-full">
+    <RightDrawer title="Nouvelle chambre" onClose={onClose} width="md:w-[480px] md:max-w-[92vw]">
       <div className="h-full flex flex-col overflow-hidden">
         <div className="flex-1 overflow-y-auto pr-1 space-y-4">
           <div className="flex flex-col gap-1">
@@ -382,7 +382,7 @@ function AddLitsDrawer({ chambre, onClose, onDone }: {
   }
 
   return (
-    <RightDrawer title={`Ajouter des lits — Chambre ${chambre.numero}`} onClose={onClose} width="w-[480px] max-w-full">
+    <RightDrawer title={`Ajouter des lits — Chambre ${chambre.numero}`} onClose={onClose} width="md:w-[480px] md:max-w-[92vw]">
       <div className="h-full flex flex-col overflow-hidden">
         <div className="flex-1 overflow-y-auto pr-1 space-y-4">
           <div className="flex flex-col gap-1">

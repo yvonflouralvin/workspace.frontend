@@ -589,7 +589,7 @@ function SignedView({
 
   if (bare) return signedContent;
   return (
-    <RightDrawer title="Prescription signée" onClose={onClose} width="w-[800px] max-w-full">
+    <RightDrawer title="Prescription signée" onClose={onClose} width="md:w-[800px] md:max-w-[92vw]">
       {signedContent}
     </RightDrawer>
   );
@@ -960,7 +960,7 @@ export function PrescriptionEditor({
     );
     if (bare) return guardContent;
     return (
-      <RightDrawer title={title} onClose={onClose} width="w-[800px] max-w-full">
+      <RightDrawer title={title} onClose={onClose} width="md:w-[800px] md:max-w-[92vw]">
         {guardContent}
       </RightDrawer>
     );
@@ -1178,7 +1178,7 @@ export function PrescriptionEditor({
           {editorFormContent}
         </div>
       ) : (
-        <RightDrawer title={title} onClose={onClose} width="w-[800px] max-w-full">
+        <RightDrawer title={title} onClose={onClose} width="md:w-[800px] md:max-w-[92vw]">
           {editorFormContent}
         </RightDrawer>
       )}

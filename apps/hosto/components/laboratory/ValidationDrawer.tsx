@@ -84,7 +84,7 @@ export function ValidationDrawer({
     <RightDrawer
       title={`Validation — ${req.patient?.prenom} ${req.patient?.nom}`}
       onClose={onClose}
-      width="w-[560px] max-w-full"
+      width="md:w-[560px] md:max-w-[92vw]"
       contentClassName="px-6 py-5 overflow-y-auto space-y-5">
 
       <ContextSnapshotCard req={req} />

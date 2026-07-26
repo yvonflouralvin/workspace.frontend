@@ -48,7 +48,8 @@ export function sectionForPathname(pathname: string, projectId: number): Project
   const suffix = pathname.replace(`/projects/${projectId}`, "").replace(/\/$/, "");
   return (
     PROJECT_SECTIONS.find((s) => s.path === suffix) ??
-    CONDITIONAL_SECTIONS.find((s) => s.path === suffix) ??
+    // « /phases » et « /phases/{id} » activent tous deux l'onglet Phases.
+    CONDITIONAL_SECTIONS.find((s) => s.path === suffix || suffix.startsWith(`${s.path}/`)) ??
     PROJECT_SECTIONS[0]!
   );
 }

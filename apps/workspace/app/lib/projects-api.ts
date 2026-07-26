@@ -23,6 +23,8 @@ export interface Phase {
   project_id: number;
   name: string;
   description: string | null;
+  /** Document BlockNote sérialisé ; `description` en est le texte brut dérivé. */
+  description_rich: string | null;
   position: number;
   status: string;
   /** Affichage uniquement : phase auto-créée, masquée dans l'UI tant qu'elle est seule. */

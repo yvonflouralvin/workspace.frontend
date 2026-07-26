@@ -38,7 +38,17 @@ export const PROJECT_SECTIONS: ProjectSection[] = [
   },
 ];
 
+// « Phases » est une section conditionnelle (voir layout) : on la reconnaît ici
+// pour l'onglet actif, sans l'ajouter au menu par défaut.
+const CONDITIONAL_SECTIONS: ProjectSection[] = [
+  { key: "phases", path: "/phases", label: "Phases", icon: null },
+];
+
 export function sectionForPathname(pathname: string, projectId: number): ProjectSection {
   const suffix = pathname.replace(`/projects/${projectId}`, "").replace(/\/$/, "");
-  return PROJECT_SECTIONS.find((s) => s.path === suffix) ?? PROJECT_SECTIONS[0]!;
+  return (
+    PROJECT_SECTIONS.find((s) => s.path === suffix) ??
+    CONDITIONAL_SECTIONS.find((s) => s.path === suffix) ??
+    PROJECT_SECTIONS[0]!
+  );
 }

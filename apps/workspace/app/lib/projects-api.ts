@@ -17,9 +17,27 @@ export interface Project {
   done_count?: number;
 }
 
+export interface Phase {
+  id: number;
+  workspace_id: number;
+  project_id: number;
+  name: string;
+  description: string | null;
+  position: number;
+  status: string;
+  /** Affichage uniquement : phase auto-créée, masquée dans l'UI tant qu'elle est seule. */
+  est_implicite: boolean;
+  start_planned: string | null;
+  end_planned: string | null;
+  start_real: string | null;
+  end_real: string | null;
+  task_count?: number;
+}
+
 export interface Task {
   id: number;
   project_id: number;
+  phase_id: number;
   number: number;
   title: string;
   description: string | null;
@@ -38,7 +56,7 @@ export interface Task {
 }
 
 export interface MetaOption { key: string; label: string }
-export interface ProjectsMeta { statuses: MetaOption[]; priorities: MetaOption[] }
+export interface ProjectsMeta { statuses: MetaOption[]; priorities: MetaOption[]; phase_statuses: MetaOption[] }
 
 async function json<T>(res: Response): Promise<T> {
   if (!res.ok) throw new Error((await res.json().catch(() => ({})))?.detail || `Erreur ${res.status}`);
@@ -60,6 +78,29 @@ export const projectsApi = {
   createTask: (body: Partial<Task> & { project_id: number; title: string }) => apiFetch("/api/tasks", { method: "POST", body }).then((r) => json<Task>(r)),
   updateTask: (id: number, body: Partial<Task>) => apiFetch(`/api/tasks/${id}`, { method: "PATCH", body }).then((r) => json<Task>(r)),
   deleteTask: (id: number) => apiFetch(`/api/tasks/${id}`, { method: "DELETE" }).then((r) => json<void>(r)),
+
+  listPhases: (projectId: number) => apiFetch(`/api/projects/${projectId}/phases`).then((r) => json<Phase[]>(r)),
+  createPhase: (projectId: number, body: Partial<Phase>) => apiFetch(`/api/projects/${projectId}/phases`, { method: "POST", body }).then((r) => json<Phase>(r)),
+  updatePhase: (id: number, body: Partial<Phase>) => apiFetch(`/api/phases/${id}`, { method: "PATCH", body }).then((r) => json<Phase>(r)),
+  deletePhase: (id: number) => apiFetch(`/api/phases/${id}`, { method: "DELETE" }).then((r) => json<void>(r)),
+};
+
+/** Le module « phase » ne se montre que si le projet a plus qu'une phase implicite
+ *  seule : un utilisateur qui veut une simple liste de tâches ne voit jamais le mot. */
+export function phasesVisible(phases: Phase[]): boolean {
+  return !(phases.length <= 1 && (phases[0]?.est_implicite ?? true));
+}
+
+export const PHASE_STATUS_LABELS: Record<string, string> = {
+  A_VENIR: "À venir", EN_COURS: "En cours", CLOTUREE: "Clôturée", ANNULEE: "Annulée",
+};
+export const PHASE_STATUS_ORDER = ["A_VENIR", "EN_COURS", "CLOTUREE", "ANNULEE"];
+/** Badge de statut de phase — tokens du design system, aucune couleur en dur. */
+export const PHASE_STATUS_TONES: Record<string, { dot: string; chip: string }> = {
+  A_VENIR:  { dot: "bg-status-backlog", chip: "bg-status-backlog-container text-status-backlog-on" },
+  EN_COURS: { dot: "bg-status-doing",   chip: "bg-status-doing-container text-status-doing" },
+  CLOTUREE: { dot: "bg-status-done",    chip: "bg-status-done-container text-status-done" },
+  ANNULEE:  { dot: "bg-status-backlog", chip: "bg-surface-container text-on-surface-variant" },
 };
 
 export const STATUS_LABELS: Record<string, string> = {

@@ -1,11 +1,19 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { CloudDoneOutlined, CloudOffOutlined, CloudSyncOutlined } from "@mui/icons-material";
+import Link from "next/link";
+import {
+  CloudDoneOutlined,
+  CloudOffOutlined,
+  CloudSyncOutlined,
+  AccountTreeOutlined,
+  ChevronRightOutlined,
+} from "@mui/icons-material";
 import { Avatar } from "@repo/ui/Avatar";
 import { RichTextEditor } from "@repo/ui/RichTextEditor";
 import {
   projectsApi,
+  phasesVisible,
   PROJECT_COLORS,
   PROJECT_STATUS_DOTS,
   PROJECT_STATUS_LABELS,
@@ -20,7 +28,8 @@ const SAVE_DELAY_MS = 800;
 const LABEL = "block text-label-sm uppercase text-outline";
 
 export default function ProjectOverviewPage() {
-  const { projectId, project, setProject, tasks, members, canManage } = useProject();
+  const { projectId, project, setProject, tasks, phases, members, canManage } = useProject();
+  const showPhases = phasesVisible(phases);
   const [name, setName] = useState(project.name);
   const [saveState, setSaveState] = useState<SaveState>("idle");
 
@@ -182,6 +191,30 @@ export default function ProjectOverviewPage() {
             {project.key}
           </span>
         </MetaRow>
+
+        {/* Structure : découpage en phases. Discret quand le projet n'a qu'une phase
+            implicite — l'utilisateur qui veut une simple liste ne voit rien d'imposé. */}
+        {showPhases ? (
+          <MetaRow label="Structure">
+            <Link
+              href={`/projects/${projectId}/phases`}
+              className="inline-flex items-center gap-1 text-body-sm font-semibold text-primary hover:underline"
+            >
+              {phases.length} phase{phases.length > 1 ? "s" : ""}
+              <ChevronRightOutlined style={{ fontSize: 15 }} />
+            </Link>
+          </MetaRow>
+        ) : canManage ? (
+          <div className="px-4 py-3">
+            <Link
+              href={`/projects/${projectId}/phases`}
+              className="inline-flex items-center gap-1.5 text-body-sm text-on-surface-variant hover:text-primary transition-colors"
+            >
+              <AccountTreeOutlined style={{ fontSize: 16 }} />
+              Découper en phases
+            </Link>
+          </div>
+        ) : null}
 
         {canManage && (
           <div className="px-4 py-3">

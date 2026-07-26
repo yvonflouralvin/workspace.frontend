@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, type Dispatch, type SetStateAction } from "react";
-import type { Project, Task } from "@/app/lib/projects-api";
+import type { Phase, Project, Task } from "@/app/lib/projects-api";
 
 export interface Member {
   id: number;
@@ -15,6 +15,8 @@ export interface ProjectContextValue {
   tasks: Task[];
   setTasks: Dispatch<SetStateAction<Task[]>>;
   reloadTasks: () => Promise<void>;
+  phases: Phase[];
+  reloadPhases: () => Promise<void>;
   members: Member[];
   canManage: boolean;
 }

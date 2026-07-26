@@ -7,9 +7,10 @@ import { useSessionStore } from "@repo/auth/store/session.store";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
 import { apiFetch } from "@repo/network/client";
 import { ArrowBackOutlined } from "@mui/icons-material";
-import { projectsApi, type Project, type Task } from "@/app/lib/projects-api";
+import { AccountTreeOutlined } from "@mui/icons-material";
+import { projectsApi, phasesVisible, type Phase, type Project, type Task } from "@/app/lib/projects-api";
 import { ProjectProvider, type Member } from "./project-context";
-import { PROJECT_SECTIONS, sectionForPathname } from "./sections";
+import { PROJECT_SECTIONS, sectionForPathname, type ProjectSection } from "./sections";
 
 export default function ProjectLayout({ children }: { children: ReactNode }) {
   const { id } = useParams<{ id: string }>();
@@ -21,6 +22,7 @@ export default function ProjectLayout({ children }: { children: ReactNode }) {
 
   const [project, setProject] = useState<Project | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [phases, setPhases] = useState<Phase[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -28,13 +30,22 @@ export default function ProjectLayout({ children }: { children: ReactNode }) {
     () => projectsApi.listTasks(projectId).then(setTasks),
     [projectId]
   );
+  const reloadPhases = useCallback(
+    () => projectsApi.listPhases(projectId).then(setPhases),
+    [projectId]
+  );
 
   useEffect(() => {
     setLoading(true);
-    Promise.all([projectsApi.getProject(projectId), projectsApi.listTasks(projectId)])
-      .then(([p, t]) => {
+    Promise.all([
+      projectsApi.getProject(projectId),
+      projectsApi.listTasks(projectId),
+      projectsApi.listPhases(projectId).catch(() => [] as Phase[]),
+    ])
+      .then(([p, t, ph]) => {
         setProject(p);
         setTasks(t);
+        setPhases(ph);
       })
       .catch(() => setProject(null))
       .finally(() => setLoading(false));
@@ -62,6 +73,19 @@ export default function ProjectLayout({ children }: { children: ReactNode }) {
   if (!project) {
     return <div className="p-4 md:p-8 text-body-md text-error">Projet introuvable.</div>;
   }
+
+  // Le module « phase » n'apparaît que s'il y a plus qu'une phase implicite seule.
+  const showPhases = phasesVisible(phases);
+  const phaseSection: ProjectSection = {
+    key: "phases",
+    path: "/phases",
+    label: "Phases",
+    icon: <AccountTreeOutlined style={{ fontSize: 17 }} />,
+  };
+  // Insère « Phases » juste après « Board » quand il est visible.
+  const sections: ProjectSection[] = showPhases
+    ? PROJECT_SECTIONS.flatMap((s) => (s.key === "board" ? [s, phaseSection] : [s]))
+    : PROJECT_SECTIONS;
 
   const current = sectionForPathname(pathname, projectId);
   const color = project.color ?? "#3525cd";
@@ -92,7 +116,7 @@ export default function ProjectLayout({ children }: { children: ReactNode }) {
       </div>
 
       <nav className="flex items-center gap-1 border-b border-outline-soft mt-5 mb-5 overflow-x-auto">
-        {PROJECT_SECTIONS.map((section) => {
+        {sections.map((section) => {
           const active = section.key === current.key;
           const label = (
             <>
@@ -131,7 +155,7 @@ export default function ProjectLayout({ children }: { children: ReactNode }) {
       </nav>
 
       <ProjectProvider
-        value={{ projectId, project, setProject, tasks, setTasks, reloadTasks, members, canManage }}
+        value={{ projectId, project, setProject, tasks, setTasks, reloadTasks, phases, reloadPhases, members, canManage }}
       >
         {children}
       </ProjectProvider>

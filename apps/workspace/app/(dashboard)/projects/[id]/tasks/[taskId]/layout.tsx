@@ -12,9 +12,8 @@ import {
   NotesOutlined,
 } from "@mui/icons-material";
 import {
-  STATUS_LABELS,
-  STATUS_TONES,
   deliverablesOnTask,
+  toneFor,
   projectsApi,
   type Task,
 } from "@/app/lib/projects-api";
@@ -98,7 +97,7 @@ export default function TaskLayout({ children }: { children: ReactNode }) {
         ]
       : []),
   ];
-  const tone = STATUS_TONES[task.status];
+  const tone = toneFor(task.categorie);
 
   return (
     <div>
@@ -148,7 +147,7 @@ export default function TaskLayout({ children }: { children: ReactNode }) {
             className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-label-md font-semibold ${tone?.chip ?? ""}`}
           >
             <span className={`w-[6px] h-[6px] rounded-full ${tone?.dot ?? ""}`} />
-            {STATUS_LABELS[task.status] ?? task.status}
+            {task.etat_libelle ?? task.etat_code}
           </span>
         </div>
       </div>

@@ -12,6 +12,7 @@ import {
   projectsApi,
   phasesVisible,
   type Deliverable,
+  type Etat,
   type Phase,
   type Project,
   type ProjectRole,
@@ -36,6 +37,7 @@ export default function ProjectLayout({ children }: { children: ReactNode }) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [phases, setPhases] = useState<Phase[]>([]);
   const [deliverables, setDeliverables] = useState<Deliverable[]>([]);
+  const [etats, setEtats] = useState<Etat[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -59,12 +61,14 @@ export default function ProjectLayout({ children }: { children: ReactNode }) {
       projectsApi.listTasks(projectId),
       projectsApi.listPhases(projectId).catch(() => [] as Phase[]),
       projectsApi.listProjectDeliverables(projectId).catch(() => [] as Deliverable[]),
+      projectsApi.listEtats(projectId).catch(() => [] as Etat[]),
     ])
-      .then(([p, t, ph, dl]) => {
+      .then(([p, t, ph, dl, et]) => {
         setProject(p);
         setTasks(t);
         setPhases(ph);
         setDeliverables(dl);
+        setEtats(et);
       })
       .catch(() => setProject(null))
       .finally(() => setLoading(false));
@@ -198,7 +202,7 @@ export default function ProjectLayout({ children }: { children: ReactNode }) {
       )}
 
       <ProjectProvider
-        value={{ projectId, project, setProject, tasks, setTasks, reloadTasks, phases, reloadPhases, deliverables, reloadDeliverables, members, role, canManage, isOwner }}
+        value={{ projectId, project, setProject, tasks, setTasks, reloadTasks, phases, reloadPhases, deliverables, reloadDeliverables, etats, members, role, canManage, isOwner }}
       >
         {children}
       </ProjectProvider>

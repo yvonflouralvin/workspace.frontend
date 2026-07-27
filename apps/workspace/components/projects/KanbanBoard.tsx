@@ -7,15 +7,15 @@ import { PriorityBars } from "@repo/ui/PriorityBars";
 import {
   PRIORITY_LABELS,
   PRIORITY_LEVELS,
-  STATUS_LABELS,
-  STATUS_ORDER,
-  STATUS_TONES,
+  toneFor,
+  type Etat,
   type Task,
 } from "@/app/lib/projects-api";
 import { isOverdue } from "./TaskRow";
 
 export function KanbanBoard({
   tasks,
+  etats,
   canManage,
   onMove,
   onOpen,
@@ -23,8 +23,10 @@ export function KanbanBoard({
   phaseNames,
 }: {
   tasks: Task[];
+  /** Colonnes du tableau : les états du jeu du projet, dans leur ordre. */
+  etats: Etat[];
   canManage: boolean;
-  onMove: (t: Task, s: string) => void;
+  onMove: (t: Task, etatId: number) => void;
   onOpen: (t: Task) => void;
   projectKey: string;
   /** Noms de phase à afficher sur les cartes — absent quand la vue est déjà
@@ -40,32 +42,32 @@ export function KanbanBoard({
 
   return (
     <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory md:snap-none -mx-4 px-4 md:mx-0 md:px-0">
-      {STATUS_ORDER.map((status) => {
-        const col = roots.filter((t) => t.status === status);
-        const tone = STATUS_TONES[status];
+      {etats.map((etat) => {
+        const col = roots.filter((t) => t.etat_id === etat.id);
+        const tone = toneFor(etat.categorie_canonique);
         return (
           <div
-            key={status}
+            key={etat.id}
             onDragOver={(e) => {
               if (drag) {
                 e.preventDefault();
-                setOver(status);
+                setOver(etat.code);
               }
             }}
-            onDragLeave={() => setOver((s) => (s === status ? null : s))}
+            onDragLeave={() => setOver((c) => (c === etat.code ? null : c))}
             onDrop={() => {
-              if (drag && drag.status !== status) onMove(drag, status);
+              if (drag && drag.etat_id !== etat.id) onMove(drag, etat.id);
               setDrag(null);
               setOver(null);
             }}
             className={`w-[85vw] max-w-[300px] md:w-72 shrink-0 snap-center md:snap-align-none rounded-2xl bg-surface-container/50 p-3 transition-colors ${
-              over === status ? "ring-2 ring-primary/40" : ""
+              over === etat.code ? "ring-2 ring-primary/40" : ""
             }`}
           >
             <div className="flex items-center gap-2 px-1 pb-2.5">
               <span className={`w-2 h-2 rounded-full ${tone?.dot ?? ""}`} />
               <span className="flex-1 text-body-sm font-semibold text-on-surface-variant">
-                {STATUS_LABELS[status]}
+                {etat.libelle}
               </span>
               <span className="text-label-md text-outline">{col.length}</span>
             </div>
@@ -73,7 +75,8 @@ export function KanbanBoard({
             <div className="space-y-2 min-h-[40px]">
               {col.map((t) => {
                 const children = childCount(t);
-                const doneChildren = children.filter((c) => c.status === "TERMINE").length;
+                // Catégorie canonique, jamais un code : « fini » est un sens.
+                const doneChildren = children.filter((c) => c.categorie === "termine").length;
                 const overdue = isOverdue(t);
                 const phaseName = phaseNames?.[t.phase_id];
                 return (

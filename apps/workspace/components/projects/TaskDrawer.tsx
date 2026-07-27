@@ -9,10 +9,9 @@ import { TagInput } from "@repo/ui/TagInput";
 import {
   PRIORITY_LABELS,
   PRIORITY_ORDER,
-  STATUS_LABELS,
-  STATUS_ORDER,
-  STATUS_TONES,
   projectsApi,
+  toneFor,
+  type Etat,
   type Phase,
   type Task,
 } from "@/app/lib/projects-api";
@@ -29,6 +28,7 @@ export function TaskDrawer({
   projectKey,
   subtasks,
   members,
+  etats,
   phases,
   tagSuggestions = [],
   canManage,
@@ -42,6 +42,8 @@ export function TaskDrawer({
   projectKey: string;
   subtasks: Task[];
   members: Member[];
+  /** Jeu d'états du projet — le drawer n'en connaît aucun d'avance. */
+  etats: Etat[];
   /** Phases entre lesquelles déplacer la tâche — absent quand le projet n'en
    *  expose qu'une (le champ disparaît alors du drawer). */
   phases?: Phase[];
@@ -53,7 +55,7 @@ export function TaskDrawer({
 }) {
   const [title, setTitle] = useState(task?.title ?? "");
   const [description, setDescription] = useState(task?.description ?? "");
-  const [status, setStatus] = useState(task?.status ?? "A_FAIRE");
+  const [etatId, setEtatId] = useState<number | null>(task?.etat_id ?? etats[0]?.id ?? null);
   const [priority, setPriority] = useState(task?.priority ?? "AUCUNE");
   const [assignee, setAssignee] = useState<string>(
     task?.assignee_user_id ? String(task.assignee_user_id) : ""
@@ -75,7 +77,10 @@ export function TaskDrawer({
   );
 
   const readOnly = !canManage;
-  const tone = STATUS_TONES[status];
+  // Annuler ≠ supprimer : décision métier, l'élément reste visible.
+  const annulable = etats.find((e) => e.categorie_canonique === "annule") ?? null;
+  const etatCourant = etats.find((e) => e.id === etatId) ?? null;
+  const tone = toneFor(etatCourant?.categorie_canonique);
 
   async function save() {
     setError(null);
@@ -88,7 +93,7 @@ export function TaskDrawer({
       tags,
       title: title.trim(),
       description: description.trim() || null,
-      status,
+      ...(etatId ? { etat_id: etatId } : {}),
       priority,
       assignee_user_id: assignee ? Number(assignee) : null,
       due_date: dueDate ? new Date(dueDate).toISOString() : null,
@@ -120,9 +125,14 @@ export function TaskDrawer({
   }
 
   async function toggleSubtask(subtask: Task) {
-    await projectsApi.updateTask(subtask.id, {
-      status: subtask.status === "TERMINE" ? "A_FAIRE" : "TERMINE",
-    });
+    // Bascule par CATÉGORIE : le premier état terminal du jeu, ou le premier
+    // état d'entrée — aucun code n'est écrit en dur.
+    const cible =
+      subtask.categorie === "termine"
+        ? etats.find((e) => e.categorie_canonique === "a_faire") ?? etats[0]
+        : etats.find((e) => e.categorie_canonique === "termine");
+    if (!cible) return;
+    await projectsApi.updateTask(subtask.id, { etat_id: cible.id });
     onSaved();
   }
 
@@ -146,6 +156,18 @@ export function TaskDrawer({
       footer={
         readOnly ? undefined : (
           <>
+            {task && annulable && (
+              <button
+                onClick={() =>
+                  projectsApi.updateTask(task.id, { etat_id: annulable.id }).then(onSaved)
+                }
+                disabled={saving}
+                title="Décision métier : la tâche reste visible et compte comme abandon"
+                className="h-[34px] px-3 rounded-lg text-label-md font-semibold text-on-surface-variant hover:bg-surface-container-low transition-colors"
+              >
+                Annuler
+              </button>
+            )}
             {task && (
               <button
                 onClick={remove}
@@ -172,7 +194,7 @@ export function TaskDrawer({
             className={`inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-semibold ${tone?.chip ?? ""}`}
           >
             <span className={`w-1.5 h-1.5 rounded-full ${tone?.dot ?? ""}`} />
-            {STATUS_LABELS[status]}
+            {etatCourant?.libelle ?? "—"}
           </span>
           <Link
             href={`/projects/${projectId}/tasks/${task.id}`}
@@ -209,13 +231,13 @@ export function TaskDrawer({
         <Field label="Statut">
           <select
             className={`${FIELD} h-[38px] px-2`}
-            value={status}
-            onChange={(e) => setStatus(e.target.value)}
+            value={etatId ?? ""}
+            onChange={(e) => setEtatId(Number(e.target.value))}
             disabled={readOnly}
           >
-            {STATUS_ORDER.map((s) => (
-              <option key={s} value={s}>
-                {STATUS_LABELS[s]}
+            {etats.map((etat) => (
+              <option key={etat.id} value={etat.id}>
+                {etat.libelle}
               </option>
             ))}
           </select>
@@ -294,7 +316,7 @@ export function TaskDrawer({
             Sous-tâches{" "}
             {subtasks.length > 0 && (
               <span className="normal-case tracking-normal text-outline">
-                {subtasks.filter((s) => s.status === "TERMINE").length}/{subtasks.length}
+                {subtasks.filter((s) => s.categorie === "termine").length}/{subtasks.length}
               </span>
             )}
           </p>
@@ -303,7 +325,8 @@ export function TaskDrawer({
               <p className="px-3 py-2.5 text-body-sm text-on-surface-variant">Aucune sous-tâche.</p>
             )}
             {subtasks.map((subtask) => {
-              const done = subtask.status === "TERMINE";
+              // Catégorie canonique : « fini » est un sens, pas un code.
+              const done = subtask.categorie === "termine";
               return (
                 <div
                   key={subtask.id}

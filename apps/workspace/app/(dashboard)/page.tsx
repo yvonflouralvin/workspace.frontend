@@ -20,7 +20,7 @@ import { Avatar } from "@repo/ui/Avatar";
 import { Chip } from "@repo/ui/Chip";
 import { KpiCard } from "@repo/ui/KpiCard";
 import { Toast } from "@repo/ui/Toast";
-import { projectsApi, STATUS_DOTS, type Project, type Task } from "@/app/lib/projects-api";
+import { projectsApi, toneFor, type Project, type Task } from "@/app/lib/projects-api";
 import { listAuditLogs, listNotificationChannels, listMembers } from "@/app/lib/api";
 import type { AuditLog } from "@/app/lib/types";
 
@@ -336,7 +336,7 @@ function MyWork({ tasks, loading }: { tasks: Task[]; loading: boolean }) {
               className="flex items-center gap-3 px-4 py-3 border-b border-hairline last:border-b-0 hover:bg-surface-container-low transition-colors"
             >
               <span
-                className={`w-2 h-2 flex-none rounded-full ${STATUS_DOTS[task.status] ?? "bg-outline-variant"}`}
+                className={`w-2 h-2 flex-none rounded-full ${toneFor(task.categorie).dot}`}
               />
               <span className="flex-none font-mono text-label-md text-outline">
                 {task.project_key}-{task.number}

@@ -1,28 +1,31 @@
 "use client";
 
-import { STATUS_LABELS, STATUS_ORDER, STATUS_TONES, type Task } from "@/app/lib/projects-api";
+import { toneFor, type Etat, type Task } from "@/app/lib/projects-api";
 import { TaskRow } from "./TaskRow";
 
 export function TaskListView({
   tasks,
+  etats,
   onOpen,
 }: {
   tasks: Task[];
+  /** Groupes de la liste : les états du jeu du projet, dans leur ordre. */
+  etats: Etat[];
   onOpen: (t: Task) => void;
 }) {
   const roots = tasks.filter((t) => !t.parent_task_id);
 
   return (
     <div className="space-y-5">
-      {STATUS_ORDER.map((status) => {
-        const rows = roots.filter((t) => t.status === status);
+      {etats.map((etat) => {
+        const rows = roots.filter((t) => t.etat_id === etat.id);
         if (rows.length === 0) return null;
-        const tone = STATUS_TONES[status];
+        const tone = toneFor(etat.categorie_canonique);
         return (
-          <div key={status}>
+          <div key={etat.id}>
             <h3 className="flex items-center gap-2 text-label-sm uppercase text-outline mb-2">
               <span className={`w-2 h-2 rounded-full ${tone?.dot ?? ""}`} />
-              {STATUS_LABELS[status]}
+              {etat.libelle}
               <span className="text-outline-variant">·</span>
               {rows.length}
             </h3>

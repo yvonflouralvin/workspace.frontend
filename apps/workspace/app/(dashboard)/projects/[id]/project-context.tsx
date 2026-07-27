@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, type Dispatch, type SetStateAction } from "react";
-import type { Deliverable, Phase, Project, ProjectRole, Task } from "@/app/lib/projects-api";
+import type { Deliverable, Etat, Phase, Project, ProjectRole, Task } from "@/app/lib/projects-api";
 
 export interface Member {
   id: number;
@@ -17,6 +17,9 @@ export interface ProjectContextValue {
   reloadTasks: () => Promise<void>;
   phases: Phase[];
   reloadPhases: () => Promise<void>;
+  /** Jeu d'états du projet — SOURCE UNIQUE des libellés, de l'ordre et
+   *  (via la catégorie) des couleurs. */
+  etats: Etat[];
   /** Tous les livrables du projet — pilote l'onglet Livrables. */
   deliverables: Deliverable[];
   reloadDeliverables: () => Promise<void>;

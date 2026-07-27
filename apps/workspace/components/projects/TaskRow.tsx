@@ -6,8 +6,7 @@ import { PriorityBars } from "@repo/ui/PriorityBars";
 import {
   PRIORITY_LABELS,
   PRIORITY_LEVELS,
-  STATUS_LABELS,
-  STATUS_TONES,
+  toneFor,
   type Task,
 } from "@/app/lib/projects-api";
 
@@ -27,7 +26,7 @@ export function TaskRow({
   href?: string;
   onOpen?: (task: Task) => void;
 }) {
-  const tone = STATUS_TONES[task.status];
+  const tone = toneFor(task.categorie);
   const overdue = isOverdue(task);
 
   const content = (
@@ -50,7 +49,7 @@ export function TaskRow({
         className={`hidden sm:inline-flex flex-none items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-semibold ${tone?.chip ?? ""}`}
       >
         <span className={`w-1.5 h-1.5 rounded-full ${tone?.dot ?? ""}`} />
-        {STATUS_LABELS[task.status]}
+        {task.etat_libelle ?? task.etat_code}
       </span>
       <span
         className={`w-[64px] md:w-[86px] flex-none inline-flex items-center justify-end gap-1 text-label-md ${

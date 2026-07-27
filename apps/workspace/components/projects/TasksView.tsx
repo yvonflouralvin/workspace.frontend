@@ -28,7 +28,7 @@ export function TasksView({
   /** Vue unique (onglet d'une phase) : le mode se choisit sur place plutôt que par la route. */
   modeSwitch?: boolean;
 }) {
-  const { projectId, project, tasks: allTasks, setTasks, reloadTasks, phases, members, canManage } = useProject();
+  const { projectId, project, tasks: allTasks, setTasks, reloadTasks, phases, etats, members, canManage } = useProject();
   // Vue de phase : on ne montre et ne crée que les éléments de cette phase.
   const tasks = phaseId ? allTasks.filter((t) => t.phase_id === phaseId) : allTasks;
   // Phases exposées à l'utilisateur : toutes dès que le projet en montre (même
@@ -63,11 +63,20 @@ export function TasksView({
     if (found) setEditing(found);
   }, [searchParams, tasks]);
 
-  async function moveTask(task: Task, status: string) {
-    setTasks((cur) => cur.map((t) => (t.id === task.id ? { ...t, status } : t)));
+  async function moveTask(task: Task, etatId: number) {
+    const cible = etats.find((e) => e.id === etatId);
+    setTasks((cur) =>
+      cur.map((t) =>
+        t.id === task.id
+          ? { ...t, etat_id: etatId, etat_libelle: cible?.libelle ?? null, categorie: cible?.categorie_canonique ?? null }
+          : t
+      )
+    );
     try {
-      await projectsApi.updateTask(task.id, { status });
+      await projectsApi.updateTask(task.id, { etat_id: etatId });
     } finally {
+      // Recharge dans tous les cas : le backend peut REFUSER (livrable dû non
+      // approuvé), l'optimisme local doit alors être annulé.
       reloadTasks();
     }
   }
@@ -95,6 +104,7 @@ export function TasksView({
       {currentMode === "kanban" ? (
         <KanbanBoard
           tasks={tasks}
+          etats={etats}
           canManage={canManage}
           onMove={moveTask}
           onOpen={setEditing}
@@ -102,7 +112,7 @@ export function TasksView({
           phaseNames={phaseNames}
         />
       ) : (
-        <TaskListView tasks={tasks} onOpen={setEditing} />
+        <TaskListView tasks={tasks} etats={etats} onOpen={setEditing} />
       )}
 
       {editing && (
@@ -113,6 +123,7 @@ export function TasksView({
           projectKey={project.key}
           subtasks={subtasks}
           members={members}
+          etats={etats}
           phases={visiblePhases}
           tagSuggestions={tagSuggestions}
           canManage={canManage}

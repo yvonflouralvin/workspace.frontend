@@ -4,8 +4,6 @@ import { TagInput } from "@repo/ui/TagInput";
 import {
   PRIORITY_LABELS,
   PRIORITY_ORDER,
-  STATUS_LABELS,
-  STATUS_ORDER,
   phasesVisible,
   projectsApi,
 } from "@/app/lib/projects-api";
@@ -18,7 +16,7 @@ const CONTROL =
 
 export default function TaskOverviewPage() {
   const { task, queue, canManage } = useTask();
-  const { tasks, phases, members } = useProject();
+  const { tasks, phases, etats, members } = useProject();
   const subtasks = tasks.filter((t) => t.parent_task_id === task.id);
   const selectablePhases = phasesVisible(phases) ? phases : [];
 
@@ -38,7 +36,7 @@ export default function TaskOverviewPage() {
           Sous-tâches{" "}
           {subtasks.length > 0 && (
             <span className="normal-case tracking-normal text-outline">
-              {subtasks.filter((s) => s.status === "TERMINE").length}/{subtasks.length}
+              {subtasks.filter((s) => s.categorie === "termine").length}/{subtasks.length}
             </span>
           )}
         </p>
@@ -53,12 +51,12 @@ export default function TaskOverviewPage() {
             >
               <span
                 className={`flex-1 min-w-0 truncate text-body-sm ${
-                  subtask.status === "TERMINE" ? "text-outline line-through" : "text-on-surface"
+                  subtask.categorie === "termine" ? "text-outline line-through" : "text-on-surface"
                 }`}
               >
                 {subtask.title}
               </span>
-              <span className="text-label-md text-outline">{STATUS_LABELS[subtask.status]}</span>
+              <span className="text-label-md text-outline">{subtask.etat_libelle}</span>
             </div>
           ))}
         </div>
@@ -67,14 +65,14 @@ export default function TaskOverviewPage() {
       <aside className="rounded-2xl border border-outline-soft bg-surface-container-lowest divide-y divide-hairline">
         <MetaRow label="Statut">
           <select
-            value={task.status}
+            value={task.etat_id}
             disabled={!canManage}
-            onChange={(e) => queue({ status: e.target.value })}
+            onChange={(e) => queue({ etat_id: Number(e.target.value) })}
             className={`${CONTROL} font-semibold`}
           >
-            {STATUS_ORDER.map((s) => (
-              <option key={s} value={s}>
-                {STATUS_LABELS[s]}
+            {etats.map((etat) => (
+              <option key={etat.id} value={etat.id}>
+                {etat.libelle}
               </option>
             ))}
           </select>

@@ -69,7 +69,7 @@ export default function ProjectOverviewPage() {
     [flush]
   );
 
-  const done = useMemo(() => tasks.filter((t) => t.status === "TERMINE").length, [tasks]);
+  const done = useMemo(() => tasks.filter((t) => t.categorie === "termine").length, [tasks]);
   const pct = tasks.length ? Math.round((done / tasks.length) * 100) : 0;
   const lead = members.find((m) => m.id === project.lead_user_id);
 

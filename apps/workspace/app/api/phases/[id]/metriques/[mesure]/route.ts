@@ -15,6 +15,8 @@ export async function GET(
   if (!MESURES.has(mesure)) {
     return new Response(JSON.stringify({ detail: "Mesure inconnue" }), { status: 404 });
   }
-  const query = request.nextUrl.search;
-  return forwardToBackend(request, PROJECTS_API_URL, `/phases/${id}/metriques/${mesure}${query}`);
+  // `forwardToBackend` transmet DÉJÀ la chaîne de requête d'origine
+  // (packages/network/src/server.ts) : la rajouter ici la doublerait —
+  // `?pas=jour?pas=jour`, que le backend refuse en 422.
+  return forwardToBackend(request, PROJECTS_API_URL, `/phases/${id}/metriques/${mesure}`);
 }

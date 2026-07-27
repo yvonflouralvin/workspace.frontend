@@ -5,6 +5,8 @@ const PROJECTS_API_URL = process.env.PROJECTS_API_URL!;
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const limit = request.nextUrl.searchParams.get("limit") ?? "50";
-  return forwardToBackend(request, PROJECTS_API_URL, `/projects/${id}/activities?limit=${limit}`);
+  // `forwardToBackend` transmet DÉJÀ la chaîne de requête d'origine
+  // (packages/network/src/server.ts) : la rajouter ici la doublerait —
+  // `?pas=jour?pas=jour`, que le backend refuse en 422.
+  return forwardToBackend(request, PROJECTS_API_URL, `/projects/${id}/activities`);
 }

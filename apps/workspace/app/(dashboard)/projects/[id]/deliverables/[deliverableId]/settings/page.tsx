@@ -25,7 +25,7 @@ const CONTROL =
 
 export default function DeliverableSettingsPage() {
   const { deliverable, phase, approvers, reload, canManage } = useDeliverable();
-  const { projectId, tasks, isOwner } = useProject();
+  const { projectId, tasks, isOwner, reloadDeliverables } = useProject();
   const router = useRouter();
 
   const [members, setMembers] = useState<ProjectMember[]>([]);
@@ -238,6 +238,7 @@ export default function DeliverableSettingsPage() {
             setBusy(true);
             try {
               await projectsApi.deleteDeliverable(deliverable.id);
+              await reloadDeliverables();
               router.push(`/projects/${projectId}/phases/${deliverable.phase_id}/deliverables`);
             } catch (e) {
               setError(e instanceof Error ? e.message : "Suppression impossible.");

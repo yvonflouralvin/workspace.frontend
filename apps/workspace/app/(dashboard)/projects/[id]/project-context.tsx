@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, type Dispatch, type SetStateAction } from "react";
-import type { Phase, Project, ProjectRole, Task } from "@/app/lib/projects-api";
+import type { Deliverable, Phase, Project, ProjectRole, Task } from "@/app/lib/projects-api";
 
 export interface Member {
   id: number;
@@ -17,6 +17,9 @@ export interface ProjectContextValue {
   reloadTasks: () => Promise<void>;
   phases: Phase[];
   reloadPhases: () => Promise<void>;
+  /** Tous les livrables du projet — pilote l'onglet Livrables. */
+  deliverables: Deliverable[];
+  reloadDeliverables: () => Promise<void>;
   members: Member[];
   /** Rôle de l'utilisateur sur CE projet. */
   role: ProjectRole;

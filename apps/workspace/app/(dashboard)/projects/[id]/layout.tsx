@@ -7,8 +7,16 @@ import { useSessionStore } from "@repo/auth/store/session.store";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
 import { apiFetch } from "@repo/network/client";
 import { ArrowBackOutlined } from "@mui/icons-material";
-import { AccountTreeOutlined } from "@mui/icons-material";
-import { projectsApi, phasesVisible, type Phase, type Project, type ProjectRole, type Task } from "@/app/lib/projects-api";
+import { AccountTreeOutlined, InventoryOutlined } from "@mui/icons-material";
+import {
+  projectsApi,
+  phasesVisible,
+  type Deliverable,
+  type Phase,
+  type Project,
+  type ProjectRole,
+  type Task,
+} from "@/app/lib/projects-api";
 import { ProjectProvider, type Member } from "./project-context";
 import {
   PROJECT_SECTIONS,
@@ -27,6 +35,7 @@ export default function ProjectLayout({ children }: { children: ReactNode }) {
   const [project, setProject] = useState<Project | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [phases, setPhases] = useState<Phase[]>([]);
+  const [deliverables, setDeliverables] = useState<Deliverable[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -38,6 +47,10 @@ export default function ProjectLayout({ children }: { children: ReactNode }) {
     () => projectsApi.listPhases(projectId).then(setPhases),
     [projectId]
   );
+  const reloadDeliverables = useCallback(
+    () => projectsApi.listProjectDeliverables(projectId).then(setDeliverables).catch(() => {}),
+    [projectId]
+  );
 
   useEffect(() => {
     setLoading(true);
@@ -45,11 +58,13 @@ export default function ProjectLayout({ children }: { children: ReactNode }) {
       projectsApi.getProject(projectId),
       projectsApi.listTasks(projectId),
       projectsApi.listPhases(projectId).catch(() => [] as Phase[]),
+      projectsApi.listProjectDeliverables(projectId).catch(() => [] as Deliverable[]),
     ])
-      .then(([p, t, ph]) => {
+      .then(([p, t, ph, dl]) => {
         setProject(p);
         setTasks(t);
         setPhases(ph);
+        setDeliverables(dl);
       })
       .catch(() => setProject(null))
       .finally(() => setLoading(false));
@@ -86,9 +101,21 @@ export default function ProjectLayout({ children }: { children: ReactNode }) {
     label: "Phases",
     icon: <AccountTreeOutlined style={{ fontSize: 17 }} />,
   };
-  // Insère « Phases » juste après « Board » quand il est visible.
-  const sections: ProjectSection[] = showPhases
-    ? PROJECT_SECTIONS.flatMap((s) => (s.key === "board" ? [s, phaseSection] : [s]))
+  // L'onglet n'apparaît que si le projet porte au moins un livrable — phase ou
+  // tâche confondues. Un projet qui n'en a pas ne voit pas le mot.
+  const deliverableSection: ProjectSection = {
+    key: "deliverables",
+    path: "/deliverables",
+    label: "Livrables",
+    icon: <InventoryOutlined style={{ fontSize: 17 }} />,
+  };
+  // Insère « Phases » puis « Livrables » juste après « Board », quand ils existent.
+  const afterBoard = [
+    ...(showPhases ? [phaseSection] : []),
+    ...(deliverables.length ? [deliverableSection] : []),
+  ];
+  const sections: ProjectSection[] = afterBoard.length
+    ? PROJECT_SECTIONS.flatMap((s) => (s.key === "board" ? [s, ...afterBoard] : [s]))
     : PROJECT_SECTIONS;
 
   // Le rôle vient du backend (il connaît l'appartenance) ; le RBAC workspace reste
@@ -171,7 +198,7 @@ export default function ProjectLayout({ children }: { children: ReactNode }) {
       )}
 
       <ProjectProvider
-        value={{ projectId, project, setProject, tasks, setTasks, reloadTasks, phases, reloadPhases, members, role, canManage, isOwner }}
+        value={{ projectId, project, setProject, tasks, setTasks, reloadTasks, phases, reloadPhases, deliverables, reloadDeliverables, members, role, canManage, isOwner }}
       >
         {children}
       </ProjectProvider>

@@ -171,6 +171,7 @@ export interface Deliverable {
   expected_type: DeliverableType;
   due_date: string | null;
   task_title: string | null;
+  phase_name: string | null;
 }
 
 export const VERSION_STATUS_LABELS: Record<string, string> = {
@@ -275,6 +276,8 @@ export const projectsApi = {
   deleteGroup: (projectId: number, groupId: number) =>
     apiFetch(`/api/projects/${projectId}/groups/${groupId}`, { method: "DELETE" }).then((r) => json<void>(r)),
 
+  listProjectDeliverables: (projectId: number) =>
+    apiFetch(`/api/projects/${projectId}/deliverables`).then((r) => json<Deliverable[]>(r)),
   listDeliverables: (phaseId: number) =>
     apiFetch(`/api/phases/${phaseId}/deliverables`).then((r) => json<Deliverable[]>(r)),
   createDeliverable: (phaseId: number, body: Partial<Deliverable> & { title: string }) =>

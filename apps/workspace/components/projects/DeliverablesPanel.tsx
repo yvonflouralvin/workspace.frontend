@@ -12,6 +12,7 @@ import {
   type Phase,
   type Task,
 } from "@/app/lib/projects-api";
+import { useProject } from "@/app/(dashboard)/projects/[id]/project-context";
 
 const FIELD =
   "h-9 px-2 rounded-lg border border-outline-soft bg-surface-container-lowest text-body-sm text-on-surface outline-none focus:border-primary transition-colors";
@@ -28,6 +29,9 @@ export function DeliverablesPanel({
   canManage: boolean;
   taskId?: number;
 }) {
+  // L'onglet Livrables du projet dépend de l'existence d'un livrable : toute
+  // création ou suppression ici doit le rafraîchir.
+  const { reloadDeliverables } = useProject();
   const [rows, setRows] = useState<Deliverable[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -59,6 +63,7 @@ export function DeliverablesPanel({
     try {
       await fn();
       await reload();
+      await reloadDeliverables();
       setToast(message);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Une erreur est survenue.");

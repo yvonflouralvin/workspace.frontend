@@ -49,6 +49,7 @@ export const PROJECT_SECTIONS: ProjectSection[] = [
 // pour l'onglet actif, sans l'ajouter au menu par défaut.
 const CONDITIONAL_SECTIONS: ProjectSection[] = [
   { key: "phases", path: "/phases", label: "Phases", icon: null },
+  { key: "deliverables", path: "/deliverables", label: "Livrables", icon: null },
 ];
 
 /** Le détail d'une phase ou d'une tâche porte sa propre identité (projet en surtitre,

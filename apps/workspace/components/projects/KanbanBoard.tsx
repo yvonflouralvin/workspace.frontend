@@ -49,8 +49,12 @@ export function KanbanBoard({
         const col = roots.filter((t) => t.etat_id === etat.id);
         const tone = toneFor(etat.categorie_canonique);
         const limite = limites[String(etat.id)];
-        // Saturée : le compteur passe sur les tokens d'erreur du design system.
-        const saturee = limite != null && col.length >= limite;
+        // COMPTE COMME LE BACKEND : tous les éléments de la colonne, sous-tâches
+        // comprises — elles occupent la capacité de l'équipe même si elles
+        // s'affichent dans leur carte parente. Compter les seules cartes
+        // visibles ferait diverger l'affichage du refus.
+        const effectif = tasks.filter((t) => t.etat_id === etat.id).length;
+        const saturee = limite != null && effectif >= limite;
         return (
           <div
             key={etat.id}
@@ -82,7 +86,7 @@ export function KanbanBoard({
                     saturee ? "bg-error-container text-on-error-container" : "text-outline"
                   }`}
                 >
-                  {col.length}/{limite}
+                  {effectif}/{limite}
                 </span>
               ) : (
                 <span className="text-label-md text-outline">{col.length}</span>

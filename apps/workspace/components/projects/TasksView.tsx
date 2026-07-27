@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { AddOutlined } from "@mui/icons-material";
+import { AddOutlined, ViewKanbanOutlined, ViewListOutlined } from "@mui/icons-material";
 import { Toast } from "@repo/ui/Toast";
+import { ViewModeSwitch } from "@repo/ui/ViewModeSwitch";
 import {
   outilActif,
   paramsTableau,
@@ -18,14 +19,28 @@ import { TaskListView } from "./TaskListView";
 import { TaskDrawer } from "./TaskDrawer";
 import { ForcageWipDialog } from "./ForcageWipDialog";
 
+type ModeVue = "liste" | "kanban";
+
+const MODES: { value: ModeVue; icon: React.ReactNode; label: string }[] = [
+  { value: "liste", icon: <ViewListOutlined style={{ fontSize: 18 }} />, label: "Liste" },
+  { value: "kanban", icon: <ViewKanbanOutlined style={{ fontSize: 18 }} />, label: "Kanban" },
+];
+
 export function TasksView({ phaseId }: { phaseId?: number }) {
   const { projectId, project, tasks: allTasks, setTasks, reloadTasks, phases, etats, members, canManage } = useProject();
   const phase = phaseId ? phases.find((p) => p.id === phaseId) ?? null : null;
-  // L'outil Tableau décide de la vue, et il s'active SUR UNE PHASE : la vue
-  // projet, qui traverse les phases, reste une liste plate — sinon les limites
-  // de deux phases se mélangeraient dans les mêmes colonnes.
+  // L'outil Tableau OUVRE la vue en colonnes sur une phase et y applique ses
+  // limites. Il ne l'impose pas : le tableau et la liste montrent le même
+  // travail, et lire ne se décrète pas.
   const tableau = Boolean(phaseId) && outilActif(phase, "tableau");
-  const limites = paramsTableau(phase).limites_wip;
+  // Les limites s'appliquent PAR PHASE. La vue projet traverse les phases : elle
+  // affiche donc les colonnes sans compteur, sinon deux limites distinctes se
+  // mélangeraient dans une même colonne.
+  const limites = tableau ? paramsTableau(phase).limites_wip : {};
+  const [vue, setVue] = useState<ModeVue>(tableau ? "kanban" : "liste");
+  // Sur une phase sans l'outil, le tableau n'existe pas : pas de sélecteur.
+  const choixDeVue = tableau || !phaseId;
+  const modeCourant: ModeVue = choixDeVue ? vue : "liste";
   // Vue de phase : on ne montre et ne crée que les éléments de cette phase.
   const tasks = phaseId ? allTasks.filter((t) => t.phase_id === phaseId) : allTasks;
   // Phases exposées à l'utilisateur : toutes dès que le projet en montre (même
@@ -97,9 +112,10 @@ export function TasksView({ phaseId }: { phaseId?: number }) {
 
   return (
     <div className="space-y-4">
-      {canManage && (
+      {(choixDeVue || canManage) && (
         <div className="flex items-center justify-end gap-2">
-          {(
+          {choixDeVue && <ViewModeSwitch value={vue} options={MODES} onChange={setVue} />}
+          {canManage && (
             <button
               onClick={() => setEditing("new")}
               className="inline-flex items-center justify-center gap-1.5 h-11 md:h-[38px] px-4 rounded-lg bg-primary text-on-primary text-body-sm font-semibold shadow-button hover:bg-primary-container transition-colors whitespace-nowrap"
@@ -111,7 +127,7 @@ export function TasksView({ phaseId }: { phaseId?: number }) {
         </div>
       )}
 
-      {tableau ? (
+      {modeCourant === "kanban" ? (
         <KanbanBoard
           tasks={tasks}
           etats={etats}

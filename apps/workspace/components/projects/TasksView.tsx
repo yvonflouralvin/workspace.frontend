@@ -31,13 +31,12 @@ export function TasksView({
   const { projectId, project, tasks: allTasks, setTasks, reloadTasks, phases, members, canManage } = useProject();
   // Vue de phase : on ne montre et ne crée que les éléments de cette phase.
   const tasks = phaseId ? allTasks.filter((t) => t.phase_id === phaseId) : allTasks;
-  // Phases proposées à l'utilisateur : jamais la phase implicite — le mot « phase »
-  // ne doit pas apparaître dans un projet qui n'en a pas. Mémoïsé : l'identité de la
-  // liste alimente le `fetchOptions` du SearchSelect du drawer.
-  const visiblePhases = useMemo(
-    () => (phasesVisible(phases) ? phases.filter((p) => !p.est_implicite) : []),
-    [phases]
-  );
+  // Phases exposées à l'utilisateur : toutes dès que le projet en montre (même
+  // règle que l'onglet Phases). La phase auto-créée en fait partie — elle porte de
+  // vraies tâches, et rien n'empêche de la renommer. `phasesVisible` suffit à garder
+  // le mot « phase » invisible dans un projet qui n'en a pas.
+  // Mémoïsé : l'identité de la liste alimente le `fetchOptions` du SearchSelect.
+  const visiblePhases = useMemo(() => (phasesVisible(phases) ? phases : []), [phases]);
   // Kanban global : chaque carte rappelle sa phase. Inutile dans la vue d'une phase.
   const phaseNames = useMemo(
     () =>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChecklistOutlined, ScheduleOutlined } from "@mui/icons-material";
+import { AccountTreeOutlined, ChecklistOutlined, ScheduleOutlined } from "@mui/icons-material";
 import { Avatar } from "@repo/ui/Avatar";
 import { PriorityBars } from "@repo/ui/PriorityBars";
 import {
@@ -20,12 +20,16 @@ export function KanbanBoard({
   onMove,
   onOpen,
   projectKey,
+  phaseNames,
 }: {
   tasks: Task[];
   canManage: boolean;
   onMove: (t: Task, s: string) => void;
   onOpen: (t: Task) => void;
   projectKey: string;
+  /** Noms de phase à afficher sur les cartes — absent quand la vue est déjà
+   *  celle d'une phase, ou quand le projet n'expose pas ses phases. */
+  phaseNames?: Record<number, string>;
 }) {
   const [drag, setDrag] = useState<Task | null>(null);
   const [over, setOver] = useState<string | null>(null);
@@ -71,6 +75,7 @@ export function KanbanBoard({
                 const children = childCount(t);
                 const doneChildren = children.filter((c) => c.status === "TERMINE").length;
                 const overdue = isOverdue(t);
+                const phaseName = phaseNames?.[t.phase_id];
                 return (
                   <div
                     key={t.id}
@@ -84,6 +89,16 @@ export function KanbanBoard({
                     className="rounded-xl bg-surface-container-lowest border border-outline-soft shadow-card p-3 cursor-pointer hover:border-primary/40 transition-colors"
                   >
                     <p className="text-body-md font-medium text-on-surface">{t.title}</p>
+
+                    {phaseName && (
+                      <span
+                        title={phaseName}
+                        className="flex items-center gap-1 mt-0.5 text-label-md text-outline"
+                      >
+                        <AccountTreeOutlined style={{ fontSize: 13 }} className="flex-none" />
+                        <span className="truncate">{phaseName}</span>
+                      </span>
+                    )}
 
                     {overdue && (
                       <span className="inline-flex items-center gap-1 mt-2 rounded-md bg-error-container px-1.5 py-0.5 text-[11px] font-semibold text-on-error-container">

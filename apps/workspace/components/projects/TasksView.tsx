@@ -5,7 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AddOutlined, ViewKanbanOutlined, ViewListOutlined } from "@mui/icons-material";
 import { Toast } from "@repo/ui/Toast";
 import { ViewModeSwitch } from "@repo/ui/ViewModeSwitch";
-import { projectsApi, type Task } from "@/app/lib/projects-api";
+import { phasesVisible, projectsApi, type Task } from "@/app/lib/projects-api";
 import { useProject } from "@/app/(dashboard)/projects/[id]/project-context";
 import { KanbanBoard } from "./KanbanBoard";
 import { TaskListView } from "./TaskListView";
@@ -28,9 +28,16 @@ export function TasksView({
   /** Vue unique (onglet d'une phase) : le mode se choisit sur place plutôt que par la route. */
   modeSwitch?: boolean;
 }) {
-  const { projectId, project, tasks: allTasks, setTasks, reloadTasks, members, canManage } = useProject();
+  const { projectId, project, tasks: allTasks, setTasks, reloadTasks, phases, members, canManage } = useProject();
   // Vue de phase : on ne montre et ne crée que les éléments de cette phase.
   const tasks = phaseId ? allTasks.filter((t) => t.phase_id === phaseId) : allTasks;
+  // Kanban global : chaque carte rappelle sa phase. Inutile dans la vue d'une phase,
+  // et jamais pour la phase implicite — le mot « phase » ne doit pas apparaître
+  // dans un projet qui n'en a pas.
+  const phaseNames =
+    !phaseId && phasesVisible(phases)
+      ? Object.fromEntries(phases.filter((p) => !p.est_implicite).map((p) => [p.id, p.name]))
+      : undefined;
   const [view, setView] = useState<TasksMode>(mode);
   const currentMode = modeSwitch ? view : mode;
   const router = useRouter();
@@ -82,6 +89,7 @@ export function TasksView({
           onMove={moveTask}
           onOpen={setEditing}
           projectKey={project.key}
+          phaseNames={phaseNames}
         />
       ) : (
         <TaskListView tasks={tasks} onOpen={setEditing} />

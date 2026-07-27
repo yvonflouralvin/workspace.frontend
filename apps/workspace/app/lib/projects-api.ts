@@ -187,6 +187,11 @@ export interface DeliverableVersion {
   deliverable_id: number;
   number: number;
   note: string | null;
+  content_url: string | null;
+  content_rich: string | null;
+  document_id: number | null;
+  file_name: string | null;
+  file_size: number | null;
   status: string;
   submitted_by_name: string | null;
   submitted_at: string;
@@ -285,10 +290,25 @@ export const projectsApi = {
     apiFetch(`/api/deliverables/${id}`).then((r) => json<Deliverable>(r)),
   listVersions: (id: number) =>
     apiFetch(`/api/deliverables/${id}/versions`).then((r) => json<DeliverableVersion[]>(r)),
-  submitVersion: (id: number, note: string | null) =>
-    apiFetch(`/api/deliverables/${id}/versions`, { method: "POST", body: { note } }).then((r) =>
+  submitVersion: (
+    id: number,
+    body: { note?: string | null; content_url?: string | null; content_rich?: string | null }
+  ) => apiFetch(`/api/deliverables/${id}/versions`, { method: "POST", body }).then((r) =>
       json<DeliverableVersion>(r)
     ),
+  // Multipart : pas de chiffrement @repo/network, le BFF passe les octets bruts.
+  submitVersionFile: async (id: number, file: File, note: string | null) => {
+    const form = new FormData();
+    form.append("file", file);
+    if (note) form.append("note", note);
+    const res = await fetch(`/api/deliverables/${id}/versions/file`, { method: "POST", body: form });
+    if (!res.ok) {
+      throw new Error((await res.json().catch(() => ({})))?.detail || `Erreur ${res.status}`);
+    }
+    return (await res.json()) as DeliverableVersion;
+  },
+  versionFileUrl: (id: number, versionId: number) =>
+    `/api/deliverables/${id}/versions/${versionId}/content`,
   decideVersion: (id: number, versionId: number, approved: boolean, note: string | null) =>
     apiFetch(`/api/deliverables/${id}/versions/${versionId}/decision`, {
       method: "POST",

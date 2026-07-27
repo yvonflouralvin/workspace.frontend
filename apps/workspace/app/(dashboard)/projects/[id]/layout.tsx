@@ -117,14 +117,15 @@ export default function ProjectLayout({ children }: { children: ReactNode }) {
     label: "Livrables",
     icon: <InventoryOutlined style={{ fontSize: 17 }} />,
   };
-  // Insère « Phases » puis « Livrables » juste après « Board », quand ils existent.
-  const afterBoard = [
+  // Le tableau vit désormais DANS une phase : il n'y a plus d'onglet Board au
+  // niveau projet, où les limites de WIP de deux phases se seraient mélangées.
+  const conditionnels = [
     ...(showPhases ? [phaseSection] : []),
     ...(deliverables.length ? [deliverableSection] : []),
   ];
   const sections: ProjectSection[] = PROJECT_SECTIONS.flatMap((s) => {
     if (s.key === "tasks" && !showTasks) return [];
-    return s.key === "board" ? [s, ...afterBoard] : [s];
+    return s.key === "overview" ? [s, ...conditionnels] : [s];
   });
 
   // Le rôle vient du backend (il connaît l'appartenance) ; le RBAC workspace reste

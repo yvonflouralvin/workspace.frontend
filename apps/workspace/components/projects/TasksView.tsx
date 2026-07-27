@@ -2,33 +2,30 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { AddOutlined, ViewKanbanOutlined, ViewListOutlined } from "@mui/icons-material";
+import { AddOutlined } from "@mui/icons-material";
 import { Toast } from "@repo/ui/Toast";
-import { ViewModeSwitch } from "@repo/ui/ViewModeSwitch";
-import { phasesVisible, projectsApi, type Task } from "@/app/lib/projects-api";
+import {
+  outilActif,
+  paramsTableau,
+  phasesVisible,
+  projectsApi,
+  type RefusWip,
+  type Task,
+} from "@/app/lib/projects-api";
 import { useProject } from "@/app/(dashboard)/projects/[id]/project-context";
 import { KanbanBoard } from "./KanbanBoard";
 import { TaskListView } from "./TaskListView";
 import { TaskDrawer } from "./TaskDrawer";
+import { ForcageWipDialog } from "./ForcageWipDialog";
 
-export type TasksMode = "kanban" | "liste";
-
-const MODE_OPTIONS = [
-  { value: "liste" as const, icon: <ViewListOutlined style={{ fontSize: 18 }} />, label: "Liste" },
-  { value: "kanban" as const, icon: <ViewKanbanOutlined style={{ fontSize: 18 }} />, label: "Kanban" },
-];
-
-export function TasksView({
-  mode,
-  phaseId,
-  modeSwitch,
-}: {
-  mode: TasksMode;
-  phaseId?: number;
-  /** Vue unique (onglet d'une phase) : le mode se choisit sur place plutôt que par la route. */
-  modeSwitch?: boolean;
-}) {
+export function TasksView({ phaseId }: { phaseId?: number }) {
   const { projectId, project, tasks: allTasks, setTasks, reloadTasks, phases, etats, members, canManage } = useProject();
+  const phase = phaseId ? phases.find((p) => p.id === phaseId) ?? null : null;
+  // L'outil Tableau décide de la vue, et il s'active SUR UNE PHASE : la vue
+  // projet, qui traverse les phases, reste une liste plate — sinon les limites
+  // de deux phases se mélangeraient dans les mêmes colonnes.
+  const tableau = Boolean(phaseId) && outilActif(phase, "tableau");
+  const limites = paramsTableau(phase).limites_wip;
   // Vue de phase : on ne montre et ne crée que les éléments de cette phase.
   const tasks = phaseId ? allTasks.filter((t) => t.phase_id === phaseId) : allTasks;
   // Phases exposées à l'utilisateur : toutes dès que le projet en montre (même
@@ -48,13 +45,14 @@ export function TasksView({
       phaseId ? undefined : Object.fromEntries(visiblePhases.map((p) => [p.id, p.name])),
     [phaseId, visiblePhases]
   );
-  const [view, setView] = useState<TasksMode>(mode);
-  const currentMode = modeSwitch ? view : mode;
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [editing, setEditing] = useState<Task | "new" | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  // Refus de WIP en attente d'arbitrage : {refus, tâche, état visé}.
+  const [refus, setRefus] = useState<{ detail: RefusWip; task: Task } | null>(null);
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     const t = searchParams.get("task");
@@ -63,7 +61,7 @@ export function TasksView({
     if (found) setEditing(found);
   }, [searchParams, tasks]);
 
-  async function moveTask(task: Task, etatId: number) {
+  async function moveTask(task: Task, etatId: number, motifForcage?: string) {
     const cible = etats.find((e) => e.id === etatId);
     setTasks((cur) =>
       cur.map((t) =>
@@ -73,10 +71,23 @@ export function TasksView({
       )
     );
     try {
-      await projectsApi.updateTask(task.id, { etat_id: etatId });
+      await projectsApi.updateTask(task.id, {
+        etat_id: etatId,
+        ...(motifForcage ? { motif_forcage: motifForcage } : {}),
+      });
+      setRefus(null);
+    } catch (e) {
+      // Le backend renvoie un détail structuré quand une colonne est saturée :
+      // on propose l'arbitrage plutôt qu'un message d'erreur opaque.
+      const detail = (e as { detail?: RefusWip })?.detail;
+      if (detail && typeof detail === "object" && "forcage_possible" in detail) {
+        setRefus({ detail, task });
+      } else {
+        setToast(e instanceof Error ? e.message : "Déplacement impossible.");
+      }
     } finally {
       // Recharge dans tous les cas : le backend peut REFUSER (livrable dû non
-      // approuvé), l'optimisme local doit alors être annulé.
+      // approuvé, limite atteinte), l'optimisme local doit alors être annulé.
       reloadTasks();
     }
   }
@@ -86,10 +97,9 @@ export function TasksView({
 
   return (
     <div className="space-y-4">
-      {(modeSwitch || canManage) && (
+      {canManage && (
         <div className="flex items-center justify-end gap-2">
-          {modeSwitch && <ViewModeSwitch value={view} options={MODE_OPTIONS} onChange={setView} />}
-          {canManage && (
+          {(
             <button
               onClick={() => setEditing("new")}
               className="inline-flex items-center justify-center gap-1.5 h-11 md:h-[38px] px-4 rounded-lg bg-primary text-on-primary text-body-sm font-semibold shadow-button hover:bg-primary-container transition-colors whitespace-nowrap"
@@ -101,10 +111,11 @@ export function TasksView({
         </div>
       )}
 
-      {currentMode === "kanban" ? (
+      {tableau ? (
         <KanbanBoard
           tasks={tasks}
           etats={etats}
+          limites={limites}
           canManage={canManage}
           onMove={moveTask}
           onOpen={setEditing}
@@ -136,6 +147,19 @@ export function TasksView({
             setEditing(null);
             setToast("Tâche enregistrée.");
           }}
+        />
+      )}
+
+      {refus && (
+        <ForcageWipDialog
+          refus={refus.detail}
+          busy={busy}
+          onConfirm={async (motif) => {
+            setBusy(true);
+            await moveTask(refus.task, refus.detail.etat_id, motif);
+            setBusy(false);
+          }}
+          onCancel={() => setRefus(null)}
         />
       )}
 

@@ -16,6 +16,7 @@ import { isOverdue } from "./TaskRow";
 export function KanbanBoard({
   tasks,
   etats,
+  limites,
   canManage,
   onMove,
   onOpen,
@@ -25,6 +26,8 @@ export function KanbanBoard({
   tasks: Task[];
   /** Colonnes du tableau : les états du jeu du projet, dans leur ordre. */
   etats: Etat[];
+  /** Limites de simultanéité par état, telles que configurées sur la phase. */
+  limites: Record<string, number>;
   canManage: boolean;
   onMove: (t: Task, etatId: number) => void;
   onOpen: (t: Task) => void;
@@ -45,6 +48,9 @@ export function KanbanBoard({
       {etats.map((etat) => {
         const col = roots.filter((t) => t.etat_id === etat.id);
         const tone = toneFor(etat.categorie_canonique);
+        const limite = limites[String(etat.id)];
+        // Saturée : le compteur passe sur les tokens d'erreur du design system.
+        const saturee = limite != null && col.length >= limite;
         return (
           <div
             key={etat.id}
@@ -60,16 +66,27 @@ export function KanbanBoard({
               setDrag(null);
               setOver(null);
             }}
-            className={`w-[85vw] max-w-[300px] md:w-72 shrink-0 snap-center md:snap-align-none rounded-2xl bg-surface-container/50 p-3 transition-colors ${
-              over === etat.code ? "ring-2 ring-primary/40" : ""
-            }`}
+            className={`w-[85vw] max-w-[300px] md:w-72 shrink-0 snap-center md:snap-align-none rounded-2xl p-3 transition-colors ${
+              saturee ? "bg-error-container/25" : "bg-surface-container/50"
+            } ${over === etat.code ? "ring-2 ring-primary/40" : ""}`}
           >
             <div className="flex items-center gap-2 px-1 pb-2.5">
               <span className={`w-2 h-2 rounded-full ${tone?.dot ?? ""}`} />
               <span className="flex-1 text-body-sm font-semibold text-on-surface-variant">
                 {etat.libelle}
               </span>
-              <span className="text-label-md text-outline">{col.length}</span>
+              {limite != null ? (
+                <span
+                  title={`Limite de travail simultané : ${limite}`}
+                  className={`rounded-full px-1.5 py-0.5 text-label-md font-semibold tabular-nums ${
+                    saturee ? "bg-error-container text-on-error-container" : "text-outline"
+                  }`}
+                >
+                  {col.length}/{limite}
+                </span>
+              ) : (
+                <span className="text-label-md text-outline">{col.length}</span>
+              )}
             </div>
 
             <div className="space-y-2 min-h-[40px]">

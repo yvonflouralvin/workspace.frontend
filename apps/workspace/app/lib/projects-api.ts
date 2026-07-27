@@ -86,7 +86,7 @@ export interface Phase {
   /** Affichage uniquement : phase auto-créée, masquée dans l'UI tant qu'elle est seule. */
   est_implicite: boolean;
   /** Outils activés sur la phase (map {clé: valeur}) — pilote les onglets ouverts. */
-  tools: Record<string, boolean | string>;
+  tools: Record<string, boolean | string | Record<string, unknown>>;
   /** Étiquettes libres — base des droits fins par groupe. */
   tags: string[];
   start_planned: string | null;
@@ -231,8 +231,26 @@ export interface ProjectActivity {
 export interface MetaOption { key: string; label: string }
 export interface ProjectsMeta { statuses: MetaOption[]; priorities: MetaOption[]; phase_statuses: MetaOption[] }
 
+/** Erreur d'API portant le détail renvoyé par le backend. */
+export interface ErreurApi extends Error {
+  detail?: unknown;
+  status?: number;
+}
+
 async function json<T>(res: Response): Promise<T> {
-  if (!res.ok) throw new Error((await res.json().catch(() => ({})))?.detail || `Erreur ${res.status}`);
+  if (!res.ok) {
+    const corps = await res.json().catch(() => ({}));
+    const detail = corps?.detail;
+    const erreur: ErreurApi = new Error(
+      typeof detail === "string" ? detail : detail?.message || `Erreur ${res.status}`
+    );
+    // Certains refus portent un détail STRUCTURÉ — une limite de WIP franchie dit
+    // l'état, la limite, l'effectif et si le forçage est possible. L'aplatir en
+    // message forcerait l'interface à deviner ce qu'elle doit proposer.
+    erreur.detail = detail;
+    erreur.status = res.status;
+    throw erreur;
+  }
   return res.status === 204 ? (undefined as T) : res.json();
 }
 
@@ -245,6 +263,13 @@ export const projectsApi = {
   createProject: (body: Partial<Project>) => apiFetch("/api/projects", { method: "POST", body }).then((r) => json<Project>(r)),
   updateProject: (id: number, body: Partial<Project>) => apiFetch(`/api/projects/${id}`, { method: "PATCH", body }).then((r) => json<Project>(r)),
   archiveProject: (id: number) => apiFetch(`/api/projects/${id}`, { method: "DELETE" }).then((r) => json<void>(r)),
+
+  mesuresFlux: (phaseId: number) =>
+    apiFetch(`/api/phases/${phaseId}/metriques/flux`).then((r) => json<MesuresFlux>(r)),
+  mesuresDebit: (phaseId: number, pas: "jour" | "semaine" = "jour") =>
+    apiFetch(`/api/phases/${phaseId}/metriques/debit?pas=${pas}`).then((r) => json<MesuresDebit>(r)),
+  mesuresFluxCumule: (phaseId: number) =>
+    apiFetch(`/api/phases/${phaseId}/metriques/flux-cumule`).then((r) => json<MesuresFluxCumule>(r)),
 
   listEtats: (projectId: number) =>
     apiFetch(`/api/projects/${projectId}/etats`).then((r) => json<Etat[]>(r)),
@@ -347,7 +372,69 @@ export function phasesVisible(phases: Phase[]): boolean {
  *  l'outil. Tant que non, le projet n'a pas de tâches et n'en parle pas — même
  *  esprit que `phasesVisible` : on ne montre pas un mot que rien ne justifie. */
 export function workItemsActifs(phases: Phase[]): boolean {
-  return phases.some((phase) => phase.tools?.work_items === true);
+  return phases.some((phase) => outilActif(phase, "work_items"));
+}
+
+/** Un outil est-il actif ? Deux conventions coexistent côté backend : un
+ *  interrupteur ou un choix vaut sa valeur, un MODULE porte un objet `{actif}`
+ *  — car un module éteint conserve ses paramètres. */
+export function outilActif(phase: Phase | null | undefined, cle: string): boolean {
+  const valeur = phase?.tools?.[cle];
+  if (valeur == null) return false;
+  if (typeof valeur === "object") return Boolean((valeur as { actif?: boolean }).actif);
+  return valeur !== false && valeur !== "NONE";
+}
+
+export interface ParamsTableau {
+  actif: boolean;
+  limites_wip: Record<string, number>;
+  autoriser_depassement: boolean;
+}
+
+export function paramsTableau(phase: Phase | null | undefined): ParamsTableau {
+  const valeur = (phase?.tools?.tableau ?? {}) as Partial<ParamsTableau>;
+  return {
+    actif: Boolean(valeur.actif),
+    limites_wip: valeur.limites_wip ?? {},
+    autoriser_depassement: valeur.autoriser_depassement ?? true,
+  };
+}
+
+/** Détail structuré renvoyé par le backend quand une colonne est saturée. */
+export interface RefusWip {
+  message: string;
+  etat_id: number;
+  etat: string;
+  limite: number;
+  effectif: number;
+  forcage_possible: boolean;
+}
+
+export interface Distribution {
+  effectif: number;
+  mediane_secondes: number | null;
+  p85_secondes: number | null;
+  moyenne_secondes: number | null;
+}
+
+export interface MesuresFlux {
+  exclus: number;
+  fiable_depuis: string | null;
+  lead_time: Distribution;
+  cycle_time: Distribution;
+}
+
+export interface MesuresDebit {
+  exclus: number;
+  fiable_depuis: string | null;
+  pas: string;
+  points: { periode: string; termines: number }[];
+}
+
+export interface MesuresFluxCumule {
+  exclus: number;
+  fiable_depuis: string | null;
+  points: Record<string, string | number>[];
 }
 
 export const PHASE_STATUS_LABELS: Record<string, string> = {

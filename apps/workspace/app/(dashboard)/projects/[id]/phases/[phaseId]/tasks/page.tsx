@@ -8,7 +8,7 @@ export default function PhaseTasksPage() {
   const { phase } = usePhase();
   return (
     <Suspense fallback={<div className="text-body-sm text-on-surface-variant">Chargement…</div>}>
-      <TasksView mode="liste" phaseId={phase.id} modeSwitch />
+      <TasksView phaseId={phase.id} />
     </Suspense>
   );
 }

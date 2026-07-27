@@ -479,6 +479,17 @@ En dessous de `md`, les numéros disparaissent au profit de `« page / total »`
 deux flèches. Rend `null` si `pages <= 1`. Toute liste paginée passe par ce composant —
 ne pas réécrire la boucle `Array.from({ length: pages })`.
 
+### `StackedAreaChart` (`src/charts/StackedAreaChart.tsx`)
+
+`{ points, series, height?, emptyLabel? }` — aires empilées en SVG natif, comme les
+autres primitives de `src/charts/`. `points` porte `{ label, valeurs: {clé: nombre} }`,
+`series` décrit chaque bande `{ cle, libelle, fill }` où `fill` est une classe
+`fill-*` issue des tokens.
+
+**Volontairement ignorant du métier** : il empile des séries nommées, rien de plus.
+La sémantique (catégories canoniques, flux cumulé d'une phase) reste dans l'app qui
+l'appelle — le package ne connaît ni colonne de tableau, ni WIP, ni phase.
+
 ### `TagInput` (`src/TagInput.tsx`)
 
 `{ value, onChange, disabled?, placeholder?, suggestions? }` — champ d'étiquettes libres :

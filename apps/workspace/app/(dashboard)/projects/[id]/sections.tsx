@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 import {
   HistoryOutlined,
   NotesOutlined,
-  ViewKanbanOutlined,
   ViewListOutlined,
   DescriptionOutlined,
   TimelineOutlined,
@@ -21,7 +20,6 @@ export interface ProjectSection {
 // Ajouter une section = une entrée ici + le dossier de route correspondant.
 export const PROJECT_SECTIONS: ProjectSection[] = [
   { key: "overview", path: "", label: "Aperçu", icon: <NotesOutlined style={{ fontSize: 17 }} /> },
-  { key: "board", path: "/board", label: "Board", icon: <ViewKanbanOutlined style={{ fontSize: 17 }} /> },
   { key: "tasks", path: "/tasks", label: "Tâches", icon: <ViewListOutlined style={{ fontSize: 17 }} /> },
   {
     key: "documents",

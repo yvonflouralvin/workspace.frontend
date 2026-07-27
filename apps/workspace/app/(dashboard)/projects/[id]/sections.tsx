@@ -44,6 +44,13 @@ const CONDITIONAL_SECTIONS: ProjectSection[] = [
   { key: "phases", path: "/phases", label: "Phases", icon: null },
 ];
 
+/** Le détail d'une phase porte sa propre identité (projet en surtitre, phase en titre)
+ *  et ses propres onglets — le layout du projet s'efface au profit de celui de la phase. */
+export function isPhaseDetailPathname(pathname: string, projectId: number): boolean {
+  const suffix = pathname.replace(`/projects/${projectId}`, "").replace(/\/$/, "");
+  return /^\/phases\/\d+/.test(suffix);
+}
+
 export function sectionForPathname(pathname: string, projectId: number): ProjectSection {
   const suffix = pathname.replace(`/projects/${projectId}`, "").replace(/\/$/, "");
   return (

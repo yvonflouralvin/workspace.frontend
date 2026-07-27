@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, type Dispatch, type SetStateAction } from "react";
-import type { Phase, Project, Task } from "@/app/lib/projects-api";
+import type { Phase, Project, ProjectRole, Task } from "@/app/lib/projects-api";
 
 export interface Member {
   id: number;
@@ -18,7 +18,12 @@ export interface ProjectContextValue {
   phases: Phase[];
   reloadPhases: () => Promise<void>;
   members: Member[];
+  /** Rôle de l'utilisateur sur CE projet. */
+  role: ProjectRole;
+  /** Peut écrire (phases, tâches) — MEMBER ou OWNER. */
   canManage: boolean;
+  /** Peut administrer le projet (membres, outils, paramètres) — OWNER seul. */
+  isOwner: boolean;
 }
 
 const ProjectContext = createContext<ProjectContextValue | null>(null);

@@ -8,7 +8,7 @@ import { usePermissions } from "@repo/auth/hooks/usePermissions";
 import { apiFetch } from "@repo/network/client";
 import { ArrowBackOutlined } from "@mui/icons-material";
 import { AccountTreeOutlined } from "@mui/icons-material";
-import { projectsApi, phasesVisible, type Phase, type Project, type Task } from "@/app/lib/projects-api";
+import { projectsApi, phasesVisible, type Phase, type Project, type ProjectRole, type Task } from "@/app/lib/projects-api";
 import { ProjectProvider, type Member } from "./project-context";
 import {
   PROJECT_SECTIONS,
@@ -22,7 +22,6 @@ export default function ProjectLayout({ children }: { children: ReactNode }) {
   const projectId = Number(id);
   const pathname = usePathname();
   const { can } = usePermissions();
-  const canManage = can("projects.manage");
   const activeWorkspace = useSessionStore((s) => s.activeWorkspace);
 
   const [project, setProject] = useState<Project | null>(null);
@@ -91,6 +90,12 @@ export default function ProjectLayout({ children }: { children: ReactNode }) {
   const sections: ProjectSection[] = showPhases
     ? PROJECT_SECTIONS.flatMap((s) => (s.key === "board" ? [s, phaseSection] : [s]))
     : PROJECT_SECTIONS;
+
+  // Le rôle vient du backend (il connaît l'appartenance) ; le RBAC workspace reste
+  // la porte d'entrée, mais il ne dit plus à lui seul ce qu'on peut faire ici.
+  const role: ProjectRole = project.my_role ?? (can("projects.manage") ? "MEMBER" : "VIEWER");
+  const isOwner = role === "OWNER";
+  const canManage = role !== "VIEWER";
 
   const current = sectionForPathname(pathname, projectId);
   const color = project.color ?? "#3525cd";
@@ -166,7 +171,7 @@ export default function ProjectLayout({ children }: { children: ReactNode }) {
       )}
 
       <ProjectProvider
-        value={{ projectId, project, setProject, tasks, setTasks, reloadTasks, phases, reloadPhases, members, canManage }}
+        value={{ projectId, project, setProject, tasks, setTasks, reloadTasks, phases, reloadPhases, members, role, canManage, isOwner }}
       >
         {children}
       </ProjectProvider>

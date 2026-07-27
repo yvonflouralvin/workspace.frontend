@@ -8,6 +8,7 @@ import {
   CloudSyncOutlined,
   AccountTreeOutlined,
   ChevronRightOutlined,
+  GroupOutlined,
 } from "@mui/icons-material";
 import { Avatar } from "@repo/ui/Avatar";
 import { RichTextEditor } from "@repo/ui/RichTextEditor";
@@ -215,6 +216,17 @@ export default function ProjectOverviewPage() {
             </Link>
           </div>
         ) : null}
+
+        <Link
+          href={`/projects/${projectId}/members`}
+          className="flex items-center justify-between gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-low hover:text-primary transition-colors"
+        >
+          <span className="inline-flex items-center gap-2 text-body-sm font-medium">
+            <GroupOutlined style={{ fontSize: 17 }} />
+            Membres
+          </span>
+          <ChevronRightOutlined style={{ fontSize: 18 }} />
+        </Link>
 
         {canManage && (
           <div className="px-4 py-3">

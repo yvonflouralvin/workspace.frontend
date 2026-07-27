@@ -1,5 +1,29 @@
 import { apiFetch } from "@repo/network/client";
 
+/** RBAC local au projet, en plus du RBAC workspace. */
+export type ProjectRole = "OWNER" | "MEMBER" | "VIEWER";
+
+export const PROJECT_ROLE_LABELS: Record<ProjectRole, string> = {
+  OWNER: "Propriétaire",
+  MEMBER: "Membre",
+  VIEWER: "Lecteur",
+};
+export const PROJECT_ROLE_HINTS: Record<ProjectRole, string> = {
+  OWNER: "Gère les membres, les outils et les paramètres du projet.",
+  MEMBER: "Crée et modifie phases et tâches.",
+  VIEWER: "Consulte le projet sans jamais rien modifier.",
+};
+export const PROJECT_ROLE_ORDER: ProjectRole[] = ["OWNER", "MEMBER", "VIEWER"];
+
+export interface ProjectMember {
+  id: number;
+  project_id: number;
+  user_id: number;
+  role: ProjectRole;
+  user_name: string | null;
+  created_at: string;
+}
+
 export interface Project {
   id: number;
   name: string;
@@ -15,6 +39,8 @@ export interface Project {
   due_date: string | null;
   task_count?: number;
   done_count?: number;
+  /** Rôle de l'utilisateur courant sur ce projet — pilote toute l'UI. */
+  my_role?: ProjectRole | null;
 }
 
 export interface Phase {
@@ -31,6 +57,8 @@ export interface Phase {
   est_implicite: boolean;
   /** Outils activés sur la phase (clés) — pilote les onglets ouverts. */
   tools: string[];
+  /** Étiquettes libres — base des droits fins par groupe. */
+  tags: string[];
   start_planned: string | null;
   end_planned: string | null;
   start_real: string | null;
@@ -50,6 +78,7 @@ export interface Task {
   assignee_user_id: number | null;
   assignee_name: string | null;
   parent_task_id: number | null;
+  tags: string[];
   order: number;
   start_date: string | null;
   due_date: string | null;
@@ -86,6 +115,17 @@ export const projectsApi = {
   listPhases: (projectId: number) => apiFetch(`/api/projects/${projectId}/phases`).then((r) => json<Phase[]>(r)),
   createPhase: (projectId: number, body: Partial<Phase>) => apiFetch(`/api/projects/${projectId}/phases`, { method: "POST", body }).then((r) => json<Phase>(r)),
   updatePhase: (id: number, body: Partial<Phase>) => apiFetch(`/api/phases/${id}`, { method: "PATCH", body }).then((r) => json<Phase>(r)),
+  listMembers: (projectId: number) =>
+    apiFetch(`/api/projects/${projectId}/members`).then((r) => json<ProjectMember[]>(r)),
+  addMember: (projectId: number, body: { user_id: number; role: ProjectRole }) =>
+    apiFetch(`/api/projects/${projectId}/members`, { method: "POST", body }).then((r) => json<ProjectMember>(r)),
+  updateMember: (projectId: number, userId: number, role: ProjectRole) =>
+    apiFetch(`/api/projects/${projectId}/members/${userId}`, { method: "PATCH", body: { role } }).then((r) =>
+      json<ProjectMember>(r)
+    ),
+  removeMember: (projectId: number, userId: number) =>
+    apiFetch(`/api/projects/${projectId}/members/${userId}`, { method: "DELETE" }).then((r) => json<void>(r)),
+
   deletePhase: (id: number) => apiFetch(`/api/phases/${id}`, { method: "DELETE" }).then((r) => json<void>(r)),
 };
 

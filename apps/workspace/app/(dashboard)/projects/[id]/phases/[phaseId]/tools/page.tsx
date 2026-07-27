@@ -3,11 +3,14 @@
 import Link from "next/link";
 import { ArrowBackOutlined } from "@mui/icons-material";
 import { SettingRow } from "@repo/ui/SettingRow";
+import { useProject } from "../../../project-context";
 import { usePhase } from "../phase-context";
 import { PHASE_TOOLS } from "../phase-sections";
 
 export default function PhaseToolsPage() {
-  const { phase, queue, canManage } = usePhase();
+  const { phase, queue } = usePhase();
+  // Activer un outil relève du propriétaire du projet (le backend l'impose aussi).
+  const { isOwner: canManage } = useProject();
   const enabled = phase.tools ?? [];
 
   function toggle(key: string, next: boolean) {
@@ -49,7 +52,7 @@ export default function PhaseToolsPage() {
 
       {!canManage && (
         <p className="text-body-sm text-on-surface-variant">
-          Seuls les gestionnaires du projet peuvent activer un outil.
+          Seul le propriétaire du projet peut activer un outil.
         </p>
       )}
     </div>

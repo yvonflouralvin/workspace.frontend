@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { AddOutlined, DeleteOutlineOutlined } from "@mui/icons-material";
 import { ConfirmDialog } from "@repo/ui/ConfirmDialog";
 import { Toast } from "@repo/ui/Toast";
@@ -15,6 +16,11 @@ import {
   type Phase,
   type Task,
 } from "@/app/lib/projects-api";
+
+/** Rappel discret : l'historique et la décision vivent sur la page du livrable. */
+function versionHint(row: Deliverable): string {
+  return row.status === "LIVRE" ? " · en attente de décision" : "";
+}
 
 const FIELD =
   "h-9 px-2 rounded-lg border border-outline-soft bg-surface-container-lowest text-body-sm text-on-surface outline-none focus:border-primary transition-colors";
@@ -151,14 +157,18 @@ export function DeliverablesPanel({
               key={row.id}
               className="flex flex-wrap md:flex-nowrap items-center gap-x-3 gap-y-2 px-4 py-3 border-b border-hairline last:border-b-0"
             >
-              <span className="w-full md:flex-1 min-w-0">
-                <span className="block text-body-md font-medium text-on-surface truncate">{row.title}</span>
-                {!taskId && (
-                  <span className="block text-label-md text-outline truncate">
-                    {row.task_title ? `Tâche · ${row.task_title}` : "Phase"}
-                  </span>
-                )}
-              </span>
+              <Link
+                href={`/projects/${phase.project_id}/deliverables/${row.id}`}
+                className="w-full md:flex-1 min-w-0 group"
+              >
+                <span className="block text-body-md font-medium text-on-surface truncate group-hover:text-primary transition-colors">
+                  {row.title}
+                </span>
+                <span className="block text-label-md text-outline truncate">
+                  {row.task_title ? `Tâche · ${row.task_title}` : "Phase"}
+                  {versionHint(row)}
+                </span>
+              </Link>
 
               {canManage ? (
                 <select

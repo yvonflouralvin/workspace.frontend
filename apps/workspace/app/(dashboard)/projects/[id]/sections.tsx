@@ -48,7 +48,7 @@ const CONDITIONAL_SECTIONS: ProjectSection[] = [
  *  objet en titre) et ses propres onglets — le layout du projet s'efface au profit du sien. */
 export function isDetailPathname(pathname: string, projectId: number): boolean {
   const suffix = pathname.replace(`/projects/${projectId}`, "").replace(/\/$/, "");
-  return /^\/(phases|tasks)\/\d+/.test(suffix);
+  return /^\/(phases|tasks|deliverables)\/\d+/.test(suffix);
 }
 
 export function sectionForPathname(pathname: string, projectId: number): ProjectSection {

@@ -163,6 +163,37 @@ export interface Deliverable {
   task_title: string | null;
 }
 
+export const VERSION_STATUS_LABELS: Record<string, string> = {
+  EN_ATTENTE: "En attente", APPROUVE: "Approuvée", REJETE: "Rejetée",
+};
+export const VERSION_STATUS_TONES: Record<string, { dot: string; chip: string }> = {
+  EN_ATTENTE: { dot: "bg-status-doing",   chip: "bg-status-doing-container text-status-doing" },
+  APPROUVE:   { dot: "bg-status-done",    chip: "bg-status-done-container text-status-done" },
+  REJETE:     { dot: "bg-error",          chip: "bg-error-container text-on-error-container" },
+};
+
+export interface DeliverableVersion {
+  id: number;
+  deliverable_id: number;
+  number: number;
+  note: string | null;
+  status: string;
+  submitted_by_name: string | null;
+  submitted_at: string;
+  decided_by_name: string | null;
+  decided_at: string | null;
+  decision_note: string | null;
+}
+
+export interface DeliverableApprovers {
+  user_ids: number[];
+  group_ids: number[];
+  user_names: Record<number, string>;
+  group_names: Record<number, string>;
+  /** L'appelant peut-il décider du sort de la version en attente ? */
+  can_approve: boolean;
+}
+
 export interface MetaOption { key: string; label: string }
 export interface ProjectsMeta { statuses: MetaOption[]; priorities: MetaOption[]; phase_statuses: MetaOption[] }
 
@@ -222,6 +253,26 @@ export const projectsApi = {
     apiFetch(`/api/phases/${phaseId}/deliverables`, { method: "POST", body }).then((r) => json<Deliverable>(r)),
   updateDeliverable: (id: number, body: Partial<Deliverable>) =>
     apiFetch(`/api/deliverables/${id}`, { method: "PATCH", body }).then((r) => json<Deliverable>(r)),
+  getDeliverable: (id: number) =>
+    apiFetch(`/api/deliverables/${id}`).then((r) => json<Deliverable>(r)),
+  listVersions: (id: number) =>
+    apiFetch(`/api/deliverables/${id}/versions`).then((r) => json<DeliverableVersion[]>(r)),
+  submitVersion: (id: number, note: string | null) =>
+    apiFetch(`/api/deliverables/${id}/versions`, { method: "POST", body: { note } }).then((r) =>
+      json<DeliverableVersion>(r)
+    ),
+  decideVersion: (id: number, versionId: number, approved: boolean, note: string | null) =>
+    apiFetch(`/api/deliverables/${id}/versions/${versionId}/decision`, {
+      method: "POST",
+      body: { approved, note },
+    }).then((r) => json<DeliverableVersion>(r)),
+  getApprovers: (id: number) =>
+    apiFetch(`/api/deliverables/${id}/approvers`).then((r) => json<DeliverableApprovers>(r)),
+  setApprovers: (id: number, body: { user_ids: number[]; group_ids: number[] }) =>
+    apiFetch(`/api/deliverables/${id}/approvers`, { method: "PUT", body }).then((r) =>
+      json<DeliverableApprovers>(r)
+    ),
+
   deleteDeliverable: (id: number) =>
     apiFetch(`/api/deliverables/${id}`, { method: "DELETE" }).then((r) => json<void>(r)),
 

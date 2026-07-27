@@ -21,6 +21,7 @@ const LABEL = "block text-label-sm uppercase text-outline mb-1.5";
 export function TaskDrawer({
   task,
   projectId,
+  phaseId,
   projectKey,
   subtasks,
   members,
@@ -30,6 +31,8 @@ export function TaskDrawer({
 }: {
   task: Task | null;
   projectId: number;
+  /** Création depuis une phase : l'élément y est rattaché d'emblée. */
+  phaseId?: number;
   projectKey: string;
   subtasks: Task[];
   members: Member[];
@@ -69,7 +72,7 @@ export function TaskDrawer({
     };
     try {
       if (task) await projectsApi.updateTask(task.id, body);
-      else await projectsApi.createTask({ project_id: projectId, ...body });
+      else await projectsApi.createTask({ project_id: projectId, ...(phaseId ? { phase_id: phaseId } : {}), ...body });
       onSaved();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Enregistrement impossible.");
@@ -100,6 +103,7 @@ export function TaskDrawer({
     if (!task || !newSubtask.trim()) return;
     await projectsApi.createTask({
       project_id: projectId,
+      phase_id: task.phase_id,
       title: newSubtask.trim(),
       parent_task_id: task.id,
     });

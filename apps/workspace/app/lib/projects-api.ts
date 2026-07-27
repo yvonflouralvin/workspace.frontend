@@ -29,6 +29,8 @@ export interface Phase {
   status: string;
   /** Affichage uniquement : phase auto-créée, masquée dans l'UI tant qu'elle est seule. */
   est_implicite: boolean;
+  /** Outils activés sur la phase (clés) — pilote les onglets ouverts. */
+  tools: string[];
   start_planned: string | null;
   end_planned: string | null;
   start_real: string | null;

@@ -10,8 +10,10 @@ import { KanbanBoard } from "./KanbanBoard";
 import { TaskListView } from "./TaskListView";
 import { TaskDrawer } from "./TaskDrawer";
 
-export function TasksView({ mode }: { mode: "kanban" | "liste" }) {
-  const { projectId, project, tasks, setTasks, reloadTasks, members, canManage } = useProject();
+export function TasksView({ mode, phaseId }: { mode: "kanban" | "liste"; phaseId?: number }) {
+  const { projectId, project, tasks: allTasks, setTasks, reloadTasks, members, canManage } = useProject();
+  // Vue de phase : on ne montre et ne crée que les éléments de cette phase.
+  const tasks = phaseId ? allTasks.filter((t) => t.phase_id === phaseId) : allTasks;
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -67,6 +69,7 @@ export function TasksView({ mode }: { mode: "kanban" | "liste" }) {
         <TaskDrawer
           task={current}
           projectId={projectId}
+          phaseId={phaseId}
           projectKey={project.key}
           subtasks={subtasks}
           members={members}

@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import { ChevronRightOutlined, TuneOutlined } from "@mui/icons-material";
 import { RichTextEditor } from "@repo/ui/RichTextEditor";
 import {
   PHASE_STATUS_LABELS,
@@ -68,6 +70,17 @@ export default function PhaseOverviewPage() {
         <MetaRow label="Éléments">
           <span className="text-body-sm font-semibold text-on-surface tabular-nums">{phase.task_count ?? 0}</span>
         </MetaRow>
+
+        <Link
+          href={`/projects/${phase.project_id}/phases/${phase.id}/tools`}
+          className="flex items-center justify-between gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-low hover:text-primary transition-colors rounded-b-2xl"
+        >
+          <span className="inline-flex items-center gap-2 text-body-sm font-medium">
+            <TuneOutlined style={{ fontSize: 17 }} />
+            Outils
+          </span>
+          <ChevronRightOutlined style={{ fontSize: 18 }} />
+        </Link>
       </aside>
     </div>
   );

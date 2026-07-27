@@ -119,7 +119,7 @@ export default function PhaseLayout({ children }: { children: ReactNode }) {
 
       <nav className="flex items-center gap-1 border-b border-outline-soft mt-5 mb-5 overflow-x-auto">
         {sections.map((section) => {
-          const active = section.key === current.key;
+          const active = section.key === current?.key;
           const label = (
             <>
               <span className="inline-flex items-center">{section.icon}</span>

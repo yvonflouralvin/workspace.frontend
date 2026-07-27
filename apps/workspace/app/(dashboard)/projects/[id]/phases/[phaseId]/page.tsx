@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ChevronRightOutlined, TuneOutlined } from "@mui/icons-material";
 import { RichTextEditor } from "@repo/ui/RichTextEditor";
+import { TagInput } from "@repo/ui/TagInput";
 import {
   PHASE_STATUS_LABELS,
   PHASE_STATUS_ORDER,
@@ -66,6 +67,16 @@ export default function PhaseOverviewPage() {
         <MetaRow label="Fin réelle">
           <PhaseDate value={phase.end_real} editable={canManage} onChange={(v) => queue({ end_real: v })} />
         </MetaRow>
+
+        <div className="px-4 py-3">
+          <p className="text-body-sm text-on-surface-variant mb-1.5">Étiquettes</p>
+          <TagInput
+            value={phase.tags ?? []}
+            disabled={!canManage}
+            onChange={(tags) => queue({ tags })}
+            placeholder="Chantier, Étude…"
+          />
+        </div>
 
         <MetaRow label="Éléments">
           <span className="text-body-sm font-semibold text-on-surface tabular-nums">{phase.task_count ?? 0}</span>

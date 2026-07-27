@@ -24,6 +24,36 @@ export interface ProjectMember {
   created_at: string;
 }
 
+/** Droits fins par groupe — mode RESTRICTIF : appartenir à un groupe réduit le
+ *  périmètre aux objets portant les tags de ses règles. */
+export type RuleScope = "phase" | "task";
+export type RuleAccess = "READ" | "WRITE" | "DELETE";
+
+export const RULE_SCOPE_LABELS: Record<RuleScope, string> = { phase: "Phase", task: "Tâche" };
+export const RULE_SCOPE_ORDER: RuleScope[] = ["phase", "task"];
+export const RULE_ACCESS_LABELS: Record<RuleAccess, string> = {
+  READ: "Lecture",
+  WRITE: "Lecture / écriture",
+  DELETE: "Lecture / écriture / suppression",
+};
+export const RULE_ACCESS_ORDER: RuleAccess[] = ["READ", "WRITE", "DELETE"];
+
+export interface GroupRule {
+  scope: RuleScope;
+  tag: string;
+  access: RuleAccess;
+}
+
+export interface ProjectGroup {
+  id: number;
+  project_id: number;
+  name: string;
+  user_ids: number[];
+  user_names: Record<number, string>;
+  rules: GroupRule[];
+  created_at: string;
+}
+
 export interface Project {
   id: number;
   name: string;
@@ -125,6 +155,21 @@ export const projectsApi = {
     ),
   removeMember: (projectId: number, userId: number) =>
     apiFetch(`/api/projects/${projectId}/members/${userId}`, { method: "DELETE" }).then((r) => json<void>(r)),
+
+  listGroups: (projectId: number) =>
+    apiFetch(`/api/projects/${projectId}/groups`).then((r) => json<ProjectGroup[]>(r)),
+  createGroup: (projectId: number, body: { name: string; user_ids?: number[]; rules?: GroupRule[] }) =>
+    apiFetch(`/api/projects/${projectId}/groups`, { method: "POST", body }).then((r) => json<ProjectGroup>(r)),
+  updateGroup: (
+    projectId: number,
+    groupId: number,
+    body: { name?: string; user_ids?: number[]; rules?: GroupRule[] }
+  ) =>
+    apiFetch(`/api/projects/${projectId}/groups/${groupId}`, { method: "PATCH", body }).then((r) =>
+      json<ProjectGroup>(r)
+    ),
+  deleteGroup: (projectId: number, groupId: number) =>
+    apiFetch(`/api/projects/${projectId}/groups/${groupId}`, { method: "DELETE" }).then((r) => json<void>(r)),
 
   deletePhase: (id: number) => apiFetch(`/api/phases/${id}`, { method: "DELETE" }).then((r) => json<void>(r)),
 };

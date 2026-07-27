@@ -4,6 +4,7 @@ import { useCallback, useState } from "react";
 import { AddOutlined, CheckOutlined } from "@mui/icons-material";
 import { RightDrawer } from "@repo/ui/RightDrawer";
 import { SearchSelect } from "@repo/ui/SearchSelect";
+import { TagInput } from "@repo/ui/TagInput";
 import {
   PRIORITY_LABELS,
   PRIORITY_ORDER,
@@ -28,6 +29,7 @@ export function TaskDrawer({
   subtasks,
   members,
   phases,
+  tagSuggestions = [],
   canManage,
   onClose,
   onSaved,
@@ -42,6 +44,8 @@ export function TaskDrawer({
   /** Phases entre lesquelles déplacer la tâche — absent quand le projet n'en
    *  expose qu'une (le champ disparaît alors du drawer). */
   phases?: Phase[];
+  /** Étiquettes déjà utilisées dans le projet, proposées à la saisie. */
+  tagSuggestions?: string[];
   canManage: boolean;
   onClose: () => void;
   onSaved: () => void;
@@ -55,6 +59,7 @@ export function TaskDrawer({
   );
   const [dueDate, setDueDate] = useState(task?.due_date ? task.due_date.slice(0, 10) : "");
   const [phase, setPhase] = useState<number | null>(task?.phase_id ?? phaseId ?? null);
+  const [tags, setTags] = useState<string[]>(task?.tags ?? []);
   const [newSubtask, setNewSubtask] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -79,6 +84,7 @@ export function TaskDrawer({
     }
     setSaving(true);
     const body = {
+      tags,
       title: title.trim(),
       description: description.trim() || null,
       status,
@@ -264,6 +270,13 @@ export function TaskDrawer({
           )}
         </div>
       )}
+
+      <div className="mt-4">
+        <p className={LABEL}>Étiquettes</p>
+        <div className={`${FIELD} px-3 py-2`}>
+          <TagInput value={tags} onChange={setTags} disabled={readOnly} suggestions={tagSuggestions} />
+        </div>
+      </div>
 
       {task && (
         <>

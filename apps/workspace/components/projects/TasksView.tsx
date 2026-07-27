@@ -37,6 +37,11 @@ export function TasksView({
   // le mot « phase » invisible dans un projet qui n'en a pas.
   // Mémoïsé : l'identité de la liste alimente le `fetchOptions` du SearchSelect.
   const visiblePhases = useMemo(() => (phasesVisible(phases) ? phases : []), [phases]);
+  // Étiquettes déjà employées dans le projet — proposées à la saisie.
+  const tagSuggestions = useMemo(
+    () => [...new Set([...allTasks.flatMap((t) => t.tags ?? []), ...phases.flatMap((p) => p.tags ?? [])])].sort(),
+    [allTasks, phases]
+  );
   // Kanban global : chaque carte rappelle sa phase. Inutile dans la vue d'une phase.
   const phaseNames = useMemo(
     () =>
@@ -109,6 +114,7 @@ export function TasksView({
           subtasks={subtasks}
           members={members}
           phases={visiblePhases}
+          tagSuggestions={tagSuggestions}
           canManage={canManage}
           onClose={() => {
             setEditing(null);

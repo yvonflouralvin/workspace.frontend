@@ -479,6 +479,18 @@ En dessous de `md`, les numéros disparaissent au profit de `« page / total »`
 deux flèches. Rend `null` si `pages <= 1`. Toute liste paginée passe par ce composant —
 ne pas réécrire la boucle `Array.from({ length: pages })`.
 
+### `TagInput` (`src/TagInput.tsx`)
+
+`{ value, onChange, disabled?, placeholder?, suggestions? }` — champ d'étiquettes libres :
+puces supprimables + saisie validée par `Entrée` ou `,` (et `Backspace` à vide retire la
+dernière). `suggestions` alimente une `datalist` — passer les étiquettes déjà employées
+ailleurs évite les doublons d'orthographe, qui cassent silencieusement toute règle basée
+sur les tags. En lecture seule sans valeur, rend `—`.
+
+```tsx
+<TagInput value={tags} onChange={setTags} disabled={readOnly} suggestions={tagSuggestions} />
+```
+
 ### `ViewModeSwitch` (`src/ViewModeSwitch.tsx`)
 
 `{ value, options, onChange }` — sélecteur segmenté de **mode d'affichage**, icônes seules

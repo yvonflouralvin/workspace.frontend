@@ -1,6 +1,9 @@
+"use client";
+
 import { ReactNode } from "react";
 import { NavItem } from "../types/shell";
 import { SidebarNav } from "./SidebarNav";
+import { useSidebarMode } from "./AppShell";
 
 interface SidebarProps {
   topSlot?: ReactNode;
@@ -10,28 +13,24 @@ interface SidebarProps {
 }
 
 export function Sidebar({ topSlot, navItems, secondaryItems, bottomSlot }: SidebarProps) {
-  return (
-    <div className="flex flex-col h-full">
-      {topSlot && (
-        <div className="px-3 pt-3 pb-2 border-b border-outline-variant">
-          {topSlot}
-        </div>
-      )}
+  const expanded = useSidebarMode() === "expanded";
 
-      <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-1">
+  return (
+    <div className={`flex flex-col h-full py-3.5 ${expanded ? "px-3" : "px-2 lg:px-3"}`}>
+      {topSlot}
+
+      <div className="flex-1 overflow-y-auto mt-3.5 -mx-1 px-1">
         <SidebarNav items={navItems} />
 
         {secondaryItems && secondaryItems.length > 0 && (
           <>
-            <div className="my-3 border-t border-outline-variant" />
+            <div className="h-px bg-surface-container-low mx-1.5 my-3.5" />
             <SidebarNav items={secondaryItems} />
           </>
         )}
-      </nav>
-
-      <div className="border-t border-outline-variant px-3 py-3">
-        {bottomSlot}
       </div>
+
+      <div className="mt-auto pt-3 border-t border-surface-container-low">{bottomSlot}</div>
     </div>
   );
 }

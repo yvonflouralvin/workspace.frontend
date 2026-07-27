@@ -73,7 +73,7 @@ export default function DomainPage() {
 
   return (
     <DashboardShell>
-      <div className="p-6 max-w-[1400px] mx-auto w-full">
+      <div className="p-4 md:p-6 max-w-[1400px] mx-auto w-full">
         <button
           type="button"
           onClick={() => router.push("/")}

@@ -1,20 +1,37 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
+import { SearchField } from "@repo/ui/SearchField";
+import { Toast } from "@repo/ui/Toast";
 import {
-  AddOutlined, FolderOpenOutlined, CheckCircleOutlined, ScheduleOutlined,
+  AddOutlined,
+  CheckCircleOutlined,
+  ErrorOutlineOutlined,
+  FolderOpenOutlined,
+  SwapVertOutlined,
 } from "@mui/icons-material";
-import {
-  projectsApi, STATUS_LABELS, PRIORITY_LABELS, priorityTone,
-  type Project, type Task,
-} from "@/app/lib/projects-api";
+import { projectsApi, type Project, type Task } from "@/app/lib/projects-api";
+import { CreateProjectModal } from "@/components/projects/CreateProjectModal";
+import { TaskRow } from "@/components/projects/TaskRow";
+
+type SortKey = "recent" | "name" | "progress";
+
+const SORTS: { key: SortKey; label: string }[] = [
+  { key: "recent", label: "Récents" },
+  { key: "name", label: "A → Z" },
+  { key: "progress", label: "Avancement" },
+];
+
+function progress(p: Project): number {
+  return p.task_count ? Math.round(((p.done_count ?? 0) / p.task_count) * 100) : 0;
+}
 
 export default function ProjectsPage() {
   return (
-    <Suspense fallback={<div className="p-8 text-sm text-on-surface-variant">Chargement…</div>}>
+    <Suspense fallback={<div className="p-4 md:p-8 text-body-md text-on-surface-variant">Chargement…</div>}>
       <ProjectsInner />
     </Suspense>
   );
@@ -24,11 +41,16 @@ function ProjectsInner() {
   const { can } = usePermissions();
   const canManage = can("projects.manage");
   const params = useSearchParams();
+
   const [view, setView] = useState<"projects" | "mine">("projects");
   const [projects, setProjects] = useState<Project[]>([]);
   const [mine, setMine] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
+  const [query, setQuery] = useState("");
+  const [sort, setSort] = useState<SortKey>("recent");
+  const [toast, setToast] = useState<string | null>(null);
 
   useEffect(() => {
     if (params.get("create") === "1" && canManage) setShowCreate(true);
@@ -36,77 +58,172 @@ function ProjectsInner() {
 
   function reload() {
     setLoading(true);
+    setError(false);
     Promise.all([projectsApi.listProjects(), projectsApi.myTasks()])
-      .then(([p, m]) => { setProjects(p); setMine(m); })
+      .then(([p, m]) => {
+        setProjects(p);
+        setMine(m);
+      })
+      .catch(() => setError(true))
       .finally(() => setLoading(false));
   }
-  useEffect(() => { reload(); }, []);
+  useEffect(reload, []);
+
+  const visible = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    const filtered = needle
+      ? projects.filter(
+          (p) =>
+            p.name.toLowerCase().includes(needle) ||
+            p.key.toLowerCase().includes(needle) ||
+            (p.description ?? "").toLowerCase().includes(needle)
+        )
+      : projects;
+    const sorted = [...filtered];
+    if (sort === "name") sorted.sort((a, b) => a.name.localeCompare(b.name));
+    else if (sort === "progress") sorted.sort((a, b) => progress(b) - progress(a));
+    return sorted;
+  }, [projects, query, sort]);
 
   return (
-    <div className="p-8 max-w-6xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-on-surface">Projets</h1>
-          <p className="text-sm text-on-surface-variant mt-1">Organisez le travail de votre workspace.</p>
+    <div className="p-4 md:p-8 max-w-[1152px] mx-auto">
+      <div className="flex items-start gap-4 mb-6">
+        <div className="hidden md:block flex-1">
+          <h1 className="font-display text-headline-md text-on-surface">Projets</h1>
+          <p className="text-body-md text-on-surface-variant mt-0.5">
+            Organisez le travail de votre workspace.
+          </p>
         </div>
         {canManage && (
-          <button onClick={() => setShowCreate(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-on-primary text-sm font-medium hover:bg-primary-container transition-colors">
-            <AddOutlined style={{ fontSize: 18 }} /> Nouveau projet
+          <button
+            onClick={() => setShowCreate(true)}
+            className="inline-flex items-center justify-center gap-1.5 h-11 md:h-[38px] px-4 rounded-lg bg-primary text-on-primary text-body-sm font-semibold shadow-button hover:bg-primary-container transition-colors whitespace-nowrap"
+          >
+            <AddOutlined style={{ fontSize: 16 }} />
+            Nouveau projet
           </button>
         )}
       </div>
 
-      <div className="flex gap-1 rounded-xl border border-outline-variant overflow-hidden w-fit">
-        {(["projects", "mine"] as const).map((v) => (
-          <button key={v} onClick={() => setView(v)}
-            className={`px-4 py-2 text-sm ${view === v ? "bg-primary text-on-primary" : "text-on-surface-variant hover:bg-surface-container"}`}>
-            {v === "projects" ? "Projets" : `Mes tâches${mine.length ? ` (${mine.length})` : ""}`}
-          </button>
-        ))}
+      <div className="flex items-center gap-3 flex-wrap mb-5">
+        <div className="inline-flex p-[3px] rounded-lg border border-outline-soft bg-surface-container-low">
+          {(["projects", "mine"] as const).map((v) => (
+            <button
+              key={v}
+              onClick={() => setView(v)}
+              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-label-md font-semibold transition-colors ${
+                view === v ? "bg-primary text-on-primary" : "text-on-surface-variant"
+              }`}
+            >
+              {v === "projects" ? "Projets" : "Mes tâches"}
+              {v === "mine" && mine.length > 0 && (
+                <span
+                  className={`text-[11px] rounded-full px-1.5 ${
+                    view === v ? "bg-on-primary/20" : "bg-surface-container text-on-surface-variant"
+                  }`}
+                >
+                  {mine.length}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+
+        {view === "projects" && (
+          <>
+            <SearchField
+              value={query}
+              onChange={setQuery}
+              placeholder="Rechercher un projet…"
+              className="flex-1 min-w-[180px] md:flex-none md:w-[240px] md:ml-auto"
+            />
+            <label className="inline-flex items-center gap-1.5 h-[38px] px-3 rounded-lg border border-outline-soft bg-surface-container-lowest text-outline">
+              <SwapVertOutlined style={{ fontSize: 16 }} />
+              <select
+                value={sort}
+                onChange={(e) => setSort(e.target.value as SortKey)}
+                className="bg-transparent text-body-sm text-on-surface outline-none"
+                aria-label="Trier les projets"
+              >
+                {SORTS.map((s) => (
+                  <option key={s.key} value={s.key}>
+                    {s.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </>
+        )}
       </div>
 
-      {loading ? (
-        <p className="text-sm text-on-surface-variant">Chargement…</p>
-      ) : view === "projects" ? (
-        projects.length === 0 ? (
+      {view === "projects" ? (
+        loading ? (
+          <SkeletonGrid />
+        ) : error ? (
+          <ErrorState onRetry={reload} />
+        ) : projects.length === 0 ? (
           <EmptyState canManage={canManage} onCreate={() => setShowCreate(true)} />
+        ) : visible.length === 0 ? (
+          <p className="rounded-2xl border border-outline-soft bg-surface-container-lowest px-6 py-12 text-center text-body-md text-on-surface-variant">
+            Aucun projet ne correspond à « {query} ».
+          </p>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {projects.map((p) => <ProjectCard key={p.id} project={p} />)}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {visible.map((p) => (
+              <ProjectCard key={p.id} project={p} />
+            ))}
           </div>
         )
       ) : (
-        <MyTasksList tasks={mine} />
+        <MyTasksList tasks={mine} loading={loading} />
       )}
 
       {showCreate && (
-        <CreateProjectModal onClose={() => setShowCreate(false)} onCreated={reload} />
+        <CreateProjectModal
+          onClose={() => setShowCreate(false)}
+          onCreated={(project) => {
+            setToast(`Projet « ${project.name} » créé.`);
+            reload();
+          }}
+        />
       )}
+
+      {toast && <Toast message={toast} onDismiss={() => setToast(null)} />}
     </div>
   );
 }
 
 function ProjectCard({ project: p }: { project: Project }) {
-  const pct = p.task_count ? Math.round(((p.done_count ?? 0) / p.task_count) * 100) : 0;
+  const pct = progress(p);
+  const color = p.color ?? "#3525cd";
   return (
-    <Link href={`/projects/${p.id}`}
-      className="block rounded-2xl border border-outline-variant bg-surface-container-lowest p-5 hover:border-primary/40 hover:bg-primary/5 transition-colors">
+    <Link
+      href={`/projects/${p.id}`}
+      className="block rounded-2xl border border-outline-soft bg-surface-container-lowest p-5 hover:border-primary/40 hover:bg-primary/[0.03] transition-colors"
+    >
       <div className="flex items-center gap-3">
-        <span className="w-10 h-10 rounded-xl flex items-center justify-center text-lg"
-          style={{ background: (p.color ?? "#3525cd") + "1a", color: p.color ?? "#3525cd" }}>
+        <span
+          className="w-10 h-10 flex-none rounded-[10px] flex items-center justify-center font-display text-body-md font-semibold"
+          style={{ background: `color-mix(in srgb, ${color} 10%, transparent)`, color }}
+        >
           {p.icon ?? p.key.slice(0, 2)}
         </span>
         <div className="min-w-0">
-          <p className="font-semibold text-on-surface truncate">{p.name}</p>
-          <p className="text-xs text-on-surface-variant font-mono">{p.key}</p>
+          <p className="font-display text-[15px] font-semibold text-on-surface truncate">{p.name}</p>
+          <p className="font-mono text-label-md text-outline">{p.key}</p>
         </div>
       </div>
-      {p.description && <p className="text-sm text-on-surface-variant mt-3 line-clamp-2">{p.description}</p>}
-      <div className="flex items-center gap-2 mt-4 text-xs text-on-surface-variant">
-        <FolderOpenOutlined style={{ fontSize: 14 }} /> {p.task_count ?? 0} tâche(s)
-        <span className="text-on-surface-variant/40">·</span>
-        <CheckCircleOutlined style={{ fontSize: 14 }} /> {pct}%
+
+      {p.description && (
+        <p className="text-body-sm text-on-surface-variant mt-3 line-clamp-2">{p.description}</p>
+      )}
+
+      <div className="flex items-center gap-2 mt-4 text-label-md text-outline">
+        <FolderOpenOutlined style={{ fontSize: 14 }} />
+        {p.task_count ?? 0} tâche{(p.task_count ?? 0) > 1 ? "s" : ""}
+        <span className="text-outline-variant">·</span>
+        <CheckCircleOutlined style={{ fontSize: 14 }} />
+        {pct} %
       </div>
       <div className="h-1.5 rounded-full bg-surface-container mt-2 overflow-hidden">
         <div className="h-full bg-secondary rounded-full" style={{ width: `${pct}%` }} />
@@ -115,21 +232,66 @@ function ProjectCard({ project: p }: { project: Project }) {
   );
 }
 
-function MyTasksList({ tasks }: { tasks: Task[] }) {
-  const router = useRouter();
-  if (tasks.length === 0) return <p className="text-sm text-on-surface-variant py-10 text-center">Aucune tâche qui vous est assignée. 🎉</p>;
+function MyTasksList({ tasks, loading }: { tasks: Task[]; loading: boolean }) {
+  if (loading) {
+    return <div className="h-40 rounded-2xl bg-surface-container-low animate-pulse" />;
+  }
+  if (tasks.length === 0) {
+    return (
+      <p className="rounded-2xl border border-outline-soft bg-surface-container-lowest px-6 py-12 text-center text-body-md text-on-surface-variant">
+        Aucune tâche ne vous est assignée. 🎉
+      </p>
+    );
+  }
   return (
-    <div className="rounded-2xl border border-outline-variant overflow-hidden">
+    <div className="rounded-2xl border border-outline-soft bg-surface-container-lowest overflow-hidden">
       {tasks.map((t, i) => (
-        <button key={t.id} onClick={() => router.push(`/projects/${t.project_id}?task=${t.id}`)}
-          className={`w-full text-left flex items-center gap-3 px-4 py-3 border-b border-outline-variant last:border-0 hover:bg-surface-container-low ${i % 2 === 0 ? "bg-surface-container-lowest" : "bg-surface-container-low/50"}`}>
-          <span className="text-xs font-mono text-on-surface-variant w-16 shrink-0">{t.project_key}-{t.number}</span>
-          <span className="flex-1 text-sm text-on-surface truncate">{t.title}</span>
-          {t.priority !== "AUCUNE" && <span className={`text-xs ${priorityTone(t.priority)}`}>{PRIORITY_LABELS[t.priority]}</span>}
-          <span className="text-xs px-2 py-0.5 rounded-full bg-surface-container text-on-surface-variant">{STATUS_LABELS[t.status]}</span>
-          {t.due_date && <span className="text-xs text-on-surface-variant flex items-center gap-1"><ScheduleOutlined style={{ fontSize: 13 }} />{new Date(t.due_date).toLocaleDateString("fr-FR", { day: "2-digit", month: "short" })}</span>}
-        </button>
+        <TaskRow
+          key={t.id}
+          task={t}
+          index={i}
+          href={`/projects/${t.project_id}/tasks?task=${t.id}`}
+        />
       ))}
+    </div>
+  );
+}
+
+function SkeletonGrid() {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {Array.from({ length: 6 }, (_, i) => (
+        <div
+          key={i}
+          className="rounded-2xl border border-outline-soft bg-surface-container-lowest p-5"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-[10px] bg-surface-container-low animate-pulse" />
+            <div className="space-y-1.5">
+              <div className="h-3.5 w-32 rounded bg-surface-container-low animate-pulse" />
+              <div className="h-2.5 w-16 rounded bg-surface-container-low animate-pulse" />
+            </div>
+          </div>
+          <div className="h-3 w-full rounded bg-surface-container-low animate-pulse mt-4" />
+          <div className="h-3 w-2/3 rounded bg-surface-container-low animate-pulse mt-2" />
+          <div className="h-1.5 w-full rounded-full bg-surface-container-low animate-pulse mt-5" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ErrorState({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div className="rounded-2xl border border-error-container bg-error-container/20 px-6 py-12 text-center">
+      <ErrorOutlineOutlined style={{ fontSize: 32 }} className="text-error" />
+      <p className="text-body-md text-on-surface mt-2">Impossible de charger les projets.</p>
+      <button
+        onClick={onRetry}
+        className="mt-4 h-9 px-4 rounded-lg bg-primary text-on-primary text-body-sm font-semibold"
+      >
+        Réessayer
+      </button>
     </div>
   );
 }
@@ -137,57 +299,17 @@ function MyTasksList({ tasks }: { tasks: Task[] }) {
 function EmptyState({ canManage, onCreate }: { canManage: boolean; onCreate: () => void }) {
   return (
     <div className="rounded-2xl border border-dashed border-outline-variant bg-surface-container-lowest px-6 py-16 text-center">
-      <FolderOpenOutlined style={{ fontSize: 40 }} className="text-on-surface-variant/40" />
-      <p className="text-on-surface-variant mt-3">Aucun projet pour le moment.</p>
+      <FolderOpenOutlined style={{ fontSize: 40 }} className="text-outline-variant" />
+      <p className="text-body-md text-on-surface-variant mt-3">Aucun projet pour le moment.</p>
       {canManage && (
-        <button onClick={onCreate} className="mt-4 inline-flex items-center gap-2 text-primary text-sm font-medium hover:underline">
-          <AddOutlined style={{ fontSize: 18 }} /> Créer votre premier projet
+        <button
+          onClick={onCreate}
+          className="mt-4 inline-flex items-center gap-1.5 text-body-sm font-semibold text-primary hover:underline"
+        >
+          <AddOutlined style={{ fontSize: 16 }} />
+          Créer votre premier projet
         </button>
       )}
     </div>
   );
 }
-
-function CreateProjectModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
-  const router = useRouter();
-  const [name, setName] = useState("");
-  const [key, setKey] = useState("");
-  const [description, setDescription] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function submit() {
-    setError(null);
-    if (!name.trim()) { setError("Le nom est requis."); return; }
-    setSaving(true);
-    try {
-      const p = await projectsApi.createProject({ name: name.trim(), key: key.trim() || name.trim(), description: description.trim() || undefined });
-      onCreated();
-      onClose();
-      router.push(`/projects/${p.id}`);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Création impossible.");
-    } finally { setSaving(false); }
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-24 bg-black/40 backdrop-blur-sm p-4" onClick={onClose}>
-      <div className="w-full max-w-[36rem] rounded-2xl bg-surface-container-lowest border border-outline-variant shadow-2xl p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
-        <h2 className="text-lg font-semibold text-on-surface">Nouveau projet</h2>
-        {error && <p className="text-sm text-error">{error}</p>}
-        <Field label="Nom *"><input className={inputCls} value={name} onChange={(e) => setName(e.target.value)} placeholder="Refonte du site" autoFocus /></Field>
-        <Field label="Clé (préfixe des tâches)"><input className={inputCls} value={key} onChange={(e) => setKey(e.target.value.toUpperCase())} placeholder="WEB" maxLength={12} /></Field>
-        <Field label="Description"><textarea className={inputCls} rows={3} value={description} onChange={(e) => setDescription(e.target.value)} /></Field>
-        <div className="flex justify-end gap-3 pt-2">
-          <button onClick={onClose} disabled={saving} className="px-4 py-2 rounded-xl text-sm text-on-surface-variant hover:bg-surface-container">Annuler</button>
-          <button onClick={submit} disabled={saving} className="px-5 py-2 rounded-xl bg-primary text-on-primary text-sm font-medium disabled:opacity-50">{saving ? "Création…" : "Créer"}</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return <div className="flex flex-col gap-1"><label className="text-xs font-medium text-on-surface-variant">{label}</label>{children}</div>;
-}
-const inputCls = "px-3 py-2 rounded-xl border border-outline-variant bg-surface-container-lowest text-sm text-on-surface focus:border-primary outline-none w-full";

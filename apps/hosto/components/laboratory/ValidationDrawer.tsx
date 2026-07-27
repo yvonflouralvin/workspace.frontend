@@ -84,7 +84,7 @@ export function ValidationDrawer({
     <RightDrawer
       title={`Validation — ${req.patient?.prenom} ${req.patient?.nom}`}
       onClose={onClose}
-      width="w-[560px] max-w-full"
+      width="md:w-[560px] md:max-w-[92vw]"
       contentClassName="px-6 py-5 overflow-y-auto space-y-5">
 
       <ContextSnapshotCard req={req} />
@@ -102,7 +102,7 @@ export function ValidationDrawer({
               <div key={result.id} className="rounded-xl border border-outline-variant bg-surface">
                 <div className="px-4 py-3 flex items-center justify-between border-b border-outline-variant/50">
                   <span className="text-body-sm font-semibold text-on-surface">{itemName}</span>
-                  <span className={`text-label-xs px-2 py-0.5 rounded-full font-medium ${isValide ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"}`}>
+                  <span className={`text-label-xs px-2 py-0.5 rounded-full font-medium ${isValide ? "bg-secondary/15 text-secondary" : "bg-locked-container text-locked"}`}>
                     {RESULT_STATUS_LABEL[result.status] ?? result.status}
                   </span>
                 </div>
@@ -138,7 +138,7 @@ export function ValidationDrawer({
                           onChange={(e) => setConclusion(e.target.value)}
                           rows={2}
                           placeholder="Observations, commentaires…"
-                          className="w-full rounded-xl border border-outline-variant bg-surface px-3 py-2 text-body-md text-on-surface focus:outline-none focus:border-primary resize-none" />
+                          className="w-full rounded-xl border border-outline-variant bg-surface px-3 py-2 text-body-md text-on-surface focus:outline-none focus:border-tertiary resize-none" />
                       </div>
                       <button
                         onClick={() => handleValidate(result.id)}
@@ -181,7 +181,7 @@ export function ValidationDrawer({
                 value={reviseReason}
                 onChange={(e) => setReviseReason(e.target.value)}
                 placeholder="Ex : erreur de saisie, vérification…"
-                className="w-full rounded-xl border border-outline-variant bg-surface px-3 py-2 text-body-md text-on-surface focus:outline-none focus:border-primary" />
+                className="w-full rounded-xl border border-outline-variant bg-surface px-3 py-2 text-body-md text-on-surface focus:outline-none focus:border-tertiary" />
             </div>
             <div className="flex gap-3">
               <button onClick={() => { setReviseTarget(null); setReviseReason(""); }}

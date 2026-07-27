@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { SessionProvider } from "@repo/auth/SessionProvider";
+import { DeviseProvider } from "@/components/DeviseProvider";
 import { getServerSession } from "@repo/auth/api/session.server";
 import { AccessDenied } from "@repo/ui/AccessDenied";
 import { WorkspaceSwitcher } from "@repo/ui/WorkspaceSwitcher";
@@ -26,6 +27,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang="fr" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
         <SessionProvider initialSession={session}>
+          <DeviseProvider>
           {accessDenied ? (
             <AccessDenied
               appName="Facturation"
@@ -39,6 +41,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           ) : (
             children
           )}
+          </DeviseProvider>
         </SessionProvider>
       </body>
     </html>

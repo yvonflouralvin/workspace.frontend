@@ -89,7 +89,7 @@ export default function WidgetsPage() {
 
   return (
     <DashboardShell>
-      <div className="p-6 max-w-[1100px] mx-auto w-full">
+      <div className="p-4 md:p-6 max-w-[1100px] mx-auto w-full">
         <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
           <div>
             <h1 className="text-headline-lg font-display text-on-surface">Widgets</h1>

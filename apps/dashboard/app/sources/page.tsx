@@ -45,7 +45,7 @@ export default function SourcesPage() {
 
   return (
     <DashboardShell>
-      <div className="p-6 max-w-[900px] mx-auto w-full">
+      <div className="p-4 md:p-6 max-w-[900px] mx-auto w-full">
         <div className="mb-6">
           <h1 className="text-headline-lg font-display text-on-surface">Sources de données</h1>
           <p className="mt-1 text-body-md text-on-surface-variant">

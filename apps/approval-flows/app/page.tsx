@@ -11,6 +11,7 @@ import { STATUS_LABEL } from "@repo/approval-flows/ApprovalTaskList";
 import type { RequestSummary } from "@repo/approval-flows/types/request";
 import type { FlowSummary } from "@repo/approval-flows/types/flow";
 import { DashboardShell } from "@/components/DashboardShell";
+import { ConsoleTabs } from "@/components/ConsoleTabs";
 import { NewRequestModal } from "@/components/NewRequestModal";
 import { listMyRequests, listFlows, ApiError } from "@/app/lib/api";
 
@@ -115,7 +116,8 @@ export default function HomePage() {
 
   return (
     <DashboardShell>
-      <div className="p-8 max-w-5xl mx-auto space-y-6">
+      <div className="p-4 md:p-8 max-w-[1024px] mx-auto space-y-5">
+        <ConsoleTabs />
         <div className="flex items-start justify-between gap-3">
           <div>
             <h1 className="text-2xl font-bold text-on-surface">Mes demandes</h1>

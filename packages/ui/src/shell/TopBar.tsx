@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   SearchOutlined,
   AppsOutlined,
+  MenuOutlined,
   NotificationsOutlined,
   SettingsOutlined,
   LogoutOutlined,
@@ -13,6 +14,8 @@ import {
 import Link from "next/link";
 import { AppDefinition, UserSummary } from "../types/shell";
 import { AppSelector } from "./AppSelector";
+import { useShell } from "./AppShell";
+import { Avatar } from "../Avatar";
 
 export interface SearchResult {
   id: number | string;
@@ -37,6 +40,8 @@ interface TopBarProps {
   // Slot pour une cloche de notification autonome (ex. <NotificationBell/> de
   // @repo/notifications). Si fourni, remplace le bouton cloche présentationnel.
   notifications?: React.ReactNode;
+  /** Contrôles propres à l'app, posés à gauche des actions communes. */
+  extraActions?: React.ReactNode;
   onLogout?: () => void;
   onSearch?: (q: string) => Promise<SearchSection[]>;
   appName?: string;
@@ -45,6 +50,12 @@ interface TopBarProps {
   appColor?: string;
   routeLabels?: Record<string, string>;
   routeIcons?: Record<string, React.ReactNode>;
+  /**
+   * `"search-first"` = disposition du design system : pilule de recherche à
+   * gauche, actions à droite, pas de fil d'Ariane. `"breadcrumbs"` conserve la
+   * disposition historique, le temps que les autres apps basculent.
+   */
+  variant?: "breadcrumbs" | "search-first";
 }
 
 interface BreadcrumbSegment {
@@ -197,6 +208,7 @@ export function TopBar({
   preferencesUrl,
   notificationsCount = 0,
   notifications,
+  extraActions,
   onLogout,
   onSearch,
   appName,
@@ -205,6 +217,7 @@ export function TopBar({
   appColor,
   routeLabels,
   routeIcons,
+  variant = "breadcrumbs",
 }: TopBarProps) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [appSelectorOpen, setAppSelectorOpen] = useState(false);
@@ -226,76 +239,134 @@ export function TopBar({
     return () => document.removeEventListener("keydown", onKey);
   }, []);
 
-  const initials = user?.username ? user.username.slice(0, 2).toUpperCase() : "??";
+  const searchFirst = variant === "search-first";
+  const { setMobileNavOpen } = useShell();
+  const pathname = usePathname();
+  // Sur mobile la barre se réduit à : hamburger + titre de page + cloche.
+  // On remonte le chemin jusqu'au libellé connu le plus proche : /projects/12/board
+  // n'a pas d'entrée propre mais doit afficher « Projets ».
+  const rawTitle = (() => {
+    if (!routeLabels) return "";
+    const segments = pathname.split("/").filter(Boolean);
+    for (let i = segments.length; i > 0; i--) {
+      const label = routeLabels["/" + segments.slice(0, i).join("/")];
+      if (label) return label;
+    }
+    return routeLabels["/"] ?? "";
+  })();
+  const mobileTitle = rawTitle ? rawTitle.charAt(0).toUpperCase() + rawTitle.slice(1) : appName;
+
+  const searchPill = onSearch && (
+    <button
+      onClick={() => setSearchOpen(true)}
+      className={
+        searchFirst
+          ? "flex flex-1 max-w-[420px] items-center gap-2 h-9 px-3 rounded-lg bg-background border border-outline-soft text-outline hover:border-primary/40 transition-colors"
+          : "flex items-center gap-2 px-3 h-9 min-w-[200px] rounded-lg bg-background border border-outline-soft text-outline hover:border-primary/40 transition-colors"
+      }
+    >
+      <SearchOutlined style={{ fontSize: 16 }} />
+      <span className="flex-1 text-left text-body-sm whitespace-nowrap">
+        Rechercher dans le workspace…
+      </span>
+      <kbd className="text-[11px] font-mono text-outline bg-surface-container-lowest border border-outline-soft rounded-sm px-[5px] leading-4">
+        ⌘K
+      </kbd>
+    </button>
+  );
+
+  const actions = (
+    <div className="flex items-center gap-1.5 shrink-0">
+      {extraActions}
+      <div className="relative">
+        <button
+          onClick={() => setAppSelectorOpen((v) => !v)}
+          className="w-9 h-9 flex items-center justify-center rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors"
+          title="Applications"
+        >
+          <AppsOutlined style={{ fontSize: 18 }} />
+        </button>
+        {appSelectorOpen && (
+          <AppSelector
+            apps={apps}
+            allAppsUrl={allAppsUrl}
+            onClose={() => setAppSelectorOpen(false)}
+          />
+        )}
+      </div>
+
+      {notifications ?? (
+        <button
+          className="relative w-9 h-9 flex items-center justify-center rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors"
+          title="Notifications"
+        >
+          <NotificationsOutlined style={{ fontSize: 18 }} />
+          {notificationsCount > 0 && (
+            <span className="absolute top-1.5 right-2 w-[7px] h-[7px] rounded-full bg-error border-2 border-surface-container-lowest" />
+          )}
+        </button>
+      )}
+
+      <div className="relative">
+        <button
+          onClick={() => setUserMenuOpen((v) => !v)}
+          className="rounded-full hover:opacity-90 transition-opacity ml-0.5"
+          title={user?.username ?? "Profil"}
+        >
+          <Avatar name={user?.username ?? user?.email} size={32} variant="solid" />
+        </button>
+        {userMenuOpen && (
+          <UserMenu
+            user={user}
+            preferencesUrl={preferencesUrl}
+            onClose={() => setUserMenuOpen(false)}
+            onLogout={onLogout}
+          />
+        )}
+      </div>
+    </div>
+  );
 
   return (
-    <div className="flex items-center w-full px-4 gap-3 h-full">
-      <div className="flex-1 min-w-0">
-        <Breadcrumbs appName={appName} appHref={appHref} appIcon={appIcon} appColor={appColor} routeLabels={routeLabels} routeIcons={routeIcons} />
+    <div className="flex items-center w-full h-full px-4 md:px-5 gap-3 md:gap-4">
+      <button
+        onClick={() => setMobileNavOpen(true)}
+        aria-label="Ouvrir la navigation"
+        className="md:hidden w-11 h-11 -ml-2 flex-none flex items-center justify-center rounded-lg text-on-surface-variant"
+      >
+        <MenuOutlined style={{ fontSize: 22 }} />
+      </button>
+      <span className="md:hidden flex-1 min-w-0 truncate font-display text-[17px] font-semibold text-on-surface">
+        {mobileTitle}
+      </span>
+
+      <div className="hidden md:contents">
+      {searchFirst ? (
+        <>
+          {searchPill}
+          <div className="flex-1" />
+        </>
+      ) : (
+        <>
+          <div className="flex-1 min-w-0">
+            <Breadcrumbs
+              appName={appName}
+              appHref={appHref}
+              appIcon={appIcon}
+              appColor={appColor}
+              routeLabels={routeLabels}
+              routeIcons={routeIcons}
+            />
+          </div>
+          {searchPill}
+        </>
+      )}
+
       </div>
 
-      <div className="flex items-center gap-1 shrink-0">
-        {onSearch && (
-          <button
-            onClick={() => setSearchOpen(true)}
-            className="flex items-center gap-2 px-3 h-9 rounded-xl bg-surface-container text-on-surface-variant text-sm hover:bg-surface-container-low transition-colors"
-            style={{ minWidth: "200px" }}
-          >
-            <SearchOutlined style={{ fontSize: 18 }} />
-            <span className="flex-1 text-left">Rechercher…</span>
-            <kbd className="text-xs text-outline bg-surface-container-low rounded px-1.5 py-0.5 font-mono">
-              ⌘K
-            </kbd>
-          </button>
-        )}
+      <div className="md:hidden flex-none flex items-center">{notifications}</div>
 
-        <div className="relative">
-          <button
-            onClick={() => setAppSelectorOpen((v) => !v)}
-            className="w-9 h-9 flex items-center justify-center rounded-xl text-on-surface-variant hover:bg-surface-container transition-colors"
-            title="Applications"
-          >
-            <AppsOutlined style={{ fontSize: 20 }} />
-          </button>
-          {appSelectorOpen && (
-            <AppSelector
-              apps={apps}
-              allAppsUrl={allAppsUrl}
-              onClose={() => setAppSelectorOpen(false)}
-            />
-          )}
-        </div>
-
-        {notifications ?? (
-          <button
-            className="relative w-9 h-9 flex items-center justify-center rounded-xl text-on-surface-variant hover:bg-surface-container transition-colors"
-            title="Notifications"
-          >
-            <NotificationsOutlined style={{ fontSize: 20 }} />
-            {notificationsCount > 0 && (
-              <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-error" />
-            )}
-          </button>
-        )}
-
-        <div className="relative">
-          <button
-            onClick={() => setUserMenuOpen((v) => !v)}
-            className="w-8 h-8 rounded-full bg-primary text-white text-xs font-semibold flex items-center justify-center hover:opacity-90 transition-opacity ml-1"
-            title={user?.username ?? "Profil"}
-          >
-            {initials}
-          </button>
-          {userMenuOpen && (
-            <UserMenu
-              user={user}
-              preferencesUrl={preferencesUrl}
-              onClose={() => setUserMenuOpen(false)}
-              onLogout={onLogout}
-            />
-          )}
-        </div>
-      </div>
+      <div className="hidden md:flex">{actions}</div>
 
       {searchOpen && (
         <SearchModal onClose={() => setSearchOpen(false)} onSearch={onSearch} />

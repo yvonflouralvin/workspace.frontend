@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { NavItem } from "../types/shell";
+import { useSidebarMode } from "./AppShell";
 
 interface SidebarNavProps {
   items: NavItem[];
@@ -10,9 +11,10 @@ interface SidebarNavProps {
 
 export function SidebarNav({ items }: SidebarNavProps) {
   const pathname = usePathname();
+  const expanded = useSidebarMode() === "expanded";
 
   return (
-    <ul className="space-y-0.5">
+    <ul className="flex flex-col gap-0.5">
       {items.map((item) => {
         const isActive = item.exact
           ? pathname === item.href
@@ -22,16 +24,33 @@ export function SidebarNav({ items }: SidebarNavProps) {
           <li key={item.href}>
             <Link
               href={item.href}
-              className={`flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-colors ${
+              title={expanded ? undefined : item.label}
+              className={`flex items-center gap-2.5 rounded-lg text-body-sm font-medium transition-colors ${
+                expanded
+                  ? "px-2.5 py-2"
+                  : "justify-center h-11 lg:justify-start lg:h-auto lg:px-2.5 lg:py-2"
+              } ${
                 isActive
-                  ? "bg-primary/10 text-primary"
-                  : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
+                  ? "bg-surface-container-low text-primary"
+                  : "text-on-surface-variant hover:bg-surface-container-low"
               }`}
             >
-              <span className="flex-shrink-0 flex items-center">{item.icon}</span>
-              <span className="flex-1">{item.label}</span>
+              <span
+                className={`w-5 h-5 flex-none inline-flex items-center justify-center ${
+                  isActive ? "text-primary" : "text-outline"
+                }`}
+              >
+                {item.icon}
+              </span>
+              <span className={`flex-1 whitespace-nowrap ${expanded ? "" : "hidden lg:block"}`}>
+                {item.label}
+              </span>
               {item.badge !== undefined && item.badge > 0 && (
-                <span className="min-w-5 h-5 rounded-full bg-primary text-white text-xs font-semibold flex items-center justify-center px-1.5">
+                <span
+                  className={`min-w-[18px] px-1.5 rounded-full bg-primary text-on-primary text-[11px] font-semibold leading-[18px] text-center ${
+                    expanded ? "" : "hidden lg:inline-block"
+                  }`}
+                >
                   {item.badge > 99 ? "99+" : item.badge}
                 </span>
               )}

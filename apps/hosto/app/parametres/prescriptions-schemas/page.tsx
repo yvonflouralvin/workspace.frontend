@@ -50,7 +50,7 @@ function Editor({ initial, canManage, onClose, onSaved }: {
   }
 
   return (
-    <RightDrawer title={initial ? "Modifier le schéma" : "Nouveau schéma"} onClose={onClose} width="w-[440px] max-w-full">
+    <RightDrawer title={initial ? "Modifier le schéma" : "Nouveau schéma"} onClose={onClose} width="md:w-[440px] md:max-w-[92vw]">
       <div className="h-full flex flex-col overflow-hidden">
         <div className="flex-1 overflow-y-auto pr-1 space-y-4">
           <div className="flex flex-col gap-1">
@@ -114,7 +114,7 @@ export default function PrescriptionsSchemasPage() {
 
   return (
     <DashboardShell>
-      <div className="p-8 max-w-3xl mx-auto space-y-6">
+      <div className="p-4 md:p-8 max-w-3xl mx-auto space-y-6">
         <Link href="/parametres" className="inline-flex items-center gap-1.5 text-body-sm text-on-surface-variant hover:text-on-surface transition-colors">
           <ArrowBackOutlined style={{ fontSize: 16 }} /> Retour aux paramètres
         </Link>

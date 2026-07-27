@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { CheckOutlined, ExpandMoreOutlined, AddOutlined } from "@mui/icons-material";
+import { CheckOutlined, UnfoldMoreOutlined, AddOutlined } from "@mui/icons-material";
 import Link from "next/link";
 import { useSessionStore } from "@repo/auth/store/session.store";
+import { useSidebarMode } from "./shell/AppShell";
 const COLORS = ["#3525cd", "#006c49", "#004598", "#b91c1c", "#a16207", "#7c3aed"];
 
 function workspaceColor(id: number): string {
@@ -12,10 +13,19 @@ function workspaceColor(id: number): string {
 
 export function WorkspaceSwitcher({
   filterPermission,
+  subtitle = "Workspace",
 }: {
   filterPermission?: string;
+  /** Ligne secondaire sous le nom du workspace. */
+  subtitle?: string;
 }) {
   const { activeWorkspace, workspaces, switchWorkspace } = useSessionStore();
+  const expanded = useSidebarMode() === "expanded";
+  // Sur le rail (tablette), il ne reste que la pastille du workspace.
+  const detailClass = expanded ? "" : "hidden lg:block";
+  const cardClass = expanded
+    ? "px-2 py-1.5 border border-outline-soft"
+    : "justify-center py-1.5 lg:justify-start lg:px-2 lg:border lg:border-outline-soft";
   const [open, setOpen] = useState(false);
   const workspaceDomain = process.env.NEXT_PUBLIC_WORKSPACE_DOMAIN ?? "http://localhost:3005";
   const [switching, setSwitching] = useState(false);
@@ -50,15 +60,18 @@ export function WorkspaceSwitcher({
 
   if (restricted) {
     return (
-      <div className="w-full flex items-center gap-2.5 px-2 py-2 rounded-xl">
+      <div className={`w-full flex items-center gap-2.5 rounded-[10px] ${cardClass}`}>
         <span
-          className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+          className="w-[30px] h-[30px] rounded-lg flex-none flex items-center justify-center text-on-primary font-display font-bold text-[15px]"
           style={{ backgroundColor: color }}
         >
           {initial}
         </span>
-        <span className="flex-1 text-sm font-semibold text-on-surface text-left truncate">
-          {activeWorkspace.name}
+        <span className={`flex-1 min-w-0 text-left leading-tight ${detailClass}`}>
+          <span className="block font-display font-semibold text-body-sm text-on-surface truncate">
+            {activeWorkspace.name}
+          </span>
+          <span className="block text-[11px] text-on-surface-variant truncate">{subtitle}</span>
         </span>
       </div>
     );
@@ -72,20 +85,23 @@ export function WorkspaceSwitcher({
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center gap-2.5 px-2 py-2 rounded-xl hover:bg-surface-container transition-colors"
+        className={`w-full flex items-center gap-2.5 rounded-[10px] hover:bg-surface-container-low transition-colors ${cardClass}`}
       >
         <span
-          className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+          className="w-[30px] h-[30px] rounded-lg flex-none flex items-center justify-center text-on-primary font-display font-bold text-[15px]"
           style={{ backgroundColor: color }}
         >
           {initial}
         </span>
-        <span className="flex-1 text-sm font-semibold text-on-surface text-left truncate">
-          {activeWorkspace.name}
+        <span className={`flex-1 min-w-0 text-left leading-tight ${detailClass}`}>
+          <span className="block font-display font-semibold text-body-sm text-on-surface truncate">
+            {activeWorkspace.name}
+          </span>
+          <span className="block text-[11px] text-on-surface-variant truncate">{subtitle}</span>
         </span>
-        <ExpandMoreOutlined
-          style={{ fontSize: 18 }}
-          className={`text-on-surface-variant transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+        <UnfoldMoreOutlined
+          style={{ fontSize: 15 }}
+          className={`flex-none text-outline ${detailClass}`}
         />
       </button>
 

@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
 import { DashboardShell } from "@/components/DashboardShell";
+import { LockedBadge } from "@repo/ui/LockedBadge";
+import { Pagination } from "@repo/ui/Pagination";
 import { CreateProduitDrawer } from "@/components/CreateProduitDrawer";
 import { listProduits, listCategories, getFacturationConfig, type Produit, type Categorie } from "@/lib/ventes-api";
 import {
@@ -108,7 +110,7 @@ export default function ProduitsPage() {
 
   return (
     <DashboardShell>
-      <div className="p-8 max-w-6xl mx-auto space-y-6">
+      <div className="p-4 md:p-8 max-w-[1152px] mx-auto space-y-5">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             <h1 className="text-headline-md font-display text-on-surface">Produits</h1>
@@ -187,84 +189,119 @@ export default function ProduitsPage() {
 
         {canView && !loading && !error && items.length > 0 && (
           <>
-            <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest overflow-hidden">
-              <table className="w-full text-body-sm">
-                <thead>
-                  <tr className="border-b border-outline-variant text-left text-on-surface-variant">
-                    <th className="px-5 py-3 font-medium">Nom</th>
-                    <th className="px-5 py-3 font-medium">Catégorie</th>
-                    <th className="px-5 py-3 font-medium">Description</th>
-                    <th className="px-5 py-3 font-medium text-right">
-                      <button
-                        onClick={handleSortPrix}
-                        className="inline-flex items-center gap-1 font-medium hover:text-on-surface transition-colors"
-                      >
-                        Prix de vente
-                        {sort === "prix_asc" ? (
-                          <ArrowUpwardOutlined style={{ fontSize: 15 }} />
-                        ) : sort === "prix_desc" ? (
-                          <ArrowDownwardOutlined style={{ fontSize: 15 }} />
-                        ) : (
-                          <SwapVertOutlined style={{ fontSize: 15, opacity: 0.5 }} />
+            <div className="rounded-2xl border border-outline-soft bg-surface-container-lowest overflow-hidden">
+              <div className="hidden md:flex items-center gap-4 px-5 py-2.5 bg-surface-row-alt border-b border-surface-container-low text-label-sm uppercase text-outline">
+                <span className="flex-1 min-w-0">Produit</span>
+                <span className="w-[200px] flex-none">Catégories</span>
+                <span className="w-[70px] flex-none text-center">TVA</span>
+                <span className="w-[150px] flex-none text-right">
+                  <button
+                    onClick={handleSortPrix}
+                    className="inline-flex items-center gap-1 uppercase hover:text-on-surface transition-colors"
+                  >
+                    Prix
+                    {sort === "prix_asc" ? (
+                      <ArrowUpwardOutlined style={{ fontSize: 14 }} />
+                    ) : sort === "prix_desc" ? (
+                      <ArrowDownwardOutlined style={{ fontSize: 14 }} />
+                    ) : (
+                      <SwapVertOutlined style={{ fontSize: 14, opacity: 0.5 }} />
+                    )}
+                  </button>
+                </span>
+              </div>
+
+              {items.map((p) => (
+                <button
+                  key={p.id}
+                  onClick={() => router.push(`/produits/${p.id}`)}
+                  className={`w-full block text-left border-b border-hairline last:border-b-0 hover:bg-surface-container-low transition-colors ${
+                    p.owner_app_key ? "bg-locked-surface" : ""
+                  }`}
+                >
+                  {/* Carte (mobile) et rangée (bureau) sont deux blocs distincts :
+                      une seule rangée pilotée par des variantes md: retombait en pile
+                      dès qu'une de ces règles manquait. */}
+                  <span className="md:hidden block px-4 py-3 space-y-1.5">
+                    <span className="flex items-start justify-between gap-3">
+                      <span className="min-w-0">
+                        <span className="flex items-center gap-2">
+                          <span className="text-body-md font-medium text-on-surface truncate">
+                            {p.nom}
+                          </span>
+                          {p.owner_app_key && <LockedBadge appLabel={p.owner_app_key} />}
+                        </span>
+                        <span className="block text-label-md text-outline truncate">
+                          {p.unite || p.description || "—"}
+                        </span>
+                      </span>
+                      <span className="flex-none whitespace-nowrap tabular-nums font-mono text-body-sm font-semibold text-on-surface">
+                        {formatPrix(p.prix_vente, deviseBase)}
+                      </span>
+                    </span>
+                    {(p.categories.length > 0 || p.tva_applicable) && (
+                      <span className="flex flex-wrap items-center gap-1">
+                        {p.categories.map((c) => (
+                          <span
+                            key={c.id}
+                            className="rounded-md bg-role-member-container px-1.5 py-0.5 text-[11px] font-medium text-role-member whitespace-nowrap"
+                          >
+                            {c.nom}
+                          </span>
+                        ))}
+                        {p.tva_applicable && (
+                          <span className="rounded-md bg-surface-container px-1.5 py-0.5 text-[11px] font-medium text-on-surface-variant">
+                            TVA
+                          </span>
                         )}
-                      </button>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {items.map((p) => (
-                    <tr
-                      key={p.id}
-                      onClick={() => router.push(`/produits/${p.id}`)}
-                      className="border-b border-outline-variant last:border-0 hover:bg-surface-container-low transition-colors cursor-pointer"
-                    >
-                      <td className="px-5 py-3 text-on-surface font-medium">{p.nom}</td>
-                      <td className="px-5 py-3 text-on-surface-variant">
-                        {p.categories.length ? p.categories.map((c) => c.nom).join(", ") : "—"}
-                      </td>
-                      <td className="px-5 py-3 text-on-surface-variant max-w-xs truncate">{p.description || "—"}</td>
-                      <td className="px-5 py-3 text-on-surface text-right tabular-nums">{formatPrix(p.prix_vente, deviseBase)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                      </span>
+                    )}
+                  </span>
+
+                  <span className="hidden md:flex items-center gap-4 px-5 py-3">
+                    <span className="flex-1 min-w-0">
+                      <span className="flex items-center gap-2">
+                        <span className="text-body-md font-medium text-on-surface truncate">{p.nom}</span>
+                        {p.owner_app_key && <LockedBadge appLabel={p.owner_app_key} />}
+                      </span>
+                      <span className="block text-label-md text-outline truncate">
+                        {p.unite || p.description || "—"}
+                      </span>
+                    </span>
+
+                    <span className="w-[200px] flex-none flex flex-wrap gap-1">
+                      {p.categories.length ? (
+                        p.categories.map((c) => (
+                          <span
+                            key={c.id}
+                            className="rounded-md bg-role-member-container px-1.5 py-0.5 text-[11px] font-medium text-role-member whitespace-nowrap"
+                          >
+                            {c.nom}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-label-md text-outline">—</span>
+                      )}
+                    </span>
+
+                    <span className="w-[70px] flex-none text-center text-body-sm text-on-surface-variant">
+                      {p.tva_applicable ? "Oui" : "Non"}
+                    </span>
+
+                    <span className="w-[150px] flex-none text-right whitespace-nowrap tabular-nums font-mono text-body-sm font-semibold text-on-surface">
+                      {formatPrix(p.prix_vente, deviseBase)}
+                    </span>
+                  </span>
+                </button>
+              ))}
             </div>
 
             {pages > 1 && (
-              <div className="flex items-center justify-between pt-1">
-                <p className="text-body-sm text-on-surface-variant">
+              <div className="flex items-center justify-between gap-3 pt-1 min-w-0">
+                <p className="text-body-sm text-on-surface-variant truncate">
                   {total} produit{total > 1 ? "s" : ""}
                 </p>
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => handlePage(page - 1)}
-                    disabled={page === 1}
-                    className="px-3 py-1.5 rounded-lg text-body-sm text-on-surface-variant hover:bg-surface-container disabled:opacity-40 disabled:cursor-default transition-colors"
-                  >
-                    ← Précédent
-                  </button>
-                  {Array.from({ length: pages }, (_, i) => i + 1).map((n) => (
-                    <button
-                      key={n}
-                      onClick={() => handlePage(n)}
-                      className={[
-                        "w-8 h-8 rounded-lg text-body-sm font-medium transition-colors",
-                        n === page
-                          ? "bg-primary text-on-primary"
-                          : "text-on-surface-variant hover:bg-surface-container",
-                      ].join(" ")}
-                    >
-                      {n}
-                    </button>
-                  ))}
-                  <button
-                    onClick={() => handlePage(page + 1)}
-                    disabled={page === pages}
-                    className="px-3 py-1.5 rounded-lg text-body-sm text-on-surface-variant hover:bg-surface-container disabled:opacity-40 disabled:cursor-default transition-colors"
-                  >
-                    Suivant →
-                  </button>
-                </div>
+                <Pagination page={page} pages={pages} onChange={handlePage} className="flex-none" />
               </div>
             )}
           </>

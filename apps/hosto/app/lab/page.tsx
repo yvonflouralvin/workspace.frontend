@@ -113,19 +113,15 @@ export default function LaboratoryPage() {
 
   return (
     <DashboardShell>
-      <div className="p-6 max-w-5xl mx-auto space-y-5">
+      <div className="p-4 md:p-8 max-w-[1152px] mx-auto space-y-5">
 
         {/* Header */}
         <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div className="flex items-center gap-3">
-            <BiotechOutlined style={{ fontSize: 28 }} className="text-primary" />
-            <div>
-              <h1 className="text-headline-sm font-display text-on-surface">Laboratoire</h1>
-              <p className="text-body-sm text-on-surface-variant mt-0.5">
-                {totalActive} demande{totalActive !== 1 ? "s" : ""} active{totalActive !== 1 ? "s" : ""}
-                {valider.length > 0 && ` · ${valider.length} à valider`}
-              </p>
-            </div>
+          <div>
+            <h1 className="text-headline-md font-display text-on-surface">Laboratoire</h1>
+            <p className="text-body-sm text-on-surface-variant mt-0.5">
+              Cycle des examens · à la validation, le prescripteur est notifié.
+            </p>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -150,28 +146,30 @@ export default function LaboratoryPage() {
           <p className="text-body-sm text-error bg-error-container/40 rounded-xl px-4 py-3">{error}</p>
         )}
 
-        {/* Tabs de workflow */}
-        <div className="flex gap-1 border-b border-outline-variant">
+        {/* Tabs de workflow — pill segmentée (design) */}
+        <div className="inline-flex p-[3px] rounded-full bg-surface-container-low border border-outline-soft">
           {(["prelever", "resulter", "valider"] as WorkTab[]).map((t) => {
             const labels: Record<WorkTab, string> = {
               prelever: "À prélever",
               resulter: "À résulter",
               valider:  "À valider",
             };
+            const isActive = tab === t;
+            const alert = t === "valider" && tabCounts[t] > 0;
             return (
               <button
                 key={t}
                 onClick={() => setTab(t)}
-                className={`px-4 py-2.5 text-body-sm font-medium border-b-2 -mb-px transition-colors ${
-                  tab === t
-                    ? "border-primary text-primary"
-                    : "border-transparent text-on-surface-variant hover:text-on-surface"
+                className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-body-sm font-semibold transition-colors ${
+                  isActive ? "bg-tertiary text-on-primary" : "text-on-surface-variant hover:text-on-surface"
                 }`}>
                 {labels[t]}
-                <span className={`ml-1.5 px-1.5 py-0.5 rounded-full text-label-xs tabular-nums ${
-                  t === "valider" && tabCounts[t] > 0
-                    ? "bg-error/10 text-error"
-                    : "bg-surface-container text-on-surface-variant"
+                <span className={`px-1.5 rounded-full text-label-xs tabular-nums ${
+                  isActive
+                    ? "bg-white/20"
+                    : alert
+                      ? "bg-error/10 text-error"
+                      : "bg-surface-container text-on-surface-variant"
                 }`}>
                   {tabCounts[t]}
                 </span>
@@ -191,7 +189,7 @@ export default function LaboratoryPage() {
             placeholder="Rechercher un patient ou un examen…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 rounded-xl border border-outline-variant bg-surface-container-lowest text-body-md text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary transition-colors"
+            className="w-full pl-9 pr-3 py-2 rounded-xl border border-outline-variant bg-surface-container-lowest text-body-md text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-tertiary transition-colors"
           />
         </div>
 

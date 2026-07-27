@@ -446,6 +446,167 @@ interface UserSummary {
 }
 ```
 
+### `Avatar` (`src/Avatar.tsx`)
+
+Pastille d'initiales. `variant="soft"` (fond de l'accent à 10 %, texte accent) dans les
+listes et les fiches, `variant="solid"` (fond plein, texte `on-primary`) dans le shell.
+`letters` vaut 2 par défaut ; les tableaux du design utilisent `letters={1}`.
+
+```tsx
+<Avatar name="Thomas Diallo" letters={1} size={32} />
+<Avatar name={user.username} size={30} variant="solid" />
+```
+
+### `Chip` (`src/Chip.tsx`)
+
+Badge court, adossé aux tokens sémantiques. `tone` : `neutral` (groupes, étiquettes),
+`primary` / `info` (rôles), `success` / `warning` (statuts), `danger`. `size="sm"` pour les
+chips secondaires (11/500), `"md"` pour les badges porteurs de sens (12/600).
+
+Distinct de `Badge`, qui reste la pilule `primary/10` historique.
+
+### `SearchField` (`src/SearchField.tsx`)
+
+Champ de recherche contrôlé, hauteur 38, bordure `outline-soft`, icône à gauche. Le
+debounce est à la charge de l'appelant (300 ms côté serveur sur la page Membres).
+
+### `Pagination` (`src/Pagination.tsx`)
+
+`{ page, pages, onChange, className? }` — barre de pagination des listes paginées.
+**Fenêtre les numéros** (première, dernière, courante ±1, ellipses) : rendre les `pages`
+numéros d'un coup faisait déborder la barre hors de l'écran dès une quinzaine de pages.
+En dessous de `md`, les numéros disparaissent au profit de `« page / total »` entre les
+deux flèches. Rend `null` si `pages <= 1`. Toute liste paginée passe par ce composant —
+ne pas réécrire la boucle `Array.from({ length: pages })`.
+
+### `StackedAreaChart` (`src/charts/StackedAreaChart.tsx`)
+
+`{ points, series, height?, emptyLabel? }` — aires empilées en SVG natif, comme les
+autres primitives de `src/charts/`. `points` porte `{ label, valeurs: {clé: nombre} }`,
+`series` décrit chaque bande `{ cle, libelle, fill }` où `fill` est une classe
+`fill-*` issue des tokens.
+
+**Volontairement ignorant du métier** : il empile des séries nommées, rien de plus.
+La sémantique (catégories canoniques, flux cumulé d'une phase) reste dans l'app qui
+l'appelle — le package ne connaît ni colonne de tableau, ni WIP, ni phase.
+
+### `TagInput` (`src/TagInput.tsx`)
+
+`{ value, onChange, disabled?, placeholder?, suggestions? }` — champ d'étiquettes libres :
+puces supprimables + saisie validée par `Entrée` ou `,` (et `Backspace` à vide retire la
+dernière). `suggestions` alimente une `datalist` — passer les étiquettes déjà employées
+ailleurs évite les doublons d'orthographe, qui cassent silencieusement toute règle basée
+sur les tags. En lecture seule sans valeur, rend `—`.
+
+```tsx
+<TagInput value={tags} onChange={setTags} disabled={readOnly} suggestions={tagSuggestions} />
+```
+
+### `ViewModeSwitch` (`src/ViewModeSwitch.tsx`)
+
+`{ value, options, onChange }` — sélecteur segmenté de **mode d'affichage**, icônes seules
+(`{ value, icon, label }` ; le `label` sert d'infobulle et de nom accessible). Hauteur
+alignée sur les boutons d'action (`h-11 md:h-[38px]`) pour tenir sur la même ligne qu'un
+« Nouvelle … ». À utiliser quand une **même vue** bascule entre deux rendus (liste/kanban
+dans l'onglet Tâches d'une phase) — quand les modes sont deux routes distinctes, ce sont
+des onglets, pas ce composant.
+
+```tsx
+<ViewModeSwitch value={view} onChange={setView} options={[
+  { value: "liste", icon: <ViewListOutlined style={{ fontSize: 18 }} />, label: "Liste" },
+  { value: "kanban", icon: <ViewKanbanOutlined style={{ fontSize: 18 }} />, label: "Kanban" },
+]} />
+```
+
+### `ConfirmDialog` (`src/ConfirmDialog.tsx`) et `Toast` (`src/Toast.tsx`)
+
+**Remplacent `window.confirm` et `window.alert`** — plus aucun dialogue natif dans les apps.
+`ConfirmDialog` : icône, titre, message, `Annuler` + action colorée (`tone="danger"` par
+défaut), fermeture à l'Échap et au clic extérieur, `busy` pendant l'appel. `Toast` :
+notification éphémère sur `inverse-surface`, auto-dismiss 2,6 s, `tone` `success` | `error`.
+
+```tsx
+{pending && (
+  <ConfirmDialog title={`Retirer ${pending.name} ?`} message="…"
+    confirmLabel="Retirer" busy={busy} onConfirm={remove} onCancel={() => setPending(null)} />
+)}
+{toast && <Toast message={toast.message} tone={toast.tone} onDismiss={() => setToast(null)} />}
+```
+
+### `SettingRow` (`src/SettingRow.tsx`) et `Switch` (`src/Switch.tsx`)
+
+`SettingRow` est le motif central des Paramètres — « nom + état + description + valeur +
+contrôle » — extrait du design system pour que **toute app du catalogue affiche ses
+paramètres de la même façon**.
+
+```tsx
+<SettingRow
+  name={setting.name}
+  description={setting.description}
+  type={setting.type}          // text | date | single_choice | multi_choice | toggle
+  value={value}
+  displayValue={formatValue(setting, value)}
+  options={setting.options}
+  state={isEmpty(value) ? "unset" : "ok"}
+  onChange={isInlineSetting(setting.type) ? (v) => queue(setting, v) : undefined}
+  onEdit={() => openDrawer(setting)}
+/>
+```
+
+- **Édition en ligne pour `toggle` et `single_choice`** (`isInlineSetting(type)` le dit) ;
+  les autres types affichent la valeur formatée + un crayon qui ouvre un drawer côté
+  appelant. Un interrupteur ne mérite pas un drawer.
+- `state` orne la ligne : `unset` (point orange « Non configuré » + valeur en italique
+  atténuée), `default` et `critical` (chips). Seul `unset` est dérivable des données
+  actuelles — les deux autres attendent que le backend marque les paramètres.
+- `Switch` est l'interrupteur 40×24 du design system, réutilisé par `SettingRow` et par
+  les blocs de politique du panneau Général.
+### `RichTextEditor` (`src/RichTextEditor.tsx`)
+
+Éditeur de texte riche « à la Notion », bâti sur **BlockNote** (`@blocknote/core`,
+`@blocknote/react`, `@blocknote/mantine`) : blocs déplaçables, menu slash `/`, titres,
+listes, tableaux, code.
+
+```tsx
+<RichTextEditor
+  value={project.description_rich}     // document BlockNote sérialisé (JSON)
+  fallbackText={project.description}   // texte brut legacy, converti en paragraphes
+  editable={canManage}
+  placeholder="Décrivez le projet — tapez « / » pour les blocs…"
+  onChange={(json) => queue({ description_rich: json })}
+/>
+```
+
+- **Non contrôlé après montage** : `value` n'est lu qu'au premier rendu. L'éditeur est
+  ensuite la source de vérité — sinon chaque sauvegarde replacerait le curseur au début.
+  Corollaire : pour recharger un autre document, remonter la `key` du composant.
+- `onChange` émet à chaque frappe (JSON sérialisé) — **c'est à l'appelant de debouncer**
+  avant d'appeler l'API (cf. l'aperçu projet dans `apps/workspace`, debounce 800 ms).
+- **Barre d'outils persistante** (`toolbar`, activée par défaut) : gras / italique /
+  souligné, H1, H2, liste, case à cocher, code, plus le rappel « Tapez / pour les blocs ».
+  Elle pilote l'éditeur par son API (`toggleStyles`, `updateBlock`) — le menu slash et les
+  poignées de bloc de BlockNote restent disponibles.
+- **Rendu client uniquement** : le composant est un wrapper `next/dynamic` avec
+  `ssr: false` autour de `src/components/BlockNoteEditor.tsx` (BlockNote monte
+  ProseMirror sur le DOM). L'import dynamique utilise le spécifieur de package
+  (`@repo/ui/components/BlockNoteEditor`) et non un chemin relatif : sous
+  `moduleResolution: NodeNext`, un `import()` relatif exigerait une extension `.js`
+  explicite que le bundler ne sait pas remapper vers `.tsx`.
+- **Thème** : `src/components/blocknote-theme.css` remappe les variables `--bn-*` de
+  BlockNote sur les tokens du design system. Ne pas surcharger les sélecteurs internes
+  de BlockNote (ils changent d'une version à l'autre).
+- Stockage recommandé : une colonne `*_rich` (Text) pour le JSON + la colonne texte
+  brut existante pour les listes et la recherche, dérivée côté backend (cf.
+  `backends/projects/services/rich_text.py`).
+
+### `PriorityBars`, `Switch`, `KpiCard`
+
+`PriorityBars` — trois barrettes (4/7/10 px) colorées jusqu'au niveau `0–4`, adossées aux
+tokens `priority-*`. `Switch` — interrupteur 40×24 du design system. `KpiCard` — carte
+d'indicateur (libellé + pastille d'icône + grande valeur + indice), avec `visual` optionnel
+pour une `Sparkline` le jour où une série temporelle existe, et `href` pour la rendre
+cliquable.
+
 ---
 
 ## Dépendances disponibles dans le package
@@ -454,6 +615,7 @@ interface UserSummary {
 - `@emotion/react` + `@emotion/styled` — styling MUI
 - `tailwindcss` v4 — classes utilitaires
 - `react` 19, `react-dom` 19
+- `@blocknote/core` + `@blocknote/react` + `@blocknote/mantine` — éditeur riche (`RichTextEditor`)
 
 ---
 

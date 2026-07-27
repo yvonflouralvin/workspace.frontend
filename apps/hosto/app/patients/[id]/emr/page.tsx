@@ -5,6 +5,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
 import { AccessDenied } from "@repo/ui/AccessDenied";
+import { Avatar } from "@repo/ui/Avatar";
 import { SplitWorkspace } from "@repo/ui/SplitWorkspace";
 import { EMRPanel } from "@/components/emr/EMRPanel";
 import { DashboardShell } from "@/components/DashboardShell";
@@ -27,10 +28,8 @@ import { HospitalisationBanner } from "@/components/hospitalisation/Hospitalisat
 import { visibleEmrTabs, type EMRTabKey, type EMRTabMeta } from "@/components/emr/emr-tabs";
 import {
   ArrowBackOutlined,
-  BadgeOutlined,
-  CakeOutlined,
-  PersonOutlined,
   FolderOpenOutlined,
+  ShieldOutlined,
 } from "@mui/icons-material";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -61,15 +60,15 @@ function EMRTabBar({
   onChange: (k: EMRTabKey) => void;
 }) {
   return (
-    <div className="flex items-center gap-1 border-b border-outline-variant overflow-x-auto">
+    <div className="flex items-center gap-0.5 border-b border-outline-soft overflow-x-auto">
       {tabs.map((tab) => (
         <button
           key={tab.key}
           type="button"
           onClick={() => onChange(tab.key)}
-          className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+          className={`px-3.5 py-2.5 text-body-sm font-semibold border-b-2 -mb-px transition-colors whitespace-nowrap ${
             tab.key === active
-              ? "border-primary text-primary"
+              ? "border-tertiary text-tertiary"
               : "border-transparent text-on-surface-variant hover:text-on-surface"
           }`}
         >
@@ -100,37 +99,42 @@ function TabPlaceholder({ label }: { label: string }) {
 // ─── Patient header compact ───────────────────────────────────────────────────
 
 function PatientHeaderCompact({ patient }: { patient: Patient }) {
+  const fullName = `${patient.nom} ${patient.postnom} ${patient.prenom}`.replace(/\s+/g, " ").trim();
+  const groupe =
+    patient.groupe_sanguin != null
+      ? `Groupe ${patient.groupe_sanguin}${patient.rhesus ?? ""}`
+      : null;
+  const poids = patient.dernier_poids != null ? `${patient.dernier_poids} kg` : null;
+  const meta = [patient.dossier_number, groupe, poids].filter(Boolean).join(" · ");
+
   return (
-    <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest px-5 py-4">
-      <div className="flex items-center gap-3 flex-wrap">
-        <h1 className="text-headline-sm font-display text-on-surface">
-          {patient.nom} {patient.postnom} {patient.prenom}
-        </h1>
-        <span className="shrink-0 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-label-sm font-mono bg-surface-container text-on-surface-variant border border-outline-variant">
-          <BadgeOutlined style={{ fontSize: 12 }} />
-          {patient.dossier_number}
-        </span>
+    <div className="flex items-center gap-4 flex-wrap">
+      <Avatar name={fullName} letters={2} size={48} variant="solid" color="var(--color-tertiary)" />
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <h1 className="font-display text-headline-sm text-on-surface">{fullName}</h1>
+          <span className="inline-flex items-center rounded-md bg-surface-container px-2 py-0.5 text-label-md text-on-surface-variant">
+            {SEXE_LABEL[patient.sexe] ?? patient.sexe} · {calcAge(patient.date_naissance)} ans
+          </span>
+        </div>
+        <p className="font-mono text-label-md text-outline mt-0.5 truncate">{meta}</p>
       </div>
-      <div className="mt-1.5 flex items-center gap-3 text-body-sm text-on-surface-variant flex-wrap">
-        <span className="flex items-center gap-1.5">
-          <PersonOutlined style={{ fontSize: 14 }} />
-          {SEXE_LABEL[patient.sexe] ?? patient.sexe}
-        </span>
-        <span className="text-on-surface-variant/30">·</span>
-        <span className="flex items-center gap-1.5">
-          <CakeOutlined style={{ fontSize: 14 }} />
-          {calcAge(patient.date_naissance)} ans
-        </span>
-      </div>
+      <span className="inline-flex items-center gap-1.5 rounded-lg bg-tertiary/10 px-2.5 py-1.5 text-label-md font-medium text-tertiary">
+        <ShieldOutlined style={{ fontSize: 14 }} />
+        Accès tracé · relation de soin active
+      </span>
     </div>
   );
 }
 
 function PatientHeaderSkeleton() {
   return (
-    <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest px-5 py-4 space-y-2">
-      <div className="h-6 w-64 rounded bg-surface-container animate-pulse" />
-      <div className="h-4 w-40 rounded bg-surface-container animate-pulse" />
+    <div className="flex items-center gap-4">
+      <div className="w-12 h-12 rounded-full bg-surface-container animate-pulse" />
+      <div className="space-y-2">
+        <div className="h-6 w-64 rounded bg-surface-container animate-pulse" />
+        <div className="h-4 w-40 rounded bg-surface-container animate-pulse" />
+      </div>
     </div>
   );
 }
@@ -213,7 +217,7 @@ export default function EMRPage() {
 
   return (
     <DashboardShell>
-      <div className="p-6 max-w-5xl mx-auto space-y-4">
+      <div className="p-4 md:p-8 max-w-[1152px] mx-auto space-y-4">
 
         {/* ── Breadcrumb ── */}
         <nav className="flex items-center gap-2 text-body-sm text-on-surface-variant" aria-label="Fil d'Ariane">

@@ -112,7 +112,7 @@ export function RealiserDrawer({
 
   if (bare) return inner;
   return (
-    <RightDrawer title={`Réaliser — ${acte.acte_libelle}`} onClose={onClose} width="w-[560px] max-w-full">
+    <RightDrawer title={`Réaliser — ${acte.acte_libelle}`} onClose={onClose} width="md:w-[560px] md:max-w-[92vw]">
       {inner}
     </RightDrawer>
   );

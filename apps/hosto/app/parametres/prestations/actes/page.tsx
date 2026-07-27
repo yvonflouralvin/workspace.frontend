@@ -143,7 +143,7 @@ function EditDrawer({
   }
 
   return (
-    <RightDrawer title="Personnaliser l'acte" onClose={onClose} width="w-[520px] max-w-full">
+    <RightDrawer title="Personnaliser l'acte" onClose={onClose} width="md:w-[520px] md:max-w-[92vw]">
       {loading ? (
         <div className="space-y-4 animate-pulse">
           {[1, 2, 3].map((i) => (
@@ -354,7 +354,7 @@ function CreateActeDrawer({ onClose, onSaved }: { onClose: () => void; onSaved: 
   }
 
   return (
-    <RightDrawer title="Nouvel acte" onClose={onClose} width="w-[520px] max-w-full">
+    <RightDrawer title="Nouvel acte" onClose={onClose} width="md:w-[520px] md:max-w-[92vw]">
       <div className="h-full flex flex-col overflow-hidden">
         <div className="flex-1 overflow-y-auto pr-1 space-y-5">
           <p className="text-body-sm text-on-surface-variant">
@@ -469,7 +469,7 @@ function CustomEditDrawer({
   }
 
   return (
-    <RightDrawer title="Modifier l'acte" onClose={onClose} width="w-[520px] max-w-full">
+    <RightDrawer title="Modifier l'acte" onClose={onClose} width="md:w-[520px] md:max-w-[92vw]">
       {loading ? (
         <div className="space-y-4 animate-pulse">
           {[1, 2, 3].map((i) => (
@@ -603,7 +603,7 @@ export default function ActesCatalogPage() {
 
   return (
     <DashboardShell>
-      <div className="p-8 max-w-4xl mx-auto space-y-6">
+      <div className="p-4 md:p-8 max-w-4xl mx-auto space-y-6">
         <Link
           href="/parametres/prestations"
           className="inline-flex items-center gap-1.5 text-body-sm text-on-surface-variant hover:text-on-surface transition-colors"

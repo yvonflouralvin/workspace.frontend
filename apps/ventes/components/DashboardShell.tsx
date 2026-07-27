@@ -6,11 +6,13 @@ import { useLogout } from "@repo/auth/hooks/useLogout";
 import { AppShell } from "@repo/ui/shell/AppShell";
 import { Sidebar } from "@repo/ui/shell/Sidebar";
 import { TopBar } from "@repo/ui/shell/TopBar";
+import { DeviseSelector } from "@/components/DeviseProvider";
 import { NotificationBell } from "@repo/notifications/NotificationBell";
 import { UserFooter } from "@repo/ui/shell/UserFooter";
 import { WorkspaceSwitcher } from "@repo/ui/WorkspaceSwitcher";
 import { PLATFORM_APPS, VENTES_SHELL } from "@repo/ui/shell/platform";
 import {
+  QueryStatsOutlined,
   HomeOutlined,
   PeopleAltOutlined,
   Inventory2Outlined,
@@ -27,6 +29,7 @@ const NAV_ITEMS: NavItem[] = [
     icon: <HomeOutlined style={{ fontSize: 20 }} />,
     exact: true,
   },
+  { label: "Tableau de bord", href: "/tableau-de-bord", icon: <QueryStatsOutlined style={{ fontSize: 20 }} /> },
   { label: "Clients",    href: "/clients",    icon: <PeopleAltOutlined style={{ fontSize: 20 }} /> },
   { label: "Produits",   href: "/produits",   icon: <Inventory2Outlined style={{ fontSize: 20 }} /> },
   { label: "Commandes",  href: "/commandes",  icon: <ShoppingCartOutlined style={{ fontSize: 20 }} /> },
@@ -56,6 +59,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       }
       topBar={
         <TopBar
+          extraActions={<DeviseSelector />}
           notifications={<NotificationBell basePath="/api/notifications" />}
           apps={visibleApps}
           allAppsUrl="/"

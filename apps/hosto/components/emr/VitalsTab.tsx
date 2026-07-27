@@ -681,7 +681,7 @@ export function VitalsTab({
 
       {/* ── Valeurs chronologiques d'une tendance (« Voir plus ») ── */}
       {valuesGroup && (
-        <RightDrawer title={valuesGroup.title} onClose={() => setValuesGroup(null)} width="w-[440px] max-w-full">
+        <RightDrawer title={valuesGroup.title} onClose={() => setValuesGroup(null)} width="md:w-[440px] md:max-w-[92vw]">
           <ChartValuesTable group={valuesGroup} series={series} />
         </RightDrawer>
       )}

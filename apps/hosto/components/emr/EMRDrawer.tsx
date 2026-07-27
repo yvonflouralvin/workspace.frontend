@@ -33,7 +33,7 @@ export function EMRDrawer({
     <LeftDrawer
       title={`Dossier — ${patientName}`}
       onClose={onClose}
-      width="w-[720px] max-w-full"
+      width="md:w-[720px] md:max-w-[92vw]"
       contentClassName="flex flex-col gap-0 p-0"
     >
       {/* Tab bar */}

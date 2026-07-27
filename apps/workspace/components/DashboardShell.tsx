@@ -36,7 +36,7 @@ const SECONDARY_ITEMS: NavItem[] = [
 ];
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
-  const { user } = useSessionStore();
+  const { user, activeWorkspace } = useSessionStore();
   const { can } = usePermissions();
   const handleLogout = useLogout();
   const handleSearch = useSearch();
@@ -47,6 +47,14 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
   const visibleApps = PLATFORM_APPS.filter((app) => can(`${app.id}.access`));
 
+  // Pas de rôle stocké côté auth : on l'affiche d'après la propriété du
+  // workspace et les droits d'administration détenus.
+  const roleLabel = activeWorkspace?.is_owner
+    ? "Propriétaire"
+    : can("workspace.settings.manage") || can("members.manage")
+      ? "Administrateur"
+      : "Membre";
+
   return (
     <AppShell
       sidebar={
@@ -54,7 +62,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           topSlot={<WorkspaceSwitcher />}
           navItems={NAV_ITEMS}
           secondaryItems={SECONDARY_ITEMS}
-          bottomSlot={<UserFooter user={userSummary} onLogout={handleLogout} />}
+          bottomSlot={<UserFooter user={userSummary} onLogout={handleLogout} subtitle={roleLabel} />}
         />
       }
       topBar={
@@ -66,6 +74,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           preferencesUrl="/preferences"
           onLogout={handleLogout}
           onSearch={handleSearch}
+          variant="search-first"
           {...WORKSPACE_SHELL}
         />
       }

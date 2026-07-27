@@ -9,10 +9,10 @@ import {
 } from "@/app/lib/api";
 import {
   AddOutlined, ArchiveOutlined, DeleteOutlined, LockOutlined,
-  LocalHospitalOutlined, UnarchiveOutlined, WarningAmberOutlined,
+  UnarchiveOutlined, WarningAmberOutlined,
 } from "@mui/icons-material";
 
-const inputCls = "w-full rounded-xl border border-outline-variant bg-surface-container-lowest px-3 py-2 text-body-md text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary transition-colors";
+const inputCls = "w-full rounded-xl border border-outline-variant bg-surface-container-lowest px-3 py-2 text-body-md text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-tertiary transition-colors";
 
 export default function ServicesPage() {
   const { can } = usePermissions();
@@ -75,17 +75,17 @@ export default function ServicesPage() {
 
   return (
     <DashboardShell>
-      <div className="p-6 max-w-4xl mx-auto space-y-6">
+      <div className="p-4 md:p-6 max-w-[1152px] mx-auto space-y-5">
 
         {/* Header */}
         <div className="flex items-center justify-between gap-4">
           <div>
-            <h1 className="text-headline-sm font-display text-on-surface">Services médicaux</h1>
+            <h1 className="text-headline-md font-display text-on-surface">Services</h1>
             <p className="text-body-sm text-on-surface-variant mt-0.5">{services.length} service{services.length !== 1 ? "s" : ""} configuré{services.length !== 1 ? "s" : ""}</p>
           </div>
           {canManage && !showForm && (
             <button onClick={() => setShowForm(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-on-primary text-body-md font-medium hover:bg-primary-container transition-colors">
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-tertiary text-on-primary text-body-md font-medium hover:bg-tertiary-container transition-colors">
               <AddOutlined style={{ fontSize: 18 }} />
               Nouveau service
             </button>
@@ -122,7 +122,7 @@ export default function ServicesPage() {
                 Annuler
               </button>
               <button type="submit" disabled={saving}
-                className="px-6 py-2 rounded-xl bg-primary text-on-primary text-body-md font-medium hover:bg-primary-container transition-colors disabled:opacity-50">
+                className="px-6 py-2 rounded-xl bg-tertiary text-on-primary text-body-md font-medium hover:bg-tertiary-container transition-colors disabled:opacity-50">
                 {saving ? "Enregistrement…" : "Créer"}
               </button>
             </div>
@@ -185,38 +185,42 @@ function ServiceList({
   if (items.length === 0) return null;
   return (
     <div>
-      <h2 className="text-body-sm font-semibold text-on-surface-variant mb-3 uppercase tracking-wider">{title}</h2>
-      <div className="rounded-2xl border border-outline-variant overflow-hidden divide-y divide-outline-variant">
+      <h2 className="text-label-sm font-semibold text-outline mb-3 uppercase tracking-wider">{title}</h2>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {items.map((svc) => (
-          <div key={svc.id} className={`flex items-center gap-4 px-5 py-3.5 ${dimmed ? "opacity-60" : ""}`}>
-            <div className="w-10 h-10 rounded-xl bg-primary/8 flex items-center justify-center shrink-0">
-              <LocalHospitalOutlined style={{ fontSize: 18 }} className="text-primary" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-body-md font-medium text-on-surface">{svc.nom}</span>
-                <span className="text-label-sm font-mono px-2 py-0.5 rounded-full bg-surface-container text-on-surface-variant border border-outline-variant">{svc.code}</span>
+          <div
+            key={svc.id}
+            className={`rounded-2xl border border-outline-soft bg-surface-container-lowest p-[18px] ${dimmed ? "opacity-60" : ""}`}
+          >
+            <div className="flex items-start gap-3">
+              <span className="w-[38px] h-[38px] flex-none rounded-[10px] bg-tertiary/10 text-tertiary flex items-center justify-center font-mono text-label-md font-semibold">
+                {svc.code}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="font-display text-body-lg font-semibold text-on-surface truncate">{svc.nom}</p>
                 {svc.is_system && (
-                  <span className="inline-flex items-center gap-1 text-label-sm px-2 py-0.5 rounded-full bg-tertiary/10 text-tertiary">
+                  <span className="inline-flex items-center gap-1 mt-0.5 text-[11px] font-semibold px-1.5 py-0.5 rounded-full bg-tertiary/10 text-tertiary">
                     <LockOutlined style={{ fontSize: 11 }} />Système
                   </span>
                 )}
               </div>
-              {svc.description && <p className="text-body-sm text-on-surface-variant mt-0.5">{svc.description}</p>}
+              {canManage && !svc.is_system && (
+                <div className="flex items-center gap-0.5 flex-none -mr-1.5 -mt-1">
+                  <button onClick={() => onToggle(svc)} title={svc.active ? "Archiver" : "Réactiver"}
+                    className="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors">
+                    {svc.active
+                      ? <ArchiveOutlined style={{ fontSize: 16 }} />
+                      : <UnarchiveOutlined style={{ fontSize: 16 }} />}
+                  </button>
+                  <button onClick={() => onDelete(svc)} title="Supprimer"
+                    className="p-1.5 rounded-lg text-on-surface-variant hover:text-error hover:bg-error/8 transition-colors">
+                    <DeleteOutlined style={{ fontSize: 16 }} />
+                  </button>
+                </div>
+              )}
             </div>
-            {canManage && !svc.is_system && (
-              <div className="flex items-center gap-1 shrink-0">
-                <button onClick={() => onToggle(svc)} title={svc.active ? "Archiver" : "Réactiver"}
-                  className="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors">
-                  {svc.active
-                    ? <ArchiveOutlined style={{ fontSize: 17 }} />
-                    : <UnarchiveOutlined style={{ fontSize: 17 }} />}
-                </button>
-                <button onClick={() => onDelete(svc)} title="Supprimer"
-                  className="p-1.5 rounded-lg text-on-surface-variant hover:text-error hover:bg-error/8 transition-colors">
-                  <DeleteOutlined style={{ fontSize: 17 }} />
-                </button>
-              </div>
+            {svc.description && (
+              <p className="text-body-sm text-on-surface-variant mt-3 line-clamp-2">{svc.description}</p>
             )}
           </div>
         ))}

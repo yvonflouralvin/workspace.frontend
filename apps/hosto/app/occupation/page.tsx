@@ -9,7 +9,6 @@ import { DashboardShell } from "@/components/DashboardShell";
 import {
   ArrowBackOutlined,
   BedOutlined,
-  HotelOutlined,
   LockOutlined,
   PersonSearchOutlined,
   RefreshOutlined,
@@ -34,13 +33,22 @@ const POLL_MS = 30_000;
 
 const TILE_CLS: Record<LitStatus, string> = {
   LIBRE: "border-secondary/40 bg-secondary/5",
-  OCCUPE: "border-primary/40 bg-primary/8",
-  NETTOYAGE: "border-error/30 bg-error-container/40",
+  OCCUPE: "border-tertiary/40 bg-tertiary/10",
+  NETTOYAGE: "border-locked/50 bg-locked-container/60",
   MAINTENANCE: "border-outline-variant bg-error-container/25",
   HORS_SERVICE: "border-outline-variant bg-surface-container opacity-60",
 };
 
 const CHAMBRE_TYPES = ["INDIVIDUELLE", "DOUBLE", "COMMUNE", "ISOLEMENT"];
+
+function LegendItem({ className, label }: { className: string; label: string }) {
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <span className={`w-3 h-3 rounded border ${className}`} />
+      {label}
+    </span>
+  );
+}
 
 function tauxTone(taux: number): { bar: string; text: string } {
   if (taux >= 90) return { bar: "bg-error", text: "text-error" };
@@ -62,7 +70,7 @@ function OverviewCard({ ov, onOpen }: { ov: ServiceOccupationOverview; onOpen: (
     <button
       type="button"
       onClick={onOpen}
-      className="text-left rounded-2xl border border-outline-variant bg-surface-container-lowest p-5 hover:border-primary/40 transition-colors"
+      className="text-left rounded-2xl border border-outline-variant bg-surface-container-lowest p-5 hover:border-tertiary/40 transition-colors"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
@@ -77,7 +85,7 @@ function OverviewCard({ ov, onOpen }: { ov: ServiceOccupationOverview; onOpen: (
       <div className="mt-3 flex items-center gap-3 flex-wrap text-label-sm text-on-surface-variant">
         <span className="text-secondary font-medium">{ov.libres} libre(s)</span>
         <span>·</span>
-        <span className="text-primary font-medium">{ov.occupes} occupé(s)</span>
+        <span className="text-tertiary font-medium">{ov.occupes} occupé(s)</span>
         {ov.nettoyage > 0 && <><span>·</span><span>{ov.nettoyage} nettoyage</span></>}
         {ov.maintenance + ov.hors_service > 0 && (
           <><span>·</span><span>{ov.maintenance + ov.hors_service} indispo.</span></>
@@ -179,7 +187,7 @@ function ServiceDetail({ serviceId, onBack, refreshKey }: {
         <div className="flex rounded-xl border border-outline-variant overflow-hidden">
           {(["all", "LIBRE", "OCCUPE"] as const).map((f) => (
             <button key={f} type="button" onClick={() => setFilter(f)}
-              className={`px-3 py-1.5 text-body-sm transition-colors ${filter === f ? "bg-primary text-on-primary" : "text-on-surface-variant hover:bg-surface-container"}`}>
+              className={`px-3 py-1.5 text-body-sm transition-colors ${filter === f ? "bg-tertiary text-on-primary" : "text-on-surface-variant hover:bg-surface-container"}`}>
               {f === "all" ? "Tous" : f === "LIBRE" ? "Libres" : "Occupés"}
             </button>
           ))}
@@ -214,7 +222,7 @@ function ServiceDetail({ serviceId, onBack, refreshKey }: {
 
       {occupant?.occupant && (
         <RightDrawer title={`Lit ${occupant.numero} — ${occupant.occupant.patient_nom}`}
-          onClose={() => setOccupant(null)} width="w-[480px] max-w-full">
+          onClose={() => setOccupant(null)} width="md:w-[480px] md:max-w-[92vw]">
           <div className="space-y-4 text-body-sm">
             <div className="grid grid-cols-2 gap-3">
               <div><p className="text-label-sm text-on-surface-variant">Dossier</p><p className="text-on-surface">{occupant.occupant.patient_dossier}</p></div>
@@ -223,7 +231,7 @@ function ServiceDetail({ serviceId, onBack, refreshKey }: {
               <div><p className="text-label-sm text-on-surface-variant">Durée</p><p className="text-on-surface">{occupant.occupant.duree_jours} jour(s)</p></div>
             </div>
             <Link href={`/patients/${occupant.occupant.patient_id}/emr`}
-              className="inline-flex items-center gap-1.5 text-body-sm text-primary hover:opacity-70 transition-opacity">
+              className="inline-flex items-center gap-1.5 text-body-sm text-tertiary hover:opacity-70 transition-opacity">
               Ouvrir le dossier médical →
             </Link>
             <SejourActions sejourId={occupant.occupant.sejour_id} serviceId={serviceId}
@@ -262,12 +270,12 @@ function SearchView({ overview, canAdmit, onAdmitted }: {
     <div className="space-y-4">
       <div className="flex items-center gap-3 flex-wrap">
         <select value={serviceId} onChange={(e) => setServiceId(e.target.value === "" ? "" : Number(e.target.value))}
-          className="rounded-xl border border-outline-variant bg-surface-container-lowest px-3 py-2 text-body-md text-on-surface focus:outline-none focus:border-primary">
+          className="rounded-xl border border-outline-variant bg-surface-container-lowest px-3 py-2 text-body-md text-on-surface focus:outline-none focus:border-tertiary">
           <option value="">Tous les services</option>
           {overview.map((o) => <option key={o.service_id} value={o.service_id}>{o.service_nom}</option>)}
         </select>
         <select value={type} onChange={(e) => setType(e.target.value)}
-          className="rounded-xl border border-outline-variant bg-surface-container-lowest px-3 py-2 text-body-md text-on-surface focus:outline-none focus:border-primary">
+          className="rounded-xl border border-outline-variant bg-surface-container-lowest px-3 py-2 text-body-md text-on-surface focus:outline-none focus:border-tertiary">
           <option value="">Tous types de chambre</option>
           {CHAMBRE_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
         </select>
@@ -290,7 +298,7 @@ function SearchView({ overview, canAdmit, onAdmitted }: {
               </div>
               {canAdmit && (
                 <button type="button" onClick={() => setAdmitLit(lit)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary text-on-primary text-body-sm font-medium hover:bg-primary-container transition-colors">
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-tertiary text-on-primary text-body-sm font-medium hover:bg-tertiary-container transition-colors">
                   <PersonSearchOutlined style={{ fontSize: 16 }} /> Admettre ici
                 </button>
               )}
@@ -325,7 +333,7 @@ function AdmitDrawer({ lit, onClose, onDone }: { lit: LitLibre; onClose: () => v
   }
 
   return (
-    <RightDrawer title="Admettre un patient" onClose={onClose} width="w-[480px] max-w-full">
+    <RightDrawer title="Admettre un patient" onClose={onClose} width="md:w-[480px] md:max-w-[92vw]">
       <div className="h-full flex flex-col overflow-hidden">
         <div className="flex-1 overflow-y-auto pr-1 space-y-4">
           <div className="rounded-xl bg-surface-container px-4 py-3 text-body-sm text-on-surface">
@@ -344,14 +352,14 @@ function AdmitDrawer({ lit, onClose, onDone }: { lit: LitLibre; onClose: () => v
           <div>
             <p className="text-label-md font-medium text-on-surface-variant mb-1.5">Motif d&apos;admission</p>
             <textarea value={motif} onChange={(e) => setMotif(e.target.value)} rows={2}
-              className="w-full rounded-xl border border-outline-variant bg-surface-container-lowest px-3 py-2 text-body-md text-on-surface focus:outline-none focus:border-primary resize-none"
+              className="w-full rounded-xl border border-outline-variant bg-surface-container-lowest px-3 py-2 text-body-md text-on-surface focus:outline-none focus:border-tertiary resize-none"
               placeholder="Ex : surveillance post-opératoire" />
           </div>
           {error && <p className="text-body-sm text-error bg-error-container/40 rounded-xl px-4 py-3">{error}</p>}
         </div>
         <div className="shrink-0 flex gap-3 pt-4 border-t border-outline-variant">
           <button type="button" onClick={submit} disabled={saving}
-            className="flex-1 py-2 rounded-xl bg-primary text-on-primary text-body-md font-medium hover:bg-primary-container transition-colors disabled:opacity-50">
+            className="flex-1 py-2 rounded-xl bg-tertiary text-on-primary text-body-md font-medium hover:bg-tertiary-container transition-colors disabled:opacity-50">
             {saving ? "Admission…" : "Admettre"}
           </button>
           <button type="button" onClick={onClose} disabled={saving}
@@ -410,21 +418,33 @@ export default function OccupationPage() {
     );
   }
 
+  const totals = overview.reduce(
+    (acc, o) => {
+      const lits = o.libres + o.occupes + o.nettoyage + o.maintenance + o.hors_service;
+      acc.lits += lits;
+      acc.occupes += o.occupes;
+      return acc;
+    },
+    { lits: 0, occupes: 0 }
+  );
+  const tauxGlobal = totals.lits > 0 ? Math.round((totals.occupes / totals.lits) * 100) : 0;
+
   return (
     <DashboardShell>
-      <div className="p-8 max-w-5xl mx-auto space-y-6">
+      <div className="p-4 md:p-8 max-w-[1152px] mx-auto space-y-5">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
-            <h1 className="text-headline-md font-display text-on-surface flex items-center gap-2">
-              <HotelOutlined style={{ fontSize: 26 }} /> Occupation
-            </h1>
-            <p className="text-body-sm text-on-surface-variant mt-1">Vue temps réel des lits et des patients hospitalisés.</p>
+            <h1 className="text-headline-md font-display text-on-surface">Occupation</h1>
+            <p className="text-body-sm text-on-surface-variant mt-1">
+              Service → Chambre → Lit
+              {!loading && totals.lits > 0 && ` · ${totals.lits} lits · ${tauxGlobal} % occupés`}
+            </p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             <div className="flex rounded-xl border border-outline-variant overflow-hidden">
               {(["board", "search"] as const).map((m) => (
                 <button key={m} type="button" onClick={() => { setMode(m); setSelectedService(null); }}
-                  className={`px-3 py-2 text-body-sm transition-colors ${mode === m ? "bg-primary text-on-primary" : "text-on-surface-variant hover:bg-surface-container"}`}>
+                  className={`px-3 py-2 text-body-sm transition-colors ${mode === m ? "bg-tertiary text-on-primary" : "text-on-surface-variant hover:bg-surface-container"}`}>
                   {m === "board" ? "Tableau de bord" : "Trouver un lit"}
                 </button>
               ))}
@@ -437,6 +457,14 @@ export default function OccupationPage() {
         </div>
 
         {error && <p className="text-body-sm text-error bg-error-container/40 rounded-xl px-4 py-3">{error}</p>}
+
+        {mode === "board" && (
+          <div className="flex items-center gap-4 flex-wrap text-label-md text-on-surface-variant">
+            <LegendItem className="border-secondary/60 bg-secondary/15" label="Libre" />
+            <LegendItem className="border-tertiary/60 bg-tertiary/15" label="Occupé" />
+            <LegendItem className="border-locked/60 bg-locked-container" label="Nettoyage" />
+          </div>
+        )}
 
         {mode === "search" ? (
           <SearchView overview={overview} canAdmit={canAdmit} onAdmitted={refreshNow} />

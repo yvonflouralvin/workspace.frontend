@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
 import { RightDrawer } from "@repo/ui/RightDrawer";
+import { Pagination } from "@repo/ui/Pagination";
 import { DashboardShell } from "@/components/DashboardShell";
 import {
   listStaff, listServices, createStaff, updateStaff, deleteStaff,
@@ -10,7 +11,7 @@ import {
   type HostoStaff, type Service, type HREmployee, ROLE_LABELS, type StaffRole,
 } from "@/app/lib/api";
 import {
-  AddOutlined, CheckOutlined, ChevronLeftOutlined, ChevronRightOutlined,
+  AddOutlined, CheckOutlined,
   CloseOutlined, DeleteOutlined, EditOutlined, FilterListOutlined,
   MedicalServicesOutlined, PersonSearchOutlined, SearchOutlined, WarningAmberOutlined,
 } from "@mui/icons-material";
@@ -328,7 +329,7 @@ export default function StaffPage() {
 
   return (
     <DashboardShell>
-      <div className="p-6 max-w-5xl mx-auto space-y-6">
+      <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-6">
 
         {/* Header */}
         <div className="flex items-center justify-between gap-4 flex-wrap">
@@ -549,33 +550,7 @@ export default function StaffPage() {
             <p className="text-body-sm text-on-surface-variant">
               Page {page} sur {pages} · {total} résultat{total !== 1 ? "s" : ""}
             </p>
-            <div className="flex items-center gap-1">
-              <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
-                className="p-1.5 rounded-lg text-on-surface-variant border border-outline-variant hover:bg-surface-container transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
-                <ChevronLeftOutlined style={{ fontSize: 18 }} />
-              </button>
-              {Array.from({ length: pages }, (_, i) => i + 1)
-                .filter((p) => p === 1 || p === pages || Math.abs(p - page) <= 1)
-                .reduce<(number | "…")[]>((acc, p, i, arr) => {
-                  if (i > 0 && p - (arr[i - 1] as number) > 1) acc.push("…");
-                  acc.push(p);
-                  return acc;
-                }, [])
-                .map((p, i) =>
-                  p === "…" ? (
-                    <span key={`ellipsis-${i}`} className="px-2 text-body-sm text-on-surface-variant">…</span>
-                  ) : (
-                    <button key={p} onClick={() => setPage(p as number)}
-                      className={`min-w-[32px] h-8 px-2 rounded-lg text-body-sm font-medium transition-colors ${page === p ? "bg-primary text-on-primary" : "text-on-surface-variant border border-outline-variant hover:bg-surface-container"}`}>
-                      {p}
-                    </button>
-                  )
-                )}
-              <button onClick={() => setPage((p) => Math.min(pages, p + 1))} disabled={page === pages}
-                className="p-1.5 rounded-lg text-on-surface-variant border border-outline-variant hover:bg-surface-container transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
-                <ChevronRightOutlined style={{ fontSize: 18 }} />
-              </button>
-            </div>
+            <Pagination page={page} pages={pages} onChange={setPage} className="flex-none" />
           </div>
         )}
       </div>

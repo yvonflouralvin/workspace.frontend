@@ -1,279 +1,325 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useState } from "react";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { useSessionStore } from "@repo/auth/store/session.store";
-import { usePermissions } from "@repo/auth/hooks/usePermissions";
-import { apiFetch } from "@repo/network/client";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import {
-  ArrowBackOutlined, AddOutlined, ViewKanbanOutlined, ViewListOutlined,
-  ScheduleOutlined, DeleteOutlineOutlined,
+  CloudDoneOutlined,
+  CloudOffOutlined,
+  CloudSyncOutlined,
+  AccountTreeOutlined,
+  ChevronRightOutlined,
+  GroupOutlined,
 } from "@mui/icons-material";
+import { Avatar } from "@repo/ui/Avatar";
+import { RichTextEditor } from "@repo/ui/RichTextEditor";
 import {
-  projectsApi, STATUS_LABELS, STATUS_ORDER, PRIORITY_LABELS, PRIORITY_ORDER, priorityTone,
-  type Project, type Task,
+  projectsApi,
+  phasesVisible,
+  PROJECT_COLORS,
+  PROJECT_STATUS_DOTS,
+  PROJECT_STATUS_LABELS,
+  PROJECT_STATUS_ORDER,
+  type Project,
 } from "@/app/lib/projects-api";
+import { useProject } from "./project-context";
 
-interface Member { id: number; name: string }
+type SaveState = "idle" | "saving" | "saved" | "error";
 
-export default function ProjectDetailPage() {
-  return (
-    <Suspense fallback={<div className="p-8 text-sm text-on-surface-variant">Chargement…</div>}>
-      <ProjectDetailInner />
-    </Suspense>
+const SAVE_DELAY_MS = 800;
+const LABEL = "block text-label-sm uppercase text-outline";
+
+export default function ProjectOverviewPage() {
+  const { projectId, project, setProject, tasks, phases, members, canManage } = useProject();
+  const showPhases = phasesVisible(phases);
+  const [name, setName] = useState(project.name);
+  const [saveState, setSaveState] = useState<SaveState>("idle");
+
+  const pending = useRef<Partial<Project>>({});
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const flush = useCallback(async () => {
+    const body = pending.current;
+    pending.current = {};
+    if (!Object.keys(body).length) return;
+    setSaveState("saving");
+    try {
+      const updated = await projectsApi.updateProject(projectId, body);
+      setProject(updated);
+      setSaveState("saved");
+    } catch {
+      setSaveState("error");
+    }
+  }, [projectId, setProject]);
+
+  const queue = useCallback(
+    (patch: Partial<Project>) => {
+      pending.current = { ...pending.current, ...patch };
+      if (timer.current) clearTimeout(timer.current);
+      timer.current = setTimeout(flush, SAVE_DELAY_MS);
+    },
+    [flush]
   );
-}
 
-function ProjectDetailInner() {
-  const { id } = useParams<{ id: string }>();
-  const projectId = Number(id);
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const { can } = usePermissions();
-  const canManage = can("projects.manage");
-  const activeWorkspace = useSessionStore((s) => s.activeWorkspace);
+  // Quitter l'aperçu ne doit pas perdre une frappe en cours.
+  useEffect(
+    () => () => {
+      if (timer.current) clearTimeout(timer.current);
+      void flush();
+    },
+    [flush]
+  );
 
-  const [project, setProject] = useState<Project | null>(null);
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [members, setMembers] = useState<Member[]>([]);
-  const [view, setView] = useState<"liste" | "kanban">("kanban");
-  const [loading, setLoading] = useState(true);
-  const [editing, setEditing] = useState<Task | "new" | null>(null);
-
-  const loadTasks = useCallback(() => projectsApi.listTasks(projectId).then(setTasks), [projectId]);
-
-  useEffect(() => {
-    setLoading(true);
-    Promise.all([projectsApi.getProject(projectId), projectsApi.listTasks(projectId)])
-      .then(([p, t]) => { setProject(p); setTasks(t); })
-      .finally(() => setLoading(false));
-  }, [projectId]);
-
-  useEffect(() => {
-    if (!activeWorkspace?.id) return;
-    apiFetch(`/api/workspaces/${activeWorkspace.id}/members`).then((r) => r.ok ? r.json() : []).then((rows) => {
-      const list: Member[] = (Array.isArray(rows) ? rows : rows?.items ?? []).map((m: Record<string, unknown>) => ({
-        id: Number(m.user_id ?? m.id), name: String(m.username ?? m.name ?? `#${m.user_id ?? m.id}`),
-      }));
-      setMembers(list.filter((m) => Number.isFinite(m.id)));
-    }).catch(() => {});
-  }, [activeWorkspace]);
-
-  useEffect(() => {
-    const t = searchParams.get("task");
-    if (t && tasks.length) { const found = tasks.find((x) => x.id === Number(t)); if (found) setEditing(found); }
-  }, [searchParams, tasks]);
-
-  async function moveTask(task: Task, status: string) {
-    setTasks((cur) => cur.map((t) => t.id === task.id ? { ...t, status } : t));
-    try { await projectsApi.updateTask(task.id, { status }); } finally { loadTasks(); }
-  }
-
-  if (loading) return <div className="p-8 text-sm text-on-surface-variant">Chargement…</div>;
-  if (!project) return <div className="p-8 text-sm text-error">Projet introuvable.</div>;
+  const done = useMemo(() => tasks.filter((t) => t.categorie === "termine").length, [tasks]);
+  const pct = tasks.length ? Math.round((done / tasks.length) * 100) : 0;
+  const lead = members.find((m) => m.id === project.lead_user_id);
 
   return (
-    <div className="p-8 max-w-6xl mx-auto space-y-5">
-      <button onClick={() => router.push("/projects")} className="inline-flex items-center gap-1.5 text-sm text-on-surface-variant hover:text-on-surface">
-        <ArrowBackOutlined style={{ fontSize: 16 }} /> Projets
-      </button>
-
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex items-center gap-3">
-          <span className="w-11 h-11 rounded-xl flex items-center justify-center text-lg"
-            style={{ background: (project.color ?? "#3525cd") + "1a", color: project.color ?? "#3525cd" }}>
-            {project.icon ?? project.key.slice(0, 2)}
-          </span>
-          <div>
-            <h1 className="text-xl font-bold text-on-surface">{project.name}</h1>
-            <p className="text-xs text-on-surface-variant font-mono">{project.key} · {tasks.length} tâche(s)</p>
-          </div>
+    <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-6 items-start">
+      <div>
+        <div className="flex items-start justify-between gap-4">
+          <label className={LABEL} htmlFor="project-name">
+            Nom du projet
+          </label>
+          <SaveIndicator state={saveState} />
         </div>
-        <div className="flex items-center gap-2">
-          <div className="flex rounded-xl border border-outline-variant overflow-hidden">
-            <button onClick={() => setView("liste")} title="Liste" className={`px-3 py-2 ${view === "liste" ? "bg-primary text-on-primary" : "text-on-surface-variant"}`}><ViewListOutlined style={{ fontSize: 18 }} /></button>
-            <button onClick={() => setView("kanban")} title="Kanban" className={`px-3 py-2 ${view === "kanban" ? "bg-primary text-on-primary" : "text-on-surface-variant"}`}><ViewKanbanOutlined style={{ fontSize: 18 }} /></button>
-          </div>
-          {canManage && (
-            <button onClick={() => setEditing("new")} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-on-primary text-sm font-medium">
-              <AddOutlined style={{ fontSize: 18 }} /> Nouvelle tâche
-            </button>
-          )}
+        <input
+          id="project-name"
+          value={name}
+          onChange={(e) => {
+            setName(e.target.value);
+            if (e.target.value.trim()) queue({ name: e.target.value.trim() });
+          }}
+          disabled={!canManage}
+          placeholder="Nom du projet"
+          className="mt-1 w-full bg-transparent font-display text-headline-md text-on-surface outline-none border-b border-transparent hover:border-outline-soft focus:border-primary transition-colors disabled:hover:border-transparent"
+        />
+        {!name.trim() && <p className="mt-1 text-label-md text-error">Le nom est requis.</p>}
+
+        <p className={`${LABEL} mt-6 mb-2`}>Description</p>
+        <div className="rounded-2xl border border-outline-soft bg-surface-container-lowest overflow-hidden">
+          <RichTextEditor
+            value={project.description_rich}
+            fallbackText={project.description}
+            editable={canManage}
+            placeholder="Décrivez le projet…"
+            className="min-h-[16rem]"
+            onChange={canManage ? (json) => queue({ description_rich: json }) : undefined}
+          />
         </div>
       </div>
 
-      {view === "kanban" ? (
-        <KanbanBoard tasks={tasks} canManage={canManage} onMove={moveTask} onOpen={setEditing} projectKey={project.key} />
-      ) : (
-        <ListView tasks={tasks} onOpen={setEditing} projectKey={project.key} />
-      )}
-
-      {editing && (
-        <TaskDrawer
-          task={editing === "new" ? null : editing}
-          projectId={projectId}
-          members={members}
-          canManage={canManage}
-          onClose={() => { setEditing(null); router.replace(`/projects/${projectId}`); }}
-          onSaved={() => { loadTasks(); setEditing(null); }}
-        />
-      )}
-    </div>
-  );
-}
-
-function KanbanBoard({ tasks, canManage, onMove, onOpen, projectKey }: {
-  tasks: Task[]; canManage: boolean; onMove: (t: Task, s: string) => void; onOpen: (t: Task) => void; projectKey: string;
-}) {
-  const [drag, setDrag] = useState<Task | null>(null);
-  return (
-    <div className="flex gap-3 overflow-x-auto pb-2">
-      {STATUS_ORDER.map((status) => {
-        const col = tasks.filter((t) => t.status === status);
-        return (
-          <div key={status}
-            onDragOver={(e) => { if (drag) e.preventDefault(); }}
-            onDrop={() => { if (drag && drag.status !== status) onMove(drag, status); setDrag(null); }}
-            className="w-72 shrink-0 rounded-2xl bg-surface-container/50 border border-outline-variant p-2">
-            <div className="flex items-center justify-between px-2 py-1.5">
-              <span className="text-sm font-medium text-on-surface-variant">{STATUS_LABELS[status]}</span>
-              <span className="text-xs text-on-surface-variant/60">{col.length}</span>
-            </div>
-            <div className="space-y-2 min-h-[40px]">
-              {col.map((t) => (
-                <div key={t.id} draggable={canManage} onDragStart={() => setDrag(t)} onDragEnd={() => setDrag(null)}
-                  onClick={() => onOpen(t)}
-                  className="rounded-xl bg-surface-container-lowest border border-outline-variant p-3 cursor-pointer hover:border-primary/40">
-                  <p className="text-sm text-on-surface">{t.title}</p>
-                  <div className="flex items-center gap-2 mt-2 text-xs text-on-surface-variant">
-                    <span className="font-mono">{projectKey}-{t.number}</span>
-                    {t.priority !== "AUCUNE" && <span className={priorityTone(t.priority)}>· {PRIORITY_LABELS[t.priority]}</span>}
-                    {t.assignee_name && <span className="ml-auto w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-semibold">{t.assignee_name.slice(0, 2).toUpperCase()}</span>}
-                  </div>
-                </div>
+      <aside className="rounded-2xl border border-outline-soft bg-surface-container-lowest divide-y divide-hairline">
+        <MetaRow label="Statut">
+          {canManage ? (
+            <select
+              value={project.status}
+              onChange={(e) => queue({ status: e.target.value })}
+              className="h-8 rounded-lg border border-outline-soft bg-surface-container-lowest px-2 text-body-sm font-semibold text-on-surface outline-none focus:border-primary"
+            >
+              {PROJECT_STATUS_ORDER.map((s) => (
+                <option key={s} value={s}>
+                  {PROJECT_STATUS_LABELS[s]}
+                </option>
               ))}
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-function ListView({ tasks, onOpen, projectKey }: { tasks: Task[]; onOpen: (t: Task) => void; projectKey: string }) {
-  return (
-    <div className="space-y-5">
-      {STATUS_ORDER.map((status) => {
-        const rows = tasks.filter((t) => t.status === status);
-        if (rows.length === 0) return null;
-        return (
-          <div key={status}>
-            <h3 className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-2">{STATUS_LABELS[status]} · {rows.length}</h3>
-            <div className="rounded-2xl border border-outline-variant overflow-hidden">
-              {rows.map((t, i) => (
-                <button key={t.id} onClick={() => onOpen(t)}
-                  className={`w-full text-left flex items-center gap-3 px-4 py-3 border-b border-outline-variant last:border-0 hover:bg-surface-container-low ${i % 2 === 0 ? "bg-surface-container-lowest" : "bg-surface-container-low/50"}`}>
-                  <span className="text-xs font-mono text-on-surface-variant w-16 shrink-0">{projectKey}-{t.number}</span>
-                  <span className="flex-1 text-sm text-on-surface truncate">{t.title}</span>
-                  {t.priority !== "AUCUNE" && <span className={`text-xs ${priorityTone(t.priority)}`}>{PRIORITY_LABELS[t.priority]}</span>}
-                  {t.assignee_name && <span className="text-xs text-on-surface-variant">{t.assignee_name}</span>}
-                  {t.due_date && <span className="text-xs text-on-surface-variant flex items-center gap-1"><ScheduleOutlined style={{ fontSize: 13 }} />{new Date(t.due_date).toLocaleDateString("fr-FR", { day: "2-digit", month: "short" })}</span>}
-                </button>
-              ))}
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-function TaskDrawer({ task, projectId, members, canManage, onClose, onSaved }: {
-  task: Task | null; projectId: number; members: Member[]; canManage: boolean; onClose: () => void; onSaved: () => void;
-}) {
-  const [title, setTitle] = useState(task?.title ?? "");
-  const [description, setDescription] = useState(task?.description ?? "");
-  const [status, setStatus] = useState(task?.status ?? "A_FAIRE");
-  const [priority, setPriority] = useState(task?.priority ?? "AUCUNE");
-  const [assignee, setAssignee] = useState<string>(task?.assignee_user_id ? String(task.assignee_user_id) : "");
-  const [dueDate, setDueDate] = useState(task?.due_date ? task.due_date.slice(0, 10) : "");
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function save() {
-    setError(null);
-    if (!title.trim()) { setError("Le titre est requis."); return; }
-    setSaving(true);
-    const body = {
-      title: title.trim(), description: description.trim() || null, status, priority,
-      assignee_user_id: assignee ? Number(assignee) : null,
-      due_date: dueDate ? new Date(dueDate).toISOString() : null,
-    };
-    try {
-      if (task) await projectsApi.updateTask(task.id, body);
-      else await projectsApi.createTask({ project_id: projectId, ...body });
-      onSaved();
-    } catch (e) { setError(e instanceof Error ? e.message : "Enregistrement impossible."); }
-    finally { setSaving(false); }
-  }
-
-  async function remove() {
-    if (!task) return;
-    setSaving(true);
-    try { await projectsApi.deleteTask(task.id); onSaved(); } finally { setSaving(false); }
-  }
-
-  const readOnly = !canManage;
-
-  return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-black/40" onClick={onClose}>
-      <div className="w-full max-w-md h-full bg-surface-container-lowest border-l border-outline-variant p-6 space-y-4 overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-on-surface">{task ? "Tâche" : "Nouvelle tâche"}</h2>
-          <button onClick={onClose} className="text-on-surface-variant hover:text-on-surface">✕</button>
-        </div>
-        {error && <p className="text-sm text-error">{error}</p>}
-        <input className={inputCls} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Titre de la tâche" disabled={readOnly} autoFocus />
-        <textarea className={inputCls} rows={4} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Description…" disabled={readOnly} />
-        <div className="grid grid-cols-2 gap-3">
-          <Sel label="Statut" value={status} onChange={setStatus} options={STATUS_ORDER.map((s) => [s, STATUS_LABELS[s]])} disabled={readOnly} />
-          <Sel label="Priorité" value={priority} onChange={setPriority} options={PRIORITY_ORDER.map((p) => [p, PRIORITY_LABELS[p]])} disabled={readOnly} />
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-on-surface-variant">Assigné</label>
-            <select className={inputCls} value={assignee} onChange={(e) => setAssignee(e.target.value)} disabled={readOnly}>
-              <option value="">Non assigné</option>
-              {members.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
             </select>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 text-body-sm font-semibold text-on-surface">
+              <span className={`w-2 h-2 rounded-full ${PROJECT_STATUS_DOTS[project.status] ?? ""}`} />
+              {PROJECT_STATUS_LABELS[project.status] ?? project.status}
+            </span>
+          )}
+        </MetaRow>
+
+        <MetaRow label="Responsable">
+          {canManage ? (
+            <select
+              value={project.lead_user_id ?? ""}
+              onChange={(e) =>
+                queue({ lead_user_id: e.target.value ? Number(e.target.value) : null })
+              }
+              className="h-8 max-w-[150px] rounded-lg border border-outline-soft bg-surface-container-lowest px-2 text-body-sm text-on-surface outline-none focus:border-primary"
+            >
+              <option value="">Non assigné</option>
+              {members.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name}
+                </option>
+              ))}
+            </select>
+          ) : lead ? (
+            <span className="inline-flex items-center gap-2 text-body-sm text-on-surface">
+              <Avatar name={lead.name} size={22} />
+              {lead.name}
+            </span>
+          ) : (
+            <span className="text-body-sm text-outline">—</span>
+          )}
+        </MetaRow>
+
+        <MetaRow label="Début">
+          <DateValue
+            value={project.start_date}
+            editable={canManage}
+            onChange={(v) => queue({ start_date: v })}
+          />
+        </MetaRow>
+
+        <MetaRow label="Échéance">
+          <DateValue
+            value={project.due_date}
+            editable={canManage}
+            onChange={(v) => queue({ due_date: v })}
+          />
+        </MetaRow>
+
+        <div className="px-4 py-3">
+          <div className="flex items-center justify-between">
+            <span className="text-body-sm text-on-surface-variant">Progression</span>
+            <span className="text-body-sm font-semibold text-on-surface">{pct} %</span>
           </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-on-surface-variant">Échéance</label>
-            <input type="date" className={inputCls} value={dueDate} onChange={(e) => setDueDate(e.target.value)} disabled={readOnly} />
+          <div className="flex items-center gap-2.5 mt-2">
+            <div className="flex-1 h-1.5 rounded-full bg-surface-container overflow-hidden">
+              <div className="h-full bg-secondary rounded-full" style={{ width: `${pct}%` }} />
+            </div>
+            <span className="text-label-md text-outline">
+              {done} / {tasks.length}
+            </span>
           </div>
         </div>
-        {!readOnly && (
-          <div className="flex items-center justify-between pt-2">
-            {task ? (
-              <button onClick={remove} disabled={saving} className="inline-flex items-center gap-1.5 text-sm text-error hover:opacity-70"><DeleteOutlineOutlined style={{ fontSize: 18 }} /> Supprimer</button>
-            ) : <span />}
-            <button onClick={save} disabled={saving} className="px-5 py-2 rounded-xl bg-primary text-on-primary text-sm font-medium disabled:opacity-50">{saving ? "…" : "Enregistrer"}</button>
+
+        <MetaRow label="Clé">
+          <span className="font-mono text-body-sm text-on-surface" title="Non modifiable">
+            {project.key}
+          </span>
+        </MetaRow>
+
+        {/* Structure : découpage en phases. Discret quand le projet n'a qu'une phase
+            implicite — l'utilisateur qui veut une simple liste ne voit rien d'imposé. */}
+        {showPhases ? (
+          <MetaRow label="Structure">
+            <Link
+              href={`/projects/${projectId}/phases`}
+              className="inline-flex items-center gap-1 text-body-sm font-semibold text-primary hover:underline"
+            >
+              {phases.length} phase{phases.length > 1 ? "s" : ""}
+              <ChevronRightOutlined style={{ fontSize: 15 }} />
+            </Link>
+          </MetaRow>
+        ) : canManage ? (
+          <div className="px-4 py-3">
+            <Link
+              href={`/projects/${projectId}/phases`}
+              className="inline-flex items-center gap-1.5 text-body-sm text-on-surface-variant hover:text-primary transition-colors"
+            >
+              <AccountTreeOutlined style={{ fontSize: 16 }} />
+              Découper en phases
+            </Link>
+          </div>
+        ) : null}
+
+        <Link
+          href={`/projects/${projectId}/members`}
+          className="flex items-center justify-between gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-low hover:text-primary transition-colors"
+        >
+          <span className="inline-flex items-center gap-2 text-body-sm font-medium">
+            <GroupOutlined style={{ fontSize: 17 }} />
+            Membres
+          </span>
+          <ChevronRightOutlined style={{ fontSize: 18 }} />
+        </Link>
+
+        {canManage && (
+          <div className="px-4 py-3">
+            <p className="text-body-sm text-on-surface-variant mb-2">Couleur</p>
+            <div className="flex flex-wrap gap-1.5">
+              {PROJECT_COLORS.map((color) => {
+                const active = (project.color ?? "#3525cd") === color;
+                return (
+                  <button
+                    key={color}
+                    type="button"
+                    aria-label={`Couleur ${color}`}
+                    onClick={() => queue({ color })}
+                    style={{ background: color }}
+                    className={`w-[26px] h-[26px] rounded-lg transition-transform ${
+                      active ? "ring-2 ring-offset-2 ring-primary scale-105" : "hover:scale-105"
+                    }`}
+                  />
+                );
+              })}
+            </div>
           </div>
         )}
-      </div>
+      </aside>
     </div>
   );
 }
 
-function Sel({ label, value, onChange, options, disabled }: { label: string; value: string; onChange: (v: string) => void; options: [string, string][]; disabled?: boolean }) {
+function MetaRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex flex-col gap-1">
-      <label className="text-xs font-medium text-on-surface-variant">{label}</label>
-      <select className={inputCls} value={value} onChange={(e) => onChange(e.target.value)} disabled={disabled}>
-        {options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-      </select>
+    <div className="flex items-center justify-between gap-3 px-4 py-3">
+      <span className="text-body-sm text-on-surface-variant">{label}</span>
+      {children}
     </div>
   );
 }
 
-const inputCls = "px-3 py-2 rounded-xl border border-outline-variant bg-surface-container-lowest text-sm text-on-surface focus:border-primary outline-none w-full disabled:opacity-60";
+function DateValue({
+  value,
+  editable,
+  onChange,
+}: {
+  value: string | null;
+  editable: boolean;
+  onChange: (value: string | null) => void;
+}) {
+  if (!editable) {
+    return (
+      <span className="text-body-sm text-on-surface">
+        {value
+          ? new Date(value).toLocaleDateString("fr-FR", {
+              day: "numeric",
+              month: "long",
+              year: "numeric",
+            })
+          : "—"}
+      </span>
+    );
+  }
+  return (
+    <input
+      type="date"
+      value={value ? value.slice(0, 10) : ""}
+      onChange={(e) => onChange(e.target.value ? new Date(e.target.value).toISOString() : null)}
+      className="h-8 rounded-lg border border-outline-soft bg-surface-container-lowest px-2 text-body-sm text-on-surface outline-none focus:border-primary"
+    />
+  );
+}
+
+function SaveIndicator({ state }: { state: SaveState }) {
+  if (state === "idle") return null;
+  const map = {
+    saving: {
+      icon: <CloudSyncOutlined style={{ fontSize: 16 }} />,
+      label: "Enregistrement…",
+      tone: "text-on-surface-variant",
+    },
+    saved: {
+      icon: <CloudDoneOutlined style={{ fontSize: 16 }} />,
+      label: "Enregistré",
+      tone: "text-secondary",
+    },
+    error: {
+      icon: <CloudOffOutlined style={{ fontSize: 16 }} />,
+      label: "Échec de l'enregistrement",
+      tone: "text-error",
+    },
+  } as const;
+  const { icon, label, tone } = map[state];
+  return (
+    <span className={`shrink-0 inline-flex items-center gap-1.5 text-label-md ${tone}`}>
+      {icon}
+      {label}
+    </span>
+  );
+}

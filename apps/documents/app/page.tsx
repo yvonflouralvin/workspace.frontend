@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSessionStore } from "@repo/auth/store/session.store";
 import { DashboardShell } from "@/components/DashboardShell";
-import { listTemplates, type PDFTemplate } from "./lib/api";
+import { listTemplates, getLayout, type PDFTemplate } from "./lib/api";
 import { DescriptionOutlined } from "@mui/icons-material";
 
 const TYPE_LABEL: Record<string, string> = {
@@ -20,6 +20,7 @@ const TYPE_LABEL: Record<string, string> = {
 export default function TemplatesPage() {
   const workspace = useSessionStore((s) => s.activeWorkspace);
   const [templates, setTemplates] = useState<PDFTemplate[]>([]);
+  const [customises, setCustomises] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -30,9 +31,27 @@ export default function TemplatesPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  // `is_default` dit si le workspace a sa propre mise en page : l'information
+  // n'est pas dans la liste, on la demande template par template.
+  useEffect(() => {
+    if (!workspace?.id || templates.length === 0) return;
+    Promise.all(
+      templates.map((t) =>
+        getLayout(t.key, workspace.id)
+          .then((l) => [t.key, !l.is_default] as const)
+          .catch(() => [t.key, false] as const)
+      )
+    ).then((entries) => setCustomises(Object.fromEntries(entries)));
+  }, [workspace, templates]);
+
+  const parApp = templates.reduce<Record<string, PDFTemplate[]>>((acc, t) => {
+    (acc[t.app_key] ??= []).push(t);
+    return acc;
+  }, {});
+
   return (
     <DashboardShell>
-      <div className="p-lg">
+      <div className="p-4 md:p-8 max-w-[1152px] mx-auto">
         <div className="mb-lg">
           <h1 className="text-headline-md text-on-surface">Templates PDF</h1>
           <p className="text-body-md text-on-surface-variant mt-xs">
@@ -58,52 +77,65 @@ export default function TemplatesPage() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 gap-md sm:grid-cols-2 lg:grid-cols-3">
-          {templates.map((t) => {
-            const workspaceVars = t.variables.filter((v) => v.source === "workspace");
-            const entityVars = t.variables.filter((v) => v.source === "entity");
-            return (
-              <Link
-                key={t.key}
-                href={`/templates/${t.key}`}
-                className="block rounded-xl border border-outline-variant bg-surface-container-lowest p-md hover:bg-surface-container-low transition-colors"
-              >
-                <div className="flex items-start gap-sm mb-sm">
-                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                    <DescriptionOutlined
-                      style={{ fontSize: 18 }}
-                      className="text-primary"
-                    />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-body-md font-semibold text-on-surface truncate">
-                      {t.name}
-                    </p>
-                    <p className="text-label-md text-on-surface-variant">{t.app_key}</p>
-                  </div>
-                </div>
+        <div className="space-y-6">
+          {Object.entries(parApp).map(([appKey, list]) => (
+            <section key={appKey}>
+              <h2 className="text-label-sm uppercase text-outline mb-2.5">{appKey}</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {list.map((t) => {
+                  const workspaceVars = t.variables.filter((v) => v.source === "workspace");
+                  const entityVars = t.variables.filter((v) => v.source === "entity");
+                  const perso = customises[t.key];
+                  return (
+                    <Link
+                      key={t.key}
+                      href={`/templates/${t.key}`}
+                      className="block rounded-2xl border border-outline-soft bg-surface-container-lowest p-4 hover:border-primary/40 hover:bg-primary/[0.03] transition-colors"
+                    >
+                      <div className="flex items-start gap-3 mb-2">
+                        <span className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center flex-none">
+                          <DescriptionOutlined style={{ fontSize: 18 }} className="text-primary" />
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-body-md font-semibold text-on-surface truncate">
+                            {t.name}
+                          </p>
+                          <span
+                            className={`inline-flex items-center rounded-md px-1.5 py-0.5 mt-0.5 text-[11px] font-semibold ${
+                              perso
+                                ? "bg-role-owner-container text-role-owner"
+                                : "bg-role-member-container text-role-member"
+                            }`}
+                          >
+                            {perso ? "Personnalisé" : "Modèle par défaut"}
+                          </span>
+                        </div>
+                      </div>
 
-                {t.description && (
-                  <p className="text-body-sm text-on-surface-variant mb-sm line-clamp-2">
-                    {t.description}
-                  </p>
-                )}
+                      {t.description && (
+                        <p className="text-body-sm text-on-surface-variant mb-2.5 line-clamp-2">
+                          {t.description}
+                        </p>
+                      )}
 
-                <div className="flex gap-xs flex-wrap">
-                  {workspaceVars.length > 0 && (
-                    <span className="inline-flex items-center rounded-full bg-secondary/10 text-secondary text-label-sm px-xs py-0.5">
-                      {workspaceVars.length} var. workspace
-                    </span>
-                  )}
-                  {entityVars.length > 0 && (
-                    <span className="inline-flex items-center rounded-full bg-tertiary/10 text-tertiary text-label-sm px-xs py-0.5">
-                      {entityVars.length} var. document
-                    </span>
-                  )}
-                </div>
-              </Link>
-            );
-          })}
+                      <div className="flex gap-1.5 flex-wrap text-[11px] font-semibold">
+                        {entityVars.length > 0 && (
+                          <span className="inline-flex items-center gap-1 rounded-md bg-role-admin-container px-1.5 py-0.5 text-role-admin">
+                            {entityVars.length} du document
+                          </span>
+                        )}
+                        {workspaceVars.length > 0 && (
+                          <span className="inline-flex items-center gap-1 rounded-md bg-role-owner-container px-1.5 py-0.5 text-role-owner">
+                            {workspaceVars.length} du workspace
+                          </span>
+                        )}
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            </section>
+          ))}
         </div>
       </div>
     </DashboardShell>

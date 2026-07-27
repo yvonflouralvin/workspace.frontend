@@ -5,11 +5,11 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
 import { DashboardShell } from "@/components/DashboardShell";
+import { LockedBadge, LockedBanner } from "@repo/ui/LockedBadge";
 import { EditProduitPrixDrawer } from "@/components/EditProduitPrixDrawer";
 import { EditProduitTvaDrawer } from "@/components/EditProduitTvaDrawer";
 import { EditProduitInfoDrawer } from "@/components/EditProduitInfoDrawer";
 import { EditProduitCategorieDrawer } from "@/components/EditProduitCategorieDrawer";
-import { Tabs } from "@repo/ui/Tabs";
 import { RightDrawer } from "@repo/ui/RightDrawer";
 import {
   getProduit,
@@ -24,6 +24,7 @@ import {
   EditOutlined,
   InfoOutlined,
   LockOutlined,
+  Inventory2Outlined,
 } from "@mui/icons-material";
 
 const STOCK_DOMAIN = process.env.NEXT_PUBLIC_AUTH_API_STOCK_DOMAIN ?? "http://localhost:3010";
@@ -57,20 +58,22 @@ function IconActions({
   locked,
   lockTitle,
 }: {
-  onInfo: () => void;
+  onInfo?: () => void;
   onEdit?: () => void;
   locked?: boolean;
   lockTitle?: string;
 }) {
   return (
     <div className="flex items-center gap-0.5 shrink-0">
-      <button
-        onClick={onInfo}
-        title="Informations"
-        className="p-1.5 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors"
-      >
-        <InfoOutlined style={{ fontSize: 16 }} />
-      </button>
+      {onInfo && (
+        <button
+          onClick={onInfo}
+          title="Informations"
+          className="p-1.5 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors"
+        >
+          <InfoOutlined style={{ fontSize: 16 }} />
+        </button>
+      )}
       {locked ? (
         <span title={lockTitle} className="p-1.5 flex items-center text-on-surface-variant/50">
           <LockOutlined style={{ fontSize: 16 }} />
@@ -88,13 +91,48 @@ function IconActions({
   );
 }
 
-function GeneralTab({
+const CARD = "rounded-2xl border border-outline-soft bg-surface-container-lowest p-5";
+const CARD_LABEL = "text-label-sm uppercase text-outline";
+
+function CardHeader({
+  label,
+  onInfo,
+  onEdit,
+  locked,
+  lockTitle,
+}: {
+  label: string;
+  onInfo?: () => void;
+  onEdit?: () => void;
+  locked?: boolean;
+  lockTitle?: string;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-2 mb-3.5">
+      <span className={CARD_LABEL}>{label}</span>
+      {(onInfo || onEdit || locked) && (
+        <span className="-mr-1.5">
+          <IconActions onInfo={onInfo} onEdit={onEdit} locked={locked} lockTitle={lockTitle} />
+        </span>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Corps de la fiche produit — présentation unifiée du design (Informations,
+ * Prix & TVA, Liens, Catégories). L'édition passe par les drawers existants,
+ * champ par champ, et respecte les verrous des produits publiés par une autre app.
+ */
+function FicheProduit({
   produit,
   canManage,
   baseDevise,
   devises,
   tvaDefaut,
   onSaved,
+  linking,
+  onOpenStock,
 }: {
   produit: Produit;
   canManage: boolean;
@@ -102,7 +140,10 @@ function GeneralTab({
   devises: DeviseEntry[];
   tvaDefaut: number | string | null;
   onSaved: (produit: Produit) => void;
+  linking: boolean;
+  onOpenStock: () => void;
 }) {
+  const [editingInfo, setEditingInfo] = useState(false);
   const [editingCat, setEditingCat] = useState(false);
   const [showCatInfo, setShowCatInfo] = useState(false);
   const [editingPrix, setEditingPrix] = useState(false);
@@ -112,7 +153,7 @@ function GeneralTab({
 
   const owner = produit.owner_app_key;
   const lockedFields = produit.locked_fields ?? [];
-  const isLocked = (f: string) => !!owner && lockedFields.includes(f);
+  const isLocked = (...fields: string[]) => !!owner && fields.some((f) => lockedFields.includes(f));
   const lockTitle = owner ? `Champ géré par « ${owner} »` : undefined;
 
   const prixNum =
@@ -132,75 +173,122 @@ function GeneralTab({
         ].join(" · ");
 
   return (
-    <>
-      <div className="rounded-xl border border-outline-variant bg-surface-container-lowest divide-y divide-outline-variant">
-        <div className="flex items-center gap-4 px-4 py-3">
-          <span className="text-label-md text-on-surface-variant w-40 shrink-0">Catégories</span>
-          <div className="flex-1 min-w-0">
-            {produit.categories.length ? (
-              <div className="flex flex-wrap gap-1.5">
-                {produit.categories.map((c) => (
-                  <span
-                    key={c.id}
-                    className="text-label-md text-on-surface bg-surface-container border border-outline-variant rounded-full px-2.5 py-1"
-                  >
-                    {c.nom}
-                  </span>
-                ))}
-              </div>
-            ) : (
-              <span className="block text-body-md text-on-surface">—</span>
-            )}
+    <div className="space-y-4">
+      {/* Informations */}
+      <div className={CARD}>
+        <CardHeader
+          label="Informations"
+          onEdit={canManage ? () => setEditingInfo(true) : undefined}
+          locked={isLocked("nom", "description", "unite")}
+          lockTitle={lockTitle}
+        />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Field label="Nom" value={produit.nom} />
+          <Field label="Unité" value={produit.unite || "—"} />
+          <div className="md:col-span-2">
+            <Field label="Description" value={produit.description || "—"} />
           </div>
-          <IconActions
-            onInfo={() => setShowCatInfo(true)}
-            onEdit={canManage ? () => setEditingCat(true) : undefined}
-            locked={isLocked("categorie_id")}
-            lockTitle={lockTitle}
-          />
-        </div>
-
-        <div className="flex items-center gap-4 px-4 py-3">
-          <span className="text-label-md text-on-surface-variant w-40 shrink-0">Prix de vente</span>
-          <div className="flex-1 min-w-0">
-            <span className="block text-body-md text-on-surface tabular-nums break-words">{prixBase}</span>
-            {prixNum !== null && devises.length > 0 && (
-              <span className="block text-label-md text-on-surface-variant tabular-nums mt-0.5 break-words">
-                {conversions(prixNum, devises)}
-              </span>
-            )}
-          </div>
-          <IconActions
-            onInfo={() => setShowPrixInfo(true)}
-            onEdit={canManage ? () => setEditingPrix(true) : undefined}
-            locked={isLocked("prix_vente")}
-            lockTitle={lockTitle}
-          />
-        </div>
-
-        <div className="flex items-center gap-4 px-4 py-3">
-          <span className="text-label-md text-on-surface-variant w-40 shrink-0">TVA applicable</span>
-          <div className="flex-1 min-w-0">
-            <span className="block text-body-md text-on-surface">
-              {produit.tva_applicable
-                ? `Oui${tvaDefaut !== null && tvaDefaut !== "" ? ` (${tvaDefaut} %)` : ""}`
-                : "Non"}
-            </span>
-            {produit.tva_applicable && tvaSubline && (
-              <span className="block text-label-md text-on-surface-variant tabular-nums mt-0.5 break-words">
-                {tvaSubline}
-              </span>
-            )}
-          </div>
-          <IconActions
-            onInfo={() => setShowTvaInfo(true)}
-            onEdit={canManage ? () => setEditingTva(true) : undefined}
-            locked={isLocked("tva_applicable")}
-            lockTitle={lockTitle}
-          />
         </div>
       </div>
 
+      {/* Prix & TVA · Liens */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className={CARD}>
+          <CardHeader label="Prix & TVA" />
+          <div className="space-y-3.5">
+            <div className="flex items-start gap-3">
+              <div className="flex-1 min-w-0">
+                <p className="text-label-md text-outline mb-0.5">Prix de vente</p>
+                <p className="text-body-md text-on-surface tabular-nums break-words">{prixBase}</p>
+                {prixNum !== null && devises.length > 0 && (
+                  <p className="text-label-md text-on-surface-variant tabular-nums mt-0.5 break-words">
+                    {conversions(prixNum, devises)}
+                  </p>
+                )}
+              </div>
+              <span className="-mr-1.5 mt-1">
+                <IconActions
+                  onInfo={() => setShowPrixInfo(true)}
+                  onEdit={canManage ? () => setEditingPrix(true) : undefined}
+                  locked={isLocked("prix_vente")}
+                  lockTitle={lockTitle}
+                />
+              </span>
+            </div>
+            <div className="flex items-start gap-3 pt-3.5 border-t border-hairline">
+              <div className="flex-1 min-w-0">
+                <p className="text-label-md text-outline mb-0.5">TVA applicable</p>
+                <p className="text-body-md text-on-surface">
+                  {produit.tva_applicable
+                    ? `Oui${tvaDefaut !== null && tvaDefaut !== "" ? ` (${tvaDefaut} %)` : ""}`
+                    : "Non"}
+                </p>
+                {produit.tva_applicable && tvaSubline && (
+                  <p className="text-label-md text-on-surface-variant tabular-nums mt-0.5 break-words">
+                    {tvaSubline}
+                  </p>
+                )}
+              </div>
+              <span className="-mr-1.5 mt-1">
+                <IconActions
+                  onInfo={() => setShowTvaInfo(true)}
+                  onEdit={canManage ? () => setEditingTva(true) : undefined}
+                  locked={isLocked("tva_applicable")}
+                  lockTitle={lockTitle}
+                />
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className={CARD}>
+          <CardHeader label="Liens" />
+          <button
+            onClick={onOpenStock}
+            disabled={linking}
+            className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl border border-outline-soft hover:bg-surface-container-low transition-colors disabled:opacity-50 text-left"
+          >
+            <Inventory2Outlined style={{ fontSize: 18 }} className="text-on-surface-variant flex-none" />
+            <span className="flex-1 min-w-0 text-body-sm text-on-surface">Article Stock</span>
+            <span className="flex items-center gap-1 text-label-md font-semibold text-primary flex-none">
+              {produit.stock_item_id ? "Lié" : "Créer le lien"}
+              <OpenInNewOutlined style={{ fontSize: 14 }} />
+            </span>
+          </button>
+          <p className="text-label-md text-outline mt-2">
+            Le stock est décrémenté à la validation de commande.
+          </p>
+        </div>
+      </div>
+
+      {/* Catégories */}
+      <div className={CARD}>
+        <CardHeader
+          label="Catégories"
+          onInfo={() => setShowCatInfo(true)}
+          onEdit={canManage ? () => setEditingCat(true) : undefined}
+          locked={isLocked("categorie_id")}
+          lockTitle={lockTitle}
+        />
+        {produit.categories.length ? (
+          <div className="flex flex-wrap gap-1.5">
+            {produit.categories.map((c) => (
+              <span
+                key={c.id}
+                className="text-label-md text-on-surface bg-surface-container border border-outline-variant rounded-full px-2.5 py-1"
+              >
+                {c.nom}
+              </span>
+            ))}
+          </div>
+        ) : (
+          <span className="block text-body-md text-on-surface">—</span>
+        )}
+      </div>
+
+      {editingInfo && (
+        <EditProduitInfoDrawer produit={produit} onClose={() => setEditingInfo(false)} onSaved={onSaved} />
+      )}
       {showCatInfo && (
         <RightDrawer title="Catégorie" onClose={() => setShowCatInfo(false)}>
           <p className="text-body-md text-on-surface-variant leading-relaxed">{CAT_INFO}</p>
@@ -241,7 +329,16 @@ function GeneralTab({
           onSaved={onSaved}
         />
       )}
-    </>
+    </div>
+  );
+}
+
+function Field({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0">
+      <p className="text-label-md text-outline mb-0.5">{label}</p>
+      <p className="text-body-md text-on-surface break-words">{value}</p>
+    </div>
   );
 }
 
@@ -258,7 +355,6 @@ export default function ProduitDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [linking, setLinking] = useState(false);
-  const [editingInfo, setEditingInfo] = useState(false);
 
   useEffect(() => {
     if (!canView) { setLoading(false); return; }
@@ -295,7 +391,7 @@ export default function ProduitDetailPage() {
 
   return (
     <DashboardShell>
-      <div className="p-8 max-w-4xl mx-auto space-y-6">
+      <div className="p-4 md:p-8 max-w-4xl mx-auto space-y-5">
         <Link
           href="/produits"
           className="inline-flex items-center gap-1.5 text-body-sm text-on-surface-variant hover:text-on-surface transition-colors"
@@ -315,86 +411,28 @@ export default function ProduitDetailPage() {
 
         {canView && !loading && produit && (
           <>
-            <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-6">
-              <div className="flex items-start justify-between gap-4">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <h1 className="text-headline-md font-display text-on-surface">{produit.nom}</h1>
-                    {produit.stock_item_id && (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-label-sm font-medium bg-tertiary/10 text-tertiary">
-                        Lié à Stock
-                      </span>
-                    )}
-                    {produit.owner_app_key && (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-label-sm font-medium bg-surface-container text-on-surface-variant">
-                        <LockOutlined style={{ fontSize: 13 }} /> Géré par {produit.owner_app_key}
-                      </span>
-                    )}
-                  </div>
-                  {produit.description && (
-                    <p className="text-body-sm text-on-surface-variant mt-1">{produit.description}</p>
-                  )}
-                  {produit.unite && (
-                    <p className="text-body-sm text-on-surface-variant mt-1">Unité : {produit.unite}</p>
-                  )}
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  {canManage &&
-                    (produit.owner_app_key &&
-                    ["nom", "description", "unite"].some((f) => (produit.locked_fields ?? []).includes(f)) ? (
-                      <span
-                        title={`Informations gérées par « ${produit.owner_app_key} »`}
-                        className="inline-flex items-center p-2 rounded-xl border border-outline-variant text-on-surface-variant/50"
-                      >
-                        <LockOutlined style={{ fontSize: 18 }} />
-                      </span>
-                    ) : (
-                      <button
-                        onClick={() => setEditingInfo(true)}
-                        title="Modifier les informations"
-                        className="inline-flex items-center p-2 rounded-xl border border-outline-variant text-on-surface-variant hover:text-primary hover:bg-surface-container transition-colors"
-                      >
-                        <EditOutlined style={{ fontSize: 18 }} />
-                      </button>
-                    ))}
-                  <button
-                    onClick={openStock}
-                    disabled={linking}
-                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-outline-variant text-body-sm text-on-surface-variant hover:bg-surface-container transition-colors disabled:opacity-50"
-                  >
-                    <OpenInNewOutlined style={{ fontSize: 16 }} />
-                    {linking ? "Ouverture…" : "Fiche dans Stock"}
-                  </button>
-                </div>
-              </div>
+            {produit.owner_app_key && <LockedBanner appLabel={produit.owner_app_key} />}
+
+            <div className="flex flex-wrap items-center gap-2.5">
+              <h1 className="text-headline-md font-display text-on-surface break-words">{produit.nom}</h1>
+              {produit.stock_item_id && (
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-label-sm font-medium bg-tertiary/10 text-tertiary">
+                  Lié à Stock
+                </span>
+              )}
+              {produit.owner_app_key && <LockedBadge appLabel={produit.owner_app_key} />}
             </div>
 
-            <Tabs
-              tabs={[
-                {
-                  key: "general",
-                  label: "Général",
-                  content: (
-                    <GeneralTab
-                      produit={produit}
-                      canManage={canManage}
-                      baseDevise={baseDevise}
-                      devises={devises}
-                      tvaDefaut={tvaDefaut}
-                      onSaved={setProduit}
-                    />
-                  ),
-                },
-              ]}
+            <FicheProduit
+              produit={produit}
+              canManage={canManage}
+              baseDevise={baseDevise}
+              devises={devises}
+              tvaDefaut={tvaDefaut}
+              onSaved={setProduit}
+              linking={linking}
+              onOpenStock={openStock}
             />
-
-            {editingInfo && (
-              <EditProduitInfoDrawer
-                produit={produit}
-                onClose={() => setEditingInfo(false)}
-                onSaved={setProduit}
-              />
-            )}
           </>
         )}
       </div>

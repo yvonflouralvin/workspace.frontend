@@ -7,6 +7,9 @@ import { usePermissions } from "@repo/auth/hooks/usePermissions";
 import { DashboardShell } from "@/components/DashboardShell";
 import { EditClientDrawer } from "@/components/EditClientDrawer";
 import { Tabs } from "@repo/ui/Tabs";
+import { Avatar } from "@repo/ui/Avatar";
+import { useDevise } from "@/components/DeviseProvider";
+import { STATUT_CLASS, STATUT_LABEL } from "@/lib/commande-ui";
 import {
   getClient,
   ensureClientTiersLink,
@@ -44,6 +47,7 @@ function InfoRow({ icon, label, value }: { icon: React.ReactNode; label: string;
 }
 
 function ClientCommandesTab({ clientId }: { clientId: number }) {
+  const { format } = useDevise();
   const [items, setItems] = useState<Commande[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -59,32 +63,41 @@ function ClientCommandesTab({ clientId }: { clientId: number }) {
     return <p className="text-body-sm text-on-surface-variant">Aucune commande pour ce client.</p>;
 
   return (
-    <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest overflow-hidden">
-      <table className="w-full text-body-sm">
-        <thead>
-          <tr className="border-b border-outline-variant text-left text-on-surface-variant">
-            <th className="px-5 py-3 font-medium">Code</th>
-            <th className="px-5 py-3 font-medium">Statut</th>
-            <th className="px-5 py-3 font-medium">Date</th>
-            <th className="px-5 py-3 font-medium text-right">Montant</th>
-          </tr>
-        </thead>
-        <tbody>
-          {items.map((c) => (
-            <tr key={c.id} className="border-b border-outline-variant last:border-0">
-              <td className="px-5 py-3 font-mono text-label-md text-on-surface-variant">{c.code}</td>
-              <td className="px-5 py-3 text-on-surface-variant">{c.statut}</td>
-              <td className="px-5 py-3 text-on-surface-variant">{c.date_commande ?? "—"}</td>
-              <td className="px-5 py-3 text-on-surface text-right tabular-nums">{formatMontant(c.montant_total)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="rounded-2xl border border-outline-soft bg-surface-container-lowest overflow-hidden">
+      <div className="hidden md:flex items-center gap-4 px-5 py-2.5 bg-surface-row-alt border-b border-surface-container-low text-label-sm uppercase text-outline">
+        <span className="w-[150px] flex-none">Code</span>
+        <span className="flex-1 min-w-0">Statut</span>
+        <span className="w-[100px] flex-none">Date</span>
+        <span className="w-[170px] flex-none text-right">Montant</span>
+      </div>
+      {items.map((c) => (
+        <Link
+          key={c.id}
+          href={`/commandes/${c.id}`}
+          className="flex flex-wrap md:flex-nowrap items-start md:items-center gap-x-4 gap-y-2 px-4 md:px-5 py-3 border-b border-hairline last:border-b-0 hover:bg-surface-container-low transition-colors"
+        >
+          <span className="w-full md:w-[150px] flex-none truncate font-mono text-label-md font-medium text-primary">
+            {c.code}
+          </span>
+          <span className="md:flex-1 md:min-w-0">
+            <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold ${STATUT_CLASS[c.statut]}`}>
+              {STATUT_LABEL[c.statut]}
+            </span>
+          </span>
+          <span className="md:w-[100px] flex-none whitespace-nowrap font-mono text-label-md text-on-surface-variant">
+            {c.date_commande ?? "—"}
+          </span>
+          <span className="md:w-[170px] flex-none md:text-right whitespace-nowrap tabular-nums font-mono text-body-sm font-semibold text-on-surface">
+            {format(c.montant_total)}
+          </span>
+        </Link>
+      ))}
     </div>
   );
 }
 
 function ClientFacturesTab({ clientId }: { clientId: number }) {
+  const { format } = useDevise();
   const [items, setItems] = useState<Facture[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -100,27 +113,30 @@ function ClientFacturesTab({ clientId }: { clientId: number }) {
     return <p className="text-body-sm text-on-surface-variant">Aucune facture pour ce client.</p>;
 
   return (
-    <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest overflow-hidden">
-      <table className="w-full text-body-sm">
-        <thead>
-          <tr className="border-b border-outline-variant text-left text-on-surface-variant">
-            <th className="px-5 py-3 font-medium">Code</th>
-            <th className="px-5 py-3 font-medium">Statut</th>
-            <th className="px-5 py-3 font-medium">Échéance</th>
-            <th className="px-5 py-3 font-medium text-right">Montant</th>
-          </tr>
-        </thead>
-        <tbody>
-          {items.map((f) => (
-            <tr key={f.id} className="border-b border-outline-variant last:border-0">
-              <td className="px-5 py-3 font-mono text-label-md text-on-surface-variant">{f.code}</td>
-              <td className="px-5 py-3 text-on-surface-variant">{f.statut}</td>
-              <td className="px-5 py-3 text-on-surface-variant">{f.date_echeance ?? "—"}</td>
-              <td className="px-5 py-3 text-on-surface text-right tabular-nums">{formatMontant(f.montant_total)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="rounded-2xl border border-outline-soft bg-surface-container-lowest overflow-hidden">
+      <div className="hidden md:flex items-center gap-4 px-5 py-2.5 bg-surface-row-alt border-b border-surface-container-low text-label-sm uppercase text-outline">
+        <span className="w-[150px] flex-none">Code</span>
+        <span className="flex-1 min-w-0">Statut</span>
+        <span className="w-[100px] flex-none">Échéance</span>
+        <span className="w-[170px] flex-none text-right">Montant</span>
+      </div>
+      {items.map((f) => (
+        <div
+          key={f.id}
+          className="flex flex-wrap md:flex-nowrap items-start md:items-center gap-x-4 gap-y-2 px-4 md:px-5 py-3 border-b border-hairline last:border-b-0"
+        >
+          <span className="w-full md:w-[150px] flex-none truncate font-mono text-label-md text-on-surface-variant">
+            {f.code}
+          </span>
+          <span className="md:flex-1 md:min-w-0 text-body-sm text-on-surface-variant">{f.statut}</span>
+          <span className="md:w-[100px] flex-none whitespace-nowrap font-mono text-label-md text-on-surface-variant">
+            {f.date_echeance ?? "—"}
+          </span>
+          <span className="md:w-[170px] flex-none md:text-right whitespace-nowrap tabular-nums font-mono text-body-sm font-semibold text-on-surface">
+            {format(f.montant_total)}
+          </span>
+        </div>
+      ))}
     </div>
   );
 }
@@ -169,7 +185,7 @@ export default function ClientDetailPage() {
 
   return (
     <DashboardShell>
-      <div className="p-8 max-w-4xl mx-auto space-y-6">
+      <div className="p-4 md:p-8 max-w-[1024px] mx-auto space-y-5">
         <Link
           href="/clients"
           className="inline-flex items-center gap-1.5 text-body-sm text-on-surface-variant hover:text-on-surface transition-colors"
@@ -189,24 +205,29 @@ export default function ClientDetailPage() {
 
         {canView && !loading && client && (
           <>
-            <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-6 space-y-4">
-              <div className="flex items-start justify-between gap-4">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <h1 className="text-headline-md font-display text-on-surface">{client.nom}</h1>
-                    {client.crm_client_id && (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-label-sm font-medium bg-tertiary/10 text-tertiary">
-                        Lié à Tiers
-                      </span>
-                    )}
-                  </div>
+            <div className="rounded-2xl border border-outline-soft bg-surface-container-lowest p-4 md:p-6 space-y-4">
+              <div className="flex items-start gap-4 flex-wrap">
+                <Avatar name={client.nom} letters={1} size={48} color="var(--color-secondary)" />
+                <div className="flex-1 min-w-0">
+                  <h1 className="font-display text-headline-md text-on-surface truncate">
+                    {client.nom}
+                  </h1>
+                  <span
+                    className={`inline-flex items-center rounded-md px-2 py-0.5 mt-1 text-[11px] font-semibold ${
+                      client.crm_client_id
+                        ? "bg-role-admin-container text-role-admin"
+                        : "bg-role-member-container text-role-member"
+                    }`}
+                  >
+                    {client.crm_client_id ? "Lié à une fiche Tiers" : "Non lié à Tiers"}
+                  </span>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   {canManage && (
                     <button
                       onClick={() => setEditing(true)}
                       title="Modifier les informations"
-                      className="inline-flex items-center p-2 rounded-xl border border-outline-variant text-on-surface-variant hover:text-primary hover:bg-surface-container transition-colors"
+                      className="inline-flex items-center justify-center w-11 h-11 md:w-[38px] md:h-[38px] rounded-lg border border-outline-soft text-on-surface-variant hover:text-primary hover:bg-surface-container-low transition-colors"
                     >
                       <EditOutlined style={{ fontSize: 18 }} />
                     </button>
@@ -214,7 +235,7 @@ export default function ClientDetailPage() {
                   <button
                     onClick={openTiers}
                     disabled={linking}
-                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-outline-variant text-body-sm text-on-surface-variant hover:bg-surface-container transition-colors disabled:opacity-50"
+                    className="inline-flex items-center gap-1.5 h-11 md:h-[38px] px-3.5 rounded-lg border border-outline-soft text-body-sm font-semibold text-on-surface-variant hover:bg-surface-container-low transition-colors disabled:opacity-50"
                   >
                     <OpenInNewOutlined style={{ fontSize: 16 }} />
                     {linking ? "Ouverture…" : "Fiche dans Tiers"}

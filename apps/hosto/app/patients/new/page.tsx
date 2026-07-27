@@ -115,7 +115,7 @@ export default function NewPatientPage() {
   if (!canCreate) {
     return (
       <DashboardShell>
-        <div className="p-8 max-w-2xl mx-auto">
+        <div className="p-4 md:p-8 max-w-2xl mx-auto">
           <p className="text-body-sm text-on-surface-variant bg-surface-container rounded-xl px-4 py-3">
             Vous n&apos;avez pas la permission d&apos;enregistrer un patient.
           </p>
@@ -126,7 +126,7 @@ export default function NewPatientPage() {
 
   return (
     <DashboardShell>
-      <div className="p-8 max-w-2xl mx-auto space-y-8">
+      <div className="p-4 md:p-8 max-w-2xl mx-auto space-y-8">
         <div className="flex items-center gap-3">
           <Link
             href="/"

@@ -229,7 +229,7 @@ export default function BedsPage() {
 
   return (
     <DashboardShell>
-      <div className="p-8 max-w-4xl mx-auto space-y-6">
+      <div className="p-4 md:p-8 max-w-4xl mx-auto space-y-6">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             <h1 className="text-headline-md font-display text-on-surface flex items-center gap-2">
@@ -320,7 +320,7 @@ function CreateChambreDrawer({ serviceId, onClose, onDone }: {
   }
 
   return (
-    <RightDrawer title="Nouvelle chambre" onClose={onClose} width="w-[480px] max-w-full">
+    <RightDrawer title="Nouvelle chambre" onClose={onClose} width="md:w-[480px] md:max-w-[92vw]">
       <div className="h-full flex flex-col overflow-hidden">
         <div className="flex-1 overflow-y-auto pr-1 space-y-4">
           <div className="flex flex-col gap-1">
@@ -382,7 +382,7 @@ function AddLitsDrawer({ chambre, onClose, onDone }: {
   }
 
   return (
-    <RightDrawer title={`Ajouter des lits — Chambre ${chambre.numero}`} onClose={onClose} width="w-[480px] max-w-full">
+    <RightDrawer title={`Ajouter des lits — Chambre ${chambre.numero}`} onClose={onClose} width="md:w-[480px] md:max-w-[92vw]">
       <div className="h-full flex flex-col overflow-hidden">
         <div className="flex-1 overflow-y-auto pr-1 space-y-4">
           <div className="flex flex-col gap-1">

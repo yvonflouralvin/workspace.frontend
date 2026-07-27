@@ -578,6 +578,213 @@ application (`MultiSelect`, alimentés par les facets).
 
 ---
 
+## Shell — variante « search-first »
+
+`TopBar` accepte `variant` : `"breadcrumbs"` (défaut, disposition historique conservée
+pour les autres apps) ou **`"search-first"`**, la disposition du design system — pilule de
+recherche à gauche (largeur max 420), actions à droite (grille d'apps, cloche, avatar 32),
+pas de fil d'Ariane. L'app `workspace` est la première à l'adopter ; les autres basculeront
+au fur et à mesure.
+
+Le `UserFooter` affiche une **ligne de rôle** sous le nom (`subtitle`). Le service auth ne
+stocke pas de rôle : `DashboardShell` le déduit — propriétaire du workspace, sinon
+`workspace.settings.manage` ou `members.manage` → « Administrateur », sinon « Membre ».
+La même dérivation alimente la colonne Rôle de la page Membres (`app/lib/members.ts`).
+
+---
+
+## Membres — page refondue
+
+**Annuaire** (`app/(dashboard)/members/page.tsx` + `components/members/MembersTable.tsx`) :
+recherche 300 px debouncée 300 ms côté serveur, puis une carte `rounded-2xl` contenant
+l'entête `label-sm` MAJUSCULES sur `surface-row-alt`, les lignes cliquables, et la
+pagination serveur (20/page) en pied. Colonnes : **Membre** (avatar + nom + email, suffixe
+« (vous) ») · **Rôle** · **Groupes** · **Dernière connexion** · **Statut**. Squelette
+shimmer pendant le chargement.
+
+> **Données manquantes côté auth.** `last_login_at` et `is_active` ne sont pas servis par
+> `_serialize_member` (`backends/auth/routes/members.py`) : les champs sont **optionnels**
+> dans `Member` et les colonnes affichent « — » et « Actif » tant qu'ils sont absents.
+> `last_login_at` demande en plus une colonne et une écriture au login.
+
+**Drawer de détail** (`components/MemberDetailDrawer.tsx`, largeur 460) : identité,
+Rôle / Statut / Dernière connexion, groupes en chips, puis les **permissions effectives
+groupées par application** — libellé lisible (`permission.description`, la clé technique
+passe en `title`) et provenance : point + chip `Direct`, ou chip gris portant le nom du
+groupe qui apporte le droit (`app/lib/members.ts#effectivePermissions` croise le catalogue,
+`member.permissions`, `member.direct_permissions` et les permissions des groupes).
+
+**Pas d'empilement de surfaces** : « Gérer les permissions » et « Réinitialiser le mot de
+passe » ouvrent un **panneau inline** dans le drawer, pas une modale par-dessus.
+`MemberPermissionsModal` a été supprimé ; le panneau porte à la fois les groupes
+(`MultiSelect`) et les permissions directes (`PermissionPicker`).
+
+**Ajout d'un membre** : modale 2 étapes avec indicateur « Étape n/2 » — email seul et
+vérification serveur, puis nom complet + mot de passe (bouton **Générer**) + groupes, ou
+une simple carte de rappel si le compte existe déjà.
+
+**Confirmations et erreurs** : `ConfirmDialog` et `Toast` de `@repo/ui`. Plus aucun
+`confirm()` / `alert()` natif sur cette page.
+
+---
+
+## Paramètres — page refondue
+
+Corps en `grid 256px / 1fr`. **Colonne gauche** : recherche d'application puis le catalogue
+dans un cadre `rounded-xl` scrollable (max 448) — icône (mappée par clé d'app dans la page,
+`WidgetsOutlined` en repli), nom, compteur ; ligne active en `primary/10`. **Colonne
+droite** : le panneau de l'application, carte `rounded-2xl`.
+
+**Général** empile trois blocs distincts : restriction des membres (interrupteur
+`@repo/ui/Switch`, écriture immédiate), authentification de l'organisation (affichée si la
+restriction est active, écriture immédiate), et l'accordéon Notifications (Email / SMS /
+WhatsApp avec point d'état + crayon → drawer 400). Les paramètres du groupe Général
+s'affichent ensuite comme ceux des autres apps.
+
+Chaque source est chargée **séparément** : le catalogue et le détail du workspace d'un
+côté, les canaux de notification de l'autre. Un service indisponible dégrade son seul bloc
+(message « service injoignable ») au lieu de vider toute la page.
+
+**Autres apps** : recherche de paramètre, titre `label-sm` MAJUSCULES, puis les paramètres
+sans section dans un cadre et ceux avec section sous un sous-titre — via
+`@repo/ui/SettingRow` (voir `docs/packages/UI.md`).
+
+### Modifications en attente
+
+Le panneau tient un **tampon `pending`** indexé par identifiant de paramètre. L'édition en
+ligne (`toggle`, `single_choice`) **et** le drawer y écrivent — le drawer dit d'ailleurs
+« Appliquer », pas « Enregistrer », pour lever l'ambiguïté. Une **barre collante** en bas du
+panneau annonce le nombre de modifications non enregistrées et propose `Annuler` (vide le
+tampon) / `Enregistrer` (un seul `PUT` groupé sur `/settings`, l'API acceptant déjà un
+tableau de valeurs).
+
+C'est un changement de comportement : avant, chaque drawer écrivait immédiatement au
+serveur. Les deux blocs de politique du panneau Général restent en écriture immédiate —
+ce sont des endpoints distincts, pas des `app_setting`.
+
+---
+
+## Accueil — page refondue
+
+**Régime établi** : trois `KpiCard` (`@repo/ui`) — *Mes tâches ouvertes*, *Projets actifs*,
+*Notifications non lues* — puis deux colonnes `1fr / 320px`. À gauche « Mon travail » (mes
+tâches triées par échéance, échéance dépassée en `error`) et « Mes approbations » ; à
+droite « Accès rapides » et « Activité récente ».
+
+**Premier jour** : si le workspace n'a aucun projet et que l'utilisateur peut créer un
+projet ou inviter, une carte d'onboarding remplace les KPI. Les cinq étapes se cochent
+d'après l'état réel (équipe = plus d'un membre, notifications = un canal configuré) ; les
+liens d'action ne s'affichent qu'avec la permission correspondante.
+
+**Adaptation au rôle** — une seule page, pas de variante. Chaque bloc est gardé par sa
+permission (`audit_logs.view`, `members.view`, `workspace.settings.manage`…) et **chaque
+source échoue en silence** : un bloc sans droit ou sans donnée disparaît, il ne casse
+jamais la page. Les accès rapides sont filtrés par `projects.manage`, `members.invite`,
+`workspace.settings.manage`.
+
+**Sources** : `projectsApi.listProjects` / `myTasks`, `useNotifications`, `listAuditLogs`
+(feed d'activité), `listMembers` et `listNotificationChannels` (onboarding), et
+`@repo/approval-flows/api/client` pour les approbations.
+
+> **Pas de sparkline.** Les cartes du handoff en prévoient une ; aucune API n'expose de
+> série temporelle. `KpiCard` accepte un `visual` optionnel — à remplir le jour où la
+> donnée existe. En attendant, l'indice sous la valeur est **calculé** (« 2 en retard »,
+> « 9 tâches au total »), pas décoratif.
+
+### `approval_flows` dans l'app workspace
+
+Deux routes BFF ajoutées (`app/api/approval-flows/requests/route.ts` et
+`.../requests/[id]/decide/route.ts`) qui `forwardToBackend` vers `APPROVAL_FLOWS_API_URL`,
+plus `@repo/approval-flows` en dépendance et dans `transpilePackages`. La page consomme le
+client du package et rend ses propres cartes — pas les composants du package — donc pas de
+`@source` à ajouter.
+## Projets — détail d'un projet (`app/(dashboard)/projects/[id]/`)
+
+Le détail d'un projet est découpé en **sections** servies par des sous-routes, sous un
+**layout commun** qui porte l'entête et le sélecteur de section.
+
+```
+app/(dashboard)/projects/[id]/
+  layout.tsx           entête (icône, nom, clé · N tâches) + DropdownMenu de navigation
+  project-context.tsx  contexte { project, tasks, members, canManage, reloadTasks… }
+  sections.tsx         PROJECT_SECTIONS — la liste des sections
+  page.tsx             « Aperçu » — nom éditable + description riche (autosave)
+  board/page.tsx       « Board » — Kanban
+  tasks/page.tsx       « Tâches » — liste groupée par statut
+```
+
+- **`sections.tsx`** est le seul endroit à toucher pour ajouter une section : une entrée
+  `{ key, path, label, icon }` + le dossier de route correspondant. Le dropdown, le
+  libellé courant et la détection de section actives en découlent.
+- **Navigation par onglets soulignés** sous l'entête (et non un dropdown) : le handoff
+  retient la barre d'onglets parce qu'elle tient quand les sections se multiplient.
+  `Documents` et `Échéancier` y figurent déjà, grisés avec une pastille « Bientôt » —
+  `soon: true` dans `sections.tsx` suffit à les rendre non cliquables.
+- **`layout.tsx`** charge le projet, ses tâches et les membres du workspace **une fois**,
+  puis les expose via `ProjectProvider`. Les pages de section ne refetchent rien ; elles
+  consomment `useProject()`.
+- **Composants de tâches** (`components/projects/`) : `KanbanBoard`, `TaskListView`,
+  `TaskDrawer` et `TasksView` (chapeau : bouton « Nouvelle tâche », drawer, deep link
+  `?task=<id>`). `TasksView` prend `mode: "kanban" | "liste"` — c'est tout ce qui
+  distingue `/board` de `/tasks`.
+
+### Aperçu — nom + description riche
+
+- **Nom** : `<input>` sans bordure sur le titre. Le champ vide n'est jamais envoyé.
+- **Description** : `RichTextEditor` (`@repo/ui`, BlockNote — voir
+  `docs/packages/UI.md`). Le contenu est stocké en JSON dans `project.description_rich` ;
+  `project.description` reste le **texte brut dérivé côté backend**, utilisé par les
+  cartes de la liste et la recherche `ilike` (`backends/projects/services/rich_text.py`).
+- **Autosave** : les modifications sont accumulées dans un `pending` puis envoyées en un
+  seul `PATCH /api/projects/[id]` après **800 ms** d'inactivité. Le démontage de la page
+  (changement de section) flush ce qui reste. Indicateur `Enregistrement… / Enregistré /
+  Échec` à droite du nom.
+- Tout est en lecture seule sans la permission `projects.manage`.
+
+---
+
+## Projets — liste, rail de métadonnées et sous-tâches
+
+**Liste (`/projects`)** : onglets `Projets | Mes tâches (n)`, recherche live, tri
+(Récents / A→Z / Avancement), et les quatre états — squelette shimmer, erreur avec
+`Réessayer`, vide, aucun résultat de recherche. La modale de création est extraite dans
+`components/projects/CreateProjectModal.tsx`.
+
+**Rail de métadonnées de l'Aperçu** (colonne 300 px) : il rend éditables des champs
+présents en base mais qu'aucun écran n'exposait — `status`, `lead_user_id`, `start_date`,
+`due_date` et `color` (nuancier `PROJECT_COLORS`). Tout passe par le même autosave 800 ms
+que le nom et la description. La progression est calculée sur les tâches déjà chargées par
+le layout, `getProject` ne renvoyant pas de compteurs.
+
+**Sous-tâches** : `parent_task_id` existait sans aucune UI. Les enfants ne sont plus des
+cartes autonomes du board — ils sont filtrés de la liste et du Kanban, comptés sur la carte
+parente (`2/7`) et édités en checklist dans le drawer (cocher bascule le statut,
+`estimate` s'affiche en points).
+
+**Priorités et statuts** : `@repo/ui/PriorityBars` (trois barrettes colorées jusqu'au
+niveau) et les badges point + fond soft dérivés de `STATUS_TONES` — tokens `status-*`.
+
+---
+
+## Responsive — trois régimes
+
+- **< 768 px** : sidebar en off-canvas ouverte par le hamburger de la TopBar, TopBar réduite
+  à hamburger + titre de page + cloche, drawers et modales en **bottom-sheet** (poignée,
+  coins arrondis), cibles tactiles à 44 px.
+- **768–1023 px** : **rail d'icônes de 72 px**.
+- **≥ 1024 px** : sidebar complète de 260 px, géométrie inchangée par rapport à l'existant.
+
+Le régime « déplié » passe par un contexte (`useSidebarMode`) et non par des classes `lg:` :
+dans l'off-canvas mobile les variantes `lg:` ne s'appliquent pas alors qu'on veut précisément
+la version complète, libellés compris.
+
+Côté écrans : grilles en 1 → 2 → 3 colonnes, tableau des membres en **liste de cartes** sous
+768 px, catalogue des Paramètres en menu déroulant, Kanban en **scroll-snap** une colonne à
+la fois. Les titres de page qui font doublon avec celui de la TopBar mobile sont masqués sous
+la tablette.
+
+---
+
 ## Ordre d'implémentation
 
 1. `packages/ui/src/types/shell.ts` — types

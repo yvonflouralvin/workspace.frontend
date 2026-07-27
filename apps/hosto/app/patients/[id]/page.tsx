@@ -289,7 +289,7 @@ export default function PatientDetailPage() {
   // ─────────────────────────────────────────────
   return (
     <DashboardShell>
-      <div className="p-6 max-w-4xl mx-auto space-y-5">
+      <div className="p-4 md:p-6 max-w-4xl mx-auto space-y-5">
 
         {/* ── Nav header ── */}
         <div className="flex items-center gap-2">
@@ -557,7 +557,7 @@ export default function PatientDetailPage() {
       {/* ─────── Drawers ─────── */}
 
       {drawer === "identite" && (
-        <RightDrawer title="Modifier l'identité" onClose={() => setDrawer(null)} width="w-[480px] max-w-full">
+        <RightDrawer title="Modifier l'identité" onClose={() => setDrawer(null)} width="md:w-[480px] md:max-w-[92vw]">
           <form className="h-full flex flex-col" onSubmit={(e) => { e.preventDefault(); saveDrawer(formIdentite); }}>
             <div className="flex-1 overflow-y-auto space-y-4">
               <div className="grid grid-cols-3 gap-3">
@@ -597,7 +597,7 @@ export default function PatientDetailPage() {
       )}
 
       {drawer === "naissance" && (
-        <RightDrawer title="Modifier le lieu de naissance" onClose={() => setDrawer(null)} width="w-[480px] max-w-full">
+        <RightDrawer title="Modifier le lieu de naissance" onClose={() => setDrawer(null)} width="md:w-[480px] md:max-w-[92vw]">
           <form className="h-full flex flex-col" onSubmit={(e) => { e.preventDefault(); saveDrawer(formNaissance); }}>
             <div className="flex-1 overflow-y-auto space-y-4">
               <div className="grid grid-cols-3 gap-3">
@@ -622,7 +622,7 @@ export default function PatientDetailPage() {
       )}
 
       {drawer === "adresse" && (
-        <RightDrawer title="Modifier l'adresse" onClose={() => setDrawer(null)} width="w-[480px] max-w-full">
+        <RightDrawer title="Modifier l'adresse" onClose={() => setDrawer(null)} width="md:w-[480px] md:max-w-[92vw]">
           <form className="h-full flex flex-col" onSubmit={(e) => { e.preventDefault(); saveDrawer(formAdresse); }}>
             <div className="flex-1 overflow-y-auto space-y-4">
               <FormField label="Adresse (ligne 1)">
@@ -657,7 +657,7 @@ export default function PatientDetailPage() {
       )}
 
       {drawer === "medical" && (
-        <RightDrawer title="Modifier la fiche médicale" onClose={() => setDrawer(null)} width="w-[480px] max-w-full">
+        <RightDrawer title="Modifier la fiche médicale" onClose={() => setDrawer(null)} width="md:w-[480px] md:max-w-[92vw]">
           <form className="h-full flex flex-col" onSubmit={(e) => { e.preventDefault(); saveDrawer(formMedical); }}>
             <div className="flex-1 overflow-y-auto space-y-4">
               <div className="grid grid-cols-2 gap-3">

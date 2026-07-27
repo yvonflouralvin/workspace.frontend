@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { SearchOutlined, AddOutlined } from "@mui/icons-material";
 import { useSearchOptions } from "./hooks/useSearchOptions";
 
@@ -41,6 +42,8 @@ export function SearchSelect<T = Record<string, unknown>>({
   const [isOpen, setIsOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(0);
   const [selectedRecord, setSelectedRecord] = useState<T | null>(null);
+  const anchorRef = useRef<HTMLDivElement>(null);
+  const [menuRect, setMenuRect] = useState<{ top: number; left: number; width: number } | null>(null);
 
   const { items, loading, query, setQuery } = useSearchOptions<T>({
     fetchOptions,
@@ -50,6 +53,26 @@ export function SearchSelect<T = Record<string, unknown>>({
   useEffect(() => {
     if (value === null) setSelectedRecord(null);
   }, [value]);
+
+  // Le menu est portalisé sur <body> pour échapper à tout ancêtre `overflow-hidden`
+  // (cartes, drawers) qui le tronquerait ; on le repositionne sur l'ancre à
+  // l'ouverture, au scroll et au redimensionnement.
+  useLayoutEffect(() => {
+    if (!isOpen) return;
+    const place = () => {
+      const el = anchorRef.current;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      setMenuRect({ top: r.bottom + 4, left: r.left, width: r.width });
+    };
+    place();
+    window.addEventListener("scroll", place, true);
+    window.addEventListener("resize", place);
+    return () => {
+      window.removeEventListener("scroll", place, true);
+      window.removeEventListener("resize", place);
+    };
+  }, [isOpen]);
 
   function handleSelect(record: T) {
     setSelectedRecord(record);
@@ -87,8 +110,55 @@ export function SearchSelect<T = Record<string, unknown>>({
         ? initialLabel
         : "";
 
+  const menu = isOpen && menuRect && (
+    <div
+      style={{
+        position: "fixed",
+        top: menuRect.top,
+        left: menuRect.left,
+        width: menuRect.width,
+      }}
+      className="z-50 max-h-60 overflow-y-auto rounded-xl border border-outline-variant bg-surface-container-lowest shadow-lg"
+    >
+      {loading && (
+        <div className="px-3 py-2 text-sm text-on-surface-variant">Chargement…</div>
+      )}
+      {!loading && items.length === 0 &&
+        (onCreate && query.trim() ? (
+          <button
+            type="button"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => {
+              setIsOpen(false);
+              onCreate(query.trim());
+            }}
+            className="w-full text-left px-3 py-2 text-sm text-primary hover:bg-surface-container transition-colors flex items-center gap-2"
+          >
+            <AddOutlined style={{ fontSize: 16 }} />
+            {createLabel ? createLabel(query.trim()) : `Créer « ${query.trim()} »`}
+          </button>
+        ) : (
+          <div className="px-3 py-2 text-sm text-on-surface-variant">Aucun résultat.</div>
+        ))}
+      {!loading &&
+        items.map((record, i) => (
+          <button
+            key={getOptionValue(record)}
+            type="button"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => handleSelect(record)}
+            className={`w-full text-left px-3 py-2 text-sm text-on-surface transition-colors ${
+              i === highlightedIndex ? "bg-surface-container" : "hover:bg-surface-container"
+            }`}
+          >
+            {getOptionLabel(record)}
+          </button>
+        ))}
+    </div>
+  );
+
   return (
-    <div className="relative">
+    <div className="relative" ref={anchorRef}>
       <div className="relative">
         <SearchOutlined
           style={{ fontSize: 18 }}
@@ -114,44 +184,7 @@ export function SearchSelect<T = Record<string, unknown>>({
         />
       </div>
 
-      {isOpen && (
-        <div className="absolute z-10 mt-1 w-full max-h-60 overflow-y-auto rounded-xl border border-outline-variant bg-surface-container-lowest shadow-lg">
-          {loading && (
-            <div className="px-3 py-2 text-sm text-on-surface-variant">Chargement…</div>
-          )}
-          {!loading && items.length === 0 &&
-            (onCreate && query.trim() ? (
-              <button
-                type="button"
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => {
-                  setIsOpen(false);
-                  onCreate(query.trim());
-                }}
-                className="w-full text-left px-3 py-2 text-sm text-primary hover:bg-surface-container transition-colors flex items-center gap-2"
-              >
-                <AddOutlined style={{ fontSize: 16 }} />
-                {createLabel ? createLabel(query.trim()) : `Créer « ${query.trim()} »`}
-              </button>
-            ) : (
-              <div className="px-3 py-2 text-sm text-on-surface-variant">Aucun résultat.</div>
-            ))}
-          {!loading &&
-            items.map((record, i) => (
-              <button
-                key={getOptionValue(record)}
-                type="button"
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => handleSelect(record)}
-                className={`w-full text-left px-3 py-2 text-sm text-on-surface transition-colors ${
-                  i === highlightedIndex ? "bg-surface-container" : "hover:bg-surface-container"
-                }`}
-              >
-                {getOptionLabel(record)}
-              </button>
-            ))}
-        </div>
-      )}
+      {typeof document !== "undefined" && menu ? createPortal(menu, document.body) : null}
     </div>
   );
 }

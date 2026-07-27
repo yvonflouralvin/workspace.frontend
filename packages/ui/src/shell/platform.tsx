@@ -1,6 +1,7 @@
 import React from "react";
 import {
   HomeOutlined,
+  SpaceDashboardOutlined,
   FolderOpenOutlined,
   GroupOutlined,
   InboxOutlined,
@@ -18,8 +19,6 @@ import {
   Inventory2Outlined,
   CategoryOutlined,
   GroupsOutlined,
-  FolderOutlined,
-  FactCheckOutlined,
   AssignmentTurnedInOutlined,
   AccountTreeOutlined,
   OutboxOutlined,
@@ -152,6 +151,7 @@ export const HOSTO_SHELL: AppShellConfig = {
   appIcon: "P",
   appColor: "#0e7490",
   routeLabels: {
+    "/tableau-de-bord": "Tableau de bord",
     "/patients":      "Patients",
     "/services":      "Services",
     "/staff":         "Personnel",
@@ -164,6 +164,7 @@ export const HOSTO_SHELL: AppShellConfig = {
     "/parametres/synchro":    "Synchronisation",
   },
   routeIcons: {
+    "/tableau-de-bord": <SpaceDashboardOutlined style={s(15)} />,
     "/patients":      <PeopleAltOutlined style={s(15)} />,
     "/services":      <LocalHospitalOutlined style={s(15)} />,
     "/staff":         <MedicalServicesOutlined style={s(15)} />,
@@ -212,13 +213,11 @@ export const HR_SHELL: AppShellConfig = {
   appColor: "#006c49",
   routeLabels: {
     "/employees":    "Employés",
-    "/groups":       "Groupes/Départements",
-    "/demo-approval":"Démo approbation",
+    "/groups":       "Organigramme",
   },
   routeIcons: {
     "/employees":    <PeopleAltOutlined style={s(15)} />,
-    "/groups":       <FolderOutlined style={s(15)} />,
-    "/demo-approval":<FactCheckOutlined style={s(15)} />,
+    "/groups":       <AccountTreeOutlined style={s(15)} />,
   },
 };
 

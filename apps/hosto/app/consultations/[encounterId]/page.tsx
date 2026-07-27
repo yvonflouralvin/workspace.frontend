@@ -244,7 +244,7 @@ export default function ConsultationPage() {
           <p className="text-error">{error ?? "Consultation introuvable."}</p>
           <button
             onClick={() => router.push("/reception")}
-            className="text-primary text-body-sm hover:underline">
+            className="text-tertiary text-body-sm hover:underline">
             Retour à la réception
           </button>
         </div>
@@ -260,7 +260,7 @@ export default function ConsultationPage() {
   return (
     <>
     <DashboardShell>
-      <div className="max-w-5xl mx-auto px-4 py-6 space-y-5">
+      <div className="max-w-[1152px] mx-auto px-4 md:px-8 py-6 space-y-5">
 
         {/* ── Back + Actions ────────────────────────────────────────────── */}
         <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -281,14 +281,14 @@ export default function ConsultationPage() {
               </button>
               <button
                 onClick={() => { setShowRedirectModal(true); setRedirectServiceId(""); }}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-outline-variant text-on-surface-variant text-body-sm hover:text-primary hover:border-primary transition-colors">
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-outline-variant text-on-surface-variant text-body-sm hover:text-tertiary hover:border-tertiary transition-colors">
                 <CallSplitOutlined style={{ fontSize: 15 }} />
                 Réorienter
               </button>
               {canAdmit && !localisation?.hospitalise && (
                 <button
                   onClick={openAdmit}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-outline-variant text-on-surface-variant text-body-sm hover:text-primary hover:border-primary transition-colors">
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-outline-variant text-on-surface-variant text-body-sm hover:text-tertiary hover:border-tertiary transition-colors">
                   <HotelOutlined style={{ fontSize: 15 }} />
                   Hospitaliser
                 </button>
@@ -312,8 +312,8 @@ export default function ConsultationPage() {
         <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-5 space-y-4">
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                <PersonOutlineOutlined style={{ fontSize: 20 }} className="text-primary" />
+              <div className="w-10 h-10 rounded-full bg-tertiary/10 flex items-center justify-center shrink-0">
+                <PersonOutlineOutlined style={{ fontSize: 20 }} className="text-tertiary" />
               </div>
               <div>
                 <h1 className="text-headline-sm font-semibold text-on-surface">{fullName}</h1>
@@ -324,7 +324,7 @@ export default function ConsultationPage() {
             </div>
             <button
               onClick={() => setEmrOpen(true)}
-              className="flex items-center gap-1.5 text-primary text-body-sm hover:underline shrink-0">
+              className="flex items-center gap-1.5 text-tertiary text-body-sm hover:underline shrink-0">
               <MedicalServicesOutlined style={{ fontSize: 15 }} />
               Dossier médical
             </button>
@@ -367,7 +367,7 @@ export default function ConsultationPage() {
               className={[
                 "px-4 py-2.5 text-body-sm transition-colors -mb-px border-b-2",
                 activeTab === tab.id
-                  ? "border-primary text-primary font-medium"
+                  ? "border-tertiary text-tertiary font-medium"
                   : "border-transparent text-on-surface-variant hover:text-on-surface",
               ].join(" ")}>
               {tab.label}
@@ -487,7 +487,7 @@ export default function ConsultationPage() {
               onChange={(e) => setCloseAddendum(e.target.value)}
               rows={3}
               placeholder="Consignes de suivi, observations particulières…"
-              className="w-full rounded-xl border border-outline-variant bg-surface px-3 py-2.5 text-body-sm text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary resize-none"
+              className="w-full rounded-xl border border-outline-variant bg-surface px-3 py-2.5 text-body-sm text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-tertiary resize-none"
             />
           </div>
 
@@ -533,7 +533,7 @@ export default function ConsultationPage() {
             <select
               value={redirectServiceId}
               onChange={(e) => setRedirectServiceId(e.target.value ? Number(e.target.value) : "")}
-              className="w-full rounded-xl border border-outline-variant bg-surface px-3 py-2.5 text-body-sm text-on-surface focus:outline-none focus:border-primary">
+              className="w-full rounded-xl border border-outline-variant bg-surface px-3 py-2.5 text-body-sm text-on-surface focus:outline-none focus:border-tertiary">
               <option value="">Sélectionner un service…</option>
               {services.filter(s => s.active).map((s) => (
                 <option key={s.id} value={s.id}>{s.nom}</option>
@@ -550,7 +550,7 @@ export default function ConsultationPage() {
             <button
               onClick={handleRedirectConfirm}
               disabled={redirectPending || !redirectServiceId}
-              className="px-4 py-2 rounded-xl bg-primary text-on-primary text-body-sm font-medium hover:bg-primary-container disabled:opacity-50 transition-colors">
+              className="px-4 py-2 rounded-xl bg-tertiary text-on-primary text-body-sm font-medium hover:bg-tertiary-container disabled:opacity-50 transition-colors">
               {redirectPending ? "Réorientation…" : "Confirmer"}
             </button>
           </div>
@@ -574,7 +574,7 @@ export default function ConsultationPage() {
             <select
               value={admitLitId}
               onChange={(e) => setAdmitLitId(e.target.value ? Number(e.target.value) : "")}
-              className="w-full rounded-xl border border-outline-variant bg-surface px-3 py-2.5 text-body-sm text-on-surface focus:outline-none focus:border-primary">
+              className="w-full rounded-xl border border-outline-variant bg-surface px-3 py-2.5 text-body-sm text-on-surface focus:outline-none focus:border-tertiary">
               <option value="">Sélectionner un lit libre…</option>
               {admitLits.map((l) => (
                 <option key={l.lit_id} value={l.lit_id}>
@@ -593,7 +593,7 @@ export default function ConsultationPage() {
               value={admitMotif}
               onChange={(e) => setAdmitMotif(e.target.value)}
               placeholder="Ex : surveillance, aggravation…"
-              className="w-full rounded-xl border border-outline-variant bg-surface px-3 py-2.5 text-body-sm text-on-surface focus:outline-none focus:border-primary" />
+              className="w-full rounded-xl border border-outline-variant bg-surface px-3 py-2.5 text-body-sm text-on-surface focus:outline-none focus:border-tertiary" />
           </div>
 
           {admitError && <p className="text-body-sm text-error">{admitError}</p>}
@@ -607,7 +607,7 @@ export default function ConsultationPage() {
             <button
               onClick={handleAdmitConfirm}
               disabled={admitPending || !admitLitId}
-              className="px-4 py-2 rounded-xl bg-primary text-on-primary text-body-sm font-medium hover:bg-primary-container disabled:opacity-50 transition-colors">
+              className="px-4 py-2 rounded-xl bg-tertiary text-on-primary text-body-sm font-medium hover:bg-tertiary-container disabled:opacity-50 transition-colors">
               {admitPending ? "Admission…" : "Hospitaliser"}
             </button>
           </div>
@@ -635,7 +635,7 @@ export default function ConsultationPage() {
               onChange={(e) => setCancelReason(e.target.value)}
               rows={3}
               placeholder="Patient a quitté sans attendre, refus de soins…"
-              className="w-full rounded-xl border border-outline-variant bg-surface px-3 py-2.5 text-body-sm text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary resize-none"
+              className="w-full rounded-xl border border-outline-variant bg-surface px-3 py-2.5 text-body-sm text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-tertiary resize-none"
             />
           </div>
 

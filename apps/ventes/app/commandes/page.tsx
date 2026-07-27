@@ -4,15 +4,20 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
 import { DashboardShell } from "@/components/DashboardShell";
-import { listCommandes, createCommande, getFacturationConfig, type Commande, type StatutCommande } from "@/lib/ventes-api";
-import { STATUTS, STATUT_LABEL, STATUT_CLASS, formatMontant } from "@/lib/commande-ui";
-import { SearchOutlined, ShoppingCartOutlined, AddOutlined } from "@mui/icons-material";
+import { listCommandes, createCommande, listFactures, type Commande, type StatutCommande, type Facture } from "@/lib/ventes-api";
+import { STATUTS, STATUT_LABEL, STATUT_CLASS, STATUT_CHART_COLOR } from "@/lib/commande-ui";
+import { useDevise } from "@/components/DeviseProvider";
+import { SearchField } from "@repo/ui/SearchField";
+import { ActiveFilters } from "@repo/ui/FilterBar";
+import { Pagination } from "@repo/ui/Pagination";
+import { ShoppingCartOutlined, AddOutlined } from "@mui/icons-material";
 
 const PAGE_SIZE = 20;
 
 export default function CommandesPage() {
   const router = useRouter();
   const { can } = usePermissions();
+  const { format } = useDevise();
   const canView = can("ventes.commandes.view");
   const canManage = can("ventes.commandes.manage");
   const [creating, setCreating] = useState(false);
@@ -25,7 +30,7 @@ export default function CommandesPage() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [statut, setStatut] = useState<StatutCommande | "">("");
-  const [deviseBase, setDeviseBase] = useState("");
+  const [factures, setFactures] = useState<Facture[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -55,9 +60,37 @@ export default function CommandesPage() {
 
   const filters = (): Filters => ({ client, dateFrom, dateTo, statut });
 
+  /** Part encaissée d'une commande, d'après ses factures. `null` = sans objet. */
+  function paiement(c: Commande): number | null {
+    if (c.statut === "BROUILLON" || c.statut === "ANNULEE") return null;
+    const total = Number(c.montant_total) || 0;
+    if (total <= 0) return null;
+    const paye = factures
+      .filter((f) => f.commande_id === c.id && f.statut !== "ANNULEE")
+      .reduce((sum, f) => sum + (Number(f.montant_paye) || 0), 0);
+    return Math.min(100, Math.round((paye / total) * 100));
+  }
+
   useEffect(() => {
     if (!canView) { setLoading(false); return; }
-    getFacturationConfig().then((c) => setDeviseBase(c.devise_base)).catch(() => {});
+    // Le taux d'encaissement d'une commande se lit sur ses factures : la liste
+    // des commandes ne porte pas ses lignes.
+    (async () => {
+      const all: Facture[] = [];
+      let page = 1;
+      let pages = 1;
+      try {
+        do {
+          const d = await listFactures({ page, page_size: 100 });
+          all.push(...d.items);
+          pages = d.pages;
+          page += 1;
+        } while (page <= pages && page <= 5);
+        setFactures(all);
+      } catch {
+        /* la colonne Paiement se contente d'un tiret si les factures manquent */
+      }
+    })();
     fetchData(filters(), page);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canView]);
@@ -97,9 +130,9 @@ export default function CommandesPage() {
 
   return (
     <DashboardShell>
-      <div className="p-8 max-w-6xl mx-auto space-y-6">
+      <div className="p-4 md:p-8 max-w-[1152px] mx-auto space-y-4">
         <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div>
+          <div className="hidden md:block">
             <h1 className="text-headline-md font-display text-on-surface">Commandes</h1>
             <p className="text-body-sm text-on-surface-variant mt-1">
               Commandes de vente de ce workspace.
@@ -109,7 +142,7 @@ export default function CommandesPage() {
             <button
               onClick={handleCreate}
               disabled={creating}
-              className="inline-flex items-center gap-1.5 bg-primary text-on-primary text-body-md font-medium px-4 py-2 rounded-xl hover:bg-primary-container transition-colors shrink-0 disabled:opacity-50"
+              className="inline-flex flex-1 md:flex-none justify-center items-center gap-1.5 h-11 md:h-[38px] px-4 rounded-lg bg-primary text-on-primary text-body-sm font-semibold shadow-button hover:bg-primary-container transition-colors whitespace-nowrap disabled:opacity-50"
             >
               <AddOutlined style={{ fontSize: 18 }} />
               {creating ? "Création…" : "Nouvelle commande"}
@@ -118,36 +151,66 @@ export default function CommandesPage() {
         </div>
 
         {canView && (
-          <div className="flex items-end gap-3 flex-wrap">
-            <div className="relative w-56">
-              <SearchOutlined
-                style={{ fontSize: 18 }}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none"
-              />
-              <input
-                type="search"
-                placeholder="Rechercher par client…"
+          <>
+            <div className="flex items-center gap-2 flex-wrap">
+              <SearchField
                 value={client}
-                onChange={(e) => handleClient(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 rounded-xl border border-outline-variant bg-surface-container-lowest text-body-md text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary transition-colors"
+                onChange={handleClient}
+                placeholder="Client…"
+                className="w-full sm:w-[224px]"
               />
+              {STATUTS.map((s) => {
+                const on = statut === s.value;
+                return (
+                  <button
+                    key={s.value}
+                    onClick={() => applyFilter({ statut: on ? "" : s.value })}
+                    className={`inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border text-body-sm font-semibold transition-colors ${
+                      on
+                        ? "border-primary/40 bg-primary/5 text-primary"
+                        : "border-outline-soft bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container-low"
+                    }`}
+                  >
+                    <span
+                      className="w-[7px] h-[7px] rounded-full"
+                      style={{ background: STATUT_CHART_COLOR[s.value] }}
+                    />
+                    {s.label}
+                  </button>
+                );
+              })}
+              <label className="inline-flex items-center gap-2 h-9 px-3 rounded-lg border border-outline-soft bg-surface-container-lowest text-body-sm text-on-surface-variant">
+                Du
+                <input
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => applyFilter({ dateFrom: e.target.value })}
+                  className="bg-transparent outline-none text-body-sm"
+                />
+              </label>
+              <label className="inline-flex items-center gap-2 h-9 px-3 rounded-lg border border-outline-soft bg-surface-container-lowest text-body-sm text-on-surface-variant">
+                Au
+                <input
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => applyFilter({ dateTo: e.target.value })}
+                  className="bg-transparent outline-none text-body-sm"
+                />
+              </label>
             </div>
-            <div>
-              <label className="block text-label-sm text-on-surface-variant mb-1">Du</label>
-              <input type="date" value={dateFrom} onChange={(e) => applyFilter({ dateFrom: e.target.value })}
-                className="px-3 py-2 rounded-xl border border-outline-variant bg-surface-container-lowest text-body-md text-on-surface focus:outline-none focus:border-primary transition-colors" />
-            </div>
-            <div>
-              <label className="block text-label-sm text-on-surface-variant mb-1">Au</label>
-              <input type="date" value={dateTo} onChange={(e) => applyFilter({ dateTo: e.target.value })}
-                className="px-3 py-2 rounded-xl border border-outline-variant bg-surface-container-lowest text-body-md text-on-surface focus:outline-none focus:border-primary transition-colors" />
-            </div>
-            <select value={statut} onChange={(e) => applyFilter({ statut: e.target.value as StatutCommande | "" })}
-              className="px-3 py-2 rounded-xl border border-outline-variant bg-surface-container-lowest text-body-md text-on-surface focus:outline-none focus:border-primary transition-colors">
-              <option value="">Tous les statuts</option>
-              {STATUTS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
-            </select>
-          </div>
+
+            <ActiveFilters
+              filters={[
+                ...(statut
+                  ? [{ key: "statut", label: STATUT_LABEL[statut], onClear: () => applyFilter({ statut: "" }) }]
+                  : []),
+                ...(client ? [{ key: "client", label: `« ${client} »`, onClear: () => applyFilter({ client: "" }) }] : []),
+                ...(dateFrom ? [{ key: "from", label: `Depuis ${dateFrom}`, onClear: () => applyFilter({ dateFrom: "" }) }] : []),
+                ...(dateTo ? [{ key: "to", label: `Jusqu'au ${dateTo}`, onClear: () => applyFilter({ dateTo: "" }) }] : []),
+              ]}
+              onClearAll={() => applyFilter({ statut: "", client: "", dateFrom: "", dateTo: "" })}
+            />
+          </>
         )}
 
         {!canView && (
@@ -169,61 +232,127 @@ export default function CommandesPage() {
 
         {canView && !loading && !error && items.length > 0 && (
           <>
-            <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest overflow-hidden">
-              <table className="w-full text-body-sm">
-                <thead>
-                  <tr className="border-b border-outline-variant text-left text-on-surface-variant">
-                    <th className="px-5 py-3 font-medium">Code</th>
-                    <th className="px-5 py-3 font-medium">Client</th>
-                    <th className="px-5 py-3 font-medium">Date</th>
-                    <th className="px-5 py-3 font-medium">Statut</th>
-                    <th className="px-5 py-3 font-medium text-right">Montant</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {items.map((c) => (
-                    <tr
-                      key={c.id}
-                      onClick={() => router.push(`/commandes/${c.id}`)}
-                      className="border-b border-outline-variant last:border-0 hover:bg-surface-container-low transition-colors cursor-pointer"
-                    >
-                      <td className="px-5 py-3 font-mono text-label-md text-on-surface-variant">{c.code}</td>
-                      <td className="px-5 py-3 text-on-surface font-medium">{c.client_nom ?? "—"}</td>
-                      <td className="px-5 py-3 text-on-surface-variant">{c.date_commande ?? "—"}</td>
-                      <td className="px-5 py-3">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-label-sm font-medium ${STATUT_CLASS[c.statut]}`}>
+            <div className="rounded-2xl border border-outline-soft bg-surface-container-lowest overflow-hidden">
+              <div className="hidden md:flex items-center gap-3 xl:gap-4 px-5 py-2.5 bg-surface-row-alt border-b border-surface-container-low text-label-sm uppercase text-outline">
+                <span className="w-[110px] xl:w-[130px] flex-none">Code</span>
+                <span className="flex-1 min-w-0">Client</span>
+                <span className="hidden xl:block w-[150px] flex-none">Paiement</span>
+                <span className="w-[100px] xl:w-[110px] flex-none">Statut</span>
+                <span className="hidden xl:block w-[100px] flex-none">Date</span>
+                <span className="w-[130px] xl:w-[160px] flex-none text-right">Montant</span>
+              </div>
+
+              {items.map((c, i) => {
+                const pct = paiement(c);
+                return (
+                  <button
+                    key={c.id}
+                    onClick={() => router.push(`/commandes/${c.id}`)}
+                    className={`w-full block text-left border-b border-hairline last:border-b-0 hover:bg-surface-container-low transition-colors ${
+                      i % 2 === 1 ? "bg-surface-row-alt" : ""
+                    }`}
+                  >
+                    {/* Carte (mobile) et rangée (bureau) sont deux blocs distincts :
+                        une seule rangée pilotée par des variantes md:/xl: retombait en
+                        pile dès qu'une de ces règles manquait. */}
+                    <span className="md:hidden block px-4 py-3 space-y-1.5">
+                      <span className="flex items-center justify-between gap-3">
+                        <span className="truncate font-mono text-label-md font-medium text-primary">
+                          {c.code}
+                        </span>
+                        <span
+                          className={`inline-flex flex-none items-center rounded-md px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap ${STATUT_CLASS[c.statut]}`}
+                        >
                           {STATUT_LABEL[c.statut]}
                         </span>
-                      </td>
-                      <td className="px-5 py-3 text-on-surface text-right tabular-nums">{formatMontant(c.montant_total, deviseBase)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                      </span>
+                      <span className="block truncate text-body-md text-on-surface">
+                        {c.client_nom ?? "—"}
+                      </span>
+                      <span className="flex items-center justify-between gap-3">
+                        <span className="font-mono text-label-md text-on-surface-variant">
+                          {c.date_commande ?? "—"}
+                        </span>
+                        <span className="tabular-nums font-mono text-body-sm font-semibold text-on-surface">
+                          {format(c.montant_total)}
+                        </span>
+                      </span>
+                      {pct !== null && (
+                        <span className="block pt-0.5">
+                          <span className="flex items-center justify-between text-[11px] mb-1">
+                            <span className="text-outline">Encaissé</span>
+                            <span
+                              className={`font-semibold ${pct >= 100 ? "text-member-active" : "text-on-surface-variant"}`}
+                            >
+                              {pct} %
+                            </span>
+                          </span>
+                          <span className="block h-1.5 rounded-full bg-surface-container-low overflow-hidden">
+                            <span
+                              className={`block h-full rounded-full ${pct >= 100 ? "bg-secondary" : "bg-primary"}`}
+                              style={{ width: `${pct}%` }}
+                            />
+                          </span>
+                        </span>
+                      )}
+                    </span>
+
+                    <span className="hidden md:flex items-center gap-3 xl:gap-4 px-5 py-3">
+                      <span className="w-[110px] xl:w-[130px] flex-none truncate font-mono text-label-md font-medium text-primary">
+                        {c.code}
+                      </span>
+                      <span className="flex-1 min-w-0 truncate text-body-md text-on-surface">
+                        {c.client_nom ?? "—"}
+                      </span>
+
+                      <span className="hidden xl:block w-[150px] flex-none">
+                        {pct === null ? (
+                          <span className="text-label-md text-outline">—</span>
+                        ) : (
+                          <>
+                            <span className="flex items-center justify-between text-[11px] mb-1">
+                              <span className="text-outline">Encaissé</span>
+                              <span
+                                className={`font-semibold ${pct >= 100 ? "text-member-active" : "text-on-surface-variant"}`}
+                              >
+                                {pct} %
+                              </span>
+                            </span>
+                            <span className="block h-1.5 rounded-full bg-surface-container-low overflow-hidden">
+                              <span
+                                className={`block h-full rounded-full ${pct >= 100 ? "bg-secondary" : "bg-primary"}`}
+                                style={{ width: `${pct}%` }}
+                              />
+                            </span>
+                          </>
+                        )}
+                      </span>
+
+                      <span className="w-[100px] xl:w-[110px] flex-none">
+                        <span
+                          className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap ${STATUT_CLASS[c.statut]}`}
+                        >
+                          {STATUT_LABEL[c.statut]}
+                        </span>
+                      </span>
+                      <span className="hidden xl:block w-[100px] flex-none whitespace-nowrap font-mono text-label-md text-on-surface-variant">
+                        {c.date_commande ?? "—"}
+                      </span>
+                      <span className="w-[130px] xl:w-[160px] flex-none text-right whitespace-nowrap tabular-nums font-mono text-body-sm font-semibold text-on-surface">
+                        {format(c.montant_total)}
+                      </span>
+                    </span>
+                  </button>
+                );
+              })}
             </div>
 
             {pages > 1 && (
-              <div className="flex items-center justify-between pt-1">
-                <p className="text-body-sm text-on-surface-variant">
+              <div className="flex items-center justify-between gap-3 pt-1 min-w-0">
+                <p className="text-body-sm text-on-surface-variant truncate">
                   {total} commande{total > 1 ? "s" : ""}
                 </p>
-                <div className="flex items-center gap-1">
-                  <button onClick={() => handlePage(page - 1)} disabled={page === 1}
-                    className="px-3 py-1.5 rounded-lg text-body-sm text-on-surface-variant hover:bg-surface-container disabled:opacity-40 disabled:cursor-default transition-colors">
-                    ← Précédent
-                  </button>
-                  {Array.from({ length: pages }, (_, i) => i + 1).map((n) => (
-                    <button key={n} onClick={() => handlePage(n)}
-                      className={["w-8 h-8 rounded-lg text-body-sm font-medium transition-colors",
-                        n === page ? "bg-primary text-on-primary" : "text-on-surface-variant hover:bg-surface-container"].join(" ")}>
-                      {n}
-                    </button>
-                  ))}
-                  <button onClick={() => handlePage(page + 1)} disabled={page === pages}
-                    className="px-3 py-1.5 rounded-lg text-body-sm text-on-surface-variant hover:bg-surface-container disabled:opacity-40 disabled:cursor-default transition-colors">
-                    Suivant →
-                  </button>
-                </div>
+                <Pagination page={page} pages={pages} onChange={handlePage} className="flex-none" />
               </div>
             )}
           </>

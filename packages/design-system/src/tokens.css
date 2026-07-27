@@ -1,0 +1,197 @@
+/* Tokens du design system — source unique, importée par le globals.css de chaque app.
+   Ne jamais redéclarer un @theme dans une app : ajouter le token ici. */
+
+@theme {
+  /* ── Couleurs ── */
+  --color-background:               #f8f9ff;
+  --color-on-background:            #0b1c30;
+
+  --color-surface:                  #f8f9ff;
+  --color-surface-bright:           #f8f9ff;
+  --color-surface-dim:              #cbdbf5;
+  --color-surface-variant:          #d3e4fe;
+  --color-surface-tint:             #4d44e3;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low:    #eff4ff;
+  --color-surface-container:        #e5eeff;
+  --color-surface-container-high:   #dce9ff;
+  --color-surface-container-highest:#d3e4fe;
+  --color-on-surface:               #0b1c30;
+  --color-on-surface-variant:       #464555;
+  --color-inverse-surface:          #213145;
+  --color-inverse-on-surface:       #eaf1ff;
+
+  --color-primary:                  #3525cd;
+  --color-primary-container:        #4f46e5;
+  --color-primary-fixed:            #e2dfff;
+  --color-primary-fixed-dim:        #c3c0ff;
+  --color-on-primary:               #ffffff;
+  --color-on-primary-fixed:         #0f0069;
+  --color-on-primary-fixed-variant: #3323cc;
+  --color-on-primary-container:     #dad7ff;
+  --color-inverse-primary:          #c3c0ff;
+
+  --color-secondary:                #006c49;
+  --color-secondary-container:      #6cf8bb;
+  --color-secondary-fixed:          #6ffbbe;
+  --color-secondary-fixed-dim:      #4edea3;
+  --color-on-secondary:             #ffffff;
+  --color-on-secondary-container:   #00714d;
+  --color-on-secondary-fixed:       #002113;
+  --color-on-secondary-fixed-variant:#005236;
+
+  --color-tertiary:                 #004598;
+  --color-tertiary-container:       #005cc6;
+  --color-tertiary-fixed:           #d8e2ff;
+  --color-tertiary-fixed-dim:       #adc6ff;
+  --color-on-tertiary:              #ffffff;
+  --color-on-tertiary-container:    #cedbff;
+  --color-on-tertiary-fixed:        #001a42;
+  --color-on-tertiary-fixed-variant:#004395;
+
+  --color-error:                    #ba1a1a;
+  --color-error-container:          #ffdad6;
+  --color-on-error:                 #ffffff;
+  --color-on-error-container:       #93000a;
+
+  --color-outline:                  #777587;
+  --color-outline-variant:          #c7c4d8;
+
+  /* ── Filets & surfaces de liste ──
+     `outline-soft` est la bordure par défaut des cartes, inputs et boutons
+     secondaires ; `outline-variant` reste réservé aux séparations de structure
+     (bord de la sidebar, de la top bar). */
+  --color-outline-soft:             #e5eeff;
+  --color-hairline:                 #f1f5ff;
+  --color-hairline-soft:            #f7f9ff;
+  --color-surface-row-alt:          #fbfcff;
+  --color-overlay:                  rgb(11 28 48 / 0.4);
+  --color-track:                    #dce0ea;
+
+  /* ── Objets appartenant à une autre application ──
+     Teinte ambre volontairement hors palette : elle doit se distinguer des
+     statuts métier partout où un objet est publié par une autre app. */
+  --color-locked:           #8a6d1f;
+  --color-locked-container: #f4ecd6;
+  --color-locked-surface:   #fdfcf7;
+  --color-locked-field:     #f7f2e6;
+
+  /* ── Statuts de tâche (progression froide → verte) ── */
+  --color-status-backlog:           #a3a1af;
+  --color-status-backlog-on:        #5c5b6b;
+  --color-status-backlog-container: #eef1f6;
+  --color-status-todo:              #6558e6;
+  --color-status-todo-on:           #4f46e5;
+  --color-status-todo-container:    #ecebfd;
+  --color-status-doing:             #3525cd;
+  --color-status-doing-container:   #e6e3ff;
+  --color-status-review:            #004598;
+  --color-status-review-container:  #dbe7ff;
+  --color-status-done:              #006c49;
+  --color-status-done-container:    #d5f4e5;
+
+  /* ── Priorités de tâche ── */
+  --color-priority-urgent:          #ba1a1a;
+  --color-priority-high:            #004598;
+  --color-priority-medium:          #3525cd;
+  --color-priority-low:             #777587;
+  --color-priority-none:            #c7c4d8;
+
+  /* ── Rôles ── */
+  --color-role-owner:               #3525cd;
+  --color-role-owner-container:     #e6e3ff;
+  --color-role-admin:               #004598;
+  --color-role-admin-container:     #dbe7ff;
+  --color-role-member:              #464555;
+  --color-role-member-container:    #eff1f6;
+
+  /* ── Statut d'un membre ── */
+  --color-member-active:            #006c49;
+  --color-member-active-container:  #d5f4e5;
+  --color-member-invited:           #b45309;
+  --color-member-invited-container: #ffe8cc;
+
+  /* ── Espacements ── */
+  --spacing-xs:   4px;
+  --spacing-sm:   8px;
+  --spacing-md:   16px;
+  --spacing-lg:   24px;
+  --spacing-xl:   32px;
+  --spacing-gutter: 20px;
+  --spacing-sidebar-width: 260px;
+
+  /* ── Typographie ──
+     Les familles sont chargées par le layout de chaque app via next/font
+     (variables --font-geist-sans / --font-geist-mono / --font-inter) ; les
+     valeurs littérales servent de repli si une app ne les charge pas encore. */
+  --font-display: var(--font-geist-sans, "Geist"), system-ui, sans-serif;
+  --font-sans:    var(--font-inter, "Inter"), system-ui, sans-serif;
+  --font-mono:    var(--font-geist-mono, "Geist Mono"), ui-monospace, monospace;
+
+  --text-display:                        2.5rem;
+  --text-display--line-height:           3rem;
+  --text-display--font-weight:           600;
+  --text-display--letter-spacing:        -0.02em;
+
+  --text-headline-lg:                    1.875rem;
+  --text-headline-lg--line-height:       2.25rem;
+  --text-headline-lg--font-weight:       600;
+  --text-headline-lg--letter-spacing:    -0.01em;
+
+  --text-headline-md:                    1.5rem;
+  --text-headline-md--line-height:       2rem;
+  --text-headline-md--font-weight:       600;
+
+  --text-headline-sm:                    1.25rem;
+  --text-headline-sm--line-height:       1.75rem;
+  --text-headline-sm--font-weight:       600;
+
+  --text-body-lg:                        1rem;
+  --text-body-lg--line-height:           1.5rem;
+
+  --text-body-md:                        0.875rem;
+  --text-body-md--line-height:           1.25rem;
+
+  --text-body-sm:                        0.8125rem;
+  --text-body-sm--line-height:           1.125rem;
+
+  --text-label-md:                       0.75rem;
+  --text-label-md--line-height:          1rem;
+  --text-label-md--font-weight:          500;
+  --text-label-md--letter-spacing:       0.01em;
+
+  --text-label-sm:                       0.6875rem;
+  --text-label-sm--line-height:          0.875rem;
+  --text-label-sm--font-weight:          600;
+  --text-label-sm--letter-spacing:       0.06em;
+
+  /* ── Ombres ── */
+  --shadow-button: 0 1px 2px rgb(11 28 48 / 0.12);
+  --shadow-card:   0 1px 2px rgb(11 28 48 / 0.04);
+  --shadow-drawer: -8px 0 32px rgb(11 28 48 / 0.16);
+  --shadow-modal:  0 24px 60px rgb(11 28 48 / 0.24);
+  --shadow-toast:  0 12px 32px rgb(11 28 48 / 0.28);
+
+  /* ── Animations ── */
+  --animate-overlay-in: overlay-in 0.15s ease;
+  --animate-drawer-in:  drawer-in 0.18s ease;
+  --animate-pop-in:     pop-in 0.18s ease;
+  --animate-toast-in:   toast-in 0.18s ease;
+
+  @keyframes overlay-in {
+    from { opacity: 0 }
+    to   { opacity: 1 }
+  }
+  @keyframes drawer-in {
+    from { transform: translateX(24px); opacity: 0 }
+    to   { transform: translateX(0);    opacity: 1 }
+  }
+  @keyframes pop-in {
+    from { transform: scale(0.96); opacity: 0 }
+    to   { transform: scale(1);    opacity: 1 }
+  }
+  @keyframes toast-in {
+    from { transform: translateY(12px); opacity: 0 }
+    to   { transform: translateY(0);    opacity: 1 }
+  }
+}

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
-import { DashboardShell } from "@/components/DashboardShell";
+import { ParametresLayout } from "@/components/ParametresLayout";
 import { getParametre, updateParametre } from "@/lib/ventes-api";
 import { ArrowBackOutlined, ImageOutlined, DeleteOutlineOutlined } from "@mui/icons-material";
 
@@ -81,14 +81,8 @@ export default function OrganisationSettingsPage() {
   }
 
   return (
-    <DashboardShell>
-      <div className="p-8 max-w-3xl mx-auto space-y-6">
-        <Link
-          href="/parametres"
-          className="inline-flex items-center gap-1.5 text-body-sm text-on-surface-variant hover:text-on-surface transition-colors"
-        >
-          <ArrowBackOutlined style={{ fontSize: 16 }} /> Retour aux paramètres
-        </Link>
+    <ParametresLayout>
+      <div className="space-y-5">
 
         <div>
           <h1 className="text-headline-md font-display text-on-surface">Organisation</h1>
@@ -192,6 +186,6 @@ export default function OrganisationSettingsPage() {
           </form>
         )}
       </div>
-    </DashboardShell>
+    </ParametresLayout>
   );
 }

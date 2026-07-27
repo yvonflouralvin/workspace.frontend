@@ -29,7 +29,7 @@ export function FactureDrawer({ factureId, onClose }: { factureId: number; onClo
   }
 
   return (
-    <RightDrawer title={f ? `Facture ${f.code}` : "Facture"} onClose={onClose} width="w-[760px] max-w-full">
+    <RightDrawer title={f ? `Facture ${f.code}` : "Facture"} onClose={onClose} width="md:w-[760px] md:max-w-full">
       {error && <p className="text-body-sm text-error bg-error-container/40 rounded-lg px-3 py-2">{error}</p>}
       {!f && !error && <p className="text-body-sm text-on-surface-variant">Chargement…</p>}
 

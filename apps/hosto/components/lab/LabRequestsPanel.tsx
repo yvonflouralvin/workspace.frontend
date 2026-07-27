@@ -660,7 +660,7 @@ function LabRequestEditor({
     <RightDrawer
       title="Demander des examens"
       onClose={onClose}
-      width="w-[520px] max-w-full"
+      width="md:w-[520px] md:max-w-[92vw]"
       contentClassName="px-6 py-5 overflow-y-auto space-y-5"
     >
       {content}

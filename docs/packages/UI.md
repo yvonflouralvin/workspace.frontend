@@ -479,6 +479,22 @@ En dessous de `md`, les numéros disparaissent au profit de `« page / total »`
 deux flèches. Rend `null` si `pages <= 1`. Toute liste paginée passe par ce composant —
 ne pas réécrire la boucle `Array.from({ length: pages })`.
 
+### `ViewModeSwitch` (`src/ViewModeSwitch.tsx`)
+
+`{ value, options, onChange }` — sélecteur segmenté de **mode d'affichage**, icônes seules
+(`{ value, icon, label }` ; le `label` sert d'infobulle et de nom accessible). Hauteur
+alignée sur les boutons d'action (`h-11 md:h-[38px]`) pour tenir sur la même ligne qu'un
+« Nouvelle … ». À utiliser quand une **même vue** bascule entre deux rendus (liste/kanban
+dans l'onglet Tâches d'une phase) — quand les modes sont deux routes distinctes, ce sont
+des onglets, pas ce composant.
+
+```tsx
+<ViewModeSwitch value={view} onChange={setView} options={[
+  { value: "liste", icon: <ViewListOutlined style={{ fontSize: 18 }} />, label: "Liste" },
+  { value: "kanban", icon: <ViewKanbanOutlined style={{ fontSize: 18 }} />, label: "Kanban" },
+]} />
+```
+
 ### `ConfirmDialog` (`src/ConfirmDialog.tsx`) et `Toast` (`src/Toast.tsx`)
 
 **Remplacent `window.confirm` et `window.alert`** — plus aucun dialogue natif dans les apps.

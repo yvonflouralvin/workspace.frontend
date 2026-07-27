@@ -2,18 +2,37 @@
 
 import { useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { AddOutlined } from "@mui/icons-material";
+import { AddOutlined, ViewKanbanOutlined, ViewListOutlined } from "@mui/icons-material";
 import { Toast } from "@repo/ui/Toast";
+import { ViewModeSwitch } from "@repo/ui/ViewModeSwitch";
 import { projectsApi, type Task } from "@/app/lib/projects-api";
 import { useProject } from "@/app/(dashboard)/projects/[id]/project-context";
 import { KanbanBoard } from "./KanbanBoard";
 import { TaskListView } from "./TaskListView";
 import { TaskDrawer } from "./TaskDrawer";
 
-export function TasksView({ mode, phaseId }: { mode: "kanban" | "liste"; phaseId?: number }) {
+export type TasksMode = "kanban" | "liste";
+
+const MODE_OPTIONS = [
+  { value: "liste" as const, icon: <ViewListOutlined style={{ fontSize: 18 }} />, label: "Liste" },
+  { value: "kanban" as const, icon: <ViewKanbanOutlined style={{ fontSize: 18 }} />, label: "Kanban" },
+];
+
+export function TasksView({
+  mode,
+  phaseId,
+  modeSwitch,
+}: {
+  mode: TasksMode;
+  phaseId?: number;
+  /** Vue unique (onglet d'une phase) : le mode se choisit sur place plutôt que par la route. */
+  modeSwitch?: boolean;
+}) {
   const { projectId, project, tasks: allTasks, setTasks, reloadTasks, members, canManage } = useProject();
   // Vue de phase : on ne montre et ne crée que les éléments de cette phase.
   const tasks = phaseId ? allTasks.filter((t) => t.phase_id === phaseId) : allTasks;
+  const [view, setView] = useState<TasksMode>(mode);
+  const currentMode = modeSwitch ? view : mode;
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -41,19 +60,22 @@ export function TasksView({ mode, phaseId }: { mode: "kanban" | "liste"; phaseId
 
   return (
     <div className="space-y-4">
-      {canManage && (
-        <div className="flex justify-end">
-          <button
-            onClick={() => setEditing("new")}
-            className="inline-flex items-center justify-center gap-1.5 h-11 md:h-[38px] px-4 rounded-lg bg-primary text-on-primary text-body-sm font-semibold shadow-button hover:bg-primary-container transition-colors whitespace-nowrap"
-          >
-            <AddOutlined style={{ fontSize: 16 }} />
-            Nouvelle tâche
-          </button>
+      {(modeSwitch || canManage) && (
+        <div className="flex items-center justify-end gap-2">
+          {modeSwitch && <ViewModeSwitch value={view} options={MODE_OPTIONS} onChange={setView} />}
+          {canManage && (
+            <button
+              onClick={() => setEditing("new")}
+              className="inline-flex items-center justify-center gap-1.5 h-11 md:h-[38px] px-4 rounded-lg bg-primary text-on-primary text-body-sm font-semibold shadow-button hover:bg-primary-container transition-colors whitespace-nowrap"
+            >
+              <AddOutlined style={{ fontSize: 16 }} />
+              Nouvelle tâche
+            </button>
+          )}
         </div>
       )}
 
-      {mode === "kanban" ? (
+      {currentMode === "kanban" ? (
         <KanbanBoard
           tasks={tasks}
           canManage={canManage}

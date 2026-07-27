@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AddOutlined, ViewKanbanOutlined, ViewListOutlined } from "@mui/icons-material";
 import { Toast } from "@repo/ui/Toast";
@@ -31,13 +31,19 @@ export function TasksView({
   const { projectId, project, tasks: allTasks, setTasks, reloadTasks, phases, members, canManage } = useProject();
   // Vue de phase : on ne montre et ne crée que les éléments de cette phase.
   const tasks = phaseId ? allTasks.filter((t) => t.phase_id === phaseId) : allTasks;
-  // Kanban global : chaque carte rappelle sa phase. Inutile dans la vue d'une phase,
-  // et jamais pour la phase implicite — le mot « phase » ne doit pas apparaître
-  // dans un projet qui n'en a pas.
-  const phaseNames =
-    !phaseId && phasesVisible(phases)
-      ? Object.fromEntries(phases.filter((p) => !p.est_implicite).map((p) => [p.id, p.name]))
-      : undefined;
+  // Phases proposées à l'utilisateur : jamais la phase implicite — le mot « phase »
+  // ne doit pas apparaître dans un projet qui n'en a pas. Mémoïsé : l'identité de la
+  // liste alimente le `fetchOptions` du SearchSelect du drawer.
+  const visiblePhases = useMemo(
+    () => (phasesVisible(phases) ? phases.filter((p) => !p.est_implicite) : []),
+    [phases]
+  );
+  // Kanban global : chaque carte rappelle sa phase. Inutile dans la vue d'une phase.
+  const phaseNames = useMemo(
+    () =>
+      phaseId ? undefined : Object.fromEntries(visiblePhases.map((p) => [p.id, p.name])),
+    [phaseId, visiblePhases]
+  );
   const [view, setView] = useState<TasksMode>(mode);
   const currentMode = modeSwitch ? view : mode;
   const router = useRouter();
@@ -103,6 +109,7 @@ export function TasksView({
           projectKey={project.key}
           subtasks={subtasks}
           members={members}
+          phases={visiblePhases}
           canManage={canManage}
           onClose={() => {
             setEditing(null);

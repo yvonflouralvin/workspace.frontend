@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { AddOutlined, CheckOutlined } from "@mui/icons-material";
 import { RightDrawer } from "@repo/ui/RightDrawer";
+import { SearchSelect } from "@repo/ui/SearchSelect";
 import {
   PRIORITY_LABELS,
   PRIORITY_ORDER,
@@ -10,6 +11,7 @@ import {
   STATUS_ORDER,
   STATUS_TONES,
   projectsApi,
+  type Phase,
   type Task,
 } from "@/app/lib/projects-api";
 import type { Member } from "@/app/(dashboard)/projects/[id]/project-context";
@@ -25,6 +27,7 @@ export function TaskDrawer({
   projectKey,
   subtasks,
   members,
+  phases,
   canManage,
   onClose,
   onSaved,
@@ -36,6 +39,9 @@ export function TaskDrawer({
   projectKey: string;
   subtasks: Task[];
   members: Member[];
+  /** Phases entre lesquelles déplacer la tâche — absent quand le projet n'en
+   *  expose qu'une (le champ disparaît alors du drawer). */
+  phases?: Phase[];
   canManage: boolean;
   onClose: () => void;
   onSaved: () => void;
@@ -48,9 +54,19 @@ export function TaskDrawer({
     task?.assignee_user_id ? String(task.assignee_user_id) : ""
   );
   const [dueDate, setDueDate] = useState(task?.due_date ? task.due_date.slice(0, 10) : "");
+  const [phase, setPhase] = useState<number | null>(task?.phase_id ?? phaseId ?? null);
   const [newSubtask, setNewSubtask] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const phaseOptions = phases ?? [];
+  const currentPhaseName = phaseOptions.find((p) => p.id === (task?.phase_id ?? phaseId))?.name;
+  // Liste locale : la recherche filtre les phases déjà chargées par le layout du projet.
+  const fetchPhases = useCallback(
+    async (query: string) =>
+      phaseOptions.filter((p) => p.name.toLowerCase().includes(query.trim().toLowerCase())),
+    [phaseOptions] // eslint-disable-line react-hooks/exhaustive-deps
+  );
 
   const readOnly = !canManage;
   const tone = STATUS_TONES[status];
@@ -71,8 +87,12 @@ export function TaskDrawer({
       due_date: dueDate ? new Date(dueDate).toISOString() : null,
     };
     try {
-      if (task) await projectsApi.updateTask(task.id, body);
-      else await projectsApi.createTask({ project_id: projectId, ...(phaseId ? { phase_id: phaseId } : {}), ...body });
+      if (task) {
+        const moved = phase !== null && phase !== task.phase_id;
+        await projectsApi.updateTask(task.id, moved ? { ...body, phase_id: phase } : body);
+      } else {
+        await projectsApi.createTask({ project_id: projectId, ...(phase ? { phase_id: phase } : {}), ...body });
+      }
       onSaved();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Enregistrement impossible.");
@@ -223,6 +243,27 @@ export function TaskDrawer({
           />
         </Field>
       </div>
+
+      {phaseOptions.length > 1 && (
+        <div className="mt-4">
+          <p className={LABEL}>Phase</p>
+          <SearchSelect<Phase>
+            fetchOptions={fetchPhases}
+            value={phase}
+            initialLabel={currentPhaseName}
+            onChange={(value) => setPhase(value === null ? null : Number(value))}
+            getOptionLabel={(p) => p.name}
+            placeholder="Rechercher une phase…"
+            disabled={readOnly}
+          />
+          {task && subtasks.length > 0 && (
+            <p className="mt-1.5 text-label-md text-outline">
+              Les {subtasks.length} sous-tâche{subtasks.length > 1 ? "s" : ""} suivent la tâche
+              dans sa nouvelle phase.
+            </p>
+          )}
+        </div>
+      )}
 
       {task && (
         <>

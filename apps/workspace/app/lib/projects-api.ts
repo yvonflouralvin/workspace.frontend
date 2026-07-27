@@ -85,8 +85,8 @@ export interface Phase {
   status: string;
   /** Affichage uniquement : phase auto-créée, masquée dans l'UI tant qu'elle est seule. */
   est_implicite: boolean;
-  /** Outils activés sur la phase (clés) — pilote les onglets ouverts. */
-  tools: string[];
+  /** Outils activés sur la phase (map {clé: valeur}) — pilote les onglets ouverts. */
+  tools: Record<string, boolean | string>;
   /** Étiquettes libres — base des droits fins par groupe. */
   tags: string[];
   start_planned: string | null;
@@ -116,6 +116,51 @@ export interface Task {
   completed_at: string | null;
   project_name?: string | null;
   project_key?: string | null;
+}
+
+/** Modes de l'outil Livrables : à quoi un livrable peut se rattacher. */
+export type DeliverablesMode = "NONE" | "PHASE_TASK" | "PHASE" | "TASK";
+
+export const DELIVERABLES_MODE_LABELS: Record<DeliverablesMode, string> = {
+  NONE: "Aucun",
+  PHASE_TASK: "Sur phase et tâche",
+  PHASE: "Sur phase uniquement",
+  TASK: "Sur tâche uniquement",
+};
+export const DELIVERABLES_MODE_ORDER: DeliverablesMode[] = ["NONE", "PHASE_TASK", "PHASE", "TASK"];
+
+export function deliverablesMode(phase: Phase): DeliverablesMode {
+  const value = phase.tools?.deliverables;
+  return typeof value === "string" ? (value as DeliverablesMode) : "NONE";
+}
+export function deliverablesOnPhase(phase: Phase): boolean {
+  return ["PHASE_TASK", "PHASE"].includes(deliverablesMode(phase));
+}
+export function deliverablesOnTask(phase: Phase): boolean {
+  return ["PHASE_TASK", "TASK"].includes(deliverablesMode(phase));
+}
+
+export const DELIVERABLE_STATUS_LABELS: Record<string, string> = {
+  A_PRODUIRE: "À produire", EN_COURS: "En cours", LIVRE: "Livré", ACCEPTE: "Accepté",
+};
+export const DELIVERABLE_STATUS_ORDER = ["A_PRODUIRE", "EN_COURS", "LIVRE", "ACCEPTE"];
+export const DELIVERABLE_STATUS_TONES: Record<string, { dot: string; chip: string }> = {
+  A_PRODUIRE: { dot: "bg-status-backlog", chip: "bg-status-backlog-container text-status-backlog-on" },
+  EN_COURS:   { dot: "bg-status-doing",   chip: "bg-status-doing-container text-status-doing" },
+  LIVRE:      { dot: "bg-status-review",  chip: "bg-status-review-container text-status-review" },
+  ACCEPTE:    { dot: "bg-status-done",    chip: "bg-status-done-container text-status-done" },
+};
+
+export interface Deliverable {
+  id: number;
+  project_id: number;
+  phase_id: number;
+  task_id: number | null;
+  title: string;
+  description: string | null;
+  status: string;
+  due_date: string | null;
+  task_title: string | null;
 }
 
 export interface MetaOption { key: string; label: string }
@@ -170,6 +215,15 @@ export const projectsApi = {
     ),
   deleteGroup: (projectId: number, groupId: number) =>
     apiFetch(`/api/projects/${projectId}/groups/${groupId}`, { method: "DELETE" }).then((r) => json<void>(r)),
+
+  listDeliverables: (phaseId: number) =>
+    apiFetch(`/api/phases/${phaseId}/deliverables`).then((r) => json<Deliverable[]>(r)),
+  createDeliverable: (phaseId: number, body: Partial<Deliverable> & { title: string }) =>
+    apiFetch(`/api/phases/${phaseId}/deliverables`, { method: "POST", body }).then((r) => json<Deliverable>(r)),
+  updateDeliverable: (id: number, body: Partial<Deliverable>) =>
+    apiFetch(`/api/deliverables/${id}`, { method: "PATCH", body }).then((r) => json<Deliverable>(r)),
+  deleteDeliverable: (id: number) =>
+    apiFetch(`/api/deliverables/${id}`, { method: "DELETE" }).then((r) => json<void>(r)),
 
   deletePhase: (id: number) => apiFetch(`/api/phases/${id}`, { method: "DELETE" }).then((r) => json<void>(r)),
 };

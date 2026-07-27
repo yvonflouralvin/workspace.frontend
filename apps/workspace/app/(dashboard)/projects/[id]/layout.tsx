@@ -12,7 +12,7 @@ import { projectsApi, phasesVisible, type Phase, type Project, type ProjectRole,
 import { ProjectProvider, type Member } from "./project-context";
 import {
   PROJECT_SECTIONS,
-  isPhaseDetailPathname,
+  isDetailPathname,
   sectionForPathname,
   type ProjectSection,
 } from "./sections";
@@ -99,12 +99,12 @@ export default function ProjectLayout({ children }: { children: ReactNode }) {
 
   const current = sectionForPathname(pathname, projectId);
   const color = project.color ?? "#3525cd";
-  // Le détail d'une phase installe son propre en-tête et ses propres onglets.
-  const phaseDetail = isPhaseDetailPathname(pathname, projectId);
+  // Le détail d'une phase ou d'une tâche installe son propre en-tête et ses onglets.
+  const objectDetail = isDetailPathname(pathname, projectId);
 
   return (
     <div className="p-4 md:p-8 max-w-[1152px] mx-auto">
-      {!phaseDetail && (
+      {!objectDetail && (
         <>
           <Link
             href="/projects"

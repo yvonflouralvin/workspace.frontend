@@ -11,11 +11,14 @@ export default function PhaseToolsPage() {
   const { phase, queue } = usePhase();
   // Activer un outil relève du propriétaire du projet (le backend l'impose aussi).
   const { isOwner: canManage } = useProject();
-  const enabled = phase.tools ?? [];
+  const tools = phase.tools ?? {};
 
-  function toggle(key: string, next: boolean) {
-    const tools = next ? [...new Set([...enabled, key])] : enabled.filter((t) => t !== key);
-    queue({ tools });
+  function setTool(key: string, value: boolean | string, off: boolean | string) {
+    const next = { ...tools };
+    // L'absence de clé est le seul état « désactivé » — pas deux façons de dire non.
+    if (value === off) delete next[key];
+    else next[key] = value;
+    queue({ tools: next });
   }
 
   return (
@@ -36,18 +39,30 @@ export default function PhaseToolsPage() {
       </div>
 
       <div className="rounded-2xl border border-outline-soft bg-surface-container-lowest overflow-hidden">
-        {PHASE_TOOLS.map((tool) => (
-          <SettingRow
-            key={tool.key}
-            name={tool.label}
-            description={tool.description}
-            type="toggle"
-            value={enabled.includes(tool.key)}
-            state={enabled.includes(tool.key) ? "ok" : "default"}
-            disabled={!canManage}
-            onChange={(next) => toggle(tool.key, Boolean(next))}
-          />
-        ))}
+        {PHASE_TOOLS.map((tool) => {
+          const active = tool.kind === "toggle" ? tools[tool.key] === true : tools[tool.key] !== undefined;
+          return (
+            <SettingRow
+              key={tool.key}
+              name={tool.label}
+              description={tool.description}
+              type={tool.kind === "toggle" ? "toggle" : "single_choice"}
+              value={
+                tool.kind === "toggle"
+                  ? active
+                  : ((tools[tool.key] as string | undefined) ?? tool.off)
+              }
+              options={tool.kind === "choice" ? tool.options : undefined}
+              state={active ? "ok" : "default"}
+              disabled={!canManage}
+              onChange={(next) =>
+                tool.kind === "toggle"
+                  ? setTool(tool.key, Boolean(next), false)
+                  : setTool(tool.key, String(next || tool.off), tool.off)
+              }
+            />
+          );
+        })}
       </div>
 
       {!canManage && (

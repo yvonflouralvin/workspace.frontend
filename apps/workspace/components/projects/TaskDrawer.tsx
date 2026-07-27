@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { AddOutlined, CheckOutlined } from "@mui/icons-material";
+import Link from "next/link";
+import { AddOutlined, CheckOutlined, OpenInFullOutlined } from "@mui/icons-material";
 import { RightDrawer } from "@repo/ui/RightDrawer";
 import { SearchSelect } from "@repo/ui/SearchSelect";
 import { TagInput } from "@repo/ui/TagInput";
@@ -166,12 +167,21 @@ export function TaskDrawer({
       }
     >
       {task && (
-        <span
-          className={`inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-semibold mb-3 ${tone?.chip ?? ""}`}
-        >
-          <span className={`w-1.5 h-1.5 rounded-full ${tone?.dot ?? ""}`} />
-          {STATUS_LABELS[status]}
-        </span>
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <span
+            className={`inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-semibold ${tone?.chip ?? ""}`}
+          >
+            <span className={`w-1.5 h-1.5 rounded-full ${tone?.dot ?? ""}`} />
+            {STATUS_LABELS[status]}
+          </span>
+          <Link
+            href={`/projects/${projectId}/tasks/${task.id}`}
+            className="inline-flex items-center gap-1.5 text-label-md font-medium text-on-surface-variant hover:text-primary transition-colors"
+          >
+            <OpenInFullOutlined style={{ fontSize: 14 }} />
+            Ouvrir la page
+          </Link>
+        </div>
       )}
 
       {error && <p className="text-body-sm text-error mb-3">{error}</p>}

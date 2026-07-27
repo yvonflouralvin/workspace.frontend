@@ -8,9 +8,12 @@ import { Toast } from "@repo/ui/Toast";
 import {
   DELIVERABLE_STATUS_LABELS,
   DELIVERABLE_STATUS_ORDER,
+  DELIVERABLE_TYPE_LABELS,
+  DELIVERABLE_TYPE_ORDER,
   deliverablesOnPhase,
   deliverablesOnTask,
   projectsApi,
+  type DeliverableType,
   type ProjectGroup,
   type ProjectMember,
 } from "@/app/lib/projects-api";
@@ -27,7 +30,6 @@ export default function DeliverableSettingsPage() {
 
   const [members, setMembers] = useState<ProjectMember[]>([]);
   const [groups, setGroups] = useState<ProjectGroup[]>([]);
-  const [title, setTitle] = useState(deliverable.title);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -68,23 +70,6 @@ export default function DeliverableSettingsPage() {
       )}
 
       <div className="rounded-2xl border border-outline-soft bg-surface-container-lowest divide-y divide-hairline">
-        <Row label="Intitulé">
-          <input
-            value={title}
-            disabled={!canManage}
-            onChange={(e) => setTitle(e.target.value)}
-            onBlur={() => {
-              if (title.trim() && title.trim() !== deliverable.title) {
-                void run(
-                  () => projectsApi.updateDeliverable(deliverable.id, { title: title.trim() }),
-                  "Intitulé mis à jour."
-                );
-              }
-            }}
-            className={`${CONTROL} w-[16rem] max-w-full`}
-          />
-        </Row>
-
         <Row label="État">
           <select
             value={deliverable.status}
@@ -100,6 +85,29 @@ export default function DeliverableSettingsPage() {
             {DELIVERABLE_STATUS_ORDER.map((s) => (
               <option key={s} value={s}>
                 {DELIVERABLE_STATUS_LABELS[s]}
+              </option>
+            ))}
+          </select>
+        </Row>
+
+        <Row label="Type attendu">
+          <select
+            value={deliverable.expected_type}
+            disabled={!canManage || busy}
+            onChange={(e) =>
+              run(
+                () =>
+                  projectsApi.updateDeliverable(deliverable.id, {
+                    expected_type: e.target.value as DeliverableType,
+                  }),
+                "Type attendu mis à jour."
+              )
+            }
+            className={CONTROL}
+          >
+            {DELIVERABLE_TYPE_ORDER.map((t) => (
+              <option key={t} value={t}>
+                {DELIVERABLE_TYPE_LABELS[t]}
               </option>
             ))}
           </select>

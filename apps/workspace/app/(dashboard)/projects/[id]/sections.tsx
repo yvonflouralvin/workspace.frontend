@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import {
+  HistoryOutlined,
   NotesOutlined,
   ViewKanbanOutlined,
   ViewListOutlined,
@@ -28,6 +29,12 @@ export const PROJECT_SECTIONS: ProjectSection[] = [
     label: "Documents",
     icon: <DescriptionOutlined style={{ fontSize: 17 }} />,
     soon: true,
+  },
+  {
+    key: "activity",
+    path: "/activity",
+    label: "Activité",
+    icon: <HistoryOutlined style={{ fontSize: 17 }} />,
   },
   {
     key: "timeline",

@@ -2,13 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { AddOutlined, DeleteOutlineOutlined } from "@mui/icons-material";
-import { ConfirmDialog } from "@repo/ui/ConfirmDialog";
+import { AddOutlined } from "@mui/icons-material";
 import { Toast } from "@repo/ui/Toast";
 import {
-  DELIVERABLE_STATUS_LABELS,
-  DELIVERABLE_STATUS_ORDER,
-  DELIVERABLE_STATUS_TONES,
   deliverablesOnPhase,
   deliverablesOnTask,
   projectsApi,
@@ -16,11 +12,6 @@ import {
   type Phase,
   type Task,
 } from "@/app/lib/projects-api";
-
-/** Rappel discret : l'historique et la décision vivent sur la page du livrable. */
-function versionHint(row: Deliverable): string {
-  return row.status === "LIVRE" ? " · en attente de décision" : "";
-}
 
 const FIELD =
   "h-9 px-2 rounded-lg border border-outline-soft bg-surface-container-lowest text-body-sm text-on-surface outline-none focus:border-primary transition-colors";
@@ -40,7 +31,6 @@ export function DeliverablesPanel({
   const [rows, setRows] = useState<Deliverable[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
-  const [pendingRemoval, setPendingRemoval] = useState<Deliverable | null>(null);
   const [busy, setBusy] = useState(false);
 
   const [title, setTitle] = useState("");
@@ -150,9 +140,7 @@ export function DeliverablesPanel({
         {rows?.length === 0 && (
           <p className="px-4 py-3 text-body-sm text-on-surface-variant">Aucun livrable pour l&apos;instant.</p>
         )}
-        {rows?.map((row) => {
-          const tone = DELIVERABLE_STATUS_TONES[row.status] ?? DELIVERABLE_STATUS_TONES.A_PRODUIRE!;
-          return (
+        {rows?.map((row) => (
             <div
               key={row.id}
               className="flex flex-wrap md:flex-nowrap items-center gap-x-3 gap-y-2 px-4 py-3 border-b border-hairline last:border-b-0"
@@ -166,37 +154,8 @@ export function DeliverablesPanel({
                 </span>
                 <span className="block text-label-md text-outline truncate">
                   {row.task_title ? `Tâche · ${row.task_title}` : "Phase"}
-                  {versionHint(row)}
                 </span>
               </Link>
-
-              {canManage ? (
-                <select
-                  value={row.status}
-                  disabled={busy}
-                  onChange={(e) =>
-                    run(
-                      () => projectsApi.updateDeliverable(row.id, { status: e.target.value }),
-                      "Statut mis à jour."
-                    )
-                  }
-                  className="h-8 rounded-lg border border-outline-soft bg-surface-container-lowest px-2 text-body-sm font-semibold text-on-surface outline-none focus:border-primary"
-                >
-                  {DELIVERABLE_STATUS_ORDER.map((s) => (
-                    <option key={s} value={s}>
-                      {DELIVERABLE_STATUS_LABELS[s]}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <span
-                  className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-label-md font-semibold ${tone.chip}`}
-                >
-                  <span className={`w-[6px] h-[6px] rounded-full ${tone.dot}`} />
-                  {DELIVERABLE_STATUS_LABELS[row.status] ?? row.status}
-                </span>
-              )}
-
               <span className="w-[110px] flex-none text-label-md text-on-surface-variant">
                 {row.due_date
                   ? new Date(row.due_date).toLocaleDateString("fr-FR", {
@@ -206,37 +165,10 @@ export function DeliverablesPanel({
                     })
                   : "—"}
               </span>
-
-              {canManage && (
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => setPendingRemoval(row)}
-                  aria-label={`Supprimer ${row.title}`}
-                  className="w-8 h-8 flex-none flex items-center justify-center rounded-lg text-on-surface-variant hover:bg-error-container hover:text-error disabled:opacity-40 transition-colors"
-                >
-                  <DeleteOutlineOutlined style={{ fontSize: 17 }} />
-                </button>
-              )}
             </div>
-          );
-        })}
+        ))}
       </div>
 
-      {pendingRemoval && (
-        <ConfirmDialog
-          title={`Supprimer « ${pendingRemoval.title} » ?`}
-          message="Ce livrable sera retiré de la phase."
-          confirmLabel="Supprimer"
-          busy={busy}
-          onConfirm={async () => {
-            const target = pendingRemoval;
-            setPendingRemoval(null);
-            await run(() => projectsApi.deleteDeliverable(target.id), "Livrable supprimé.");
-          }}
-          onCancel={() => setPendingRemoval(null)}
-        />
-      )}
 
       {toast && <Toast message={toast} onDismiss={() => setToast(null)} />}
     </div>

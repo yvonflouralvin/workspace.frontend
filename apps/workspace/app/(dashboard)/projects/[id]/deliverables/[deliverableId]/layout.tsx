@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
 import { ArrowBackOutlined, HistoryOutlined, TuneOutlined } from "@mui/icons-material";
@@ -20,6 +20,8 @@ export default function DeliverableLayout({ children }: { children: ReactNode })
   const { projectId, project, phases, canManage } = useProject();
 
   const [deliverable, setDeliverable] = useState<Deliverable | null>(null);
+  const [title, setTitle] = useState("");
+  const titleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [approvers, setApprovers] = useState<DeliverableApprovers | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -30,6 +32,7 @@ export default function DeliverableLayout({ children }: { children: ReactNode })
       projectsApi.getApprovers(id).catch(() => null),
     ]);
     setDeliverable(row);
+    setTitle(row.title);
     setApprovers(app);
   }, [id]);
 
@@ -93,9 +96,27 @@ export default function DeliverableLayout({ children }: { children: ReactNode })
               </>
             )}
           </span>
-          <h1 className="mt-0.5 font-display text-headline-md text-on-surface truncate">
-            {deliverable.title}
-          </h1>
+          {canManage ? (
+            <input
+              aria-label="Intitulé du livrable"
+              value={title}
+              onChange={(e) => {
+                const next = e.target.value;
+                setTitle(next);
+                if (titleTimer.current) clearTimeout(titleTimer.current);
+                if (!next.trim()) return;
+                titleTimer.current = setTimeout(() => {
+                  void projectsApi.updateDeliverable(deliverable.id, { title: next.trim() });
+                }, 800);
+              }}
+              placeholder="Intitulé du livrable"
+              className="mt-0.5 w-full bg-transparent font-display text-headline-md text-on-surface outline-none border-b border-transparent hover:border-outline-soft focus:border-primary transition-colors"
+            />
+          ) : (
+            <h1 className="mt-0.5 font-display text-headline-md text-on-surface truncate">
+              {deliverable.title}
+            </h1>
+          )}
         </div>
 
         <span

@@ -143,6 +143,15 @@ export function deliverablesOnTask(phase: Phase): boolean {
 export const DELIVERABLE_STATUS_LABELS: Record<string, string> = {
   A_PRODUIRE: "À produire", EN_COURS: "En cours", LIVRE: "Livré", ACCEPTE: "Accepté",
 };
+/** Ce qu'on attend concrètement — oriente la saisie d'une version. */
+export type DeliverableType = "LIEN" | "FICHIER" | "DOCUMENT";
+export const DELIVERABLE_TYPE_LABELS: Record<DeliverableType, string> = {
+  LIEN: "Lien",
+  FICHIER: "Fichier",
+  DOCUMENT: "Document",
+};
+export const DELIVERABLE_TYPE_ORDER: DeliverableType[] = ["FICHIER", "LIEN", "DOCUMENT"];
+
 export const DELIVERABLE_STATUS_ORDER = ["A_PRODUIRE", "EN_COURS", "LIVRE", "ACCEPTE"];
 export const DELIVERABLE_STATUS_TONES: Record<string, { dot: string; chip: string }> = {
   A_PRODUIRE: { dot: "bg-status-backlog", chip: "bg-status-backlog-container text-status-backlog-on" },
@@ -159,6 +168,7 @@ export interface Deliverable {
   title: string;
   description: string | null;
   status: string;
+  expected_type: DeliverableType;
   due_date: string | null;
   task_title: string | null;
 }
@@ -192,6 +202,19 @@ export interface DeliverableApprovers {
   group_names: Record<number, string>;
   /** L'appelant peut-il décider du sort de la version en attente ? */
   can_approve: boolean;
+}
+
+export interface ProjectActivity {
+  id: number;
+  phase_id: number | null;
+  task_id: number | null;
+  deliverable_id: number | null;
+  action: string;
+  action_label: string | null;
+  target_label: string | null;
+  detail: string | null;
+  actor_name: string | null;
+  created_at: string;
 }
 
 export interface MetaOption { key: string; label: string }
@@ -253,6 +276,11 @@ export const projectsApi = {
     apiFetch(`/api/phases/${phaseId}/deliverables`, { method: "POST", body }).then((r) => json<Deliverable>(r)),
   updateDeliverable: (id: number, body: Partial<Deliverable>) =>
     apiFetch(`/api/deliverables/${id}`, { method: "PATCH", body }).then((r) => json<Deliverable>(r)),
+  listActivities: (projectId: number, limit = 50) =>
+    apiFetch(`/api/projects/${projectId}/activities?limit=${limit}`).then((r) =>
+      json<ProjectActivity[]>(r)
+    ),
+
   getDeliverable: (id: number) =>
     apiFetch(`/api/deliverables/${id}`).then((r) => json<Deliverable>(r)),
   listVersions: (id: number) =>

@@ -11,6 +11,7 @@ import { AccountTreeOutlined, InventoryOutlined } from "@mui/icons-material";
 import {
   projectsApi,
   phasesVisible,
+  workItemsActifs,
   type Deliverable,
   type Etat,
   type Phase,
@@ -99,6 +100,9 @@ export default function ProjectLayout({ children }: { children: ReactNode }) {
 
   // Le module « phase » n'apparaît que s'il y a plus qu'une phase implicite seule.
   const showPhases = phasesVisible(phases);
+  // « Tâches » n'apparaît que si au moins une phase a activé l'outil Éléments de
+  // travail : un projet qui n'en gère pas ne doit pas exhiber un onglet vide.
+  const showTasks = workItemsActifs(phases);
   const phaseSection: ProjectSection = {
     key: "phases",
     path: "/phases",
@@ -118,9 +122,10 @@ export default function ProjectLayout({ children }: { children: ReactNode }) {
     ...(showPhases ? [phaseSection] : []),
     ...(deliverables.length ? [deliverableSection] : []),
   ];
-  const sections: ProjectSection[] = afterBoard.length
-    ? PROJECT_SECTIONS.flatMap((s) => (s.key === "board" ? [s, ...afterBoard] : [s]))
-    : PROJECT_SECTIONS;
+  const sections: ProjectSection[] = PROJECT_SECTIONS.flatMap((s) => {
+    if (s.key === "tasks" && !showTasks) return [];
+    return s.key === "board" ? [s, ...afterBoard] : [s];
+  });
 
   // Le rôle vient du backend (il connaît l'appartenance) ; le RBAC workspace reste
   // la porte d'entrée, mais il ne dit plus à lui seul ce qu'on peut faire ici.

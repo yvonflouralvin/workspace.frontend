@@ -343,6 +343,13 @@ export function phasesVisible(phases: Phase[]): boolean {
   return !(phases.length <= 1 && (phases[0]?.est_implicite ?? true));
 }
 
+/** Le projet porte-t-il des éléments de travail ? Vrai dès qu'UNE phase a activé
+ *  l'outil. Tant que non, le projet n'a pas de tâches et n'en parle pas — même
+ *  esprit que `phasesVisible` : on ne montre pas un mot que rien ne justifie. */
+export function workItemsActifs(phases: Phase[]): boolean {
+  return phases.some((phase) => phase.tools?.work_items === true);
+}
+
 export const PHASE_STATUS_LABELS: Record<string, string> = {
   A_VENIR: "À venir", EN_COURS: "En cours", CLOTUREE: "Clôturée", ANNULEE: "Annulée",
 };

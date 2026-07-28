@@ -11,11 +11,14 @@ import { RightDrawer } from "@repo/ui/RightDrawer";
 import { RichTextEditor } from "@repo/ui/RichTextEditor";
 import {
   projectsApi,
+  refusBlocage,
   PHASE_STATUS_LABELS,
   PHASE_STATUS_ORDER,
   PHASE_STATUS_TONES,
   type Phase,
+  type RefusBlocage,
 } from "@/app/lib/projects-api";
+import { MotifsBlocage } from "@/components/projects/MotifsBlocage";
 import { useProject } from "../project-context";
 
 const inputCls =
@@ -44,6 +47,7 @@ function StatusPill({ status }: { status: string }) {
 export default function PhasesPage() {
   const { projectId, phases, reloadPhases, canManage } = useProject();
   const [error, setError] = useState<string | null>(null);
+  const [refus, setRefus] = useState<RefusBlocage | null>(null);
   // drawer : Phase = édition, null = création, false = fermé.
   const [drawer, setDrawer] = useState<Phase | null | false>(false);
 
@@ -51,11 +55,16 @@ export default function PhasesPage() {
 
   async function run(fn: () => Promise<unknown>) {
     setError(null);
+    setRefus(null);
     try {
       await fn();
       await reloadPhases();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Une erreur est survenue.");
+      // Un verrou de gouvernance renvoie TOUS ses motifs : les aplatir en une
+      // phrase priverait l'utilisateur du lien vers ce qui bloque.
+      const bloque = refusBlocage(e);
+      if (bloque) setRefus(bloque);
+      else setError(e instanceof Error ? e.message : "Une erreur est survenue.");
     }
   }
 
@@ -70,6 +79,7 @@ export default function PhasesPage() {
       {error && (
         <p className="text-body-sm text-error bg-error-container/40 rounded-lg px-3 py-2">{error}</p>
       )}
+      {refus && <MotifsBlocage refus={refus} projectId={projectId} />}
 
       <div className="rounded-2xl border border-outline-soft bg-surface-container-lowest overflow-hidden">
         <div className="hidden md:flex items-center gap-4 px-5 py-2.5 bg-surface-row-alt border-b border-surface-container-low text-label-sm uppercase text-outline">
@@ -188,6 +198,7 @@ function PhaseDrawer({
   const [descRich, setDescRich] = useState<string | null>(phase?.description_rich ?? null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [refus, setRefus] = useState<RefusBlocage | null>(null);
 
   async function save() {
     if (!name.trim()) {
@@ -196,6 +207,7 @@ function PhaseDrawer({
     }
     setSaving(true);
     setError(null);
+    setRefus(null);
     const body = {
       name: name.trim(),
       status,
@@ -208,7 +220,11 @@ function PhaseDrawer({
       else await projectsApi.createPhase(projectId, body);
       onSaved();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Enregistrement impossible.");
+      const bloque = refusBlocage(e);
+      // Le passage en force se fait depuis la page de la phase, pas depuis un
+      // aperçu : contourner une gate n'est pas un geste d'édition rapide.
+      if (bloque) setRefus(bloque);
+      else setError(e instanceof Error ? e.message : "Enregistrement impossible.");
       setSaving(false);
     }
   }
@@ -304,6 +320,7 @@ function PhaseDrawer({
         </div>
 
         {error && <p className="text-body-sm text-error bg-error-container/40 rounded-lg px-3 py-2">{error}</p>}
+        {refus && <MotifsBlocage refus={refus} projectId={projectId} />}
       </div>
     </RightDrawer>
   );

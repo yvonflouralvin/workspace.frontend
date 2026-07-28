@@ -7,7 +7,8 @@ import { useSessionStore } from "@repo/auth/store/session.store";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
 import { apiFetch } from "@repo/network/client";
 import { ArrowBackOutlined } from "@mui/icons-material";
-import { AccountTreeOutlined, InventoryOutlined } from "@mui/icons-material";
+import { AccountTreeOutlined, FlagOutlined, InventoryOutlined } from "@mui/icons-material";
+import { jalonsApi, type Jalon } from "@/app/lib/jalons-api";
 import {
   projectsApi,
   phasesVisible,
@@ -38,6 +39,7 @@ export default function ProjectLayout({ children }: { children: ReactNode }) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [phases, setPhases] = useState<Phase[]>([]);
   const [deliverables, setDeliverables] = useState<Deliverable[]>([]);
+  const [jalons, setJalons] = useState<Jalon[]>([]);
   const [etats, setEtats] = useState<Etat[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
@@ -55,6 +57,11 @@ export default function ProjectLayout({ children }: { children: ReactNode }) {
     [projectId]
   );
 
+  const reloadJalons = useCallback(
+    () => jalonsApi.list(projectId).then(setJalons).catch(() => {}),
+    [projectId]
+  );
+
   useEffect(() => {
     setLoading(true);
     Promise.all([
@@ -63,13 +70,15 @@ export default function ProjectLayout({ children }: { children: ReactNode }) {
       projectsApi.listPhases(projectId).catch(() => [] as Phase[]),
       projectsApi.listProjectDeliverables(projectId).catch(() => [] as Deliverable[]),
       projectsApi.listEtats(projectId).catch(() => [] as Etat[]),
+      jalonsApi.list(projectId).catch(() => [] as Jalon[]),
     ])
-      .then(([p, t, ph, dl, et]) => {
+      .then(([p, t, ph, dl, et, jl]) => {
         setProject(p);
         setTasks(t);
         setPhases(ph);
         setDeliverables(dl);
         setEtats(et);
+        setJalons(jl);
       })
       .catch(() => setProject(null))
       .finally(() => setLoading(false));
@@ -117,10 +126,20 @@ export default function ProjectLayout({ children }: { children: ReactNode }) {
     label: "Livrables",
     icon: <InventoryOutlined style={{ fontSize: 17 }} />,
   };
+  // Les jalons vivent au niveau PROJET et non dans l'onglet Phases : celui-ci est
+  // masqué tant qu'il n'y a qu'une phase implicite, ce qui rendrait les gates
+  // invisibles sur la majorité des projets.
+  const jalonSection: ProjectSection = {
+    key: "jalons",
+    path: "/jalons",
+    label: "Jalons",
+    icon: <FlagOutlined style={{ fontSize: 17 }} />,
+  };
   // Le tableau vit désormais DANS une phase : il n'y a plus d'onglet Board au
   // niveau projet, où les limites de WIP de deux phases se seraient mélangées.
   const conditionnels = [
     ...(showPhases ? [phaseSection] : []),
+    ...(jalons.length ? [jalonSection] : []),
     ...(deliverables.length ? [deliverableSection] : []),
   ];
   const sections: ProjectSection[] = PROJECT_SECTIONS.flatMap((s) => {
@@ -208,7 +227,7 @@ export default function ProjectLayout({ children }: { children: ReactNode }) {
       )}
 
       <ProjectProvider
-        value={{ projectId, project, setProject, tasks, setTasks, reloadTasks, phases, reloadPhases, deliverables, reloadDeliverables, etats, members, role, canManage, isOwner }}
+        value={{ projectId, project, setProject, tasks, setTasks, reloadTasks, phases, reloadPhases, deliverables, reloadDeliverables, jalons, reloadJalons, etats, members, role, canManage, isOwner }}
       >
         {children}
       </ProjectProvider>

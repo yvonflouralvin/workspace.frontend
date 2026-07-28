@@ -237,7 +237,30 @@ export interface ErreurApi extends Error {
   status?: number;
 }
 
-async function json<T>(res: Response): Promise<T> {
+/** Un motif de blocage renvoyé par le backend : nommé ET lié, jamais une phrase.
+ *  L'interface doit pouvoir emmener l'utilisateur sur ce qui bloque. */
+export interface MotifBlocage {
+  type: "livrable" | "jalon";
+  id: number;
+  libelle: string;
+  /** Ce qu'il faut faire pour lever CE motif — une sortie, pas un diagnostic. */
+  action: string;
+}
+
+/** Refus d'une transition de phase : TOUT ce qui bloque, d'un seul coup. */
+export interface RefusBlocage {
+  message: string;
+  motifs: MotifBlocage[];
+  forcage_possible: boolean;
+}
+
+/** Reconnaît un refus structuré parmi les erreurs d'API. */
+export function refusBlocage(e: unknown): RefusBlocage | null {
+  const detail = (e as ErreurApi)?.detail as RefusBlocage | undefined;
+  return detail && Array.isArray(detail.motifs) && detail.motifs.length ? detail : null;
+}
+
+export async function lireReponse<T>(res: Response): Promise<T> {
   if (!res.ok) {
     const corps = await res.json().catch(() => ({}));
     const detail = corps?.detail;
@@ -253,6 +276,8 @@ async function json<T>(res: Response): Promise<T> {
   }
   return res.status === 204 ? (undefined as T) : res.json();
 }
+
+const json = lireReponse;
 
 export const projectsApi = {
   meta: () => apiFetch("/api/projects/meta").then((r) => json<ProjectsMeta>(r)),
@@ -281,7 +306,10 @@ export const projectsApi = {
 
   listPhases: (projectId: number) => apiFetch(`/api/projects/${projectId}/phases`).then((r) => json<Phase[]>(r)),
   createPhase: (projectId: number, body: Partial<Phase>) => apiFetch(`/api/projects/${projectId}/phases`, { method: "POST", body }).then((r) => json<Phase>(r)),
-  updatePhase: (id: number, body: Partial<Phase>) => apiFetch(`/api/phases/${id}`, { method: "PATCH", body }).then((r) => json<Phase>(r)),
+  // `motif_forcage` n'est pas un champ de la phase : c'est la justification d'un
+  // passage en force, conservée à part et attachée aux jalons contournés.
+  updatePhase: (id: number, body: Partial<Phase> & { motif_forcage?: string }) =>
+    apiFetch(`/api/phases/${id}`, { method: "PATCH", body }).then((r) => json<Phase>(r)),
   listMembers: (projectId: number) =>
     apiFetch(`/api/projects/${projectId}/members`).then((r) => json<ProjectMember[]>(r)),
   addMember: (projectId: number, body: { user_id: number; role: ProjectRole }) =>

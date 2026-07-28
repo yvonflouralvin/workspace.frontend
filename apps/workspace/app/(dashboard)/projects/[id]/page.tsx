@@ -8,6 +8,7 @@ import {
   CloudSyncOutlined,
   AccountTreeOutlined,
   ChevronRightOutlined,
+  FlagOutlined,
   GroupOutlined,
 } from "@mui/icons-material";
 import { Avatar } from "@repo/ui/Avatar";
@@ -29,7 +30,7 @@ const SAVE_DELAY_MS = 800;
 const LABEL = "block text-label-sm uppercase text-outline";
 
 export default function ProjectOverviewPage() {
-  const { projectId, project, setProject, tasks, phases, members, canManage } = useProject();
+  const { projectId, project, setProject, tasks, phases, jalons, members, canManage } = useProject();
   const showPhases = phasesVisible(phases);
   const [name, setName] = useState(project.name);
   const [saveState, setSaveState] = useState<SaveState>("idle");
@@ -213,6 +214,31 @@ export default function ProjectOverviewPage() {
             >
               <AccountTreeOutlined style={{ fontSize: 16 }} />
               Découper en phases
+            </Link>
+          </div>
+        ) : null}
+
+        {/* Gouvernance : les jalons. L'onglet du projet n'apparaît qu'une fois
+            un jalon posé — sans cette entrée, le PREMIER serait incréable sur un
+            projet neuf, dont l'onglet Phases est lui aussi masqué. */}
+        {jalons.length > 0 ? (
+          <MetaRow label="Gouvernance">
+            <Link
+              href={`/projects/${projectId}/jalons`}
+              className="inline-flex items-center gap-1 text-body-sm font-semibold text-primary hover:underline"
+            >
+              {jalons.length} jalon{jalons.length > 1 ? "s" : ""}
+              <ChevronRightOutlined style={{ fontSize: 15 }} />
+            </Link>
+          </MetaRow>
+        ) : canManage ? (
+          <div className="px-4 py-3">
+            <Link
+              href={`/projects/${projectId}/jalons`}
+              className="inline-flex items-center gap-1.5 text-body-sm text-on-surface-variant hover:text-primary transition-colors"
+            >
+              <FlagOutlined style={{ fontSize: 16 }} />
+              Poser un jalon
             </Link>
           </div>
         ) : null}

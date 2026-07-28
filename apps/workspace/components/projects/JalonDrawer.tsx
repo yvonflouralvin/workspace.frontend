@@ -39,9 +39,15 @@ export function JalonDrawer({
 
   const [nom, setNom] = useState(jalon?.nom ?? "");
   const [role, setRole] = useState<JalonRole>(jalon?.role ?? "sortie_de_phase");
-  const [phaseId, setPhaseId] = useState<number | null>(
-    jalon ? jalon.phase_id : (phaseParDefaut ?? null)
-  );
+  // À la création, on rattache par défaut à la première phase : un jalon de
+  // « sortie de phase » sans phase ne veut rien dire, et l'écran projet ne
+  // transmet aucun contexte de phase.
+  const [phaseId, setPhaseId] = useState<number | null>(() => {
+    if (jalon) return jalon.phase_id;
+    if (phaseParDefaut != null) return phaseParDefaut;
+    const premiere = [...phases].sort((a, b) => a.position - b.position || a.id - b.id)[0];
+    return premiere?.id ?? null;
+  });
   const [bloquant, setBloquant] = useState(jalon?.bloquant ?? true);
   const [datePrevue, setDatePrevue] = useState(jalon?.date_prevue?.slice(0, 10) ?? "");
   const [description, setDescription] = useState(jalon?.description ?? "");

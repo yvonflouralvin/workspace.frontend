@@ -166,16 +166,19 @@ export default function JalonDetailPage() {
       {proposerArret && (
         <ConfirmDialog
           title="Arrêter aussi le projet ?"
-          confirmLabel="Archiver le projet"
+          confirmLabel="Arrêter le projet"
           cancelLabel="Non, garder le projet ouvert"
           busy={busy}
           onCancel={() => setProposerArret(false)}
           onConfirm={async () => {
             setBusy(true);
             try {
+              // ARCHIVE est le seul statut terminal disponible : le jeu de
+              // statuts ne sait pas dire « abandonné ». L'arrêt lui-même est
+              // consigné sur le jalon, pas sur le projet.
               await projectsApi.updateProject(projectId, { status: "ARCHIVE" });
               setProposerArret(false);
-              setToast("Projet archivé.");
+              setToast("Projet arrêté.");
               router.push(`/projects/${projectId}`);
             } finally {
               setBusy(false);
@@ -185,6 +188,11 @@ export default function JalonDetailPage() {
             <>
               La phase {phase ? `« ${phase.name} » ` : ""}est annulée par cette décision. Le
               projet, lui, reste ouvert tant que vous n&apos;en décidez pas autrement.
+              <br />
+              <br />
+              Arrêter le projet le sort des projets actifs et ferme le travail en cours. La
+              décision d&apos;arrêt, elle, est déjà consignée sur ce jalon — verdict, auteur et
+              date sont immuables, quoi qu&apos;il advienne du statut du projet.
             </>
           }
         />

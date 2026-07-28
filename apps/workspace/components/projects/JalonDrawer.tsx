@@ -142,7 +142,18 @@ export function JalonDrawer({
 
         <div>
           <label className={LABEL}>Rôle</label>
-          <select className={FIELD} value={role} onChange={(e) => setRole(e.target.value as JalonRole)}>
+          <select
+            className={FIELD}
+            value={role}
+            onChange={(e) => {
+              const suivant = e.target.value as JalonRole;
+              setRole(suivant);
+              // Le rôle décide de la phase, pas l'inverse : un jalon de projet
+              // n'en a aucune, tout autre rôle en exige une.
+              if (suivant === "projet") setPhaseId(null);
+              else if (phaseId === null) setPhaseId(ordered[0]?.id ?? null);
+            }}
+          >
             {JALON_ROLE_ORDER.map((r) => (
               <option key={r} value={r}>
                 {JALON_ROLE_LABELS[r]}
@@ -155,18 +166,22 @@ export function JalonDrawer({
         {role !== "projet" && (
           <div>
             <label className={LABEL}>Phase</label>
+            {/* Pas d'option « aucune » : un jalon de phase sans phase ne serait
+                cherché par aucune règle de blocage. */}
             <select
               className={FIELD}
               value={phaseId ?? ""}
-              onChange={(e) => setPhaseId(e.target.value ? Number(e.target.value) : null)}
+              onChange={(e) => setPhaseId(Number(e.target.value))}
             >
-              <option value="">Aucune — jalon de projet</option>
               {ordered.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name}
                 </option>
               ))}
             </select>
+            <p className="mt-1.5 text-label-md text-outline">
+              Ce rôle garde une porte : le jalon doit nommer la phase concernée.
+            </p>
           </div>
         )}
 

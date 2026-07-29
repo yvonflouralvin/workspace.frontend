@@ -2,6 +2,7 @@
 
 import { createContext, useContext } from "react";
 import type { Phase, Task } from "@/app/lib/projects-api";
+import type { EchecSauvegarde } from "@/app/lib/autosave";
 
 export type TaskSaveState = "idle" | "saving" | "saved" | "error";
 
@@ -12,6 +13,10 @@ export interface TaskContextValue {
   /** Empile un patch et déclenche la sauvegarde différée (partagée avec l'en-tête). */
   queue: (patch: Partial<Task>) => void;
   saveState: TaskSaveState;
+  /** Motif du dernier échec — une limite de WIP franchie sur cet écran ne
+   *  disparaissait jusqu'ici derrière un indicateur muet. */
+  echec: EchecSauvegarde | null;
+  oublierEchec: () => void;
   canManage: boolean;
 }
 

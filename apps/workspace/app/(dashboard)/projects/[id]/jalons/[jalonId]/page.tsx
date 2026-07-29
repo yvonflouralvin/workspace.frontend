@@ -173,10 +173,13 @@ export default function JalonDetailPage() {
           onConfirm={async () => {
             setBusy(true);
             try {
-              // ARCHIVE est le seul statut terminal disponible : le jeu de
-              // statuts ne sait pas dire « abandonné ». L'arrêt lui-même est
-              // consigné sur le jalon, pas sur le projet.
-              await projectsApi.updateProject(projectId, { status: "ARCHIVE" });
+              // Deux champs, deux sens : `status` range le projet, `issue` dit
+              // comment il s'est terminé. Sans le second, un projet mené à terme
+              // et un projet tué ici seraient indistinguables.
+              await projectsApi.updateProject(projectId, {
+                status: "ARCHIVE",
+                issue: "ABANDONNE",
+              });
               setProposerArret(false);
               setToast("Projet arrêté.");
               router.push(`/projects/${projectId}`);
@@ -190,9 +193,10 @@ export default function JalonDetailPage() {
               projet, lui, reste ouvert tant que vous n&apos;en décidez pas autrement.
               <br />
               <br />
-              Arrêter le projet le sort des projets actifs et ferme le travail en cours. La
-              décision d&apos;arrêt, elle, est déjà consignée sur ce jalon — verdict, auteur et
-              date sont immuables, quoi qu&apos;il advienne du statut du projet.
+              Arrêter le projet le sort des projets actifs et l&apos;enregistre comme
+              <strong> abandonné</strong> — un abandon ne se confond pas avec un projet mené à
+              terme. La décision d&apos;arrêt, elle, est déjà consignée sur ce jalon : verdict,
+              auteur et date sont immuables, quoi qu&apos;il advienne du statut du projet.
             </>
           }
         />

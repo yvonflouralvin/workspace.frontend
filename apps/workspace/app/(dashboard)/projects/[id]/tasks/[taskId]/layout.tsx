@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
 import {
@@ -17,10 +17,9 @@ import {
   projectsApi,
   type Task,
 } from "@/app/lib/projects-api";
+import { useAutosave, type EtatSauvegarde } from "@/app/lib/autosave";
 import { useProject } from "../../project-context";
-import { TaskProvider, type TaskSaveState } from "./task-context";
-
-const SAVE_DELAY_MS = 800;
+import { TaskProvider } from "./task-context";
 
 export default function TaskLayout({ children }: { children: ReactNode }) {
   const { taskId } = useParams<{ taskId: string }>();
@@ -30,47 +29,21 @@ export default function TaskLayout({ children }: { children: ReactNode }) {
   const phase = phases.find((p) => p.id === task?.phase_id) ?? null;
 
   const [title, setTitle] = useState(task?.title ?? "");
-  const [saveState, setSaveState] = useState<TaskSaveState>("idle");
-
-  const pending = useRef<Partial<Task>>({});
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (task) setTitle(task.title);
   }, [task?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const taskIdNum = task?.id;
-
-  const flush = useCallback(async () => {
-    if (!taskIdNum) return;
-    const body = pending.current;
-    pending.current = {};
-    if (!Object.keys(body).length) return;
-    setSaveState("saving");
-    try {
-      await projectsApi.updateTask(taskIdNum, body);
-      await reloadTasks();
-      setSaveState("saved");
-    } catch {
-      setSaveState("error");
-    }
-  }, [taskIdNum, reloadTasks]);
-
-  const queue = useCallback(
-    (patch: Partial<Task>) => {
-      pending.current = { ...pending.current, ...patch };
-      if (timer.current) clearTimeout(timer.current);
-      timer.current = setTimeout(flush, SAVE_DELAY_MS);
-    },
-    [flush]
-  );
-
-  useEffect(
-    () => () => {
-      if (timer.current) clearTimeout(timer.current);
-      void flush();
-    },
-    [flush]
+  const { queue, etat, echec, oublierEchec } = useAutosave<Task>(
+    useCallback(
+      (patch) => {
+        if (!taskIdNum) return Promise.resolve();
+        return projectsApi.updateTask(taskIdNum, patch);
+      },
+      [taskIdNum]
+    ),
+    reloadTasks
   );
 
   if (!task) {
@@ -142,7 +115,7 @@ export default function TaskLayout({ children }: { children: ReactNode }) {
         </div>
 
         <div className="flex-none flex items-center gap-3 pt-4">
-          <SaveIndicator state={saveState} />
+          <SaveIndicator state={etat} />
           <span
             className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-label-md font-semibold ${tone?.chip ?? ""}`}
           >
@@ -172,7 +145,9 @@ export default function TaskLayout({ children }: { children: ReactNode }) {
         })}
       </nav>
 
-      <TaskProvider value={{ task, phase, queue, saveState, canManage }}>{children}</TaskProvider>
+      <TaskProvider value={{ task, phase, queue, saveState: etat, echec, oublierEchec, canManage }}>
+        {children}
+      </TaskProvider>
     </div>
   );
 }
@@ -188,7 +163,7 @@ function BackToTasks({ projectId }: { projectId: number }) {
   );
 }
 
-function SaveIndicator({ state }: { state: TaskSaveState }) {
+function SaveIndicator({ state }: { state: EtatSauvegarde }) {
   if (state === "idle") return null;
   const map = {
     saving: { icon: <CloudSyncOutlined style={{ fontSize: 16 }} />, label: "Enregistrement…", tone: "text-on-surface-variant" },

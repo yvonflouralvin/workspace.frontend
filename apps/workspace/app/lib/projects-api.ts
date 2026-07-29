@@ -69,6 +69,10 @@ export interface Project {
   due_date: string | null;
   task_count?: number;
   done_count?: number;
+  /** Comment le projet s'est terminé — ORTHOGONAL au statut, qui dit seulement
+   *  où il est rangé. `null` = en cours, ou issue inconnue (projets archivés
+   *  avant l'introduction du champ : on ne devine pas). */
+  issue?: ProjectIssue | null;
   /** Rôle de l'utilisateur courant sur ce projet — pilote toute l'UI. */
   my_role?: ProjectRole | null;
 }
@@ -517,6 +521,14 @@ export const PRIORITY_LEVELS: Record<string, 0 | 1 | 2 | 3 | 4> = {
   AUCUNE: 0, BASSE: 1, MOYENNE: 2, HAUTE: 3, URGENTE: 4,
 };
 
+
+export type ProjectIssue = "TERMINE" | "ABANDONNE" | "SUSPENDU";
+export const PROJECT_ISSUE_LABELS: Record<ProjectIssue, string> = {
+  TERMINE: "Mené à terme",
+  ABANDONNE: "Abandonné",
+  SUSPENDU: "Suspendu",
+};
+export const PROJECT_ISSUE_ORDER: ProjectIssue[] = ["TERMINE", "ABANDONNE", "SUSPENDU"];
 
 export const PROJECT_STATUS_LABELS: Record<string, string> = {
   ACTIF: "Actif", EN_PAUSE: "En pause", ARCHIVE: "Archivé",

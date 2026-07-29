@@ -16,6 +16,7 @@ import {
 } from "@/app/lib/projects-api";
 import { JalonDrawer } from "@/components/projects/JalonDrawer";
 import { JalonRow } from "@/components/projects/JalonsTimeline";
+import { EchecAutosave } from "@/components/projects/EchecAutosave";
 import { MotifsBlocage } from "@/components/projects/MotifsBlocage";
 import { useProject } from "../../project-context";
 import { usePhase } from "./phase-context";
@@ -23,7 +24,7 @@ import { usePhase } from "./phase-context";
 const LABEL = "block text-label-sm uppercase text-outline";
 
 export default function PhaseOverviewPage() {
-  const { phase, queue, canManage } = usePhase();
+  const { phase, queue, echec, oublierEchec, canManage } = usePhase();
   const { projectId, jalons, reloadJalons, reloadPhases } = useProject();
   const { can } = usePermissions();
   const tone = PHASE_STATUS_TONES[phase.status] ?? PHASE_STATUS_TONES.A_VENIR!;
@@ -81,6 +82,7 @@ export default function PhaseOverviewPage() {
             {erreurStatut}
           </p>
         )}
+        {echec && <EchecAutosave echec={echec} projectId={projectId} onFermer={oublierEchec} />}
 
         <div>
           <p className={`${LABEL} mb-2`}>Aperçu de la phase</p>

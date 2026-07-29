@@ -69,6 +69,9 @@ export interface Project {
   due_date: string | null;
   task_count?: number;
   done_count?: number;
+  /** Unité dans laquelle les éléments sont estimés — vit au PROJET pour que deux
+   *  itérations de phases différentes restent comparables. */
+  unite_estimation?: string;
   /** Comment le projet s'est terminé — ORTHOGONAL au statut, qui dit seulement
    *  où il est rangé. `null` = en cours, ou issue inconnue (projets archivés
    *  avant l'introduction du champ : on ne devine pas). */
@@ -123,6 +126,8 @@ export interface Task {
   due_date: string | null;
   estimate: number | null;
   completed_at: string | null;
+  /** Rattachement à une itération de SA phase — seule colonne ajoutée par un régime. */
+  iteration_id?: number | null;
   project_name?: string | null;
   project_key?: string | null;
 }

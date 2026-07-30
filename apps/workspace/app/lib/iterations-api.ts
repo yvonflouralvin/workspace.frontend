@@ -63,6 +63,9 @@ export interface IterationSnapshot {
 export const iterationsApi = {
   list: (phaseId: number) =>
     apiFetch(`/api/phases/${phaseId}/iterations`).then((r) => lireReponse<Iteration[]>(r)),
+  /** Toutes les itérations du projet — l'échéancier lit le projet entier. */
+  listProjet: (projectId: number) =>
+    apiFetch(`/api/projects/${projectId}/iterations`).then((r) => lireReponse<Iteration[]>(r)),
   create: (phaseId: number, body: { nom: string; date_debut?: string | null; date_fin?: string | null; capacite?: number | null }) =>
     apiFetch(`/api/phases/${phaseId}/iterations`, { method: "POST", body }).then((r) =>
       lireReponse<Iteration>(r)

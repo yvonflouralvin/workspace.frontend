@@ -23,6 +23,7 @@ import {
 import { ProjectProvider, type Member } from "./project-context";
 import {
   PROJECT_SECTIONS,
+  TIMELINE_SECTION,
   isDetailPathname,
   sectionForPathname,
   type ProjectSection,
@@ -137,8 +138,16 @@ export default function ProjectLayout({ children }: { children: ReactNode }) {
   };
   // Le tableau vit désormais DANS une phase : il n'y a plus d'onglet Board au
   // niveau projet, où les limites de WIP de deux phases se seraient mélangées.
+  // L'échéancier ne s'ouvre que si quelque chose porte une date : un axe vide
+  // n'apprend rien et fait croire à un écran cassé.
+  const dateQuelquePart =
+    phases.some((p) => p.start_planned && p.end_planned) ||
+    jalons.some((j) => j.date_prevue) ||
+    deliverables.some((d) => d.due_date) ||
+    tasks.some((t) => t.start_date && t.due_date);
   const conditionnels = [
     ...(showPhases ? [phaseSection] : []),
+    ...(dateQuelquePart ? [TIMELINE_SECTION] : []),
     ...(jalons.length ? [jalonSection] : []),
     ...(deliverables.length ? [deliverableSection] : []),
   ];

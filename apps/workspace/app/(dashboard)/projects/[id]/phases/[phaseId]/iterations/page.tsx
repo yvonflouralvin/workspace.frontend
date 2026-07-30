@@ -18,6 +18,17 @@ import { usePhase } from "../phase-context";
 
 const FIELD =
   "h-9 px-3 rounded-lg border border-outline-soft bg-surface-container-lowest text-body-sm text-on-surface outline-none focus:border-primary transition-colors";
+const LABEL = "block text-label-sm uppercase text-outline mb-1";
+
+/** Une date ISO ramenée au format attendu par un champ `date`. */
+function jour(iso: string | null): string {
+  return iso ? iso.slice(0, 10) : "";
+}
+
+/** Un champ date vide vaut « non renseignée », pas une date fausse. */
+function iso(valeur: string): string | null {
+  return valeur ? new Date(valeur).toISOString() : null;
+}
 
 function fmt(iso: string | null): string {
   if (!iso) return "—";
@@ -31,6 +42,9 @@ export default function IterationsPage() {
   const [iterations, setIterations] = useState<Iteration[] | null>(null);
   const [snapshots, setSnapshots] = useState<Record<number, IterationSnapshot>>({});
   const [nom, setNom] = useState("");
+  const [debut, setDebut] = useState("");
+  const [fin, setFin] = useState("");
+  const [capacite, setCapacite] = useState("");
   const [erreur, setErreur] = useState<string | null>(null);
   const [refus, setRefus] = useState<RefusBlocage | null>(null);
   const [aCloturer, setACloturer] = useState<Iteration | null>(null);
@@ -78,6 +92,9 @@ export default function IterationsPage() {
 
   const libres = tasks.filter((t) => t.phase_id === phase.id && !t.iteration_id);
   const unite = project.unite_estimation ?? "aucune";
+  // Une fin antérieure au début n'est pas une itération : on le dit avant l'envoi.
+  const incoherence =
+    debut && fin && fin < debut ? "La fin prévue précède le début prévu." : null;
 
   return (
     <div className="max-w-[820px] space-y-5">
@@ -92,26 +109,64 @@ export default function IterationsPage() {
       )}
 
       {canManage && (
-        <div className="flex flex-wrap items-center gap-2">
-          <input
-            className={`${FIELD} flex-1 min-w-[220px]`}
-            value={nom}
-            onChange={(e) => setNom(e.target.value)}
-            placeholder="Nom de l'itération — Sprint 1, Semaine 12…"
-          />
+        <div className="flex flex-wrap items-end gap-2">
+          <label className="flex-1 min-w-[220px]">
+            <span className={LABEL}>Nom</span>
+            <input
+              className={`${FIELD} w-full`}
+              value={nom}
+              onChange={(e) => setNom(e.target.value)}
+              placeholder="Sprint 1, Semaine 12…"
+            />
+          </label>
+          <label>
+            <span className={LABEL}>Début prévu</span>
+            <input type="date" className={FIELD} value={debut} onChange={(e) => setDebut(e.target.value)} />
+          </label>
+          <label>
+            <span className={LABEL}>Fin prévue</span>
+            <input type="date" className={FIELD} value={fin} onChange={(e) => setFin(e.target.value)} />
+          </label>
+          <label>
+            <span className={LABEL}>Capacité</span>
+            <input
+              type="number"
+              min={0}
+              className={`${FIELD} w-24`}
+              value={capacite}
+              onChange={(e) => setCapacite(e.target.value)}
+              placeholder={unite === "aucune" ? "—" : unite}
+            />
+          </label>
           <button
             type="button"
-            disabled={busy || !nom.trim()}
+            disabled={busy || !nom.trim() || Boolean(incoherence)}
+            title={incoherence ?? undefined}
             onClick={() =>
-              agir(() => iterationsApi.create(phase.id, { nom: nom.trim() }), "Itération créée.").then(
-                () => setNom("")
-              )
+              agir(
+                () =>
+                  iterationsApi.create(phase.id, {
+                    nom: nom.trim(),
+                    date_debut: iso(debut),
+                    date_fin: iso(fin),
+                    capacite: capacite.trim() ? Number(capacite) : null,
+                  }),
+                "Itération créée."
+              ).then(() => {
+                setNom("");
+                setDebut("");
+                setFin("");
+                setCapacite("");
+              })
             }
             className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg bg-primary text-on-primary text-body-sm font-semibold shadow-button hover:bg-primary-container disabled:opacity-50 transition-colors"
           >
             <AddOutlined style={{ fontSize: 16 }} />
             Créer
           </button>
+          {incoherence && (
+            <p className="w-full text-label-md text-error">{incoherence}</p>
+          )}
         </div>
       )}
 
@@ -140,9 +195,41 @@ export default function IterationsPage() {
                   <span className={`w-[6px] h-[6px] rounded-full ${tone.dot}`} />
                   {ITERATION_STATUT_LABELS[iteration.statut]}
                 </span>
-                <span className="ml-auto text-label-md text-outline">
-                  {fmt(iteration.date_debut)} → {fmt(iteration.date_fin)}
-                </span>
+                {iteration.statut === "cloturee" || !canManage ? (
+                  <span className="ml-auto text-label-md text-outline">
+                    {fmt(iteration.date_debut)} → {fmt(iteration.date_fin)}
+                  </span>
+                ) : (
+                  // Modifiables tant que rien n'est mesuré : une itération se
+                  // replanifie, elle ne se recrée pas pour deux jours de décalage.
+                  <span className="ml-auto flex items-center gap-1.5">
+                    <input
+                      type="date"
+                      aria-label="Début prévu"
+                      className={`${FIELD} h-8`}
+                      value={jour(iteration.date_debut)}
+                      onChange={(e) =>
+                        agir(
+                          () => iterationsApi.update(iteration.id, { date_debut: iso(e.target.value) }),
+                          "Début prévu mis à jour."
+                        )
+                      }
+                    />
+                    <span className="text-outline" aria-hidden>→</span>
+                    <input
+                      type="date"
+                      aria-label="Fin prévue"
+                      className={`${FIELD} h-8`}
+                      value={jour(iteration.date_fin)}
+                      onChange={(e) =>
+                        agir(
+                          () => iterationsApi.update(iteration.id, { date_fin: iso(e.target.value) }),
+                          "Fin prévue mise à jour."
+                        )
+                      }
+                    />
+                  </span>
+                )}
               </div>
 
               {iteration.statut !== "cloturee" && (
@@ -151,6 +238,9 @@ export default function IterationsPage() {
                     {iteration.taches_rattachees} élément
                     {iteration.taches_rattachees > 1 ? "s" : ""}
                     {unite !== "aucune" && ` · ${iteration.points_rattaches} ${unite}`}
+                    {/* La capacité SITUE l'engagement, elle ne le limite pas :
+                        aucune règle ne s'en sert pour refuser un rattachement. */}
+                    {iteration.capacite != null && ` sur ${iteration.capacite} de capacité`}
                     {iteration.engagement_le && " · engagement figé"}
                   </p>
 

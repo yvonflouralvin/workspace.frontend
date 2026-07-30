@@ -50,8 +50,16 @@ export interface TimelineProps {
   /** Bornes de l'axe. L'appelant les calcule : lui seul sait ce qu'il veut cadrer. */
   debut: string;
   fin: string;
-  /** Trait « aujourd'hui ». Omis si la date sort de l'axe. */
+  /** Trait « aujourd'hui ». Omis si la date sort de la fenêtre. */
   aujourdhui?: string;
+  /** Finesse de l'axe. C'est le zoom : mois pour la vue d'ensemble, jour pour
+   *  regarder une semaine de près. */
+  graduation?: Graduation;
+  /** Rendu à gauche de l'en-tête — commandes de navigation de l'appelant. */
+  commandes?: ReactNode;
+  /** Rend bandes et repères cliquables. L'`id` est celui que l'appelant a posé :
+   *  lui seul sait à quoi il correspond. */
+  onSelectionner?: (id: string) => void;
   /** Largeur de la colonne des libellés. */
   largeurLibelles?: number;
   /** Largeur minimale de la piste : en dessous, elle défile horizontalement. */
@@ -65,20 +73,67 @@ function jours(a: number, b: number): number {
   return Math.round((b - a) / JOUR);
 }
 
-function moisEntre(debut: Date, fin: Date): { cle: string; label: string; debut: Date; fin: Date }[] {
-  const bornes: { cle: string; label: string; debut: Date; fin: Date }[] = [];
-  const curseur = new Date(debut.getFullYear(), debut.getMonth(), 1);
+export type Graduation = "mois" | "semaine" | "jour";
+
+interface Segment {
+  cle: string;
+  label: string;
+  debut: Date;
+  fin: Date;
+}
+
+/** Découpe l'axe selon l'échelle demandée. Le pas de graduation EST le zoom :
+ *  changer d'échelle ne change pas les données, seulement la finesse de lecture. */
+function segments(debut: Date, fin: Date, graduation: Graduation): Segment[] {
+  const liste: Segment[] = [];
+  if (graduation === "mois") {
+    const curseur = new Date(debut.getFullYear(), debut.getMonth(), 1);
+    while (curseur <= fin) {
+      const suivant = new Date(curseur.getFullYear(), curseur.getMonth() + 1, 1);
+      liste.push({
+        cle: `m-${curseur.getFullYear()}-${curseur.getMonth()}`,
+        label: curseur.toLocaleDateString("fr-FR", { month: "short" }),
+        debut: new Date(curseur),
+        fin: suivant,
+      });
+      curseur.setMonth(curseur.getMonth() + 1);
+    }
+    return liste;
+  }
+
+  if (graduation === "semaine") {
+    // Semaines commençant le lundi — la semaine ISO est ce que lisent les équipes.
+    const curseur = new Date(debut);
+    curseur.setHours(0, 0, 0, 0);
+    curseur.setDate(curseur.getDate() - ((curseur.getDay() + 6) % 7));
+    while (curseur <= fin) {
+      const suivant = new Date(curseur);
+      suivant.setDate(suivant.getDate() + 7);
+      liste.push({
+        cle: `s-${curseur.toISOString().slice(0, 10)}`,
+        label: curseur.toLocaleDateString("fr-FR", { day: "numeric", month: "short" }),
+        debut: new Date(curseur),
+        fin: suivant,
+      });
+      curseur.setDate(curseur.getDate() + 7);
+    }
+    return liste;
+  }
+
+  const curseur = new Date(debut);
+  curseur.setHours(0, 0, 0, 0);
   while (curseur <= fin) {
-    const suivant = new Date(curseur.getFullYear(), curseur.getMonth() + 1, 1);
-    bornes.push({
-      cle: `${curseur.getFullYear()}-${curseur.getMonth()}`,
-      label: curseur.toLocaleDateString("fr-FR", { month: "short" }),
+    const suivant = new Date(curseur);
+    suivant.setDate(suivant.getDate() + 1);
+    liste.push({
+      cle: `j-${curseur.toISOString().slice(0, 10)}`,
+      label: String(curseur.getDate()),
       debut: new Date(curseur),
       fin: suivant,
     });
-    curseur.setMonth(curseur.getMonth() + 1);
+    curseur.setDate(curseur.getDate() + 1);
   }
-  return bornes;
+  return liste;
 }
 
 export function Timeline({
@@ -88,6 +143,9 @@ export function Timeline({
   aujourdhui,
   largeurLibelles = 240,
   largeurMinPiste = 720,
+  graduation = "mois",
+  commandes,
+  onSelectionner,
   vide,
 }: TimelineProps) {
   const axe = useMemo(() => {
@@ -103,9 +161,16 @@ export function Timeline({
         const t = new Date(date).getTime();
         return Math.min(100, Math.max(0, ((t - t0) / duree) * 100));
       },
-      mois: moisEntre(new Date(t0), new Date(t1)),
+      segments: segments(new Date(t0), new Date(t1), graduation),
+      /** Un objet entièrement hors fenêtre ne se dessine pas : le borner à 0 %
+       *  le collerait au bord gauche et ferait croire qu'il commence là. */
+      visible: (d: string, f?: string) => {
+        const a = new Date(d).getTime();
+        const b = f ? new Date(f).getTime() : a;
+        return b >= t0 && a <= t1;
+      },
     };
-  }, [debut, fin]);
+  }, [debut, fin, graduation]);
 
   if (!lignes.length) {
     return <>{vide ?? null}</>;
@@ -124,14 +189,16 @@ export function Timeline({
         {/* En-tête : les mois */}
         <div className="flex items-stretch border-b border-outline-soft bg-surface-row-alt">
           <div
-            className="flex-none px-4 py-2 text-label-sm uppercase text-outline"
+            className="flex-none flex items-center px-3 py-1.5"
             style={{ width: largeurLibelles }}
           >
-            Échéancier
+            {commandes ?? (
+              <span className="text-label-sm uppercase text-outline">Échéancier</span>
+            )}
           </div>
           <div className="relative flex-1">
             <div className="flex h-full">
-              {axe.mois.map((mois) => {
+              {axe.segments.map((mois) => {
                 const largeur =
                   ((Math.min(mois.fin.getTime(), axe.t1) - Math.max(mois.debut.getTime(), axe.t0)) /
                     axe.duree) *
@@ -141,7 +208,7 @@ export function Timeline({
                   <div
                     key={mois.cle}
                     style={{ width: `${largeur}%` }}
-                    className="border-l border-hairline px-2 py-2 text-label-sm uppercase text-outline truncate"
+                    className="border-l border-hairline px-1.5 py-2 text-label-sm uppercase text-outline truncate"
                   >
                     {mois.label}
                   </div>
@@ -178,7 +245,7 @@ export function Timeline({
             <div className="relative flex-1 py-2">
               {/* Filets des mois, sous les bandes. */}
               <div className="absolute inset-0 flex" aria-hidden>
-                {axe.mois.map((mois) => {
+                {axe.segments.map((mois) => {
                   const largeur =
                     ((Math.min(mois.fin.getTime(), axe.t1) - Math.max(mois.debut.getTime(), axe.t0)) /
                       axe.duree) *
@@ -200,37 +267,63 @@ export function Timeline({
 
               <div className="relative h-6">
                 {(ligne.bandes ?? []).map((bande) => {
+                  if (!axe.visible(bande.debut, bande.fin)) return null;
                   const gauche = axe.pct(bande.debut);
                   const largeur = Math.max(axe.pct(bande.fin) - gauche, 0.6);
-                  return (
-                    <div
+                  const classes = `absolute top-1 h-4 rounded-md px-1.5 text-label-sm leading-4 truncate text-left ${
+                    bande.tone ?? "bg-surface-container text-on-surface-variant"
+                  } ${onSelectionner ? "cursor-pointer hover:ring-2 hover:ring-primary/40" : ""}`;
+                  const style = { left: `${gauche}%`, width: `${largeur}%` };
+                  return onSelectionner ? (
+                    <button
                       key={bande.id}
+                      type="button"
                       title={bande.detail ?? bande.libelle}
-                      style={{ left: `${gauche}%`, width: `${largeur}%` }}
-                      className={`absolute top-1 h-4 rounded-md px-1.5 text-label-sm leading-4 truncate ${
-                        bande.tone ?? "bg-surface-container text-on-surface-variant"
-                      }`}
+                      style={style}
+                      className={classes}
+                      onClick={() => onSelectionner(bande.id)}
                     >
+                      {bande.libelle}
+                    </button>
+                  ) : (
+                    <div key={bande.id} title={bande.detail ?? bande.libelle} style={style} className={classes}>
                       {bande.libelle}
                     </div>
                   );
                 })}
 
-                {(ligne.reperes ?? []).map((repere) => (
-                  <div
-                    key={repere.id}
-                    title={repere.detail ?? repere.libelle}
-                    style={{ left: `${axe.pct(repere.date)}%` }}
-                    className="absolute top-1 -translate-x-1/2"
-                  >
-                    {/* Un instant n'a pas de durée : losange, jamais une barre. */}
-                    <span
-                      className={`block w-3 h-3 rotate-45 rounded-[2px] ${
-                        repere.tone ?? "bg-outline"
-                      }`}
-                    />
-                  </div>
-                ))}
+                {(ligne.reperes ?? [])
+                  .filter((r) => axe.visible(r.date))
+                  .map((repere) => {
+                    const style = { left: `${axe.pct(repere.date)}%` };
+                    // Un instant n'a pas de durée : losange, jamais une barre.
+                    const losange = (
+                      <span
+                        className={`block w-3 h-3 rotate-45 rounded-[2px] ${repere.tone ?? "bg-outline"}`}
+                      />
+                    );
+                    return onSelectionner ? (
+                      <button
+                        key={repere.id}
+                        type="button"
+                        title={repere.detail ?? repere.libelle}
+                        style={style}
+                        onClick={() => onSelectionner(repere.id)}
+                        className="absolute top-1 -translate-x-1/2 cursor-pointer hover:scale-125 transition-transform"
+                      >
+                        {losange}
+                      </button>
+                    ) : (
+                      <div
+                        key={repere.id}
+                        title={repere.detail ?? repere.libelle}
+                        style={style}
+                        className="absolute top-1 -translate-x-1/2"
+                      >
+                        {losange}
+                      </div>
+                    );
+                  })}
               </div>
             </div>
           </div>

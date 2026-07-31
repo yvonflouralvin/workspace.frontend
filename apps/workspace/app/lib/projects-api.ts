@@ -307,6 +307,10 @@ export const projectsApi = {
   mesuresFluxCumule: (phaseId: number) =>
     apiFetch(`/api/phases/${phaseId}/metriques/flux-cumule`).then((r) => json<MesuresFluxCumule>(r)),
 
+  /** Le jeu d'états d'une tâche, lu par la TÂCHE : seul chemin pour une tâche
+   *  du bac, dont le projet ne s'ouvre pas. */
+  taskEtats: (taskId: number) =>
+    apiFetch(`/api/tasks/${taskId}/etats`).then((r) => json<Etat[]>(r)),
   listEtats: (projectId: number) =>
     apiFetch(`/api/projects/${projectId}/etats`).then((r) => json<Etat[]>(r)),
   listTasks: (projectId: number) => apiFetch(`/api/projects/${projectId}/tasks`).then((r) => json<Task[]>(r)),

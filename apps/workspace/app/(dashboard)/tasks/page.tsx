@@ -4,11 +4,14 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { AddOutlined } from "@mui/icons-material";
 import { Toast } from "@repo/ui/Toast";
+import { RightDrawer } from "@repo/ui/RightDrawer";
 import {
   PRIORITY_LABELS,
   PRIORITY_LEVELS,
+  PRIORITY_ORDER,
   projectsApi,
   toneFor,
+  type Etat,
   type Task,
 } from "@/app/lib/projects-api";
 import { PriorityBars } from "@repo/ui/PriorityBars";
@@ -31,19 +34,38 @@ export default function TasksPage() {
   const [erreur, setErreur] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [ouverte, setOuverte] = useState<Task | null>(null);
+  const [etats, setEtats] = useState<Etat[]>([]);
 
-  const charger = useCallback(
-    () =>
-      projectsApi
-        .workspaceTasks({ mine: miennes, includeDone: avecTerminees })
-        .then(setTaches)
-        .catch(() => setTaches([])),
-    [miennes, avecTerminees]
-  );
+  const charger = useCallback(async () => {
+    try {
+      const liste = await projectsApi.workspaceTasks({
+        mine: miennes,
+        includeDone: avecTerminees,
+      });
+      setTaches(liste);
+      // Le drawer ouvert doit suivre : sans ça il réaffiche la tâche telle
+      // qu'elle était avant la modification, et le champ semble revenir en
+      // arrière tout seul.
+      setOuverte((prec) => (prec ? (liste.find((t) => t.id === prec.id) ?? prec) : null));
+      return liste;
+    } catch {
+      setTaches([]);
+      return [];
+    }
+  }, [miennes, avecTerminees]);
 
   useEffect(() => {
     void charger();
   }, [charger]);
+
+  // Les états du bac : ils viennent de SON jeu, comme pour n'importe quel projet.
+  // On les lit via une tâche du bac, jamais en ouvrant le projet caché.
+  useEffect(() => {
+    const uneDuBac = (taches ?? []).find((t) => t.sans_projet);
+    if (!uneDuBac || etats.length) return;
+    projectsApi.taskEtats(uneDuBac.id).then(setEtats).catch(() => {});
+  }, [taches, etats.length]);
 
   // Regroupées par provenance : le projet, ou l'absence de projet. C'est la
   // question qu'on se pose en parcourant une liste transverse.
@@ -156,28 +178,172 @@ export default function TasksPage() {
             </p>
             <div className="rounded-2xl border border-outline-soft bg-surface-container-lowest divide-y divide-hairline overflow-hidden">
               {groupe.taches.map((tache) => (
-                <Ligne key={tache.id} tache={tache} />
+                <Ligne key={tache.id} tache={tache} onOuvrir={() => setOuverte(tache)} />
               ))}
             </div>
           </section>
         ))}
       </div>
 
+      {ouverte && (
+        <EditeurTache
+          tache={ouverte}
+          etats={etats}
+          onClose={() => setOuverte(null)}
+          onEnregistre={async (message) => {
+            await charger();
+            setToast(message);
+          }}
+        />
+      )}
+
       {toast && <Toast message={toast} onDismiss={() => setToast(null)} />}
     </div>
   );
 }
 
-function Ligne({ tache }: { tache: Task }) {
-  const tone = toneFor(tache.categorie);
-  // Une tâche du bac n'a pas de page projet : on ouvre celle de la tâche, qui
-  // existe pour toutes.
-  const lien = `/projects/${tache.project_id}/tasks/${tache.id}`;
+/** Édition sur place d'une tâche sans projet.
+ *
+ *  Elle n'a pas de page à elle : lui en donner une exposerait l'identifiant du
+ *  projet caché dans l'URL, et le bac cesserait d'être inatteignable. On édite
+ *  donc ici, avec les champs qui font une tâche — les mêmes que partout. */
+function EditeurTache({
+  tache,
+  etats,
+  onClose,
+  onEnregistre,
+}: {
+  tache: Task;
+  etats: Etat[];
+  onClose: () => void;
+  onEnregistre: (message: string) => Promise<void>;
+}) {
+  const [titre, setTitre] = useState(tache.title);
+  const [description, setDescription] = useState(tache.description ?? "");
+  const [erreur, setErreur] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function appliquer(patch: Partial<Task>, message: string) {
+    setBusy(true);
+    setErreur(null);
+    try {
+      await projectsApi.updateTask(tache.id, patch);
+      await onEnregistre(message);
+    } catch (e) {
+      setErreur(e instanceof Error ? e.message : "Enregistrement impossible.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
-    <Link
-      href={lien}
-      className="flex flex-wrap items-center gap-3 px-4 py-2.5 hover:bg-surface-container-low transition-colors"
+    <RightDrawer
+      title="Tâche"
+      onClose={onClose}
+      width="md:w-[460px] md:max-w-[92vw]"
+      footer={
+        <div className="flex items-center gap-2 w-full justify-end">
+          <button
+            onClick={onClose}
+            className="h-9 px-3 rounded-lg text-body-sm text-on-surface-variant hover:bg-surface-container transition-colors"
+          >
+            Fermer
+          </button>
+          <button
+            disabled={busy || !titre.trim()}
+            onClick={() =>
+              appliquer(
+                { title: titre.trim(), description: description.trim() || null },
+                "Tâche enregistrée."
+              ).then(onClose)
+            }
+            className="h-9 px-4 rounded-lg bg-primary text-on-primary text-body-sm font-semibold hover:bg-primary-container disabled:opacity-50 transition-colors"
+          >
+            Enregistrer
+          </button>
+        </div>
+      }
     >
+      <div className="space-y-4">
+        <div>
+          <label className="block text-label-sm uppercase text-outline mb-1.5">Titre</label>
+          <input className={`${FIELD} w-full`} value={titre} onChange={(e) => setTitre(e.target.value)} />
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-label-sm uppercase text-outline mb-1.5">État</label>
+            <select
+              className={`${FIELD} w-full`}
+              value={tache.etat_id}
+              disabled={busy || !etats.length}
+              onChange={(e) => appliquer({ etat_id: Number(e.target.value) }, "État mis à jour.")}
+            >
+              {etats.map((etat) => (
+                <option key={etat.id} value={etat.id}>
+                  {etat.libelle}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-label-sm uppercase text-outline mb-1.5">Priorité</label>
+            <select
+              className={`${FIELD} w-full`}
+              value={tache.priority}
+              disabled={busy}
+              onChange={(e) => appliquer({ priority: e.target.value }, "Priorité mise à jour.")}
+            >
+              {PRIORITY_ORDER.map((p) => (
+                <option key={p} value={p}>
+                  {PRIORITY_LABELS[p]}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-label-sm uppercase text-outline mb-1.5">Échéance</label>
+          <input
+            type="date"
+            className={`${FIELD} w-[180px]`}
+            value={tache.due_date ? tache.due_date.slice(0, 10) : ""}
+            disabled={busy}
+            onChange={(e) =>
+              appliquer(
+                { due_date: e.target.value ? new Date(e.target.value).toISOString() : null },
+                "Échéance mise à jour."
+              )
+            }
+          />
+        </div>
+
+        <div>
+          <label className="block text-label-sm uppercase text-outline mb-1.5">Notes</label>
+          <textarea
+            rows={5}
+            className="w-full resize-none rounded-lg border border-outline-soft bg-surface-container-lowest px-3 py-2 text-body-sm text-on-surface outline-none focus:border-primary transition-colors"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Ce qu'il y a à faire, le contexte, le lien utile…"
+          />
+        </div>
+
+        {erreur && (
+          <p className="text-body-sm text-error bg-error-container/40 rounded-lg px-3 py-2">{erreur}</p>
+        )}
+      </div>
+    </RightDrawer>
+  );
+}
+
+function Ligne({ tache, onOuvrir }: { tache: Task; onOuvrir: () => void }) {
+  const tone = toneFor(tache.categorie);
+  // Une tâche du bac n'a PAS de page : son URL exposerait le projet caché, et le
+  // bac cesserait d'être inatteignable. On l'ouvre donc sur place.
+  const contenu = (
+    <>
       <span className={`w-[6px] h-[6px] flex-none rounded-full ${tone.dot}`} />
       <span className="min-w-0 flex-1 text-body-sm text-on-surface truncate">{tache.title}</span>
       <span className={`flex-none rounded-full px-2 py-0.5 text-label-md font-semibold ${tone.chip}`}>
@@ -194,6 +360,19 @@ function Ligne({ tache }: { tache: Task }) {
       <span className="flex-none w-[120px] truncate text-right text-label-md text-outline">
         {tache.assignee_name ?? "Non assigné"}
       </span>
+    </>
+  );
+
+  const classes =
+    "flex w-full flex-wrap items-center gap-3 px-4 py-2.5 text-left hover:bg-surface-container-low transition-colors";
+
+  return tache.sans_projet ? (
+    <button type="button" onClick={onOuvrir} className={classes}>
+      {contenu}
+    </button>
+  ) : (
+    <Link href={`/projects/${tache.project_id}/tasks/${tache.id}`} className={classes}>
+      {contenu}
     </Link>
   );
 }

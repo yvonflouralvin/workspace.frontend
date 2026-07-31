@@ -17,6 +17,7 @@ import {
   GroupOutlined,
   InboxOutlined,
   HistoryOutlined,
+  ChecklistOutlined,
   SettingsOutlined,
   HelpOutlineOutlined,
 } from "@mui/icons-material";
@@ -25,6 +26,7 @@ import type { NavItem } from "@repo/ui/types/shell";
 const NAV_ITEMS: NavItem[] = [
   { label: "Accueil",  href: "/",         icon: <HomeOutlined style={{ fontSize: 20 }} />,        exact: true },
   { label: "Projets",  href: "/projects",  icon: <FolderOpenOutlined style={{ fontSize: 20 }} /> },
+  { label: "Tâches",   href: "/tasks",     icon: <ChecklistOutlined style={{ fontSize: 20 }} /> },
   { label: "Membres",  href: "/members",   icon: <GroupOutlined style={{ fontSize: 20 }} /> },
   { label: "Inbox",    href: "/inbox",     icon: <InboxOutlined style={{ fontSize: 20 }} /> },
   { label: "Journal d'activité", href: "/audit-logs", icon: <HistoryOutlined style={{ fontSize: 20 }} /> },

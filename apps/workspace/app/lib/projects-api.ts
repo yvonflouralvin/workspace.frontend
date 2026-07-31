@@ -130,6 +130,8 @@ export interface Task {
   iteration_id?: number | null;
   project_name?: string | null;
   project_key?: string | null;
+  /** Tâche du bac : elle n'appartient à aucun projet aux yeux de l'utilisateur. */
+  sans_projet?: boolean;
 }
 
 /** Modes de l'outil Livrables : à quoi un livrable peut se rattacher. */
@@ -308,8 +310,16 @@ export const projectsApi = {
   listEtats: (projectId: number) =>
     apiFetch(`/api/projects/${projectId}/etats`).then((r) => json<Etat[]>(r)),
   listTasks: (projectId: number) => apiFetch(`/api/projects/${projectId}/tasks`).then((r) => json<Task[]>(r)),
+  /** Toutes les tâches du workspace, projets confondus — bac compris. */
+  workspaceTasks: (options: { mine?: boolean; includeDone?: boolean } = {}) =>
+    apiFetch(
+      `/api/tasks?assignees_moi=${options.mine ? "true" : "false"}&include_done=${
+        options.includeDone === false ? "false" : "true"
+      }`
+    ).then((r) => json<Task[]>(r)),
   myTasks: (includeDone = false) => apiFetch(`/api/tasks/mine${includeDone ? "?include_done=true" : ""}`).then((r) => json<Task[]>(r)),
-  createTask: (body: Partial<Task> & { project_id: number; title: string }) => apiFetch("/api/tasks", { method: "POST", body }).then((r) => json<Task>(r)),
+  // `project_id` absent = la tâche rejoint le bac du workspace.
+  createTask: (body: Partial<Task> & { title: string }) => apiFetch("/api/tasks", { method: "POST", body }).then((r) => json<Task>(r)),
   updateTask: (id: number, body: Partial<Task>) => apiFetch(`/api/tasks/${id}`, { method: "PATCH", body }).then((r) => json<Task>(r)),
   deleteTask: (id: number) => apiFetch(`/api/tasks/${id}`, { method: "DELETE" }).then((r) => json<void>(r)),
 

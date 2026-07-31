@@ -89,13 +89,21 @@ export default function ProjectLayout({ children }: { children: ReactNode }) {
     if (!activeWorkspace?.id) return;
     apiFetch(`/api/workspaces/${activeWorkspace.id}/members`)
       .then((r) => (r.ok ? r.json() : []))
-      .then((rows) => {
-        const list: Member[] = (Array.isArray(rows) ? rows : (rows?.items ?? [])).map(
-          (m: Record<string, unknown>) => ({
-            id: Number(m.user_id ?? m.id),
-            name: String(m.username ?? m.name ?? `#${m.user_id ?? m.id}`),
-          })
-        );
+      .then((payload) => {
+        // L'API renvoie `{members: [{id, user: {id, username}}]}`. On cherchait
+        // `.items`, donc la liste était VIDE partout : responsable, assigné,
+        // décideur — tous les choix de personne du module.
+        const rows: Record<string, unknown>[] = Array.isArray(payload)
+          ? payload
+          : ((payload?.members ?? payload?.items ?? []) as Record<string, unknown>[]);
+        const list: Member[] = rows.map((m) => {
+          const user = (m.user ?? {}) as Record<string, unknown>;
+          const id = Number(user.id ?? m.user_id ?? m.id);
+          return {
+            id,
+            name: String(user.username ?? m.username ?? m.name ?? user.email ?? `#${id}`),
+          };
+        });
         setMembers(list.filter((m) => Number.isFinite(m.id)));
       })
       .catch(() => {});

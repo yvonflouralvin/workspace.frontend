@@ -27,6 +27,7 @@ import {
 } from "@/app/lib/projects-api";
 import { useAutosave, type EtatSauvegarde } from "@/app/lib/autosave";
 import { EchecAutosave } from "@/components/projects/EchecAutosave";
+import { SelecteurPersonne } from "@/components/projects/SelecteurPersonne";
 import { useProject } from "./project-context";
 
 const LABEL = "block text-label-sm uppercase text-outline";
@@ -139,20 +140,15 @@ export default function ProjectOverviewPage() {
 
         <MetaRow label="Responsable">
           {canManage ? (
-            <select
-              value={project.lead_user_id ?? ""}
-              onChange={(e) =>
-                queue({ lead_user_id: e.target.value ? Number(e.target.value) : null })
-              }
-              className="h-8 max-w-[150px] rounded-lg border border-outline-soft bg-surface-container-lowest px-2 text-body-sm text-on-surface outline-none focus:border-primary"
-            >
-              <option value="">Non assigné</option>
-              {members.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.name}
-                </option>
-              ))}
-            </select>
+            <span className="w-[190px]">
+              <SelecteurPersonne
+                valeur={{ userId: project.lead_user_id ?? null, groupeId: null }}
+                membres={members}
+                onChange={(choix) => queue({ lead_user_id: choix.userId })}
+                placeholder="Rechercher un responsable…"
+                vide="Non assigné"
+              />
+            </span>
           ) : lead ? (
             <span className="inline-flex items-center gap-2 text-body-sm text-on-surface">
               <Avatar name={lead.name} size={22} />

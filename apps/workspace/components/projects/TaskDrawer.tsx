@@ -5,6 +5,7 @@ import Link from "next/link";
 import { AddOutlined, CheckOutlined, OpenInFullOutlined } from "@mui/icons-material";
 import { RightDrawer } from "@repo/ui/RightDrawer";
 import { SearchSelect } from "@repo/ui/SearchSelect";
+import { SelecteurPersonne } from "./SelecteurPersonne";
 import { TagInput } from "@repo/ui/TagInput";
 import {
   PRIORITY_LABELS,
@@ -257,19 +258,13 @@ export function TaskDrawer({
           </select>
         </Field>
         <Field label="Assigné">
-          <select
-            className={`${FIELD} h-[38px] px-2`}
-            value={assignee}
-            onChange={(e) => setAssignee(e.target.value)}
+          <SelecteurPersonne
+            valeur={{ userId: assignee ? Number(assignee) : null, groupeId: null }}
+            membres={members}
             disabled={readOnly}
-          >
-            <option value="">Non assigné</option>
-            {members.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.name}
-              </option>
-            ))}
-          </select>
+            onChange={(choix) => setAssignee(choix.userId ? String(choix.userId) : "")}
+            placeholder="Rechercher un assigné…"
+          />
         </Field>
         <Field label="Échéance">
           <input

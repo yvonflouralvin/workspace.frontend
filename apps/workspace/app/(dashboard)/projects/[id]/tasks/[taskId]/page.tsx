@@ -8,6 +8,7 @@ import {
   projectsApi,
 } from "@/app/lib/projects-api";
 import { EchecAutosave } from "@/components/projects/EchecAutosave";
+import { SelecteurPersonne } from "@/components/projects/SelecteurPersonne";
 import { useProject } from "../../project-context";
 import { useTask } from "./task-context";
 
@@ -100,19 +101,15 @@ export default function TaskOverviewPage() {
         </MetaRow>
 
         <MetaRow label="Assigné">
-          <select
-            value={task.assignee_user_id ? String(task.assignee_user_id) : ""}
-            disabled={!canManage}
-            onChange={(e) => queue({ assignee_user_id: e.target.value ? Number(e.target.value) : null })}
-            className={CONTROL}
-          >
-            <option value="">Non assigné</option>
-            {members.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.name}
-              </option>
-            ))}
-          </select>
+          <span className="w-[190px]">
+            <SelecteurPersonne
+              valeur={{ userId: task.assignee_user_id ?? null, groupeId: null }}
+              membres={members}
+              disabled={!canManage}
+              onChange={(choix) => queue({ assignee_user_id: choix.userId })}
+              placeholder="Rechercher un assigné…"
+            />
+          </span>
         </MetaRow>
 
         <MetaRow label="Échéance">

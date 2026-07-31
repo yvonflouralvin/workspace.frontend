@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { ConfirmDialog } from "@repo/ui/ConfirmDialog";
+import { SelecteurPersonne } from "./SelecteurPersonne";
 import { RightDrawer } from "@repo/ui/RightDrawer";
 import { Switch } from "@repo/ui/Switch";
 import {
@@ -206,37 +207,22 @@ export function JalonDrawer({
           />
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label className={LABEL}>Décideur — personne</label>
-            <select
-              className={FIELD}
-              value={decideurUser ?? ""}
-              onChange={(e) => setDecideurUser(e.target.value ? Number(e.target.value) : null)}
-            >
-              <option value="">Non désigné</option>
-              {members.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className={LABEL}>Décideur — groupe</label>
-            <select
-              className={FIELD}
-              value={decideurGroupe ?? ""}
-              onChange={(e) => setDecideurGroupe(e.target.value ? Number(e.target.value) : null)}
-            >
-              <option value="">Non désigné</option>
-              {groupes.map((g) => (
-                <option key={g.id} value={g.id}>
-                  {g.name}
-                </option>
-              ))}
-            </select>
-          </div>
+        <div>
+          <label className={LABEL}>Décideur désigné</label>
+          {/* UN seul champ : deux listes séparées laissaient remplir les deux, et
+              obligeaient à savoir d'avance si l'on cherchait une personne ou un
+              groupe. Le backend n'en attend qu'un. */}
+          <SelecteurPersonne
+            valeur={{ userId: decideurUser, groupeId: decideurGroupe }}
+            membres={members}
+            groupes={groupes}
+            onChange={(choix) => {
+              setDecideurUser(choix.userId);
+              setDecideurGroupe(choix.groupeId);
+            }}
+            placeholder="Rechercher une personne ou un groupe…"
+            vide="Non désigné"
+          />
         </div>
         <p className="-mt-1 text-label-md text-outline">
           Sans décideur désigné, toute personne autorisée à décider peut trancher. Avec un

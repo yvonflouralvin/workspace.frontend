@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   CalendarMonthOutlined,
@@ -17,10 +18,17 @@ import {
   PHASE_STATUS_LABELS,
   PHASE_STATUS_TONES,
   toneFor,
+  type Deliverable,
   type Task,
 } from "@/app/lib/projects-api";
 import { ITERATION_STATUT_LABELS, iterationsApi, type Iteration } from "@/app/lib/iterations-api";
-import { JALON_STATUT_LABELS, JALON_STATUT_TONES, echeanceDepassee } from "@/app/lib/jalons-api";
+import {
+  JALON_ROLE_LABELS,
+  JALON_STATUT_LABELS,
+  JALON_STATUT_TONES,
+  echeanceDepassee,
+  type Jalon,
+} from "@/app/lib/jalons-api";
 import { useProject } from "../project-context";
 
 const JOUR = 86_400_000;
@@ -256,14 +264,14 @@ export default function TimelinePage() {
     </div>
   );
 
-  /** Aperçu rapide de l'objet cliqué, avec la sortie vers sa page complète.
+  /** Le détail d'un objet, calculé UNE FOIS. Le survol et le clic montrent la
+   *  même chose : deux constructions divergeraient au premier changement.
    *
    *  Le décodage de l'identifiant vit ICI : `Timeline` et `CalendrierMois` ne
    *  connaissent que des chaînes opaques, c'est ce qui les garde réutilisables. */
-  function Apercu({ identifiant, onClose }: { identifiant: string; onClose: () => void }) {
+  function details(identifiant: string) {
     // « phase-3 », « t-42 », « j-7 » : le type, puis le numéro. Une bande et un
-    // repère du même objet portent le MÊME identifiant — c'est ce qui permet de
-    // les décoder ici sans que les composants génériques sachent quoi que ce soit.
+    // repère du même objet portent le MÊME identifiant.
     const [type, brut] = identifiant.split("-");
     const numero = Number(brut);
     const base = `/projects/${projectId}`;
@@ -350,6 +358,39 @@ export default function TimelinePage() {
       }
     }
 
+    return { titre, lignes, destination, mention };
+  }
+
+  /** Panneau de survol : le même détail, en plus court, avec la sortie directe. */
+  function Survol({ identifiant }: { identifiant: string }) {
+    const { titre, lignes, destination, mention } = details(identifiant);
+    return (
+      <div className="space-y-1.5">
+        <p className="text-body-sm font-semibold text-on-surface leading-snug">{titre}</p>
+        {mention && <p className="text-label-md text-error">{mention}</p>}
+        <dl className="space-y-0.5">
+          {lignes.map((ligne) => (
+            <div key={ligne.libelle} className="flex items-baseline justify-between gap-3">
+              <dt className="text-label-md text-outline">{ligne.libelle}</dt>
+              <dd className="text-label-md text-on-surface-variant text-right">{ligne.valeur}</dd>
+            </div>
+          ))}
+        </dl>
+        {destination && (
+          <Link
+            href={destination}
+            className="inline-flex items-center gap-1 pt-1 text-label-md font-semibold text-primary hover:underline"
+          >
+            Ouvrir la page
+            <ChevronRightOutlined style={{ fontSize: 14 }} />
+          </Link>
+        )}
+      </div>
+    );
+  }
+
+  function Apercu({ identifiant, onClose }: { identifiant: string; onClose: () => void }) {
+    const { titre, lignes, destination, mention } = details(identifiant);
     return (
       <RightDrawer
         title="Aperçu rapide"
@@ -422,8 +463,10 @@ export default function TimelinePage() {
                   id: `phase-${phase.id}`,
                   debut: phase.start_planned,
                   fin: phase.end_planned,
+                  libelle: phase.name,
                   tone: `${tonePhase.chip} font-semibold`,
-                  detail: `${phase.name} — ${fmt(phase.start_planned)} → ${fmt(phase.end_planned)}`,
+                  detail: `Phase ${phase.name} — ${fmt(phase.start_planned)} → ${fmt(phase.end_planned)}`,
+                  apercu: <Survol identifiant={`phase-${phase.id}`} />,
                 },
               ]
             : [],
@@ -438,9 +481,8 @@ export default function TimelinePage() {
                   tone: echeanceDepassee(j)
                     ? "bg-error"
                     : (JALON_STATUT_TONES[j.statut]?.dot ?? "bg-outline"),
-                  detail: `Jalon « ${j.nom} » — ${fmt(j.date_prevue)} · ${
-                    JALON_STATUT_LABELS[j.statut] ?? j.statut
-                  }`,
+                  detail: `Jalon ${j.nom} — ${fmt(j.date_prevue)}`,
+                  apercu: <Survol identifiant={`j-${j.id}`} />,
                 }))
             : []),
           ...(visible("livrables")
@@ -451,9 +493,8 @@ export default function TimelinePage() {
                   date: d.due_date as string,
                   libelle: d.title,
                   tone: "bg-status-review",
-                  detail: `Livrable « ${d.title} » attendu le ${fmt(d.due_date)} · ${
-                    DELIVERABLE_STATUS_LABELS[d.status] ?? d.status
-                  }`,
+                  detail: `Livrable ${d.title} — ${fmt(d.due_date)}`,
+                  apercu: <Survol identifiant={`d-${d.id}`} />,
                 }))
             : []),
         ],
@@ -483,10 +524,10 @@ export default function TimelinePage() {
                       id: `it-${iteration.id}`,
                       debut: iteration.date_debut,
                       fin: iteration.date_fin,
+                      libelle: iteration.nom,
                       tone: "bg-primary/15 text-primary",
-                      detail: `${iteration.nom} — ${fmt(iteration.date_debut)} → ${fmt(
-                        iteration.date_fin
-                      )}`,
+                      detail: `${iteration.nom} — ${fmt(iteration.date_debut)} → ${fmt(iteration.date_fin)}`,
+                      apercu: <Survol identifiant={`it-${iteration.id}`} />,
                     },
                   ]
                 : [],
@@ -498,7 +539,7 @@ export default function TimelinePage() {
             (t) => t.start_date,
             (t) => t.order
           )) {
-            lignes.push(ligneTache(tache, visible("iterations") ? 2 : 1));
+            lignes.push(ligneTache(tache, visible("iterations") ? 2 : 1, <Survol identifiant={`t-${tache.id}`} />));
           }
         }
       }
@@ -511,7 +552,7 @@ export default function TimelinePage() {
           (t) => t.start_date,
           (t) => t.order
         )) {
-          lignes.push(ligneTache(tache, 1));
+          lignes.push(ligneTache(tache, 1, <Survol identifiant={`t-${tache.id}`} />));
         }
       }
     }
@@ -528,9 +569,8 @@ export default function TimelinePage() {
           date: j.date_prevue as string,
           libelle: j.nom,
           tone: echeanceDepassee(j) ? "bg-error" : (JALON_STATUT_TONES[j.statut]?.dot ?? "bg-outline"),
-          detail: `Jalon « ${j.nom} » — ${fmt(j.date_prevue)} · ${
-            JALON_STATUT_LABELS[j.statut] ?? j.statut
-          }`,
+          detail: `Jalon ${j.nom} — ${fmt(j.date_prevue)}`,
+          apercu: <Survol identifiant={`j-${j.id}`} />,
         })),
       });
     }
@@ -550,7 +590,8 @@ export default function TimelinePage() {
           fin: phase.end_planned,
           libelle: phase.name,
           tone: `${tone.chip} font-semibold`,
-          detail: `Phase « ${phase.name} » — ${fmt(phase.start_planned)} → ${fmt(phase.end_planned)}`,
+          detail: `Phase ${phase.name}`,
+          apercu: <Survol identifiant={`phase-${phase.id}`} />,
         });
       }
     }
@@ -564,6 +605,7 @@ export default function TimelinePage() {
           libelle: iteration.nom,
           tone: "bg-primary/15 text-primary",
           detail: `${iteration.nom} — ${ITERATION_STATUT_LABELS[iteration.statut]}`,
+          apercu: <Survol identifiant={`it-${iteration.id}`} />,
         });
       }
     }
@@ -575,9 +617,8 @@ export default function TimelinePage() {
           fin: tache.due_date as string,
           libelle: tache.title,
           tone: toneFor(tache.categorie).chip,
-          detail: `${tache.title} — ${fmt(tache.start_date)} → ${fmt(tache.due_date)} · ${
-            tache.etat_libelle ?? ""
-          }`,
+          detail: tache.title,
+          apercu: <Survol identifiant={`t-${tache.id}`} />,
         });
       }
     }
@@ -592,7 +633,8 @@ export default function TimelinePage() {
           tone: echeanceDepassee(jalon)
             ? "bg-error-container text-on-error-container"
             : (JALON_STATUT_TONES[jalon.statut]?.chip ?? "bg-surface-container"),
-          detail: `Jalon « ${jalon.nom} » · ${JALON_STATUT_LABELS[jalon.statut] ?? jalon.statut}`,
+          detail: `Jalon ${jalon.nom}`,
+          apercu: <Survol identifiant={`j-${jalon.id}`} />,
         });
       }
     }
@@ -605,9 +647,8 @@ export default function TimelinePage() {
           libelle: `◆ ${livrable.title}`,
           instant: true,
           tone: "bg-status-review-container text-status-review",
-          detail: `Livrable « ${livrable.title} » · ${
-            DELIVERABLE_STATUS_LABELS[livrable.status] ?? livrable.status
-          }`,
+          detail: `Livrable ${livrable.title}`,
+          apercu: <Survol identifiant={`d-${livrable.id}`} />,
         });
       }
     }
@@ -633,7 +674,7 @@ function parDate<T extends { id: number }>(
   });
 }
 
-function ligneTache(tache: Task, niveau: number): TimelineLigne {
+function ligneTache(tache: Task, niveau: number, apercu: ReactNode): TimelineLigne {
   const tone = toneFor(tache.categorie);
   return {
     id: `t-${tache.id}`,
@@ -644,14 +685,18 @@ function ligneTache(tache: Task, niveau: number): TimelineLigne {
         id: `t-${tache.id}`,
         debut: tache.start_date as string,
         fin: tache.due_date as string,
+        libelle: tache.title,
         tone: tone.chip,
-        detail: `${tache.title} — ${fmt(tache.start_date)} → ${fmt(tache.due_date)} · ${
-          tache.etat_libelle ?? ""
-        }`,
+        // Nom accessible : la bande est trop étroite pour montrer son titre dès
+        // qu'on dézoome, et un lecteur d'écran n'a que ça.
+        detail: `${tache.title} — ${fmt(tache.start_date)} → ${fmt(tache.due_date)}`,
+        apercu,
       },
     ],
   };
 }
+
+
 
 function Rien({ children }: { children: ReactNode }) {
   return (
@@ -725,3 +770,6 @@ function BoutonIcone({
     </button>
   );
 }
+
+
+

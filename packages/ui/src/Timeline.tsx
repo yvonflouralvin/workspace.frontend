@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, type ReactNode } from "react";
+import { PanneauSurvol, useSurvol } from "./PanneauSurvol";
 
 /** Diagramme temporel GÉNÉRIQUE — bandes et repères sur un axe de dates.
  *
@@ -22,6 +23,9 @@ export interface TimelineBande {
   libelle?: string;
   /** Texte du survol. */
   detail?: string;
+  /** Contenu riche du panneau de survol. Prime sur `detail` pour l'AFFICHAGE ;
+   *  `detail` reste le nom accessible, que le panneau ne peut pas fournir. */
+  apercu?: ReactNode;
 }
 
 export interface TimelineRepere {
@@ -30,6 +34,7 @@ export interface TimelineRepere {
   libelle: string;
   tone?: string;
   detail?: string;
+  apercu?: ReactNode;
 }
 
 export interface TimelineLigne {
@@ -148,6 +153,7 @@ export function Timeline({
   onSelectionner,
   vide,
 }: TimelineProps) {
+  const survol = useSurvol<ReactNode>();
   const axe = useMemo(() => {
     const t0 = new Date(debut).getTime();
     const t1 = new Date(fin).getTime();
@@ -185,6 +191,9 @@ export function Timeline({
     // Le tableau déborde dans SON conteneur : la page ne défile jamais
     // horizontalement.
     <div className="overflow-x-auto rounded-2xl border border-outline-soft bg-surface-container-lowest">
+      <PanneauSurvol position={survol.survole?.position ?? null} {...survol.gestionnairesPanneau}>
+        {survol.survole?.cle}
+      </PanneauSurvol>
       <div style={{ minWidth: largeurLibelles + largeurMinPiste }}>
         {/* En-tête : les mois */}
         <div className="flex items-stretch border-b border-outline-soft bg-surface-row-alt">
@@ -274,19 +283,31 @@ export function Timeline({
                     bande.tone ?? "bg-surface-container text-on-surface-variant"
                   } ${onSelectionner ? "cursor-pointer hover:ring-2 hover:ring-primary/40" : ""}`;
                   const style = { left: `${gauche}%`, width: `${largeur}%` };
+                  const contenu = bande.apercu ?? bande.detail ?? bande.libelle;
+                  // `title` seulement en secours : deux infobulles à la fois
+                  // seraient illisibles.
+                  const infobulle = bande.apercu ? undefined : bande.detail ?? bande.libelle;
                   return onSelectionner ? (
                     <button
                       key={bande.id}
                       type="button"
-                      title={bande.detail ?? bande.libelle}
+                      title={infobulle}
+                      aria-label={bande.detail ?? bande.libelle}
                       style={style}
                       className={classes}
                       onClick={() => onSelectionner(bande.id)}
+                      {...survol.gestionnaires(contenu)}
                     >
                       {bande.libelle}
                     </button>
                   ) : (
-                    <div key={bande.id} title={bande.detail ?? bande.libelle} style={style} className={classes}>
+                    <div
+                      key={bande.id}
+                      title={infobulle}
+                      style={style}
+                      className={classes}
+                      {...survol.gestionnaires(contenu)}
+                    >
                       {bande.libelle}
                     </div>
                   );
@@ -302,23 +323,28 @@ export function Timeline({
                         className={`block w-3 h-3 rotate-45 rounded-[2px] ${repere.tone ?? "bg-outline"}`}
                       />
                     );
+                    const contenu = repere.apercu ?? repere.detail ?? repere.libelle;
+                    const infobulle = repere.apercu ? undefined : repere.detail ?? repere.libelle;
                     return onSelectionner ? (
                       <button
                         key={repere.id}
                         type="button"
-                        title={repere.detail ?? repere.libelle}
+                        title={infobulle}
+                        aria-label={repere.detail ?? repere.libelle}
                         style={style}
                         onClick={() => onSelectionner(repere.id)}
                         className="absolute top-1 -translate-x-1/2 cursor-pointer hover:scale-125 transition-transform"
+                        {...survol.gestionnaires(contenu)}
                       >
                         {losange}
                       </button>
                     ) : (
                       <div
                         key={repere.id}
-                        title={repere.detail ?? repere.libelle}
+                        title={infobulle}
                         style={style}
                         className="absolute top-1 -translate-x-1/2"
+                        {...survol.gestionnaires(contenu)}
                       >
                         {losange}
                       </div>

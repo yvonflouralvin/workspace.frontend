@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, type ReactNode } from "react";
+import { PanneauSurvol, useSurvol } from "./PanneauSurvol";
 
 /** Calendrier mensuel GÉNÉRIQUE — grille de semaines, événements posés dessus.
  *
@@ -21,6 +22,9 @@ export interface EvenementCalendrier {
   libelle: string;
   tone?: string;
   detail?: string;
+  /** Contenu riche du panneau de survol. Prime sur `detail` pour l'AFFICHAGE ;
+   *  `detail` reste le nom accessible, que le panneau ne peut pas fournir. */
+  apercu?: ReactNode;
   /** Un instant se dessine en pastille, jamais en barre. */
   instant?: boolean;
 }
@@ -114,6 +118,7 @@ export function CalendrierMois({
   onSelectionner,
   vide,
 }: CalendrierMoisProps) {
+  const survol = useSurvol<ReactNode>();
   const semaines = useMemo(() => {
     const reference = new Date(mois);
     const premier = new Date(reference.getFullYear(), reference.getMonth(), 1);
@@ -136,6 +141,9 @@ export function CalendrierMois({
 
   return (
     <div className="rounded-2xl border border-outline-soft bg-surface-container-lowest overflow-hidden">
+      <PanneauSurvol position={survol.survole?.position ?? null} {...survol.gestionnairesPanneau}>
+        {survol.survole?.cle}
+      </PanneauSurvol>
       <div className="grid grid-cols-7 bg-surface-row-alt border-b border-outline-soft">
         {NOMS.map((nom) => (
           <div key={nom} className="px-2 py-2 text-label-sm uppercase text-outline">
@@ -200,7 +208,11 @@ export function CalendrierMois({
                       type="button"
                       disabled={!onSelectionner}
                       onClick={() => onSelectionner?.(p.evenement.id)}
-                      title={p.evenement.detail ?? p.evenement.libelle}
+                      title={p.evenement.apercu ? undefined : p.evenement.detail ?? p.evenement.libelle}
+                      aria-label={p.evenement.detail ?? p.evenement.libelle}
+                      {...survol.gestionnaires(
+                        p.evenement.apercu ?? p.evenement.detail ?? p.evenement.libelle
+                      )}
                       className={`block w-full h-[18px] leading-[18px] text-label-sm truncate px-1.5 text-left ${
                         onSelectionner ? "cursor-pointer hover:ring-2 hover:ring-primary/40" : ""
                       } ${

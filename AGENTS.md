@@ -113,6 +113,12 @@ s'enchaîne », le calendrier mensuel à « qu'est-ce qui tombe ce jour-là », 
 libellés, rendent un `PanneauSurvol` au survol et remontent un `id` au clic. Consommées par
 l'échéancier d'un projet et par le module Calendrier du workspace.
 
+**Menu d'affichage** (`src/MenuAffichage.tsx`) : bouton + popover portalisé, groupes
+d'options cochables et **barre de recherche portant sur tous les groupes à la fois**.
+Remplace les rangées de puces de filtre — elles tiennent à cinq, débordent à dix, et n'ont
+nulle part où accueillir la suivante. `parDefaut` évite que la pastille compte les options
+cochées d'origine. Consommé par le module Calendrier (natures + étiquettes).
+
 **Aperçu de fichier** (`src/ApercuFichier.tsx`) : `ApercuFichier` (vignette image, lecteur
 vidéo/audio, ligne nommée sinon) + `VisionneuseImage` (plein écran portalisé) +
 `poidsLisible`. La FAMILLE d'aperçu (`image | video | audio | pdf | aucun`) est décidée par

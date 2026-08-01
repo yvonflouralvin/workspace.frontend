@@ -146,7 +146,10 @@ export function CalendrierMois({
       </PanneauSurvol>
       <div className="grid grid-cols-7 bg-surface-row-alt border-b border-outline-soft">
         {NOMS.map((nom) => (
-          <div key={nom} className="px-2 py-2 text-label-sm uppercase text-outline">
+          <div
+            key={nom}
+            className="border-l border-outline-soft first:border-l-0 px-2 py-2 text-label-sm uppercase text-outline"
+          >
             {nom}
           </div>
         ))}
@@ -161,7 +164,7 @@ export function CalendrierMois({
         const caches = placements.filter((p) => p.couloir >= couloirsMax);
 
         return (
-          <div key={debutSemaine.toISOString()} className="border-b border-hairline last:border-b-0">
+          <div key={debutSemaine.toISOString()} className="border-b border-outline-soft last:border-b-0">
             <div className="relative">
               {/* Les cases du jour, sous les barres. */}
               <div className="grid grid-cols-7">
@@ -172,7 +175,7 @@ export function CalendrierMois({
                   return (
                     <div
                       key={i}
-                      className={`min-h-[104px] border-l border-hairline first:border-l-0 px-2 pt-1.5 ${
+                      className={`min-h-[104px] border-l border-outline-soft first:border-l-0 px-2 pt-1.5 ${
                         horsMois ? "bg-surface-container-low/40" : ""
                       }`}
                     >

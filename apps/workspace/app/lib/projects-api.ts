@@ -150,6 +150,8 @@ export interface EntreeCalendrier {
   lieu: string | null;
   detail: string | null;
   participants: string[];
+  /** Étiquettes de l'objet, quand il en porte — toujours un tableau. */
+  tags: string[];
   est_evenement: boolean;
 }
 

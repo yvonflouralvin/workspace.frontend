@@ -21,6 +21,7 @@ import {
   type Task,
 } from "@/app/lib/projects-api";
 import { PriorityBars } from "@repo/ui/PriorityBars";
+import { FilCommentaires } from "@/components/projects/FilCommentaires";
 import { KanbanBoard } from "@/components/projects/KanbanBoard";
 import { useSessionStore } from "@repo/auth/store/session.store";
 import { useRouter } from "next/navigation";
@@ -459,6 +460,11 @@ function EditeurTache({
         {erreur && (
           <p className="text-body-sm text-error bg-error-container/40 rounded-lg px-3 py-2">{erreur}</p>
         )}
+
+        {/* Le fil, ici comme sur la page : c'est le MÊME composant, il lit et
+            écrit par la tâche. Un aperçu qui montrerait une discussion tronquée
+            ou figée vaudrait moins que pas de discussion du tout. */}
+        <FilCommentaires taskId={tache.id} canWrite />
       </div>
     </RightDrawer>
   );

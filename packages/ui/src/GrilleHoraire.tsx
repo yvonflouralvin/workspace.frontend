@@ -174,7 +174,7 @@ export function GrilleHoraire({
           return (
             <span
               key={jour}
-              className={`px-2 py-2 text-center text-label-md font-semibold border-l border-hairline ${
+              className={`px-2 py-2 text-center text-label-md font-semibold border-l border-outline-soft ${
                 ceJour ? "text-primary" : "text-on-surface-variant"
               }`}
             >
@@ -191,7 +191,7 @@ export function GrilleHoraire({
         >
           <span className="px-2 py-1 text-right text-label-sm uppercase text-outline">jour</span>
           {jours.map((jour) => (
-            <div key={jour} className="border-l border-hairline p-1 space-y-1">
+            <div key={jour} className="border-l border-outline-soft p-1 space-y-1">
               {parJour.get(jour)?.pleines.map((creneau) => (
                 <button
                   key={`${jour}-${creneau.id}`}
@@ -231,7 +231,7 @@ export function GrilleHoraire({
           </div>
 
           {jours.map((jour) => (
-            <div key={jour} className="relative border-l border-hairline">
+            <div key={jour} className="relative border-l border-outline-soft">
               {Array.from({ length: heures }, (_, i) => (
                 <div key={i} style={{ height: HAUTEUR_HEURE }} className="border-b border-hairline-soft" />
               ))}

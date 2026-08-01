@@ -12,6 +12,7 @@ import {
 } from "@mui/icons-material";
 import { CalendrierMois } from "@repo/ui/CalendrierMois";
 import { GrilleHoraire } from "@repo/ui/GrilleHoraire";
+import { MenuAffichage } from "@repo/ui/MenuAffichage";
 import { RightDrawer } from "@repo/ui/RightDrawer";
 import { Toast } from "@repo/ui/Toast";
 import { projectsApi, type EntreeCalendrier } from "@/app/lib/projects-api";
@@ -74,9 +75,20 @@ export default function CalendrierPage() {
   const [vue, setVue] = useState<Vue>("mois");
   const [pivot, setPivot] = useState(() => new Date());
   const [entrees, setEntrees] = useState<EntreeCalendrier[] | null>(null);
-  const [aMoi, setAMoi] = useState(false);
-  const [natures, setNatures] = useState<Set<string>>(
-    () => new Set(NATURES.map((n) => n.cle))
+  // UNE seule sélection, préfixée par famille (`nature:`, `tag:`, `moi`) : le
+  // menu ne connaît que des clés, et une famille de plus n'ajoute pas un état
+  // de plus à tenir synchronisé.
+  const [affichage, setAffichage] = useState<Set<string>>(
+    () => new Set(NATURES.map((n) => `nature:${n.cle}`))
+  );
+  const aMoi = affichage.has("moi");
+  const natures = useMemo(
+    () => new Set([...affichage].filter((c) => c.startsWith("nature:")).map((c) => c.slice(7))),
+    [affichage]
+  );
+  const tagsRetenus = useMemo(
+    () => [...affichage].filter((c) => c.startsWith("tag:")).map((c) => c.slice(4)),
+    [affichage]
   );
   const [ouverte, setOuverte] = useState<EntreeCalendrier | null>(null);
   const [editeur, setEditeur] = useState<{ id: number | null; jour: Date } | null>(null);
@@ -103,9 +115,52 @@ export default function CalendrierPage() {
   }, [charger]);
 
   const visibles = useMemo(
-    () => (entrees ?? []).filter((e) => natures.has(e.type)),
-    [entrees, natures]
+    () =>
+      (entrees ?? []).filter(
+        (e) =>
+          natures.has(e.type) &&
+          // Aucune étiquette cochée = aucune contrainte. Dès qu'on en coche une,
+          // ce qui n'en porte pas sort : c'est ce que « filtrer par étiquette »
+          // veut dire.
+          (tagsRetenus.length === 0 || e.tags.some((t) => tagsRetenus.includes(t)))
+      ),
+    [entrees, natures, tagsRetenus]
   );
+
+  // Les étiquettes proposées sont celles RÉELLEMENT présentes dans la fenêtre,
+  // avec leur compte : une liste figée proposerait des filtres qui ne donnent
+  // rien.
+  const groupesAffichage = useMemo(() => {
+    const comptes = new Map<string, number>();
+    for (const entree of entrees ?? []) {
+      for (const tag of entree.tags) comptes.set(tag, (comptes.get(tag) ?? 0) + 1);
+    }
+    return [
+      {
+        cle: "portee",
+        libelle: "Portée",
+        options: [{ cle: "moi", libelle: "Ce qui me concerne" }],
+      },
+      {
+        cle: "nature",
+        libelle: "Nature",
+        options: NATURES.map((n) => ({
+          cle: `nature:${n.cle}`,
+          libelle: n.libelle,
+          teinte: TEINTES[n.cle].split(" ")[0],
+          compte: (entrees ?? []).filter((e) => e.type === n.cle).length,
+        })),
+      },
+      {
+        cle: "tags",
+        libelle: "Étiquettes",
+        vide: "Rien d'étiqueté sur cette période.",
+        options: [...comptes.entries()]
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([tag, compte]) => ({ cle: `tag:${tag}`, libelle: tag, compte })),
+      },
+    ];
+  }, [entrees]);
 
   // Un identifiant qui porte sa nature : deux objets de tables différentes
   // peuvent avoir le même numéro, et le décodeur doit retrouver le bon.
@@ -155,6 +210,18 @@ export default function CalendrierPage() {
       {e.participants.length > 0 && (
         <p className="mt-0.5 text-label-md text-on-surface-variant">
           {e.participants.join(", ")}
+        </p>
+      )}
+      {e.tags.length > 0 && (
+        <p className="mt-1 flex flex-wrap gap-1">
+          {e.tags.map((tag) => (
+            <span
+              key={tag}
+              className="rounded-full bg-surface-container px-1.5 text-label-sm text-on-surface-variant"
+            >
+              {tag}
+            </span>
+          ))}
         </p>
       )}
     </div>
@@ -231,49 +298,15 @@ export default function CalendrierPage() {
 
         <span className="mx-1 w-px h-5 bg-outline-soft" />
 
-        <button
-          type="button"
-          aria-pressed={aMoi}
-          onClick={() => setAMoi((v) => !v)}
-          className={`h-8 px-3 rounded-full border text-body-sm font-medium transition-colors ${
-            aMoi
-              ? "border-primary bg-primary/10 text-primary"
-              : "border-outline-soft text-on-surface-variant hover:bg-surface-container-low"
-          }`}
-        >
-          Ce qui me concerne
-        </button>
-
-        {NATURES.map((nature) => {
-          const actif = natures.has(nature.cle);
-          return (
-            <button
-              key={nature.cle}
-              type="button"
-              aria-pressed={actif}
-              onClick={() =>
-                setNatures((prec) => {
-                  const suivant = new Set(prec);
-                  if (suivant.has(nature.cle)) suivant.delete(nature.cle);
-                  else suivant.add(nature.cle);
-                  return suivant;
-                })
-              }
-              className={`inline-flex items-center gap-1.5 h-8 px-3 rounded-full border text-body-sm transition-colors ${
-                actif
-                  ? "border-outline-variant text-on-surface"
-                  : "border-outline-soft text-outline-variant"
-              }`}
-            >
-              <span
-                className={`w-2 h-2 rounded-full ${TEINTES[nature.cle].split(" ")[0]} ${
-                  actif ? "" : "opacity-40"
-                }`}
-              />
-              {nature.libelle}
-            </button>
-          );
-        })}
+        <MenuAffichage
+          groupes={groupesAffichage}
+          selection={affichage}
+          onChange={setAffichage}
+          // Les cinq natures sont cochées d'origine : les compter ferait
+          // afficher « 5 » en permanence, et la pastille cesserait de signaler
+          // qu'on a restreint quelque chose.
+          parDefaut={NATURES.length}
+        />
       </div>
 
       <div className="mt-4">

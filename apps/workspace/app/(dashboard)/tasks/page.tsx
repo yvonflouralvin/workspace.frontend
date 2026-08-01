@@ -21,6 +21,7 @@ import {
   type Task,
 } from "@/app/lib/projects-api";
 import { PriorityBars } from "@repo/ui/PriorityBars";
+import { KanbanBoard } from "@/components/projects/KanbanBoard";
 import { useSessionStore } from "@repo/auth/store/session.store";
 import { useRouter } from "next/navigation";
 
@@ -116,6 +117,23 @@ export default function TasksPage() {
     // « Sans projet » en tête : c'est le bac, ce qu'on vient noter et reprendre.
     return [...carte.entries()].sort(([a], [b]) => (a === "" ? -1 : b === "" ? 1 : a.localeCompare(b)));
   }, [filtrees]);
+
+  /** Déplacer une carte, c'est demander une CATÉGORIE — pas un état.
+   *
+   *  Le tableau est transverse : la colonne « En cours » recouvre des états qui
+   *  n'ont ni le même nom ni le même identifiant d'un projet à l'autre. Le
+   *  serveur résout la catégorie dans le jeu d'états DU projet de la tâche, et
+   *  applique au passage ses propres refus — droits, limites de simultanéité.
+   *  Un refus s'affiche donc tel quel, il n'est pas anticipé ici. */
+  async function deplacer(tache: Task, cle: string | number) {
+    setErreur(null);
+    try {
+      await projectsApi.updateTask(tache.id, { categorie: String(cle) });
+      await charger();
+    } catch (e) {
+      setErreur(e instanceof Error ? e.message : "Déplacement impossible.");
+    }
+  }
 
   async function creer() {
     if (!titre.trim()) return;
@@ -237,26 +255,20 @@ export default function TasksPage() {
       )}
 
       {vue === "kanban" && filtrees.length > 0 && (
-        <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 items-start">
-          {CATEGORIES.map((cat) => {
-            const colonne = filtrees.filter((t) => t.categorie === cat);
-            return (
-              <section key={cat} className="rounded-2xl border border-outline-soft bg-surface-container-low p-2">
-                <p className="px-1.5 py-1 text-label-sm uppercase text-outline">
-                  {CATEGORIE_LABELS[cat]}
-                  <span className="ml-2 text-outline-variant">{colonne.length}</span>
-                </p>
-                <div className="space-y-2 mt-1">
-                  {colonne.map((tache) => (
-                    <Carte key={tache.id} tache={tache} onOuvrir={() => setOuverte(tache)} />
-                  ))}
-                  {!colonne.length && (
-                    <p className="px-1.5 py-3 text-label-md text-outline-variant">—</p>
-                  )}
-                </div>
-              </section>
-            );
-          })}
+        <div className="mt-5">
+          <KanbanBoard
+            tasks={filtrees}
+            colonnes={CATEGORIES.map((cat) => ({
+              cle: cat,
+              libelle: CATEGORIE_LABELS[cat],
+              categorie: cat,
+            }))}
+            appartient={(t, cle) => t.categorie === cle}
+            canManage
+            onMove={deplacer}
+            onOpen={setOuverte}
+            sousTitre={(t) => (t.sans_projet ? "Sans projet" : (t.project_name ?? null))}
+          />
         </div>
       )}
 
@@ -540,42 +552,5 @@ function BoutonVue({
     >
       {children}
     </button>
-  );
-}
-
-/** Carte du tableau. Elle porte sa PROVENANCE : dans une vue transverse, la
- *  première question devant une tâche est « elle vient d'où ? ». */
-function Carte({ tache, onOuvrir }: { tache: Task; onOuvrir: () => void }) {
-  const tone = toneFor(tache.categorie);
-  const contenu = (
-    <>
-      <span className="block text-body-sm text-on-surface">{tache.title}</span>
-      <span className="mt-1 flex flex-wrap items-center gap-2">
-        <span className="text-label-md text-outline">
-          {tache.sans_projet ? "Sans projet" : (tache.project_name ?? "—")}
-        </span>
-        {tache.due_date && (
-          <span className="text-label-md text-outline">
-            {new Date(tache.due_date).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}
-          </span>
-        )}
-        {tache.priority !== "AUCUNE" && (
-          <span className="ml-auto" title={PRIORITY_LABELS[tache.priority]}>
-            <PriorityBars level={PRIORITY_LEVELS[tache.priority] ?? 0} />
-          </span>
-        )}
-      </span>
-    </>
-  );
-  const classes = `block w-full text-left rounded-xl border border-outline-soft bg-surface-container-lowest px-3 py-2.5 hover:border-primary/40 transition-colors border-l-2 ${tone.dot.replace("bg-", "border-l-")}`;
-
-  return tache.sans_projet ? (
-    <button type="button" onClick={onOuvrir} className={classes}>
-      {contenu}
-    </button>
-  ) : (
-    <Link href={`/projects/${tache.project_id}/tasks/${tache.id}`} className={classes}>
-      {contenu}
-    </Link>
   );
 }

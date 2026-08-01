@@ -8,33 +8,46 @@ import {
   PRIORITY_LABELS,
   PRIORITY_LEVELS,
   toneFor,
-  type Etat,
   type Task,
 } from "@/app/lib/projects-api";
 import { isOverdue } from "./TaskRow";
 
+/** Une colonne du tableau. Elle est DÉCRITE, pas déduite d'un état : le même
+ *  tableau sert la vue d'un projet — colonnes = états — et la vue transverse du
+ *  workspace — colonnes = catégories canoniques, seul vocabulaire commun à des
+ *  projets dont les jeux d'états diffèrent. */
+export interface ColonneKanban {
+  /** Identifiant rendu à `onMove`. */
+  cle: string | number;
+  libelle: string;
+  /** Catégorie canonique, pour la teinte. */
+  categorie: string | null;
+  /** Limite de travail simultané, quand la colonne en porte une. */
+  limite?: number;
+}
+
 export function KanbanBoard({
   tasks,
-  etats,
-  limites,
+  colonnes,
+  appartient,
   canManage,
   onMove,
   onOpen,
-  projectKey,
-  phaseNames,
+  reference,
+  sousTitre,
 }: {
   tasks: Task[];
-  /** Colonnes du tableau : les états du jeu du projet, dans leur ordre. */
-  etats: Etat[];
-  /** Limites de simultanéité par état, telles que configurées sur la phase. */
-  limites: Record<string, number>;
+  colonnes: ColonneKanban[];
+  /** À quelle colonne appartient une tâche. */
+  appartient: (t: Task, cle: string | number) => boolean;
   canManage: boolean;
-  onMove: (t: Task, etatId: number) => void;
+  onMove: (t: Task, cle: string | number) => void;
   onOpen: (t: Task) => void;
-  projectKey: string;
-  /** Noms de phase à afficher sur les cartes — absent quand la vue est déjà
-   *  celle d'une phase, ou quand le projet n'expose pas ses phases. */
-  phaseNames?: Record<number, string>;
+  /** Référence affichée sur la carte — « WEB-12 » dans un projet, rien ailleurs. */
+  reference?: (t: Task) => string | null;
+  /** Seconde ligne de la carte : la phase dans un projet, la provenance dans la
+   *  vue transverse — c'est la première question devant une tâche venue d'ailleurs. */
+  sousTitre?: (t: Task) => string | null;
 }) {
   const [drag, setDrag] = useState<Task | null>(null);
   const [over, setOver] = useState<string | null>(null);
@@ -45,39 +58,39 @@ export function KanbanBoard({
 
   return (
     <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory md:snap-none -mx-4 px-4 md:mx-0 md:px-0">
-      {etats.map((etat) => {
-        const col = roots.filter((t) => t.etat_id === etat.id);
-        const tone = toneFor(etat.categorie_canonique);
-        const limite = limites[String(etat.id)];
+      {colonnes.map((colonne) => {
+        const col = roots.filter((t) => appartient(t, colonne.cle));
+        const tone = toneFor(colonne.categorie);
+        const limite = colonne.limite;
         // COMPTE COMME LE BACKEND : tous les éléments de la colonne, sous-tâches
         // comprises — elles occupent la capacité de l'équipe même si elles
         // s'affichent dans leur carte parente. Compter les seules cartes
         // visibles ferait diverger l'affichage du refus.
-        const effectif = tasks.filter((t) => t.etat_id === etat.id).length;
+        const effectif = tasks.filter((t) => appartient(t, colonne.cle)).length;
         const saturee = limite != null && effectif >= limite;
         return (
           <div
-            key={etat.id}
+            key={colonne.cle}
             onDragOver={(e) => {
               if (drag) {
                 e.preventDefault();
-                setOver(etat.code);
+                setOver(String(colonne.cle));
               }
             }}
-            onDragLeave={() => setOver((c) => (c === etat.code ? null : c))}
+            onDragLeave={() => setOver((c) => (c === String(colonne.cle) ? null : c))}
             onDrop={() => {
-              if (drag && drag.etat_id !== etat.id) onMove(drag, etat.id);
+              if (drag && !appartient(drag, colonne.cle)) onMove(drag, colonne.cle);
               setDrag(null);
               setOver(null);
             }}
             className={`w-[85vw] max-w-[300px] md:w-72 shrink-0 snap-center md:snap-align-none rounded-2xl p-3 transition-colors ${
               saturee ? "bg-error-container/25" : "bg-surface-container/50"
-            } ${over === etat.code ? "ring-2 ring-primary/40" : ""}`}
+            } ${over === String(colonne.cle) ? "ring-2 ring-primary/40" : ""}`}
           >
             <div className="flex items-center gap-2 px-1 pb-2.5">
               <span className={`w-2 h-2 rounded-full ${tone?.dot ?? ""}`} />
               <span className="flex-1 text-body-sm font-semibold text-on-surface-variant">
-                {etat.libelle}
+                {colonne.libelle}
               </span>
               {limite != null ? (
                 <span
@@ -99,7 +112,8 @@ export function KanbanBoard({
                 // Catégorie canonique, jamais un code : « fini » est un sens.
                 const doneChildren = children.filter((c) => c.categorie === "termine").length;
                 const overdue = isOverdue(t);
-                const phaseName = phaseNames?.[t.phase_id];
+                const seconde = sousTitre?.(t);
+                const ref = reference?.(t);
                 return (
                   <div
                     key={t.id}
@@ -114,13 +128,13 @@ export function KanbanBoard({
                   >
                     <p className="text-body-md font-medium text-on-surface">{t.title}</p>
 
-                    {phaseName && (
+                    {seconde && (
                       <span
-                        title={phaseName}
+                        title={seconde}
                         className="flex items-center gap-1 mt-0.5 text-label-md text-outline"
                       >
                         <AccountTreeOutlined style={{ fontSize: 13 }} className="flex-none" />
-                        <span className="truncate">{phaseName}</span>
+                        <span className="truncate">{seconde}</span>
                       </span>
                     )}
 
@@ -132,9 +146,7 @@ export function KanbanBoard({
                     )}
 
                     <div className="flex items-center gap-2 mt-2 text-label-md text-outline">
-                      <span className="font-mono">
-                        {projectKey}-{t.number}
-                      </span>
+                      {ref && <span className="font-mono">{ref}</span>}
                       {t.priority !== "AUCUNE" && (
                         <PriorityBars
                           level={PRIORITY_LEVELS[t.priority] ?? 0}

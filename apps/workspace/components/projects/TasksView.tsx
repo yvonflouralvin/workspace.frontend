@@ -130,13 +130,18 @@ export function TasksView({ phaseId }: { phaseId?: number }) {
       {modeCourant === "kanban" ? (
         <KanbanBoard
           tasks={tasks}
-          etats={etats}
-          limites={limites}
+          colonnes={etats.map((etat) => ({
+            cle: etat.id,
+            libelle: etat.libelle,
+            categorie: etat.categorie_canonique,
+            limite: limites[String(etat.id)],
+          }))}
+          appartient={(t, cle) => t.etat_id === cle}
           canManage={canManage}
-          onMove={moveTask}
+          onMove={(t, cle) => moveTask(t, Number(cle))}
           onOpen={setEditing}
-          projectKey={project.key}
-          phaseNames={phaseNames}
+          reference={(t) => `${project.key}-${t.number}`}
+          sousTitre={(t) => phaseNames?.[t.phase_id] ?? null}
         />
       ) : (
         <TaskListView tasks={tasks} etats={etats} onOpen={setEditing} />

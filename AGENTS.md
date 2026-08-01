@@ -60,6 +60,22 @@ frontends/
 
 ---
 
+### Module Form (app `workspace`)
+
+Formulaires façon Google Forms : conception (`/forms/{id}`), réponse
+(`/forms/{id}/repondre`), dépouillement (`/forms/{id}/resultats`) et **page
+publique `/f/{jeton}`**.
+
+**La page publique est la seule route de l'app joignable sans compte.** Deux
+endroits l'autorisent, et il faut les tenir ensemble : `proxy.ts` (préfixes
+`/f/` et `/api/public/`, plus l'en-tête `x-pathname` qu'il pose) et
+`app/layout.tsx`, qui saute sa redirection vers auth quand ce chemin est public.
+Le BFF `/api/public/*` relaie **en clair** — le visiteur n'a pas la clé
+`@repo/network`, et n'a aucune raison de l'avoir. Côté backend, la charge
+publique est volontairement pauvre : ni identifiant, ni collaborateurs, ni
+compteur. Un formulaire ouvert ne doit rien apprendre du workspace qui
+l'héberge.
+
 ## Packages partagés
 
 ### `@repo/auth`

@@ -33,12 +33,16 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const reqHeaders = await headers();
+  // Un formulaire public se remplit sans compte : le rediriger vers l'écran de
+  // connexion viderait la porte de son sens. Le chemin est posé par `proxy.ts`.
+  const publique = (reqHeaders.get("x-pathname") ?? "").startsWith("/f/");
+
   const session = await getServerSession();
 
-  if (!session.authenticated) {
+  if (!session.authenticated && !publique) {
     const authDomain = process.env.AUTH_API_AUTH_DOMAIN;
     if (authDomain) {
-      const reqHeaders = await headers();
       const referer = reqHeaders.get("referer") ?? "";
       // Guard: don't redirect if we already came from auth — breaks auth→workspace→auth loop
       if (!referer.startsWith(authDomain)) {
@@ -48,7 +52,7 @@ export default async function RootLayout({
   }
 
   const accessDenied =
-    session.authenticated && !session.permissions.includes("workspace.access");
+    !publique && session.authenticated && !session.permissions.includes("workspace.access");
   const canSwitchTo = session.workspaces.some(
     (ws) => ws.id !== session.active_workspace?.id && ws.permissions.includes("workspace.access")
   );

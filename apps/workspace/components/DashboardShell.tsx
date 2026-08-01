@@ -12,6 +12,7 @@ import { WorkspaceSwitcher } from "@repo/ui/WorkspaceSwitcher";
 import { PLATFORM_APPS, WORKSPACE_SHELL } from "@repo/ui/shell/platform";
 import { useSearch } from "@repo/ui/shell/useSearch";
 import {
+  AssignmentOutlined,
   CalendarMonthOutlined,
   HomeOutlined,
   FolderOpenOutlined,
@@ -29,6 +30,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Projets",  href: "/projects",  icon: <FolderOpenOutlined style={{ fontSize: 20 }} /> },
   { label: "Tâches",   href: "/tasks",     icon: <ChecklistOutlined style={{ fontSize: 20 }} /> },
   { label: "Calendrier", href: "/calendar", icon: <CalendarMonthOutlined style={{ fontSize: 20 }} /> },
+  { label: "Formulaires", href: "/forms", icon: <AssignmentOutlined style={{ fontSize: 20 }} /> },
   { label: "Membres",  href: "/members",   icon: <GroupOutlined style={{ fontSize: 20 }} /> },
   { label: "Inbox",    href: "/inbox",     icon: <InboxOutlined style={{ fontSize: 20 }} /> },
   { label: "Journal d'activité", href: "/audit-logs", icon: <HistoryOutlined style={{ fontSize: 20 }} /> },

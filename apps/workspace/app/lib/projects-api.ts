@@ -309,6 +309,9 @@ export const projectsApi = {
 
   /** Le jeu d'états d'une tâche, lu par la TÂCHE : seul chemin pour une tâche
    *  du bac, dont le projet ne s'ouvre pas. */
+  /** Une tâche lue SANS passer par son projet — le seul chemin pour une tâche
+   *  du bac, dont le projet ne s'ouvre pas. */
+  getTask: (taskId: number) => apiFetch(`/api/tasks/${taskId}`).then((r) => json<Task>(r)),
   taskEtats: (taskId: number) =>
     apiFetch(`/api/tasks/${taskId}/etats`).then((r) => json<Etat[]>(r)),
   listEtats: (projectId: number) =>

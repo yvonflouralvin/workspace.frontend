@@ -180,15 +180,24 @@ export interface PieceJointe {
   apercu: "image" | "video" | "audio" | "pdf" | "aucun";
 }
 
+export interface Mention {
+  user_id: number;
+  name: string;
+}
+
 export interface Commentaire {
   id: number;
   task_id: number;
+  /** Réponse à ce message. Un seul niveau : le serveur rabat au parent racine. */
+  parent_comment_id: number | null;
   author_user_id: number;
   author_name: string | null;
   body: string | null;
   created_at: string;
   edited_at: string | null;
   attachments: PieceJointe[];
+  /** Qui a été nommé — noms pour le surlignage, identifiants pour le reste. */
+  mentions: Mention[];
   /** Ce que CE lecteur peut faire — calculé par le serveur, jamais déduit ici
    *  d'une comparaison d'identifiants. */
   peut_modifier: boolean;
@@ -436,27 +445,49 @@ export const projectsApi = {
       json<ProjectActivity[]>(r)
     ),
 
-  listComments: (taskId: number) =>
-    apiFetch(`/api/tasks/${taskId}/comments`).then((r) => json<Commentaire[]>(r)),
-  createComment: (taskId: number, body: string) =>
-    apiFetch(`/api/tasks/${taskId}/comments`, { method: "POST", body: { body } }).then((r) =>
-      json<Commentaire>(r)
+  /** Du plus récent au plus ancien — l'ordre vient du serveur. `limite` omise
+   *  renvoie le fil entier. */
+  listComments: (taskId: number, limite?: number) =>
+    apiFetch(`/api/tasks/${taskId}/comments${limite ? `?limite=${limite}` : ""}`).then((r) =>
+      json<Commentaire[]>(r)
     ),
+  createComment: (
+    taskId: number,
+    body: string,
+    options: { parent_comment_id?: number | null; mention_user_ids?: number[] } = {}
+  ) =>
+    apiFetch(`/api/tasks/${taskId}/comments`, {
+      method: "POST",
+      body: { body, ...options },
+    }).then((r) => json<Commentaire>(r)),
   // Multipart : pas de chiffrement @repo/network, le BFF passe les octets bruts.
-  createCommentFile: async (taskId: number, file: File, body: string | null) => {
+  createCommentFile: async (
+    taskId: number,
+    file: File,
+    body: string | null,
+    options: { parent_comment_id?: number | null; mention_user_ids?: number[] } = {}
+  ) => {
     const form = new FormData();
     form.append("file", file);
     if (body) form.append("body", body);
+    if (options.parent_comment_id) {
+      form.append("parent_comment_id", String(options.parent_comment_id));
+    }
+    // Multipart n'a pas de listes : le serveur découpe sur la virgule.
+    if (options.mention_user_ids?.length) {
+      form.append("mention_user_ids", options.mention_user_ids.join(","));
+    }
     const res = await fetch(`/api/tasks/${taskId}/comments/file`, { method: "POST", body: form });
     if (!res.ok) {
       throw new Error((await res.json().catch(() => ({})))?.detail || `Erreur ${res.status}`);
     }
     return (await res.json()) as Commentaire;
   },
-  updateComment: (commentId: number, body: string) =>
-    apiFetch(`/api/comments/${commentId}`, { method: "PATCH", body: { body } }).then((r) =>
-      json<Commentaire>(r)
-    ),
+  updateComment: (commentId: number, body: string, mention_user_ids?: number[]) =>
+    apiFetch(`/api/comments/${commentId}`, {
+      method: "PATCH",
+      body: { body, ...(mention_user_ids ? { mention_user_ids } : {}) },
+    }).then((r) => json<Commentaire>(r)),
   deleteComment: (commentId: number) =>
     apiFetch(`/api/comments/${commentId}`, { method: "DELETE" }).then((r) => json<void>(r)),
   attachmentUrl: (commentId: number, attachmentId: number) =>

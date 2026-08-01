@@ -54,11 +54,15 @@ export default function FormulairePublicPage() {
           <Questionnaire
             titre={forme.titre}
             description={forme.description}
+            sections={forme.sections}
             questions={forme.questions}
             busy={busy}
             erreur={erreur}
             confirmation={confirmation}
             identite
+            onDeposer={(question, fichier) =>
+              formsApi.publicDeposer(jeton, question.id, fichier)
+            }
             onEnvoyer={async (reponses, identite) => {
               setBusy(true);
               setErreur(null);

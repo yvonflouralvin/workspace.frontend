@@ -16,7 +16,8 @@ export type TypeQuestion =
   | "NOMBRE"
   | "DATE"
   | "EMAIL"
-  | "ECHELLE";
+  | "ECHELLE"
+  | "FICHIER";
 
 export const TYPES_QUESTION: { cle: TypeQuestion; libelle: string; aOptions: boolean }[] = [
   { cle: "TEXTE_COURT", libelle: "Texte court", aOptions: false },
@@ -28,7 +29,32 @@ export const TYPES_QUESTION: { cle: TypeQuestion; libelle: string; aOptions: boo
   { cle: "DATE", libelle: "Date", aOptions: false },
   { cle: "EMAIL", libelle: "Adresse e-mail", aOptions: false },
   { cle: "ECHELLE", libelle: "Échelle", aOptions: false },
+  { cle: "FICHIER", libelle: "Fichier", aOptions: false },
 ];
+
+/** Plafond absolu d'un dépôt, aligné sur le serveur. Un concepteur ne doit pas
+ *  pouvoir ouvrir un tuyau illimité sur un lien public. */
+export const TAILLE_MAX_MO = 25;
+
+export interface Section {
+  id: number;
+  position: number;
+  titre: string;
+  description: string | null;
+}
+
+export interface SectionEcrite {
+  id?: number | null;
+  titre: string;
+  description?: string | null;
+}
+
+export interface Depot {
+  document_id: number;
+  file_name: string;
+  file_size: number;
+  content_type: string;
+}
 
 export const ACCES_LABELS: Record<string, string> = {
   PRIVE: "Collaborateurs seulement",
@@ -44,24 +70,28 @@ export const STATUT_LABELS: Record<string, string> = {
 
 export interface Question {
   id: number;
+  section_id: number | null;
   position: number;
   type: TypeQuestion;
   libelle: string;
   aide: string | null;
   obligatoire: boolean;
   options: string[];
-  config: { min?: number; max?: number };
+  config: { min?: number; max?: number; extensions?: string[]; taille_max_mo?: number };
   supprimee?: boolean;
+  /** Combien de réponses cette question porte — et donc ce qui s'y fige. */
+  nb_reponses: number;
 }
 
 export interface QuestionEcrite {
   id?: number;
+  section_id?: number | null;
   type: TypeQuestion;
   libelle: string;
   aide?: string | null;
   obligatoire: boolean;
   options: string[];
-  config: { min?: number; max?: number };
+  config: { min?: number; max?: number; extensions?: string[]; taille_max_mo?: number };
 }
 
 export interface Collaborateur {
@@ -83,6 +113,7 @@ export interface Formulaire {
   created_at: string;
   publie_le: string | null;
   clos_le: string | null;
+  sections: Section[];
   questions: Question[];
   collaborateurs: Collaborateur[];
   nb_soumissions: number;
@@ -122,6 +153,7 @@ export interface FormulairePublic {
   titre: string;
   description: string | null;
   message_confirmation: string | null;
+  sections: Section[];
   questions: Question[];
 }
 
@@ -158,6 +190,7 @@ export const formsApi = {
       statut: string;
       une_reponse_par_personne: boolean;
       message_confirmation: string | null;
+      sections: SectionEcrite[];
       questions: QuestionEcrite[];
     }>
   ) =>
@@ -176,12 +209,35 @@ export const formsApi = {
     ),
   soumissions: (id: number) =>
     apiFetch(`/api/formulaires/${id}/soumissions`).then((r) => lire<Soumission[]>(r)),
+  dupliquer: (id: number) =>
+    apiFetch(`/api/formulaires/${id}/dupliquer`, { method: "POST", body: {} }).then((r) =>
+      lire<Formulaire>(r)
+    ),
+  // Multipart : pas de chiffrement @repo/network, le BFF passe les octets bruts.
+  deposer: async (id: number, questionId: number, fichier: File) => {
+    const form = new FormData();
+    form.append("file", fichier);
+    form.append("question_id", String(questionId));
+    const r = await fetch(`/api/formulaires/${id}/fichiers`, { method: "POST", body: form });
+    return lire<Depot>(r);
+  },
+  fichierUrl: (id: number, documentId: number) => `/api/formulaires/${id}/fichiers/${documentId}`,
 
   // Sans session : `fetch` nu, pas `apiFetch`. Le visiteur n'a pas la clé de
   // chiffrement, et n'a aucune raison de l'avoir.
   publicGet: async (jeton: string) => {
     const r = await fetch(`/api/public/formulaires/${encodeURIComponent(jeton)}`);
     return lire<FormulairePublic>(r);
+  },
+  publicDeposer: async (jeton: string, questionId: number, fichier: File) => {
+    const form = new FormData();
+    form.append("file", fichier);
+    form.append("question_id", String(questionId));
+    const r = await fetch(`/api/public/formulaires/${encodeURIComponent(jeton)}/fichiers`, {
+      method: "POST",
+      body: form,
+    });
+    return lire<Depot>(r);
   },
   publicSoumettre: async (
     jeton: string,

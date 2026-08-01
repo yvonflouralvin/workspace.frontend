@@ -1,6 +1,9 @@
 "use client";
 
-import type { Question } from "@/app/lib/forms-api";
+import { useRef, useState } from "react";
+import { AttachFileOutlined } from "@mui/icons-material";
+import { poidsLisible } from "@repo/ui/ApercuFichier";
+import type { Depot, Question } from "@/app/lib/forms-api";
 
 const CHAMP =
   "w-full h-9 px-3 rounded-lg border border-outline-soft bg-surface-container-lowest text-body-sm text-on-surface outline-none focus:border-primary transition-colors";
@@ -16,15 +19,30 @@ export function ChampReponse({
   valeur,
   onChange,
   disabled,
+  onDeposer,
 }: {
   question: Question;
   valeur: unknown;
   onChange: (valeur: unknown) => void;
   disabled?: boolean;
+  /** Dépose le fichier et rend sa référence. Fourni par l'écran, parce que le
+   *  chemin diffère selon qu'on est connecté ou non. */
+  onDeposer?: (question: Question, fichier: File) => Promise<Depot>;
 }) {
   const commun = { disabled, "aria-label": question.libelle };
 
   switch (question.type) {
+    case "FICHIER":
+      return (
+        <ChampFichier
+          question={question}
+          valeur={valeur as Depot | null}
+          disabled={disabled}
+          onChange={onChange}
+          onDeposer={onDeposer}
+        />
+      );
+
     case "TEXTE_LONG":
       return (
         <textarea
@@ -170,11 +188,123 @@ export function ChampReponse({
   }
 }
 
+/** Dépôt d'un fichier.
+ *
+ *  Le fichier part AVANT la soumission : on ne fait pas transiter des octets
+ *  dans un corps JSON, et un envoi multipart portant vingt réponses et trois
+ *  fichiers serait illisible. La valeur de la réponse est donc la RÉFÉRENCE
+ *  rendue par le dépôt.
+ */
+function ChampFichier({
+  question,
+  valeur,
+  disabled,
+  onChange,
+  onDeposer,
+}: {
+  question: Question;
+  valeur: Depot | null;
+  disabled?: boolean;
+  onChange: (valeur: unknown) => void;
+  onDeposer?: (question: Question, fichier: File) => Promise<Depot>;
+}) {
+  const champ = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  const [erreur, setErreur] = useState<string | null>(null);
+
+  const extensions = question.config.extensions ?? [];
+  const plafond = question.config.taille_max_mo;
+
+  return (
+    <div>
+      <input
+        ref={champ}
+        type="file"
+        className="hidden"
+        aria-label={question.libelle}
+        accept={extensions.map((e) => `.${e}`).join(",") || undefined}
+        onChange={async (e) => {
+          const fichier = e.target.files?.[0];
+          if (!fichier || !onDeposer) return;
+          setBusy(true);
+          setErreur(null);
+          try {
+            onChange(await onDeposer(question, fichier));
+          } catch (err) {
+            setErreur(err instanceof Error ? err.message : "Dépôt impossible.");
+            onChange(null);
+          } finally {
+            setBusy(false);
+            if (champ.current) champ.current.value = "";
+          }
+        }}
+      />
+
+      {valeur ? (
+        <p className="inline-flex max-w-full items-center gap-2 rounded-lg border border-outline-soft bg-surface-container-lowest px-3 py-2 text-body-sm text-on-surface">
+          <AttachFileOutlined style={{ fontSize: 15 }} className="flex-none text-outline" />
+          <span className="truncate">{valeur.file_name}</span>
+          <span className="flex-none text-label-md text-outline">
+            {poidsLisible(valeur.file_size)}
+          </span>
+          {!disabled && (
+            <button
+              type="button"
+              aria-label="Retirer le fichier"
+              onClick={() => onChange(null)}
+              className="flex-none text-outline hover:text-error transition-colors"
+            >
+              ×
+            </button>
+          )}
+        </p>
+      ) : (
+        <button
+          type="button"
+          disabled={disabled || busy || !onDeposer}
+          onClick={() => champ.current?.click()}
+          className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border border-outline-soft text-body-sm text-on-surface-variant hover:bg-surface-container-low disabled:opacity-50 transition-colors"
+        >
+          <AttachFileOutlined style={{ fontSize: 15 }} />
+          {busy ? "Dépôt en cours…" : "Choisir un fichier"}
+        </button>
+      )}
+
+      <p className="mt-1 text-label-md text-outline">
+        {extensions.length ? `Formats acceptés : ${extensions.join(", ")}. ` : ""}
+        {plafond ? `${plafond} Mo au maximum.` : ""}
+      </p>
+
+      {erreur && <p className="mt-1 text-label-md text-error">{erreur}</p>}
+    </div>
+  );
+}
+
 /** Affiche une réponse déjà donnée, dans le tableau des résultats. */
-export function ValeurLisible({ valeur }: { valeur: unknown }) {
+export function ValeurLisible({
+  valeur,
+  lienFichier,
+}: {
+  valeur: unknown;
+  /** Construit l'URL de téléchargement d'un fichier joint. */
+  lienFichier?: (documentId: number) => string;
+}) {
   if (valeur === null || valeur === undefined || valeur === "") {
     return <span className="text-outline-variant">—</span>;
   }
   if (Array.isArray(valeur)) return <>{valeur.join(", ")}</>;
+  if (typeof valeur === "object" && valeur !== null && "document_id" in valeur) {
+    const depot = valeur as Depot;
+    if (!lienFichier) return <>{depot.file_name}</>;
+    return (
+      <a
+        href={lienFichier(depot.document_id)}
+        className="inline-flex items-center gap-1 text-primary hover:underline"
+      >
+        <AttachFileOutlined style={{ fontSize: 14 }} />
+        {depot.file_name}
+      </a>
+    );
+  }
   return <>{String(valeur)}</>;
 }

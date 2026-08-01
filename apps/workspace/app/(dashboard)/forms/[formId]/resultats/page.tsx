@@ -1,25 +1,22 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
-import { useParams } from "next/navigation";
-import { ArrowBackOutlined, DownloadOutlined } from "@mui/icons-material";
+import { DownloadOutlined } from "@mui/icons-material";
 import { ValeurLisible } from "@/components/forms/ChampReponse";
-import { formsApi, type Formulaire, type Soumission } from "@/app/lib/forms-api";
+import { formsApi, type Soumission } from "@/app/lib/forms-api";
+import { useFormulaire } from "../form-context";
 
 type Vue = "tableau" | "synthese";
 
 export default function ResultatsPage() {
-  const { formId } = useParams<{ formId: string }>();
-  const id = Number(formId);
-  const [forme, setForme] = useState<Formulaire | null>(null);
+  const { forme } = useFormulaire();
+  const id = forme.id;
   const [soumissions, setSoumissions] = useState<Soumission[] | null>(null);
   const [vue, setVue] = useState<Vue>("synthese");
   const [refus, setRefus] = useState<string | null>(null);
 
   const charger = useCallback(async () => {
     try {
-      setForme(await formsApi.get(id));
       setSoumissions(await formsApi.soumissions(id));
     } catch (e) {
       setRefus(e instanceof Error ? e.message : "Résultats indisponibles.");
@@ -32,10 +29,10 @@ export default function ResultatsPage() {
 
   // Toutes les questions, y compris celles qui ont été retirées : les réponses
   // déjà reçues pointent dessus, et les masquer amputerait le dépouillement.
-  const colonnes = useMemo(() => forme?.questions ?? [], [forme]);
+  const colonnes = useMemo(() => forme.questions, [forme]);
 
   const synthese = useMemo(() => {
-    if (!forme || !soumissions) return [];
+    if (!soumissions) return [];
     return colonnes.map((question) => {
       const valeurs = soumissions
         .map((s) => s.reponses[String(question.id)])
@@ -61,12 +58,18 @@ export default function ResultatsPage() {
         exemples: valeurs.slice(0, 5).map(String),
       };
     });
-  }, [colonnes, soumissions, forme]);
+  }, [colonnes, soumissions]);
 
   function exporter() {
-    if (!forme || !soumissions) return;
+    if (!soumissions) return;
     const echapper = (valeur: unknown) => {
-      const texte = Array.isArray(valeur) ? valeur.join(" | ") : String(valeur ?? "");
+      // Un fichier s'exporte par son nom : coller l'objet JSON rendrait la
+      // colonne illisible dans un tableur.
+      const brut =
+        valeur && typeof valeur === "object" && "file_name" in (valeur as object)
+          ? (valeur as { file_name: string }).file_name
+          : valeur;
+      const texte = Array.isArray(brut) ? brut.join(" | ") : String(brut ?? "");
       return `"${texte.replace(/"/g, '""')}"`;
     };
     const lignes = [
@@ -90,29 +93,17 @@ export default function ResultatsPage() {
     URL.revokeObjectURL(url);
   }
 
-  if (refus) {
-    return (
-      <div className="p-4 md:p-8 max-w-[1152px] mx-auto space-y-4">
-        <Retour />
-        <p className="text-body-md text-error">{refus}</p>
-      </div>
-    );
-  }
-  if (!forme || !soumissions) {
-    return <p className="p-4 md:p-8 text-body-md text-on-surface-variant">Chargement…</p>;
+  if (refus) return <p className="text-body-md text-error">{refus}</p>;
+  if (!soumissions) {
+    return <p className="text-body-md text-on-surface-variant">Chargement…</p>;
   }
 
   return (
-    <div className="p-4 md:p-8 max-w-[1280px] mx-auto">
-      <Retour />
-
+    <div>
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="font-display text-headline-sm text-on-surface">{forme.titre}</h1>
-          <p className="mt-1 text-body-sm text-on-surface-variant">
-            {soumissions.length} réponse{soumissions.length > 1 ? "s" : ""}
-          </p>
-        </div>
+        <p className="text-body-sm text-on-surface-variant">
+          {soumissions.length} réponse{soumissions.length > 1 ? "s" : ""}
+        </p>
         <div className="flex items-center gap-2">
           <span className="inline-flex rounded-lg border border-outline-soft overflow-hidden">
             {(["synthese", "tableau"] as Vue[]).map((v) => (
@@ -252,7 +243,10 @@ export default function ResultatsPage() {
                   </td>
                   {colonnes.map((q) => (
                     <td key={q.id} className="px-3 py-2 text-on-surface">
-                      <ValeurLisible valeur={s.reponses[String(q.id)]} />
+                      <ValeurLisible
+                        valeur={s.reponses[String(q.id)]}
+                        lienFichier={(documentId) => formsApi.fichierUrl(id, documentId)}
+                      />
                     </td>
                   ))}
                 </tr>
@@ -262,16 +256,5 @@ export default function ResultatsPage() {
         </div>
       )}
     </div>
-  );
-}
-
-function Retour() {
-  return (
-    <Link
-      href="/forms"
-      className="inline-flex items-center gap-1.5 text-body-sm font-medium text-on-surface-variant hover:text-primary transition-colors mb-4"
-    >
-      <ArrowBackOutlined style={{ fontSize: 15 }} /> Formulaires
-    </Link>
   );
 }

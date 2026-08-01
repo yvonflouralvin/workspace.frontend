@@ -8,6 +8,7 @@ import {
   projectsApi,
 } from "@/app/lib/projects-api";
 import { EchecAutosave } from "@/components/projects/EchecAutosave";
+import { FilCommentaires } from "@/components/projects/FilCommentaires";
 import { SelecteurPersonne } from "@/components/projects/SelecteurPersonne";
 import { useProject } from "../../project-context";
 import { useTask } from "./task-context";
@@ -66,6 +67,10 @@ export default function TaskOverviewPage() {
               <span className="text-label-md text-outline">{subtask.etat_libelle}</span>
             </div>
           ))}
+        </div>
+
+        <div className="mt-6">
+          <FilCommentaires taskId={task.id} canWrite={canManage} />
         </div>
       </div>
 

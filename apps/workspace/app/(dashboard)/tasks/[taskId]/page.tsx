@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { ArrowBackOutlined } from "@mui/icons-material";
 import { TagInput } from "@repo/ui/TagInput";
 import { Toast } from "@repo/ui/Toast";
+import { FilCommentaires } from "@/components/projects/FilCommentaires";
 import {
   PRIORITY_LABELS,
   PRIORITY_ORDER,
@@ -120,6 +121,10 @@ export default function TacheWorkspacePage() {
             placeholder="Ce qu'il y a à faire, le contexte, le lien utile…"
             className="w-full resize-none rounded-2xl border border-outline-soft bg-surface-container-lowest px-4 py-3 text-body-sm text-on-surface outline-none focus:border-primary transition-colors"
           />
+
+          <div className="mt-6">
+            <FilCommentaires taskId={tache.id} canWrite />
+          </div>
         </div>
 
         <aside className="rounded-2xl border border-outline-soft bg-surface-container-lowest divide-y divide-hairline">

@@ -106,6 +106,19 @@ thémé sur les tokens du design system. Rendu client uniquement (`next/dynamic`
 sauvegardes. Toute app qui a besoin d'un champ texte riche doit passer par ce composant
 plutôt que d'ajouter un autre éditeur. Détail : `docs/packages/UI.md`.
 
+**Primitives d'agenda** (`src/Timeline.tsx`, `src/CalendrierMois.tsx`, `src/GrilleHoraire.tsx`) :
+trois vues du temps, sans aucune sémantique métier — la frise répond à « comment ça
+s'enchaîne », le calendrier mensuel à « qu'est-ce qui tombe ce jour-là », la grille horaire
+à « à quelle heure, et qu'est-ce qui se chevauche ». Toutes trois prennent des barres et des
+libellés, rendent un `PanneauSurvol` au survol et remontent un `id` au clic. Consommées par
+l'échéancier d'un projet et par le module Calendrier du workspace.
+
+**Aperçu de fichier** (`src/ApercuFichier.tsx`) : `ApercuFichier` (vignette image, lecteur
+vidéo/audio, ligne nommée sinon) + `VisionneuseImage` (plein écran portalisé) +
+`poidsLisible`. La FAMILLE d'aperçu (`image | video | audio | pdf | aucun`) est décidée par
+le serveur à partir du type MIME et transmise dans la charge utile — un écran ne
+réinterprète jamais une liste de types MIME dans son coin.
+
 **Primitives de graphiques** (`src/charts/`, importées `@repo/ui/charts/LineChart`…) :
 `LineChart` (courbe temporelle), `BarChart` (histogramme catégoriel), `Sparkline` — **SVG
 natif, aucune dépendance de charting**, thémées via les tokens (`var(--color-*)`). Extraites

@@ -134,6 +134,67 @@ export interface Task {
   sans_projet?: boolean;
 }
 
+/** Une ligne d'agenda, quelle que soit son origine — le serveur ramène tout au
+ *  même vocabulaire pour que l'écran n'ait pas à connaître chaque modèle. */
+export interface EntreeCalendrier {
+  type: "tache" | "jalon" | "iteration" | "phase" | "evenement";
+  id: number;
+  titre: string;
+  debut: string;
+  fin: string | null;
+  journee_entiere: boolean;
+  categorie: string | null;
+  projet_id: number | null;
+  projet_nom: string | null;
+  lien: string | null;
+  lieu: string | null;
+  detail: string | null;
+  participants: string[];
+  est_evenement: boolean;
+}
+
+export interface Evenement {
+  id: number;
+  titre: string;
+  description: string | null;
+  lieu: string | null;
+  debut_le: string;
+  fin_le: string;
+  journee_entiere: boolean;
+  visibilite: "workspace" | "participants";
+  projet_id: number | null;
+  projet_nom: string | null;
+  created_by: number | null;
+  participant_ids: number[];
+  participant_noms: string[];
+  peut_modifier: boolean;
+}
+
+/** Une pièce jointe d'un commentaire. `apercu` est décidé par le SERVEUR à
+ *  partir du type MIME — l'écran ne réinterprète pas une liste de types. */
+export interface PieceJointe {
+  id: number;
+  file_name: string;
+  content_type: string;
+  file_size: number;
+  apercu: "image" | "video" | "audio" | "pdf" | "aucun";
+}
+
+export interface Commentaire {
+  id: number;
+  task_id: number;
+  author_user_id: number;
+  author_name: string | null;
+  body: string | null;
+  created_at: string;
+  edited_at: string | null;
+  attachments: PieceJointe[];
+  /** Ce que CE lecteur peut faire — calculé par le serveur, jamais déduit ici
+   *  d'une comparaison d'identifiants. */
+  peut_modifier: boolean;
+  peut_supprimer: boolean;
+}
+
 /** Modes de l'outil Livrables : à quoi un livrable peut se rattacher. */
 export type DeliverablesMode = "NONE" | "PHASE_TASK" | "PHASE" | "TASK";
 
@@ -374,6 +435,46 @@ export const projectsApi = {
     apiFetch(`/api/projects/${projectId}/activities?limit=${limit}`).then((r) =>
       json<ProjectActivity[]>(r)
     ),
+
+  listComments: (taskId: number) =>
+    apiFetch(`/api/tasks/${taskId}/comments`).then((r) => json<Commentaire[]>(r)),
+  createComment: (taskId: number, body: string) =>
+    apiFetch(`/api/tasks/${taskId}/comments`, { method: "POST", body: { body } }).then((r) =>
+      json<Commentaire>(r)
+    ),
+  // Multipart : pas de chiffrement @repo/network, le BFF passe les octets bruts.
+  createCommentFile: async (taskId: number, file: File, body: string | null) => {
+    const form = new FormData();
+    form.append("file", file);
+    if (body) form.append("body", body);
+    const res = await fetch(`/api/tasks/${taskId}/comments/file`, { method: "POST", body: form });
+    if (!res.ok) {
+      throw new Error((await res.json().catch(() => ({})))?.detail || `Erreur ${res.status}`);
+    }
+    return (await res.json()) as Commentaire;
+  },
+  updateComment: (commentId: number, body: string) =>
+    apiFetch(`/api/comments/${commentId}`, { method: "PATCH", body: { body } }).then((r) =>
+      json<Commentaire>(r)
+    ),
+  deleteComment: (commentId: number) =>
+    apiFetch(`/api/comments/${commentId}`, { method: "DELETE" }).then((r) => json<void>(r)),
+  attachmentUrl: (commentId: number, attachmentId: number) =>
+    `/api/comments/${commentId}/attachments/${attachmentId}/content`,
+
+  calendrier: (params: { depuis: string; jusqu_a: string; a_moi?: boolean }) => {
+    const q = new URLSearchParams({ depuis: params.depuis, jusqu_a: params.jusqu_a });
+    if (params.a_moi) q.set("a_moi", "true");
+    return apiFetch(`/api/calendrier?${q}`).then((r) => json<EntreeCalendrier[]>(r));
+  },
+  getEvenement: (id: number) =>
+    apiFetch(`/api/evenements/${id}`).then((r) => json<Evenement>(r)),
+  createEvenement: (body: Partial<Evenement> & { titre: string; debut_le: string; fin_le: string }) =>
+    apiFetch(`/api/evenements`, { method: "POST", body }).then((r) => json<Evenement>(r)),
+  updateEvenement: (id: number, body: Partial<Evenement>) =>
+    apiFetch(`/api/evenements/${id}`, { method: "PATCH", body }).then((r) => json<Evenement>(r)),
+  deleteEvenement: (id: number) =>
+    apiFetch(`/api/evenements/${id}`, { method: "DELETE" }).then((r) => json<void>(r)),
 
   getDeliverable: (id: number) =>
     apiFetch(`/api/deliverables/${id}`).then((r) => json<Deliverable>(r)),

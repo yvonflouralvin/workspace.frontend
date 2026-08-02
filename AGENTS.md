@@ -129,6 +129,13 @@ s'enchaîne », le calendrier mensuel à « qu'est-ce qui tombe ce jour-là », 
 libellés, rendent un `PanneauSurvol` au survol et remontent un `id` au clic. Consommées par
 l'échéancier d'un projet et par le module Calendrier du workspace.
 
+**Note module Agenda** : la page principale (`/agenda`) est une LISTE — ce qu'il y a à
+faire, du plus proche au plus lointain, avec les échéances dépassées en tête. Le
+calendrier (`/agenda/calendrier`) reste accessible par un bouton : il répond à « où ça
+tombe dans le mois », bon pour poser un rendez-vous, mauvais pour lire une charge de
+travail. Les deux écrans partagent `components/agenda/entrees.tsx` (teintes, natures,
+panneau de survol, groupes de filtre). `/calendar` redirige vers `/agenda`.
+
 **Menu d'affichage** (`src/MenuAffichage.tsx`) : bouton + popover portalisé, groupes
 d'options cochables et **barre de recherche portant sur tous les groupes à la fois**.
 Remplace les rangées de puces de filtre — elles tiennent à cinq, débordent à dix, et n'ont

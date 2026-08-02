@@ -113,6 +113,7 @@ export interface Formulaire {
   created_at: string;
   publie_le: string | null;
   clos_le: string | null;
+  a_banniere: boolean;
   sections: Section[];
   questions: Question[];
   collaborateurs: Collaborateur[];
@@ -146,6 +147,8 @@ export interface Soumission {
   repondant_nom: string | null;
   repondant_email: string | null;
   created_at: string;
+  /** Autorise à retirer le PDF de CETTE réponse — y compris sans compte. */
+  jeton_recu: string | null;
   reponses: Record<string, unknown>;
 }
 
@@ -153,6 +156,7 @@ export interface FormulairePublic {
   titre: string;
   description: string | null;
   message_confirmation: string | null;
+  a_banniere: boolean;
   sections: Section[];
   questions: Question[];
 }
@@ -222,6 +226,18 @@ export const formsApi = {
     return lire<Depot>(r);
   },
   fichierUrl: (id: number, documentId: number) => `/api/formulaires/${id}/fichiers/${documentId}`,
+  banniereUrl: (id: number) => `/api/formulaires/${id}/banniere`,
+  poserBanniere: async (id: number, fichier: File) => {
+    const form = new FormData();
+    form.append("file", fichier);
+    const r = await fetch(`/api/formulaires/${id}/banniere`, { method: "PUT", body: form });
+    return lire<{ document_id: number }>(r);
+  },
+  retirerBanniere: (id: number) =>
+    apiFetch(`/api/formulaires/${id}/banniere`, { method: "DELETE" }).then((r) => lire<void>(r)),
+  // Le jeton EST l'autorisation : ce lien s'ouvre sans session, c'est ce qui
+  // permet de rendre son PDF à un répondant anonyme.
+  recuUrl: (jetonRecu: string) => `/api/public/recus/${encodeURIComponent(jetonRecu)}`,
 
   // Sans session : `fetch` nu, pas `apiFetch`. Le visiteur n'a pas la clé de
   // chiffrement, et n'a aucune raison de l'avoir.
@@ -239,6 +255,8 @@ export const formsApi = {
     });
     return lire<Depot>(r);
   },
+  publicBanniereUrl: (jeton: string) =>
+    `/api/public/formulaires/${encodeURIComponent(jeton)}/banniere`,
   publicSoumettre: async (
     jeton: string,
     corps: {
@@ -252,6 +270,6 @@ export const formsApi = {
       headers: { "content-type": "application/json" },
       body: JSON.stringify(corps),
     });
-    return lire<{ message: string }>(r);
+    return lire<{ message: string; jeton_recu: string }>(r);
   },
 };

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { DownloadOutlined } from "@mui/icons-material";
+import { DownloadOutlined, PictureAsPdfOutlined } from "@mui/icons-material";
 import { ValeurLisible } from "@/components/forms/ChampReponse";
 import { formsApi, type Soumission } from "@/app/lib/forms-api";
 import { useFormulaire } from "../form-context";
@@ -212,6 +212,7 @@ export default function ResultatsPage() {
                 <th className="whitespace-nowrap px-3 py-2 text-left text-label-sm uppercase text-outline">
                   Répondant
                 </th>
+                <th className="px-3 py-2 text-left text-label-sm uppercase text-outline">PDF</th>
                 {colonnes.map((q) => (
                   <th
                     key={q.id}
@@ -239,6 +240,18 @@ export default function ResultatsPage() {
                     )}
                     {s.repondant_email && (
                       <span className="ml-1 text-label-md text-outline">{s.repondant_email}</span>
+                    )}
+                  </td>
+                  <td className="px-3 py-2">
+                    {s.jeton_recu && (
+                      <a
+                        href={formsApi.recuUrl(s.jeton_recu)}
+                        aria-label="Télécharger cette réponse en PDF"
+                        title="Télécharger cette réponse en PDF"
+                        className="inline-flex text-outline transition-colors hover:text-primary"
+                      >
+                        <PictureAsPdfOutlined style={{ fontSize: 17 }} />
+                      </a>
                     )}
                   </td>
                   {colonnes.map((q) => (

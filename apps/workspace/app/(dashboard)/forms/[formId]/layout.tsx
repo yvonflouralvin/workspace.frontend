@@ -6,6 +6,7 @@ import { useParams, usePathname } from "next/navigation";
 import {
   ArrowBackOutlined,
   ContentCopyOutlined,
+  ShareOutlined,
   EditOutlined,
   InsightsOutlined,
   SettingsOutlined,
@@ -33,6 +34,7 @@ export default function FormulaireLayout({ children }: { children: ReactNode }) 
 
   const [forme, setForme] = useState<Formulaire | null>(null);
   const [introuvable, setIntrouvable] = useState(false);
+  const [copie, setCopie] = useState(false);
 
   const recharger = useCallback(async () => {
     try {
@@ -75,7 +77,7 @@ export default function FormulaireLayout({ children }: { children: ReactNode }) 
       : []),
     {
       href: `${base}/repondre`,
-      libelle: "Aperçu",
+      libelle: "Formulaire",
       icone: <VisibilityOutlined style={{ fontSize: 17 }} />,
     },
     ...(forme.peut_voir_resultats
@@ -105,6 +107,27 @@ export default function FormulaireLayout({ children }: { children: ReactNode }) 
           </span>
           <h1 className="mt-0.5 font-display text-headline-md text-on-surface">{forme.titre}</h1>
         </div>
+        <div className="flex flex-none items-center gap-2">
+        {/* Le partage n'est pas réservé au concepteur : quiconque voit le
+            formulaire peut en donner l'adresse. Le lien mène au formulaire, pas
+            à son éditeur — c'est ce qu'on veut transmettre. */}
+        <button
+          type="button"
+          onClick={() => {
+            const origine = window.location.origin;
+            void navigator.clipboard?.writeText(
+              forme.acces === "PUBLIC"
+                ? `${origine}/f/${forme.jeton_public}`
+                : `${origine}/forms/${forme.id}/repondre`
+            );
+            setCopie(true);
+            window.setTimeout(() => setCopie(false), 2000);
+          }}
+          className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-outline-soft px-3 text-body-sm font-medium text-on-surface-variant transition-colors hover:bg-surface-container-low"
+        >
+          <ShareOutlined style={{ fontSize: 16 }} />
+          {copie ? "Lien copié" : "Partager"}
+        </button>
         {forme.peut_voir_resultats && (
           <button
             type="button"
@@ -122,6 +145,7 @@ export default function FormulaireLayout({ children }: { children: ReactNode }) 
             Dupliquer
           </button>
         )}
+        </div>
       </div>
 
       <nav className="mt-5 mb-5 flex items-center gap-1 overflow-x-auto border-b border-outline-soft">

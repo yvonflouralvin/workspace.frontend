@@ -5,6 +5,8 @@ import {
   ArrowBackOutlined,
   ArrowForwardOutlined,
   CheckCircleOutlineOutlined,
+  PictureAsPdfOutlined,
+  PlayArrowOutlined,
   SendOutlined,
 } from "@mui/icons-material";
 import { ChampReponse } from "./ChampReponse";
@@ -28,6 +30,8 @@ export function Questionnaire({
   erreur,
   confirmation,
   identite,
+  banniereUrl,
+  recuUrl,
   onDeposer,
   onEnvoyer,
 }: {
@@ -42,6 +46,10 @@ export function Questionnaire({
   confirmation: string | null;
   /** Demande le nom et l'e-mail — seulement quand le répondant n'a pas de compte. */
   identite?: boolean;
+  /** Image d'en-tête, affichée sur l'écran d'accueil et en tête du formulaire. */
+  banniereUrl?: string | null;
+  /** Lien du PDF de la réponse, une fois envoyée. */
+  recuUrl?: string | null;
   onDeposer?: (question: Question, fichier: File) => Promise<Depot>;
   onEnvoyer: (
     reponses: { question_id: number; valeur: unknown }[],
@@ -53,6 +61,10 @@ export function Questionnaire({
   const [email, setEmail] = useState("");
   const [etape, setEtape] = useState(0);
   const [manquantes, setManquantes] = useState<number[]>([]);
+  // On s'annonce avant de demander. Ouvrir directement sur la première question
+  // fait rater le titre et la description — c'est là qu'on décide si ça nous
+  // concerne.
+  const [demarre, setDemarre] = useState(false);
 
   /** Les étapes réellement servies.
    *
@@ -97,24 +109,74 @@ export function Questionnaire({
 
   if (confirmation) {
     return (
-      <div className="rounded-2xl border border-outline-soft bg-surface-container-lowest px-6 py-10 text-center">
-        <span className="inline-flex text-secondary">
-          <CheckCircleOutlineOutlined style={{ fontSize: 40 }} />
-        </span>
-        <p className="mt-3 text-body-lg text-on-surface">{confirmation}</p>
+      <div className="overflow-hidden rounded-2xl border border-outline-soft bg-surface-container-lowest">
+        <Banniere url={banniereUrl} />
+        <div className="px-6 py-10 text-center">
+          <span className="inline-flex text-secondary">
+            <CheckCircleOutlineOutlined style={{ fontSize: 40 }} />
+          </span>
+          <p className="mt-3 text-body-lg text-on-surface">{confirmation}</p>
+          {recuUrl && (
+            <a
+              href={recuUrl}
+              className="mt-5 inline-flex h-9 items-center gap-1.5 rounded-lg border border-outline-soft px-4 text-body-sm font-semibold text-on-surface-variant transition-colors hover:bg-surface-container-low"
+            >
+              <PictureAsPdfOutlined style={{ fontSize: 16 }} />
+              Télécharger ma réponse en PDF
+            </a>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  /** L'écran d'accueil : de quoi il s'agit, et un bouton pour commencer. */
+  if (!demarre) {
+    return (
+      <div className="overflow-hidden rounded-2xl border border-outline-soft bg-surface-container-lowest">
+        <Banniere url={banniereUrl} />
+        <div className="p-6">
+          <h1 className="font-display text-headline-md text-on-surface">{titre}</h1>
+          {description && (
+            <p className="mt-2 whitespace-pre-wrap text-body-md text-on-surface-variant">
+              {description}
+            </p>
+          )}
+          <p className="mt-3 text-label-md text-outline">
+            {questions.length} question{questions.length > 1 ? "s" : ""}
+            {etapes.length > 1 ? ` · ${etapes.length} étapes` : ""}
+          </p>
+          <button
+            type="button"
+            disabled={busy || questions.length === 0}
+            onClick={() => setDemarre(true)}
+            className="mt-5 inline-flex h-10 items-center gap-1.5 rounded-lg bg-primary px-6 text-body-md font-semibold text-on-primary shadow-button transition-colors hover:bg-primary-container disabled:opacity-50"
+          >
+            <PlayArrowOutlined style={{ fontSize: 20 }} />
+            Démarrer
+          </button>
+          {questions.length === 0 && (
+            <p className="mt-2 text-label-md text-outline">
+              Ce formulaire ne comporte encore aucune question.
+            </p>
+          )}
+        </div>
       </div>
     );
   }
 
   return (
     <div>
-      <div className="rounded-2xl border border-outline-soft bg-surface-container-lowest p-5 border-t-4 border-t-primary">
-        <h1 className="font-display text-headline-md text-on-surface">{titre}</h1>
-        {description && (
-          <p className="mt-1.5 whitespace-pre-wrap text-body-sm text-on-surface-variant">
-            {description}
-          </p>
-        )}
+      <div className="overflow-hidden rounded-2xl border border-outline-soft border-t-4 border-t-primary bg-surface-container-lowest">
+        <Banniere url={banniereUrl} compacte />
+        <div className="p-5">
+          <h1 className="font-display text-headline-md text-on-surface">{titre}</h1>
+          {description && (
+            <p className="mt-1.5 whitespace-pre-wrap text-body-sm text-on-surface-variant">
+              {description}
+            </p>
+          )}
+        </div>
       </div>
 
       {identite && (
@@ -270,5 +332,18 @@ export function Questionnaire({
         )}
       </div>
     </div>
+  );
+}
+
+/** L'image d'en-tête. Absente, on ne laisse pas de cadre vide : rien du tout. */
+function Banniere({ url, compacte }: { url?: string | null; compacte?: boolean }) {
+  if (!url) return null;
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={url}
+      alt=""
+      className={`w-full object-cover ${compacte ? "max-h-[120px]" : "max-h-[220px]"}`}
+    />
   );
 }

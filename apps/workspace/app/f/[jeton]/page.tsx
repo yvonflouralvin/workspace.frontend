@@ -18,6 +18,7 @@ export default function FormulairePublicPage() {
   const [busy, setBusy] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
   const [confirmation, setConfirmation] = useState<string | null>(null);
+  const [recu, setRecu] = useState<string | null>(null);
   const [introuvable, setIntrouvable] = useState(false);
 
   const charger = useCallback(async () => {
@@ -59,6 +60,8 @@ export default function FormulairePublicPage() {
             busy={busy}
             erreur={erreur}
             confirmation={confirmation}
+            banniereUrl={forme.a_banniere ? formsApi.publicBanniereUrl(jeton) : null}
+            recuUrl={recu ? formsApi.recuUrl(recu) : null}
             identite
             onDeposer={(question, fichier) =>
               formsApi.publicDeposer(jeton, question.id, fichier)
@@ -72,6 +75,7 @@ export default function FormulairePublicPage() {
                   repondant_nom: identite.nom,
                   repondant_email: identite.email,
                 });
+                setRecu(retour.jeton_recu);
                 setConfirmation(retour.message);
               } catch (e) {
                 setErreur(e instanceof Error ? e.message : "Envoi impossible.");

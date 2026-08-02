@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { ContentCopyOutlined } from "@mui/icons-material";
+import { ContentCopyOutlined, ImageOutlined } from "@mui/icons-material";
 import { ConfirmDialog } from "@repo/ui/ConfirmDialog";
 import { SearchSelect } from "@repo/ui/SearchSelect";
 import { Toast } from "@repo/ui/Toast";
 import { useSessionStore } from "@repo/auth/store/session.store";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { listMembers } from "@/app/lib/api";
 import type { Member } from "@/app/lib/types";
 import { ACCES_LABELS, formsApi } from "@/app/lib/forms-api";
@@ -33,6 +33,7 @@ export default function ParametresFormulairePage() {
   const [erreur, setErreur] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [aSupprimer, setASupprimer] = useState(false);
+  const champBanniere = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!workspaceId) return;
@@ -57,8 +58,18 @@ export default function ParametresFormulairePage() {
     }
   }
 
-  const lienPublic =
-    typeof window !== "undefined" ? `${window.location.origin}/f/${forme.jeton_public}` : "";
+  /** Le lien à partager — TOUT formulaire en a un.
+   *
+   *  Public : le lien à jeton, qui ne demande aucun compte. Sinon : l'écran du
+   *  formulaire dans le produit, où les règles d'accès s'appliquent à
+   *  l'arrivée. Ne rien proposer sur un formulaire interne obligeait à
+   *  reconstruire l'URL à la main — et le premier réflexe est de copier celle de
+   *  l'éditeur, qui ne mène pas au formulaire. */
+  const origine = typeof window !== "undefined" ? window.location.origin : "";
+  const estPublic = forme.acces === "PUBLIC";
+  const lienPartage = estPublic
+    ? `${origine}/f/${forme.jeton_public}`
+    : `${origine}/forms/${forme.id}/repondre`;
 
   if (!forme.peut_modifier) {
     return (
@@ -75,6 +86,73 @@ export default function ParametresFormulairePage() {
           {erreur}
         </p>
       )}
+
+      <section className="rounded-2xl border border-outline-soft bg-surface-container-lowest p-4">
+        <p className={LABEL}>Bannière</p>
+        {forme.a_banniere ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={`${formsApi.banniereUrl(id)}?v=${forme.id}-${Number(forme.a_banniere)}`}
+            alt=""
+            className="max-h-[140px] w-full rounded-xl object-cover"
+          />
+        ) : (
+          <p className="rounded-xl border border-dashed border-outline-soft px-4 py-6 text-center text-body-sm text-outline-variant">
+            Aucune image d&apos;en-tête.
+          </p>
+        )}
+        <input
+          ref={champBanniere}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          aria-label="Choisir une bannière"
+          onChange={async (e) => {
+            const fichier = e.target.files?.[0];
+            if (!fichier) return;
+            setBusy(true);
+            setErreur(null);
+            try {
+              await formsApi.poserBanniere(id, fichier);
+              await recharger();
+              setToast("Bannière enregistrée.");
+            } catch (err) {
+              setErreur(err instanceof Error ? err.message : "Dépôt impossible.");
+            } finally {
+              setBusy(false);
+              if (champBanniere.current) champBanniere.current.value = "";
+            }
+          }}
+        />
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => champBanniere.current?.click()}
+            className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-outline-soft px-3 text-body-sm text-on-surface-variant transition-colors hover:bg-surface-container-low disabled:opacity-50"
+          >
+            <ImageOutlined style={{ fontSize: 15 }} />
+            {forme.a_banniere ? "Remplacer" : "Ajouter une image"}
+          </button>
+          {forme.a_banniere && (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() =>
+                formsApi
+                  .retirerBanniere(id)
+                  .then(recharger)
+                  .then(() => setToast("Bannière retirée."))
+                  .catch((err) => setErreur(err.message))
+              }
+              className="h-8 rounded-lg px-3 text-body-sm text-on-surface-variant transition-colors hover:text-error"
+            >
+              Retirer
+            </button>
+          )}
+          <span className="text-label-md text-outline">Image, 5 Mo au maximum.</span>
+        </div>
+      </section>
 
           <section className="rounded-2xl border border-outline-soft bg-surface-container-lowest p-4">
             <p className={LABEL}>Publication</p>
@@ -130,32 +208,37 @@ export default function ParametresFormulairePage() {
               ))}
             </select>
 
-            {forme.acces === "PUBLIC" && (
-              <div className="mt-3">
-                <p className="text-label-md text-outline">
-                  Lien à partager — il ne demande aucun compte.
-                </p>
-                <div className="mt-1.5 flex items-center gap-2">
-                  <input readOnly className={`${CHAMP} font-mono text-label-md`} value={lienPublic} />
-                  <button
-                    type="button"
-                    aria-label="Copier le lien public"
-                    onClick={() => {
-                      void navigator.clipboard?.writeText(lienPublic);
-                      setToast("Lien copié.");
-                    }}
-                    className="flex-none rounded-lg border border-outline-soft p-2 text-outline hover:text-primary transition-colors"
-                  >
-                    <ContentCopyOutlined style={{ fontSize: 16 }} />
-                  </button>
-                </div>
-                {forme.statut !== "PUBLIE" && (
-                  <p className="mt-1.5 text-label-md text-error">
-                    Le lien reste fermé tant que le formulaire n&apos;est pas publié.
-                  </p>
-                )}
+            <div className="mt-3">
+              <p className="text-label-md text-outline">
+                {estPublic
+                  ? "Lien à partager — il ne demande aucun compte."
+                  : "Lien à partager — le destinataire devra être connecté et avoir accès."}
+              </p>
+              <div className="mt-1.5 flex items-center gap-2">
+                <input
+                  readOnly
+                  aria-label="Lien de partage"
+                  className={`${CHAMP} font-mono text-label-md`}
+                  value={lienPartage}
+                />
+                <button
+                  type="button"
+                  aria-label="Copier le lien de partage"
+                  onClick={() => {
+                    void navigator.clipboard?.writeText(lienPartage);
+                    setToast("Lien copié.");
+                  }}
+                  className="flex-none rounded-lg border border-outline-soft p-2 text-outline transition-colors hover:text-primary"
+                >
+                  <ContentCopyOutlined style={{ fontSize: 16 }} />
+                </button>
               </div>
-            )}
+              {forme.statut !== "PUBLIE" && (
+                <p className="mt-1.5 text-label-md text-error">
+                  Le lien reste fermé tant que le formulaire n&apos;est pas publié.
+                </p>
+              )}
+            </div>
 
             <label className="mt-3 flex items-center gap-2 text-body-sm text-on-surface-variant">
               <input

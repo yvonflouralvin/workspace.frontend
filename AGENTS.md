@@ -60,6 +60,22 @@ frontends/
 
 ---
 
+### Module Form (app `workspace`)
+
+Formulaires façon Google Forms : conception (`/forms/{id}`), réponse
+(`/forms/{id}/repondre`), dépouillement (`/forms/{id}/resultats`) et **page
+publique `/f/{jeton}`**.
+
+**La page publique est la seule route de l'app joignable sans compte.** Deux
+endroits l'autorisent, et il faut les tenir ensemble : `proxy.ts` (préfixes
+`/f/` et `/api/public/`, plus l'en-tête `x-pathname` qu'il pose) et
+`app/layout.tsx`, qui saute sa redirection vers auth quand ce chemin est public.
+Le BFF `/api/public/*` relaie **en clair** — le visiteur n'a pas la clé
+`@repo/network`, et n'a aucune raison de l'avoir. Côté backend, la charge
+publique est volontairement pauvre : ni identifiant, ni collaborateurs, ni
+compteur. Un formulaire ouvert ne doit rien apprendre du workspace qui
+l'héberge.
+
 ## Packages partagés
 
 ### `@repo/auth`
@@ -105,6 +121,32 @@ thémé sur les tokens du design system. Rendu client uniquement (`next/dynamic`
 `ssr: false`) et **non contrôlé après montage** — l'appelant debounce lui-même les
 sauvegardes. Toute app qui a besoin d'un champ texte riche doit passer par ce composant
 plutôt que d'ajouter un autre éditeur. Détail : `docs/packages/UI.md`.
+
+**Primitives d'agenda** (`src/Timeline.tsx`, `src/CalendrierMois.tsx`, `src/GrilleHoraire.tsx`) :
+trois vues du temps, sans aucune sémantique métier — la frise répond à « comment ça
+s'enchaîne », le calendrier mensuel à « qu'est-ce qui tombe ce jour-là », la grille horaire
+à « à quelle heure, et qu'est-ce qui se chevauche ». Toutes trois prennent des barres et des
+libellés, rendent un `PanneauSurvol` au survol et remontent un `id` au clic. Consommées par
+l'échéancier d'un projet et par le module Calendrier du workspace.
+
+**Note module Agenda** : la page principale (`/agenda`) est une LISTE — ce qu'il y a à
+faire, du plus proche au plus lointain, avec les échéances dépassées en tête. Le
+calendrier (`/agenda/calendrier`) reste accessible par un bouton : il répond à « où ça
+tombe dans le mois », bon pour poser un rendez-vous, mauvais pour lire une charge de
+travail. Les deux écrans partagent `components/agenda/entrees.tsx` (teintes, natures,
+panneau de survol, groupes de filtre). `/calendar` redirige vers `/agenda`.
+
+**Menu d'affichage** (`src/MenuAffichage.tsx`) : bouton + popover portalisé, groupes
+d'options cochables et **barre de recherche portant sur tous les groupes à la fois**.
+Remplace les rangées de puces de filtre — elles tiennent à cinq, débordent à dix, et n'ont
+nulle part où accueillir la suivante. `parDefaut` évite que la pastille compte les options
+cochées d'origine. Consommé par le module Calendrier (natures + étiquettes).
+
+**Aperçu de fichier** (`src/ApercuFichier.tsx`) : `ApercuFichier` (vignette image, lecteur
+vidéo/audio, ligne nommée sinon) + `VisionneuseImage` (plein écran portalisé) +
+`poidsLisible`. La FAMILLE d'aperçu (`image | video | audio | pdf | aucun`) est décidée par
+le serveur à partir du type MIME et transmise dans la charge utile — un écran ne
+réinterprète jamais une liste de types MIME dans son coin.
 
 **Primitives de graphiques** (`src/charts/`, importées `@repo/ui/charts/LineChart`…) :
 `LineChart` (courbe temporelle), `BarChart` (histogramme catégoriel), `Sparkline` — **SVG

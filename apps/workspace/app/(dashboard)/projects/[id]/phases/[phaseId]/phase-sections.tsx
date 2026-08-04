@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import {
   InsightsOutlined,
+  ReplayOutlined,
   InventoryOutlined,
   NotesOutlined,
   ViewListOutlined,
@@ -61,6 +62,13 @@ export const PHASE_TOOLS: PhaseToolSpec[] = [
       "Ouvre l'onglet Flux : lead time, cycle time, débit et flux cumulé, calculés depuis le journal des mouvements.",
   },
   {
+    key: "scrum",
+    kind: "module",
+    label: "Itérations",
+    description:
+      "Découpe le travail de la phase en fenêtres fermées, dont la vélocité est figée à la clôture. Exige les éléments de travail.",
+  },
+  {
     key: "deliverables",
     kind: "choice",
     label: "Livrables",
@@ -92,6 +100,13 @@ const FLUX_SECTION: PhaseSection = {
   icon: <InsightsOutlined style={{ fontSize: 17 }} />,
 };
 
+const ITERATIONS_SECTION: PhaseSection = {
+  key: "iterations",
+  path: "/iterations",
+  label: "Itérations",
+  icon: <ReplayOutlined style={{ fontSize: 17 }} />,
+};
+
 const DELIVERABLES_SECTION: PhaseSection = {
   key: "deliverables",
   path: "/deliverables",
@@ -105,6 +120,7 @@ const DELIVERABLES_SECTION: PhaseSection = {
 export function phaseSectionsFor(phase: Phase): PhaseSection[] {
   const sections = [OVERVIEW];
   if (outilActif(phase, "work_items")) sections.push(TASKS_SECTION);
+  if (outilActif(phase, "scrum")) sections.push(ITERATIONS_SECTION);
   if (outilActif(phase, "mesures_flux")) sections.push(FLUX_SECTION);
   // Même en mode « sur tâche uniquement », la phase garde l'onglet : c'est là qu'on
   // voit l'ensemble de ses livrables, quelle que soit la tâche qui les porte.

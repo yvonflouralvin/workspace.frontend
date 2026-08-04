@@ -12,11 +12,14 @@ import { WorkspaceSwitcher } from "@repo/ui/WorkspaceSwitcher";
 import { PLATFORM_APPS, WORKSPACE_SHELL } from "@repo/ui/shell/platform";
 import { useSearch } from "@repo/ui/shell/useSearch";
 import {
+  AssignmentOutlined,
+  CalendarMonthOutlined,
   HomeOutlined,
   FolderOpenOutlined,
   GroupOutlined,
   InboxOutlined,
   HistoryOutlined,
+  ChecklistOutlined,
   SettingsOutlined,
   HelpOutlineOutlined,
 } from "@mui/icons-material";
@@ -25,6 +28,9 @@ import type { NavItem } from "@repo/ui/types/shell";
 const NAV_ITEMS: NavItem[] = [
   { label: "Accueil",  href: "/",         icon: <HomeOutlined style={{ fontSize: 20 }} />,        exact: true },
   { label: "Projets",  href: "/projects",  icon: <FolderOpenOutlined style={{ fontSize: 20 }} /> },
+  { label: "Tâches",   href: "/tasks",     icon: <ChecklistOutlined style={{ fontSize: 20 }} /> },
+  { label: "Agenda", href: "/agenda", icon: <CalendarMonthOutlined style={{ fontSize: 20 }} /> },
+  { label: "Formulaires", href: "/forms", icon: <AssignmentOutlined style={{ fontSize: 20 }} /> },
   { label: "Membres",  href: "/members",   icon: <GroupOutlined style={{ fontSize: 20 }} /> },
   { label: "Inbox",    href: "/inbox",     icon: <InboxOutlined style={{ fontSize: 20 }} /> },
   { label: "Journal d'activité", href: "/audit-logs", icon: <HistoryOutlined style={{ fontSize: 20 }} /> },

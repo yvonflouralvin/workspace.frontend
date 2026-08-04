@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   CloudDoneOutlined,
@@ -8,6 +8,7 @@ import {
   CloudSyncOutlined,
   AccountTreeOutlined,
   ChevronRightOutlined,
+  FlagOutlined,
   GroupOutlined,
 } from "@mui/icons-material";
 import { Avatar } from "@repo/ui/Avatar";
@@ -17,56 +18,30 @@ import {
   phasesVisible,
   PROJECT_COLORS,
   PROJECT_STATUS_DOTS,
+  PROJECT_ISSUE_LABELS,
+  PROJECT_ISSUE_ORDER,
   PROJECT_STATUS_LABELS,
   PROJECT_STATUS_ORDER,
   type Project,
+  type ProjectIssue,
 } from "@/app/lib/projects-api";
+import { useAutosave, type EtatSauvegarde } from "@/app/lib/autosave";
+import { EchecAutosave } from "@/components/projects/EchecAutosave";
+import { SelecteurPersonne } from "@/components/projects/SelecteurPersonne";
 import { useProject } from "./project-context";
 
-type SaveState = "idle" | "saving" | "saved" | "error";
-
-const SAVE_DELAY_MS = 800;
 const LABEL = "block text-label-sm uppercase text-outline";
 
 export default function ProjectOverviewPage() {
-  const { projectId, project, setProject, tasks, phases, members, canManage } = useProject();
+  const { projectId, project, setProject, tasks, phases, jalons, members, canManage } = useProject();
   const showPhases = phasesVisible(phases);
   const [name, setName] = useState(project.name);
-  const [saveState, setSaveState] = useState<SaveState>("idle");
 
-  const pending = useRef<Partial<Project>>({});
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const flush = useCallback(async () => {
-    const body = pending.current;
-    pending.current = {};
-    if (!Object.keys(body).length) return;
-    setSaveState("saving");
-    try {
-      const updated = await projectsApi.updateProject(projectId, body);
-      setProject(updated);
-      setSaveState("saved");
-    } catch {
-      setSaveState("error");
-    }
-  }, [projectId, setProject]);
-
-  const queue = useCallback(
-    (patch: Partial<Project>) => {
-      pending.current = { ...pending.current, ...patch };
-      if (timer.current) clearTimeout(timer.current);
-      timer.current = setTimeout(flush, SAVE_DELAY_MS);
-    },
-    [flush]
-  );
-
-  // Quitter l'aperçu ne doit pas perdre une frappe en cours.
-  useEffect(
-    () => () => {
-      if (timer.current) clearTimeout(timer.current);
-      void flush();
-    },
-    [flush]
+  const { queue, etat, echec, oublierEchec } = useAutosave<Project>(
+    useCallback(
+      async (patch) => setProject(await projectsApi.updateProject(projectId, patch)),
+      [projectId, setProject]
+    )
   );
 
   const done = useMemo(() => tasks.filter((t) => t.categorie === "termine").length, [tasks]);
@@ -80,7 +55,7 @@ export default function ProjectOverviewPage() {
           <label className={LABEL} htmlFor="project-name">
             Nom du projet
           </label>
-          <SaveIndicator state={saveState} />
+          <SaveIndicator state={etat} />
         </div>
         <input
           id="project-name"
@@ -94,6 +69,11 @@ export default function ProjectOverviewPage() {
           className="mt-1 w-full bg-transparent font-display text-headline-md text-on-surface outline-none border-b border-transparent hover:border-outline-soft focus:border-primary transition-colors disabled:hover:border-transparent"
         />
         {!name.trim() && <p className="mt-1 text-label-md text-error">Le nom est requis.</p>}
+        {echec && (
+          <div className="mt-3">
+            <EchecAutosave echec={echec} projectId={projectId} onFermer={oublierEchec} />
+          </div>
+        )}
 
         <p className={`${LABEL} mt-6 mb-2`}>Description</p>
         <div className="rounded-2xl border border-outline-soft bg-surface-container-lowest overflow-hidden">
@@ -130,22 +110,45 @@ export default function ProjectOverviewPage() {
           )}
         </MetaRow>
 
+        {/* L'ISSUE n'est pas le statut : archiver dit où le projet est rangé,
+            l'issue dit comment il s'est terminé. Ne s'affiche qu'une fois le
+            projet sorti des actifs — un projet en cours n'a pas d'issue. */}
+        {project.status !== "ACTIF" && (
+          <MetaRow label="Issue">
+            {canManage ? (
+              <select
+                value={project.issue ?? ""}
+                onChange={(e) =>
+                  queue({ issue: (e.target.value || null) as ProjectIssue | null })
+                }
+                className="h-8 max-w-[150px] rounded-lg border border-outline-soft bg-surface-container-lowest px-2 text-body-sm text-on-surface outline-none focus:border-primary"
+              >
+                <option value="">Non renseignée</option>
+                {PROJECT_ISSUE_ORDER.map((i) => (
+                  <option key={i} value={i}>
+                    {PROJECT_ISSUE_LABELS[i]}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <span className="text-body-sm text-on-surface">
+                {project.issue ? PROJECT_ISSUE_LABELS[project.issue] : "—"}
+              </span>
+            )}
+          </MetaRow>
+        )}
+
         <MetaRow label="Responsable">
           {canManage ? (
-            <select
-              value={project.lead_user_id ?? ""}
-              onChange={(e) =>
-                queue({ lead_user_id: e.target.value ? Number(e.target.value) : null })
-              }
-              className="h-8 max-w-[150px] rounded-lg border border-outline-soft bg-surface-container-lowest px-2 text-body-sm text-on-surface outline-none focus:border-primary"
-            >
-              <option value="">Non assigné</option>
-              {members.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.name}
-                </option>
-              ))}
-            </select>
+            <span className="w-[190px]">
+              <SelecteurPersonne
+                valeur={{ userId: project.lead_user_id ?? null, groupeId: null }}
+                membres={members}
+                onChange={(choix) => queue({ lead_user_id: choix.userId })}
+                placeholder="Rechercher un responsable…"
+                vide="Non assigné"
+              />
+            </span>
           ) : lead ? (
             <span className="inline-flex items-center gap-2 text-body-sm text-on-surface">
               <Avatar name={lead.name} size={22} />
@@ -213,6 +216,31 @@ export default function ProjectOverviewPage() {
             >
               <AccountTreeOutlined style={{ fontSize: 16 }} />
               Découper en phases
+            </Link>
+          </div>
+        ) : null}
+
+        {/* Gouvernance : les jalons. L'onglet du projet n'apparaît qu'une fois
+            un jalon posé — sans cette entrée, le PREMIER serait incréable sur un
+            projet neuf, dont l'onglet Phases est lui aussi masqué. */}
+        {jalons.length > 0 ? (
+          <MetaRow label="Gouvernance">
+            <Link
+              href={`/projects/${projectId}/jalons`}
+              className="inline-flex items-center gap-1 text-body-sm font-semibold text-primary hover:underline"
+            >
+              {jalons.length} jalon{jalons.length > 1 ? "s" : ""}
+              <ChevronRightOutlined style={{ fontSize: 15 }} />
+            </Link>
+          </MetaRow>
+        ) : canManage ? (
+          <div className="px-4 py-3">
+            <Link
+              href={`/projects/${projectId}/jalons`}
+              className="inline-flex items-center gap-1.5 text-body-sm text-on-surface-variant hover:text-primary transition-colors"
+            >
+              <FlagOutlined style={{ fontSize: 16 }} />
+              Poser un jalon
             </Link>
           </div>
         ) : null}
@@ -296,7 +324,7 @@ function DateValue({
   );
 }
 
-function SaveIndicator({ state }: { state: SaveState }) {
+function SaveIndicator({ state }: { state: EtatSauvegarde }) {
   if (state === "idle") return null;
   const map = {
     saving: {

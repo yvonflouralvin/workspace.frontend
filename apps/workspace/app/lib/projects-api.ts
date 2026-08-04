@@ -69,6 +69,13 @@ export interface Project {
   due_date: string | null;
   task_count?: number;
   done_count?: number;
+  /** Unité dans laquelle les éléments sont estimés — vit au PROJET pour que deux
+   *  itérations de phases différentes restent comparables. */
+  unite_estimation?: string;
+  /** Comment le projet s'est terminé — ORTHOGONAL au statut, qui dit seulement
+   *  où il est rangé. `null` = en cours, ou issue inconnue (projets archivés
+   *  avant l'introduction du champ : on ne devine pas). */
+  issue?: ProjectIssue | null;
   /** Rôle de l'utilisateur courant sur ce projet — pilote toute l'UI. */
   my_role?: ProjectRole | null;
 }
@@ -119,8 +126,84 @@ export interface Task {
   due_date: string | null;
   estimate: number | null;
   completed_at: string | null;
+  /** Rattachement à une itération de SA phase — seule colonne ajoutée par un régime. */
+  iteration_id?: number | null;
   project_name?: string | null;
   project_key?: string | null;
+  /** Tâche du bac : elle n'appartient à aucun projet aux yeux de l'utilisateur. */
+  sans_projet?: boolean;
+}
+
+/** Une ligne d'agenda, quelle que soit son origine — le serveur ramène tout au
+ *  même vocabulaire pour que l'écran n'ait pas à connaître chaque modèle. */
+export interface EntreeCalendrier {
+  type: "tache" | "jalon" | "iteration" | "phase" | "evenement";
+  id: number;
+  titre: string;
+  debut: string;
+  fin: string | null;
+  journee_entiere: boolean;
+  categorie: string | null;
+  projet_id: number | null;
+  projet_nom: string | null;
+  lien: string | null;
+  lieu: string | null;
+  detail: string | null;
+  participants: string[];
+  /** Étiquettes de l'objet, quand il en porte — toujours un tableau. */
+  tags: string[];
+  est_evenement: boolean;
+}
+
+export interface Evenement {
+  id: number;
+  titre: string;
+  description: string | null;
+  lieu: string | null;
+  debut_le: string;
+  fin_le: string;
+  journee_entiere: boolean;
+  visibilite: "workspace" | "participants";
+  projet_id: number | null;
+  projet_nom: string | null;
+  created_by: number | null;
+  participant_ids: number[];
+  participant_noms: string[];
+  peut_modifier: boolean;
+}
+
+/** Une pièce jointe d'un commentaire. `apercu` est décidé par le SERVEUR à
+ *  partir du type MIME — l'écran ne réinterprète pas une liste de types. */
+export interface PieceJointe {
+  id: number;
+  file_name: string;
+  content_type: string;
+  file_size: number;
+  apercu: "image" | "video" | "audio" | "pdf" | "aucun";
+}
+
+export interface Mention {
+  user_id: number;
+  name: string;
+}
+
+export interface Commentaire {
+  id: number;
+  task_id: number;
+  /** Réponse à ce message. Un seul niveau : le serveur rabat au parent racine. */
+  parent_comment_id: number | null;
+  author_user_id: number;
+  author_name: string | null;
+  body: string | null;
+  created_at: string;
+  edited_at: string | null;
+  attachments: PieceJointe[];
+  /** Qui a été nommé — noms pour le surlignage, identifiants pour le reste. */
+  mentions: Mention[];
+  /** Ce que CE lecteur peut faire — calculé par le serveur, jamais déduit ici
+   *  d'une comparaison d'identifiants. */
+  peut_modifier: boolean;
+  peut_supprimer: boolean;
 }
 
 /** Modes de l'outil Livrables : à quoi un livrable peut se rattacher. */
@@ -237,7 +320,30 @@ export interface ErreurApi extends Error {
   status?: number;
 }
 
-async function json<T>(res: Response): Promise<T> {
+/** Un motif de blocage renvoyé par le backend : nommé ET lié, jamais une phrase.
+ *  L'interface doit pouvoir emmener l'utilisateur sur ce qui bloque. */
+export interface MotifBlocage {
+  type: "livrable" | "jalon";
+  id: number;
+  libelle: string;
+  /** Ce qu'il faut faire pour lever CE motif — une sortie, pas un diagnostic. */
+  action: string;
+}
+
+/** Refus d'une transition de phase : TOUT ce qui bloque, d'un seul coup. */
+export interface RefusBlocage {
+  message: string;
+  motifs: MotifBlocage[];
+  forcage_possible: boolean;
+}
+
+/** Reconnaît un refus structuré parmi les erreurs d'API. */
+export function refusBlocage(e: unknown): RefusBlocage | null {
+  const detail = (e as ErreurApi)?.detail as RefusBlocage | undefined;
+  return detail && Array.isArray(detail.motifs) && detail.motifs.length ? detail : null;
+}
+
+export async function lireReponse<T>(res: Response): Promise<T> {
   if (!res.ok) {
     const corps = await res.json().catch(() => ({}));
     const detail = corps?.detail;
@@ -253,6 +359,8 @@ async function json<T>(res: Response): Promise<T> {
   }
   return res.status === 204 ? (undefined as T) : res.json();
 }
+
+const json = lireReponse;
 
 export const projectsApi = {
   meta: () => apiFetch("/api/projects/meta").then((r) => json<ProjectsMeta>(r)),
@@ -271,17 +379,35 @@ export const projectsApi = {
   mesuresFluxCumule: (phaseId: number) =>
     apiFetch(`/api/phases/${phaseId}/metriques/flux-cumule`).then((r) => json<MesuresFluxCumule>(r)),
 
+  /** Le jeu d'états d'une tâche, lu par la TÂCHE : seul chemin pour une tâche
+   *  du bac, dont le projet ne s'ouvre pas. */
+  /** Une tâche lue SANS passer par son projet — le seul chemin pour une tâche
+   *  du bac, dont le projet ne s'ouvre pas. */
+  getTask: (taskId: number) => apiFetch(`/api/tasks/${taskId}`).then((r) => json<Task>(r)),
+  taskEtats: (taskId: number) =>
+    apiFetch(`/api/tasks/${taskId}/etats`).then((r) => json<Etat[]>(r)),
   listEtats: (projectId: number) =>
     apiFetch(`/api/projects/${projectId}/etats`).then((r) => json<Etat[]>(r)),
   listTasks: (projectId: number) => apiFetch(`/api/projects/${projectId}/tasks`).then((r) => json<Task[]>(r)),
+  /** Toutes les tâches du workspace, projets confondus — bac compris. */
+  workspaceTasks: (options: { mine?: boolean; includeDone?: boolean } = {}) =>
+    apiFetch(
+      `/api/tasks?assignees_moi=${options.mine ? "true" : "false"}&include_done=${
+        options.includeDone === false ? "false" : "true"
+      }`
+    ).then((r) => json<Task[]>(r)),
   myTasks: (includeDone = false) => apiFetch(`/api/tasks/mine${includeDone ? "?include_done=true" : ""}`).then((r) => json<Task[]>(r)),
-  createTask: (body: Partial<Task> & { project_id: number; title: string }) => apiFetch("/api/tasks", { method: "POST", body }).then((r) => json<Task>(r)),
+  // `project_id` absent = la tâche rejoint le bac du workspace.
+  createTask: (body: Partial<Task> & { title: string }) => apiFetch("/api/tasks", { method: "POST", body }).then((r) => json<Task>(r)),
   updateTask: (id: number, body: Partial<Task>) => apiFetch(`/api/tasks/${id}`, { method: "PATCH", body }).then((r) => json<Task>(r)),
   deleteTask: (id: number) => apiFetch(`/api/tasks/${id}`, { method: "DELETE" }).then((r) => json<void>(r)),
 
   listPhases: (projectId: number) => apiFetch(`/api/projects/${projectId}/phases`).then((r) => json<Phase[]>(r)),
   createPhase: (projectId: number, body: Partial<Phase>) => apiFetch(`/api/projects/${projectId}/phases`, { method: "POST", body }).then((r) => json<Phase>(r)),
-  updatePhase: (id: number, body: Partial<Phase>) => apiFetch(`/api/phases/${id}`, { method: "PATCH", body }).then((r) => json<Phase>(r)),
+  // `motif_forcage` n'est pas un champ de la phase : c'est la justification d'un
+  // passage en force, conservée à part et attachée aux jalons contournés.
+  updatePhase: (id: number, body: Partial<Phase> & { motif_forcage?: string }) =>
+    apiFetch(`/api/phases/${id}`, { method: "PATCH", body }).then((r) => json<Phase>(r)),
   listMembers: (projectId: number) =>
     apiFetch(`/api/projects/${projectId}/members`).then((r) => json<ProjectMember[]>(r)),
   addMember: (projectId: number, body: { user_id: number; role: ProjectRole }) =>
@@ -320,6 +446,68 @@ export const projectsApi = {
     apiFetch(`/api/projects/${projectId}/activities?limit=${limit}`).then((r) =>
       json<ProjectActivity[]>(r)
     ),
+
+  /** Du plus récent au plus ancien — l'ordre vient du serveur. `limite` omise
+   *  renvoie le fil entier. */
+  listComments: (taskId: number, limite?: number) =>
+    apiFetch(`/api/tasks/${taskId}/comments${limite ? `?limite=${limite}` : ""}`).then((r) =>
+      json<Commentaire[]>(r)
+    ),
+  createComment: (
+    taskId: number,
+    body: string,
+    options: { parent_comment_id?: number | null; mention_user_ids?: number[] } = {}
+  ) =>
+    apiFetch(`/api/tasks/${taskId}/comments`, {
+      method: "POST",
+      body: { body, ...options },
+    }).then((r) => json<Commentaire>(r)),
+  // Multipart : pas de chiffrement @repo/network, le BFF passe les octets bruts.
+  createCommentFile: async (
+    taskId: number,
+    file: File,
+    body: string | null,
+    options: { parent_comment_id?: number | null; mention_user_ids?: number[] } = {}
+  ) => {
+    const form = new FormData();
+    form.append("file", file);
+    if (body) form.append("body", body);
+    if (options.parent_comment_id) {
+      form.append("parent_comment_id", String(options.parent_comment_id));
+    }
+    // Multipart n'a pas de listes : le serveur découpe sur la virgule.
+    if (options.mention_user_ids?.length) {
+      form.append("mention_user_ids", options.mention_user_ids.join(","));
+    }
+    const res = await fetch(`/api/tasks/${taskId}/comments/file`, { method: "POST", body: form });
+    if (!res.ok) {
+      throw new Error((await res.json().catch(() => ({})))?.detail || `Erreur ${res.status}`);
+    }
+    return (await res.json()) as Commentaire;
+  },
+  updateComment: (commentId: number, body: string, mention_user_ids?: number[]) =>
+    apiFetch(`/api/comments/${commentId}`, {
+      method: "PATCH",
+      body: { body, ...(mention_user_ids ? { mention_user_ids } : {}) },
+    }).then((r) => json<Commentaire>(r)),
+  deleteComment: (commentId: number) =>
+    apiFetch(`/api/comments/${commentId}`, { method: "DELETE" }).then((r) => json<void>(r)),
+  attachmentUrl: (commentId: number, attachmentId: number) =>
+    `/api/comments/${commentId}/attachments/${attachmentId}/content`,
+
+  calendrier: (params: { depuis: string; jusqu_a: string; a_moi?: boolean }) => {
+    const q = new URLSearchParams({ depuis: params.depuis, jusqu_a: params.jusqu_a });
+    if (params.a_moi) q.set("a_moi", "true");
+    return apiFetch(`/api/calendrier?${q}`).then((r) => json<EntreeCalendrier[]>(r));
+  },
+  getEvenement: (id: number) =>
+    apiFetch(`/api/evenements/${id}`).then((r) => json<Evenement>(r)),
+  createEvenement: (body: Partial<Evenement> & { titre: string; debut_le: string; fin_le: string }) =>
+    apiFetch(`/api/evenements`, { method: "POST", body }).then((r) => json<Evenement>(r)),
+  updateEvenement: (id: number, body: Partial<Evenement>) =>
+    apiFetch(`/api/evenements/${id}`, { method: "PATCH", body }).then((r) => json<Evenement>(r)),
+  deleteEvenement: (id: number) =>
+    apiFetch(`/api/evenements/${id}`, { method: "DELETE" }).then((r) => json<void>(r)),
 
   getDeliverable: (id: number) =>
     apiFetch(`/api/deliverables/${id}`).then((r) => json<Deliverable>(r)),
@@ -489,6 +677,14 @@ export const PRIORITY_LEVELS: Record<string, 0 | 1 | 2 | 3 | 4> = {
   AUCUNE: 0, BASSE: 1, MOYENNE: 2, HAUTE: 3, URGENTE: 4,
 };
 
+
+export type ProjectIssue = "TERMINE" | "ABANDONNE" | "SUSPENDU";
+export const PROJECT_ISSUE_LABELS: Record<ProjectIssue, string> = {
+  TERMINE: "Mené à terme",
+  ABANDONNE: "Abandonné",
+  SUSPENDU: "Suspendu",
+};
+export const PROJECT_ISSUE_ORDER: ProjectIssue[] = ["TERMINE", "ABANDONNE", "SUSPENDU"];
 
 export const PROJECT_STATUS_LABELS: Record<string, string> = {
   ACTIF: "Actif", EN_PAUSE: "En pause", ARCHIVE: "Archivé",

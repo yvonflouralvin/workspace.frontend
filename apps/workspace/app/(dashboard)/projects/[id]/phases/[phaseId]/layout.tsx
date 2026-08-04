@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
 import {
@@ -9,12 +9,11 @@ import {
   CloudOffOutlined,
   CloudSyncOutlined,
 } from "@mui/icons-material";
-import { projectsApi, PHASE_STATUS_LABELS, PHASE_STATUS_TONES, type Phase } from "@/app/lib/projects-api";
+import { PHASE_STATUS_LABELS, PHASE_STATUS_TONES, projectsApi, type Phase } from "@/app/lib/projects-api";
+import { useAutosave, type EtatSauvegarde } from "@/app/lib/autosave";
 import { useProject } from "../../project-context";
-import { PhaseProvider, type PhaseSaveState } from "./phase-context";
+import { PhaseProvider } from "./phase-context";
 import { phaseSectionForPathname, phaseSectionsFor } from "./phase-sections";
-
-const SAVE_DELAY_MS = 800;
 
 export default function PhaseLayout({ children }: { children: ReactNode }) {
   const { phaseId } = useParams<{ phaseId: string }>();
@@ -23,10 +22,6 @@ export default function PhaseLayout({ children }: { children: ReactNode }) {
   const phase = phases.find((p) => p.id === Number(phaseId)) ?? null;
 
   const [name, setName] = useState(phase?.name ?? "");
-  const [saveState, setSaveState] = useState<PhaseSaveState>("idle");
-
-  const pending = useRef<Partial<Phase>>({});
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Le nom local suit la phase résolue depuis le contexte (au chargement).
   useEffect(() => {
@@ -34,37 +29,15 @@ export default function PhaseLayout({ children }: { children: ReactNode }) {
   }, [phase?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const phaseIdNum = phase?.id;
-
-  const flush = useCallback(async () => {
-    if (!phaseIdNum) return;
-    const body = pending.current;
-    pending.current = {};
-    if (!Object.keys(body).length) return;
-    setSaveState("saving");
-    try {
-      await projectsApi.updatePhase(phaseIdNum, body);
-      await reloadPhases();
-      setSaveState("saved");
-    } catch {
-      setSaveState("error");
-    }
-  }, [phaseIdNum, reloadPhases]);
-
-  const queue = useCallback(
-    (patch: Partial<Phase>) => {
-      pending.current = { ...pending.current, ...patch };
-      if (timer.current) clearTimeout(timer.current);
-      timer.current = setTimeout(flush, SAVE_DELAY_MS);
-    },
-    [flush]
-  );
-
-  useEffect(
-    () => () => {
-      if (timer.current) clearTimeout(timer.current);
-      void flush();
-    },
-    [flush]
+  const { queue, etat, echec, oublierEchec } = useAutosave<Phase>(
+    useCallback(
+      (patch) => {
+        if (!phaseIdNum) return Promise.resolve();
+        return projectsApi.updatePhase(phaseIdNum, patch);
+      },
+      [phaseIdNum]
+    ),
+    reloadPhases
   );
 
   if (!phase) {
@@ -109,7 +82,7 @@ export default function PhaseLayout({ children }: { children: ReactNode }) {
         </div>
 
         <div className="flex-none flex items-center gap-3 pt-4">
-          <SaveIndicator state={saveState} />
+          <SaveIndicator state={etat} />
           <span className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-label-md font-semibold ${tone.chip}`}>
             <span className={`w-[6px] h-[6px] rounded-full ${tone.dot}`} />
             {PHASE_STATUS_LABELS[phase.status] ?? phase.status}
@@ -160,7 +133,9 @@ export default function PhaseLayout({ children }: { children: ReactNode }) {
         })}
       </nav>
 
-      <PhaseProvider value={{ phase, queue, saveState, canManage }}>{children}</PhaseProvider>
+      <PhaseProvider value={{ phase, queue, saveState: etat, echec, oublierEchec, canManage }}>
+        {children}
+      </PhaseProvider>
     </div>
   );
 }
@@ -176,7 +151,7 @@ function BackToPhases({ projectId }: { projectId: number }) {
   );
 }
 
-function SaveIndicator({ state }: { state: PhaseSaveState }) {
+function SaveIndicator({ state }: { state: EtatSauvegarde }) {
   if (state === "idle") return null;
   const map = {
     saving: { icon: <CloudSyncOutlined style={{ fontSize: 16 }} />, label: "Enregistrement…", tone: "text-on-surface-variant" },

@@ -1,0 +1,13 @@
+import { NextRequest } from "next/server";
+import { forwardToBackend } from "@repo/network/server";
+
+const PROJECTS_API_URL = process.env.PROJECTS_API_URL!;
+
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ iterationId: string }> }) {
+  const { iterationId } = await params;
+  return forwardToBackend(request, PROJECTS_API_URL, `/iterations/${iterationId}`);
+}
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ iterationId: string }> }) {
+  const { iterationId } = await params;
+  return forwardToBackend(request, PROJECTS_API_URL, `/iterations/${iterationId}`);
+}

@@ -2,6 +2,7 @@
 
 import { createContext, useContext, type Dispatch, type SetStateAction } from "react";
 import type { Deliverable, Etat, Phase, Project, ProjectRole, Task } from "@/app/lib/projects-api";
+import type { Jalon } from "@/app/lib/jalons-api";
 
 export interface Member {
   id: number;
@@ -23,6 +24,10 @@ export interface ProjectContextValue {
   /** Tous les livrables du projet — pilote l'onglet Livrables. */
   deliverables: Deliverable[];
   reloadDeliverables: () => Promise<void>;
+  /** Tous les jalons du projet — pilote l'onglet Jalons et le rappel de gate
+   *  sur le détail d'une phase. */
+  jalons: Jalon[];
+  reloadJalons: () => Promise<void>;
   members: Member[];
   /** Rôle de l'utilisateur sur CE projet. */
   role: ProjectRole;

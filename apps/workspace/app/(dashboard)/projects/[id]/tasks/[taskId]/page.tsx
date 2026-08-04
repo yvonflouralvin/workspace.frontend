@@ -7,6 +7,9 @@ import {
   phasesVisible,
   projectsApi,
 } from "@/app/lib/projects-api";
+import { EchecAutosave } from "@/components/projects/EchecAutosave";
+import { FilCommentaires } from "@/components/projects/FilCommentaires";
+import { SelecteurPersonne } from "@/components/projects/SelecteurPersonne";
 import { useProject } from "../../project-context";
 import { useTask } from "./task-context";
 
@@ -15,14 +18,19 @@ const CONTROL =
   "h-8 rounded-lg border border-outline-soft bg-surface-container-lowest px-2 text-body-sm text-on-surface outline-none focus:border-primary";
 
 export default function TaskOverviewPage() {
-  const { task, queue, canManage } = useTask();
-  const { tasks, phases, etats, members } = useProject();
+  const { task, queue, echec, oublierEchec, canManage } = useTask();
+  const { projectId, tasks, phases, etats, members } = useProject();
   const subtasks = tasks.filter((t) => t.parent_task_id === task.id);
   const selectablePhases = phasesVisible(phases) ? phases : [];
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-6 items-start">
       <div>
+        {echec && (
+          <div className="mb-3">
+            <EchecAutosave echec={echec} projectId={projectId} onFermer={oublierEchec} />
+          </div>
+        )}
         <p className={`${LABEL} mb-2`}>Description</p>
         <textarea
           defaultValue={task.description ?? ""}
@@ -60,6 +68,10 @@ export default function TaskOverviewPage() {
             </div>
           ))}
         </div>
+
+        <div className="mt-6">
+          <FilCommentaires taskId={task.id} canWrite={canManage} />
+        </div>
       </div>
 
       <aside className="rounded-2xl border border-outline-soft bg-surface-container-lowest divide-y divide-hairline">
@@ -94,19 +106,15 @@ export default function TaskOverviewPage() {
         </MetaRow>
 
         <MetaRow label="Assigné">
-          <select
-            value={task.assignee_user_id ? String(task.assignee_user_id) : ""}
-            disabled={!canManage}
-            onChange={(e) => queue({ assignee_user_id: e.target.value ? Number(e.target.value) : null })}
-            className={CONTROL}
-          >
-            <option value="">Non assigné</option>
-            {members.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.name}
-              </option>
-            ))}
-          </select>
+          <span className="w-[190px]">
+            <SelecteurPersonne
+              valeur={{ userId: task.assignee_user_id ?? null, groupeId: null }}
+              membres={members}
+              disabled={!canManage}
+              onChange={(choix) => queue({ assignee_user_id: choix.userId })}
+              placeholder="Rechercher un assigné…"
+            />
+          </span>
         </MetaRow>
 
         <MetaRow label="Échéance">

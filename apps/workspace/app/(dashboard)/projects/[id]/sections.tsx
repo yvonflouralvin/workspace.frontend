@@ -34,27 +34,32 @@ export const PROJECT_SECTIONS: ProjectSection[] = [
     label: "Activité",
     icon: <HistoryOutlined style={{ fontSize: 17 }} />,
   },
-  {
-    key: "timeline",
-    path: "/timeline",
-    label: "Échéancier",
-    icon: <TimelineOutlined style={{ fontSize: 17 }} />,
-    soon: true,
-  },
+
 ];
 
 // « Phases » est une section conditionnelle (voir layout) : on la reconnaît ici
 // pour l'onglet actif, sans l'ajouter au menu par défaut.
+// « Échéancier » n'a de sens que si quelque chose est daté : conditionnel, comme
+// Phases, Jalons et Livrables.
+export const TIMELINE_SECTION: ProjectSection = {
+  key: "timeline",
+  path: "/timeline",
+  label: "Échéancier",
+  icon: <TimelineOutlined style={{ fontSize: 17 }} />,
+};
+
 const CONDITIONAL_SECTIONS: ProjectSection[] = [
   { key: "phases", path: "/phases", label: "Phases", icon: null },
   { key: "deliverables", path: "/deliverables", label: "Livrables", icon: null },
+  { key: "jalons", path: "/jalons", label: "Jalons", icon: null },
+  { key: "timeline", path: "/timeline", label: "Échéancier", icon: null },
 ];
 
 /** Le détail d'une phase ou d'une tâche porte sa propre identité (projet en surtitre,
  *  objet en titre) et ses propres onglets — le layout du projet s'efface au profit du sien. */
 export function isDetailPathname(pathname: string, projectId: number): boolean {
   const suffix = pathname.replace(`/projects/${projectId}`, "").replace(/\/$/, "");
-  return /^\/(phases|tasks|deliverables)\/\d+/.test(suffix);
+  return /^\/(phases|tasks|deliverables|jalons)\/\d+/.test(suffix);
 }
 
 export function sectionForPathname(pathname: string, projectId: number): ProjectSection {

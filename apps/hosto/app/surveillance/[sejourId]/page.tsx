@@ -74,7 +74,7 @@ function DoseActionModal({ dose, mode, onClose, onDone }: {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal>
-      <div className="w-full max-w-md rounded-3xl bg-surface-container-lowest p-6 shadow-xl space-y-4">
+      <div className="w-full max-w-[28rem] rounded-3xl bg-surface-container-lowest p-6 shadow-xl space-y-4">
         <div>
           <h2 className="text-headline-sm font-display text-on-surface">{titre}</h2>
           <p className="text-body-sm text-on-surface-variant mt-1">
@@ -167,7 +167,7 @@ function PlanActionModal({ planId, mode, onClose, onDone }: {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal>
-      <div className="w-full max-w-md rounded-3xl bg-surface-container-lowest p-6 shadow-xl space-y-4">
+      <div className="w-full max-w-[28rem] rounded-3xl bg-surface-container-lowest p-6 shadow-xl space-y-4">
         <h2 className="text-headline-sm font-display text-on-surface">{titre}</h2>
         <p className="text-body-sm text-on-surface-variant">
           {mode === "reprendre"

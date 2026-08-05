@@ -109,7 +109,7 @@ export default function CategoriesPage() {
         </div>
 
         {canView && (
-          <div className="relative max-w-md">
+          <div className="relative max-w-[28rem]">
             <SearchOutlined
               style={{ fontSize: 18 }}
               className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none"

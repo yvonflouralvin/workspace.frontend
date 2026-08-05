@@ -31,7 +31,7 @@ function Modal({ title, children }: { title: string; children: React.ReactNode }
   if (typeof document === "undefined") return null;
   return createPortal(
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal>
-      <div className="w-full max-w-xl rounded-3xl bg-surface-container-lowest p-6 shadow-xl space-y-4 max-h-[90vh] overflow-y-auto">
+      <div className="w-full max-w-[36rem] rounded-3xl bg-surface-container-lowest p-6 shadow-xl space-y-4 max-h-[90vh] overflow-y-auto">
         <h2 className="text-headline-sm font-display text-on-surface">{title}</h2>
         {children}
       </div>

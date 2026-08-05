@@ -65,7 +65,7 @@ export function AppSelector({ apps, allAppsUrl, onClose }: AppSelectorProps) {
   return (
     <div
       ref={ref}
-      className="absolute right-0 top-10 w-72 bg-surface-container-lowest border border-outline-variant rounded-2xl shadow-lg overflow-hidden z-50"
+      className="absolute right-0 top-10 w-[15rem] sm:w-72 max-w-[calc(100vw-1.5rem)] bg-surface-container-lowest border border-outline-variant rounded-2xl shadow-lg overflow-hidden z-50"
     >
       <div className="flex items-center gap-2 px-3 py-2.5 border-b border-outline-variant">
         <SearchOutlined style={{ fontSize: 18 }} className="text-on-surface-variant" />

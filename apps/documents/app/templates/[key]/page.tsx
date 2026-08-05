@@ -460,7 +460,7 @@ function SettingsTab({
   }
 
   return (
-    <div className="space-y-md max-w-lg">
+    <div className="space-y-md max-w-[32rem]">
       <p className="text-body-sm text-on-surface-variant">
         Ces valeurs sont pré-renseignées pour ce workspace et réutilisées à chaque génération de
         document.

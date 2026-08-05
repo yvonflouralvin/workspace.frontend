@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useCallback, useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { PersonAddOutlined, TuneOutlined } from "@mui/icons-material";
 import { useSessionStore } from "@repo/auth/store/session.store";
@@ -51,9 +51,16 @@ function MembersInner() {
   const workspaceId = activeWorkspace?.id;
   const canView = can("members.view");
   const searchParams = useSearchParams();
+  const router = useRouter();
 
   useEffect(() => {
-    if (searchParams.get("add") === "1" && can("members.invite")) setShowAddModal(true);
+    if (searchParams.get("add") === "1" && can("members.invite")) {
+      setShowAddModal(true);
+      // L'intention « ouvre la fenêtre » se consomme UNE fois. Laissée dans
+      // l'adresse, elle rouvre la fenêtre au retour arrière, au rafraîchissement,
+      // et même après que la chose a été créée — elle ne dépend pas de ce qui existe.
+      router.replace(window.location.pathname, { scroll: false });
+    }
   }, [searchParams, can]);
 
   useEffect(() => {

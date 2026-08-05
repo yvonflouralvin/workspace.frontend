@@ -276,7 +276,7 @@ export function TopBar({
   );
 
   const actions = (
-    <div className="flex items-center gap-1.5 shrink-0">
+    <div className="flex items-center gap-0.5 md:gap-1.5 shrink-0">
       {extraActions}
       <div className="relative">
         <button
@@ -364,9 +364,7 @@ export function TopBar({
 
       </div>
 
-      <div className="md:hidden flex-none flex items-center">{notifications}</div>
-
-      <div className="hidden md:flex">{actions}</div>
+      <div className="flex-none flex items-center">{actions}</div>
 
       {searchOpen && (
         <SearchModal onClose={() => setSearchOpen(false)} onSearch={onSearch} />
@@ -399,7 +397,7 @@ function UserMenu({
   return (
     <div
       ref={ref}
-      className="absolute right-0 top-10 w-56 bg-surface-container-lowest border border-outline-variant rounded-2xl shadow-lg overflow-hidden z-50"
+      className="absolute right-0 top-10 w-56 max-w-[calc(100vw-2rem)] bg-surface-container-lowest border border-outline-variant rounded-2xl shadow-lg overflow-hidden z-50"
     >
       {user && (
         <div className="px-4 py-3 border-b border-outline-variant">

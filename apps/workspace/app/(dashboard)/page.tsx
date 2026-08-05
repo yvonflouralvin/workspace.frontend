@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
+  CloseOutlined,
   CheckOutlined,
   FolderOpenOutlined,
   NotificationsOutlined,
@@ -54,6 +55,12 @@ function isOverdue(task: Task): boolean {
   return Boolean(task.due_date) && new Date(task.due_date!).getTime() < Date.now();
 }
 
+/** Cle du refus, par workspace : masquer l'aide sur l'un ne doit pas la
+ *  masquer sur un workspace tout neuf, ou elle a justement du sens. */
+function cleOnboarding(workspaceId?: number | string) {
+  return `onboarding-masque:${workspaceId ?? "?"}`;
+}
+
 export default function HomePage() {
   const { user, activeWorkspace } = useSessionStore();
   const { can } = usePermissions();
@@ -66,6 +73,7 @@ export default function HomePage() {
   const [memberCount, setMemberCount] = useState<number | null>(null);
   const [notificationsConfigured, setNotificationsConfigured] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
+  const [onboardingMasque, setOnboardingMasque] = useState(false);
   const [toast, setToast] = useState<{ message: string; tone: "success" | "error" } | null>(null);
 
   const canInvite = can("members.invite");
@@ -96,6 +104,15 @@ export default function HomePage() {
     listAuditLogs({ limit: 5 }).then((res) => setActivity(res.logs)).catch(() => {});
   }, [can]);
 
+  // Le refus est relu a chaque workspace : il est porte par la cle.
+  useEffect(() => {
+    try {
+      setOnboardingMasque(window.localStorage.getItem(cleOnboarding(workspaceId)) === "1");
+    } catch {
+      setOnboardingMasque(false);
+    }
+  }, [workspaceId]);
+
   useEffect(() => {
     if (!workspaceId || !can("members.view")) return;
     listMembers(workspaceId, { limit: 1 })
@@ -116,8 +133,11 @@ export default function HomePage() {
     month: "long",
   });
 
+  // Refus mémorisé dans le navigateur : c'est un choix d'affichage propre à la
+  // personne, pas une donnée du workspace. Un aller-retour serveur pour cacher
+  // un encart serait disproportionné.
   const showOnboarding =
-    !loading && projects.length === 0 && (canManageProjects || canInvite);
+    !loading && !onboardingMasque && projects.length === 0 && (canManageProjects || canInvite);
 
   const overdue = tasks.filter(isOverdue).length;
   const totalTasks = projects.reduce((sum, p) => sum + (p.task_count ?? 0), 0);
@@ -149,6 +169,16 @@ export default function HomePage() {
       {showOnboarding ? (
         <Onboarding
           workspaceName={activeWorkspace?.name}
+          hasProjet={projects.length > 0}
+          onMasquer={() => {
+            setOnboardingMasque(true);
+            try {
+              window.localStorage.setItem(cleOnboarding(workspaceId), "1");
+            } catch {
+              // Navigation privée, stockage refusé : le masquage ne tiendra pas
+              // au rechargement, mais il fonctionne pour la session en cours.
+            }
+          }}
           hasTeam={memberCount === null ? null : memberCount > 1}
           hasNotifications={notificationsConfigured}
           canInvite={canInvite}
@@ -215,18 +245,22 @@ export default function HomePage() {
 
 function Onboarding({
   workspaceName,
+  hasProjet,
   hasTeam,
   hasNotifications,
   canInvite,
   canManageProjects,
   canManageSettings,
+  onMasquer,
 }: {
   workspaceName?: string;
+  hasProjet: boolean;
   hasTeam: boolean | null;
   hasNotifications: boolean | null;
   canInvite: boolean;
   canManageProjects: boolean;
   canManageSettings: boolean;
+  onMasquer: () => void;
 }) {
   const steps = [
     { label: "Créer votre compte", done: true, action: null, href: null },
@@ -239,7 +273,7 @@ function Onboarding({
     },
     {
       label: "Créer un premier projet",
-      done: false,
+      done: hasProjet,
       action: canManageProjects ? "Créer" : null,
       href: "/projects?create=1",
     },
@@ -254,13 +288,21 @@ function Onboarding({
   const done = steps.filter((s) => s.done).length;
 
   return (
-    <div className="rounded-2xl border border-outline-soft bg-gradient-to-b from-surface-container-low to-surface-container-lowest p-7">
+    <div className="relative rounded-2xl border border-outline-soft bg-gradient-to-b from-surface-container-low to-surface-container-lowest p-7">
       <p className="font-display text-lg font-semibold text-on-surface">
         Bienvenue dans {workspaceName ?? "votre workspace"} 👋
       </p>
       <p className="text-body-md text-on-surface-variant mt-1 max-w-[520px]">
         Quelques étapes pour préparer votre workspace. Vous pourrez y revenir à tout moment.
       </p>
+      <button
+        type="button"
+        onClick={onMasquer}
+        className="absolute right-5 top-5 inline-flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-body-sm font-medium text-on-surface-variant transition-colors hover:bg-surface-container"
+      >
+        <CloseOutlined style={{ fontSize: 15 }} />
+        Masquer
+      </button>
 
       <div className="flex items-center gap-2.5 mt-4">
         <div className="flex-1 h-2 rounded-full bg-surface-container overflow-hidden">

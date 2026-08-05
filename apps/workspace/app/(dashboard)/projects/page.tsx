@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
 import { SearchField } from "@repo/ui/SearchField";
 import { Toast } from "@repo/ui/Toast";
@@ -41,6 +41,7 @@ function ProjectsInner() {
   const { can } = usePermissions();
   const canManage = can("projects.manage");
   const params = useSearchParams();
+  const router = useRouter();
 
   const [view, setView] = useState<"projects" | "mine">("projects");
   const [projects, setProjects] = useState<Project[]>([]);
@@ -53,7 +54,13 @@ function ProjectsInner() {
   const [toast, setToast] = useState<string | null>(null);
 
   useEffect(() => {
-    if (params.get("create") === "1" && canManage) setShowCreate(true);
+    if (params.get("create") === "1" && canManage) {
+      setShowCreate(true);
+      // L'intention « ouvre la fenêtre » se consomme UNE fois. Laissée dans
+      // l'adresse, elle rouvre la fenêtre au retour arrière, au rafraîchissement,
+      // et même après que la chose a été créée — elle ne dépend pas de ce qui existe.
+      router.replace(window.location.pathname, { scroll: false });
+    }
   }, [params, canManage]);
 
   function reload() {

@@ -33,7 +33,7 @@ export default function NewWorkspacePage() {
 
   if (restricted) {
     return (
-      <div className="p-8 max-w-lg mx-auto">
+      <div className="p-8 max-w-[32rem] mx-auto">
         <h1 className="text-2xl font-bold text-on-surface">Créer un workspace</h1>
         <p className="text-sm text-on-surface-variant mt-1">
           Vous n&apos;avez pas accès à cette page.
@@ -62,7 +62,7 @@ export default function NewWorkspacePage() {
   }
 
   return (
-    <div className="p-8 max-w-lg mx-auto space-y-6">
+    <div className="p-8 max-w-[32rem] mx-auto space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-on-surface">Créer un workspace</h1>
         <p className="text-sm text-on-surface-variant mt-1">

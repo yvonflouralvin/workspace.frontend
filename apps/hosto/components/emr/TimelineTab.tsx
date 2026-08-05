@@ -435,7 +435,7 @@ export function TimelineTab({ patientId }: { patientId: number }) {
 
         {error && !loading && (
           <div className="p-10 flex flex-col items-center gap-3 text-center">
-            <p className="text-body-sm text-error bg-error-container/40 rounded-xl px-4 py-3 max-w-sm">
+            <p className="text-body-sm text-error bg-error-container/40 rounded-xl px-4 py-3 max-w-[24rem]">
               {error}
             </p>
             <button

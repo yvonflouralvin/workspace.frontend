@@ -5,8 +5,8 @@ export function proxy(request: NextRequest) {
 
   // Les APK des applications mobiles se téléchargent sans session : on installe
   // l'application pour ouvrir une session, pas l'inverse.
-  if (chemin.startsWith("/downloads/")) {
-    return NextResponse.next({ request: { headers: entetes } });
+  if (request.nextUrl.pathname.startsWith("/downloads/")) {
+    return NextResponse.next();
   }
 
   const accessToken = request.cookies.get("access_token");

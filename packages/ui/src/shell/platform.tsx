@@ -27,6 +27,8 @@ import {
   ReceiptLongOutlined,
   SyncOutlined,
   QueryStatsOutlined,
+  PlaceOutlined,
+  EventOutlined,
   StorageOutlined,
   WidgetsOutlined,
 } from "@mui/icons-material";
@@ -49,6 +51,14 @@ export const PLATFORM_APPS: AppDefinition[] = [
     url: process.env.NEXT_PUBLIC_WORKSPACE_DOMAIN ?? "http://localhost:3005",
     color: "#3525cd",
     description: "Tableau de bord principal",
+  },
+  {
+    id: "operations",
+    name: "Operations",
+    icon: "O",
+    url: process.env.NEXT_PUBLIC_AUTH_API_OPERATIONS_DOMAIN ?? "http://localhost:3013",
+    color: "#0f766e",
+    description: "Planification des prestations, espaces, matériels et véhicules",
   },
   {
     id: "hr",
@@ -203,6 +213,26 @@ export const TIERS_SHELL: AppShellConfig = {
   },
   routeIcons: {
     "/tiers": <GroupsOutlined style={s(15)} />,
+  },
+};
+
+export const OPERATIONS_SHELL: AppShellConfig = {
+  appName: "Operations",
+  appHref: "/",
+  appIcon: "O",
+  appColor: "#0f766e",
+  routeLabels: {
+    "/plannings":   "Plannings",
+    "/ressources":  "Ressources",
+    "/sites":       "Sites",
+    "/charge":      "Charge",
+    "/parametres":  "Paramètres",
+  },
+  routeIcons: {
+    "/plannings":  <EventOutlined style={s(15)} />,
+    "/ressources": <GroupsOutlined style={s(15)} />,
+    "/sites":      <PlaceOutlined style={s(15)} />,
+    "/charge":     <QueryStatsOutlined style={s(15)} />,
   },
 };
 

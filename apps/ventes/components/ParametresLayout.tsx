@@ -6,6 +6,7 @@ import {
   PaidOutlined,
   PercentOutlined,
   BusinessOutlined,
+  PhoneAndroidOutlined,
 } from "@mui/icons-material";
 import { DashboardShell } from "@/components/DashboardShell";
 
@@ -22,6 +23,11 @@ const SECTIONS = [
     label: "Organisation",
     icon: <BusinessOutlined style={{ fontSize: 18 }} />,
   },
+  {
+    href: "/parametres/mobile",
+    label: "Application mobile",
+    icon: <PhoneAndroidOutlined style={{ fontSize: 18 }} />,
+  },
 ];
 
 export function ParametresLayout({ children }: { children: React.ReactNode }) {
@@ -33,7 +39,7 @@ export function ParametresLayout({ children }: { children: React.ReactNode }) {
         <div className="hidden md:block mb-6">
           <h1 className="font-display text-headline-md text-on-surface">Paramètres</h1>
           <p className="text-body-md text-on-surface-variant mt-0.5">
-            Devises, TVA et identité de l&apos;établissement.
+            Devises, TVA, identité de l&apos;établissement et application mobile.
           </p>
         </div>
 

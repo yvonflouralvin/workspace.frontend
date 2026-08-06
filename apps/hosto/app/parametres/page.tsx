@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
+import { MobileAppBlock } from "@repo/ui/MobileAppBlock";
 import { DashboardShell } from "@/components/DashboardShell";
 import { listParametres, type Parametre } from "@/app/lib/api";
 import {
@@ -123,6 +124,10 @@ export default function ParametresPage() {
             />
           </div>
         </div>
+
+        {/* Au-dessus du garde-fou : installer l'application mobile n'a rien à
+            voir avec le droit de configurer le workspace. */}
+        <MobileAppBlock appKey="hosto" appLabel="Patient" />
 
         {!canManage && (
           <p className="text-body-sm text-on-surface-variant bg-surface-container rounded-xl px-4 py-3">

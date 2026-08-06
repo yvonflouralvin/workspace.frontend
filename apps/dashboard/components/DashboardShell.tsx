@@ -10,7 +10,14 @@ import { NotificationBell } from "@repo/notifications/NotificationBell";
 import { UserFooter } from "@repo/ui/shell/UserFooter";
 import { WorkspaceSwitcher } from "@repo/ui/WorkspaceSwitcher";
 import { PLATFORM_APPS, DASHBOARD_SHELL } from "@repo/ui/shell/platform";
-import { DashboardOutlined, HomeOutlined, QueryStatsOutlined, StorageOutlined, WidgetsOutlined } from "@mui/icons-material";
+import {
+  DashboardOutlined,
+  HomeOutlined,
+  QueryStatsOutlined,
+  SettingsOutlined,
+  StorageOutlined,
+  WidgetsOutlined,
+} from "@mui/icons-material";
 import type { NavItem } from "@repo/ui/types/shell";
 
 const NAV_ITEMS: NavItem[] = [
@@ -24,6 +31,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Widgets", href: "/widgets", icon: <WidgetsOutlined style={{ fontSize: 20 }} /> },
   { label: "Tableaux de bord", href: "/boards", icon: <DashboardOutlined style={{ fontSize: 20 }} /> },
   { label: "Sources de données", href: "/sources", icon: <StorageOutlined style={{ fontSize: 20 }} /> },
+  { label: "Paramètres", href: "/parametres", icon: <SettingsOutlined style={{ fontSize: 20 }} /> },
 ];
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {

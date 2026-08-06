@@ -16,6 +16,7 @@ import {
   PeopleAltOutlined,
   CorporateFareOutlined,
   AccountTreeOutlined,
+  SettingsOutlined,
 } from "@mui/icons-material";
 import type { NavItem } from "@repo/ui/types/shell";
 
@@ -24,6 +25,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Départements", href: "/", icon: <CorporateFareOutlined style={{ fontSize: 20 }} />, exact: true },
   { label: "Organigramme", href: "/groups", icon: <AccountTreeOutlined style={{ fontSize: 20 }} /> },
   { label: "Employés", href: "/employees", icon: <PeopleAltOutlined style={{ fontSize: 20 }} /> },
+  { label: "Paramètres", href: "/parametres", icon: <SettingsOutlined style={{ fontSize: 20 }} /> },
 ];
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {

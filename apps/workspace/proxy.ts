@@ -7,8 +7,12 @@ import { NextRequest } from "next/server";
  *  remplit par un lien, sans session. Elle est étroite et nommée ici — le
  *  backend décide seul ce qu'il sert derrière un jeton, et ne montre rien du
  *  workspace qui l'héberge.
+ *
+ *  `/downloads/` sert les APK des applications mobiles. Exiger une session pour
+ *  les télécharger serait un cercle : on installe l'application mobile pour
+ *  ouvrir une session, pas l'inverse. Ces fichiers ne disent rien du workspace.
  */
-const PUBLICS = ["/f/", "/api/public/"];
+const PUBLICS = ["/f/", "/api/public/", "/downloads/"];
 
 export function proxy(request: NextRequest) {
   const chemin = request.nextUrl.pathname;

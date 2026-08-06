@@ -26,6 +26,7 @@ import { usePermissions } from "@repo/auth/hooks/usePermissions";
 import { SearchField } from "@repo/ui/SearchField";
 import { SettingRow, isInlineSetting, type SettingRowState } from "@repo/ui/SettingRow";
 import { Switch } from "@repo/ui/Switch";
+import { MobileAppBlock } from "@repo/ui/MobileAppBlock";
 import { Toast } from "@repo/ui/Toast";
 import {
   listWorkspaceSettings,
@@ -358,6 +359,8 @@ export default function SettingsPage() {
                   unavailable={channelsError}
                   onEdit={setEditingChannel}
                 />
+
+                <MobileAppBlock appKey="workspace" appLabel="Workspace" />
 
                 {selectedGroup && selectedGroup.settings.length > 0 && (
                   <SettingsSections

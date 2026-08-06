@@ -15,6 +15,7 @@ import {
   GroupsOutlined,
   BusinessOutlined,
   PersonOutlined,
+  SettingsOutlined,
 } from "@mui/icons-material";
 import type { NavItem } from "@repo/ui/types/shell";
 
@@ -28,6 +29,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Tous les tiers", href: "/tiers",               icon: <GroupsOutlined style={{ fontSize: 20 }} />, exact: true },
   { label: "Clients",        href: "/tiers?type=CLIENT",    icon: <PersonOutlined style={{ fontSize: 20 }} /> },
   { label: "Fournisseurs",   href: "/tiers?type=FOURNISSEUR",icon: <BusinessOutlined style={{ fontSize: 20 }} /> },
+  { label: "Paramètres", href: "/parametres", icon: <SettingsOutlined style={{ fontSize: 20 }} /> },
 ];
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {

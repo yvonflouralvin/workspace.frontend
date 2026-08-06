@@ -16,6 +16,7 @@ import {
   HomeOutlined,
   Inventory2Outlined,
   CategoryOutlined,
+  SettingsOutlined,
 } from "@mui/icons-material";
 import type { NavItem } from "@repo/ui/types/shell";
 
@@ -24,6 +25,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Inventaire", href: "/",           icon: <DashboardOutlined style={{ fontSize: 20 }} />, exact: true },
   { label: "Articles",   href: "/items",      icon: <Inventory2Outlined style={{ fontSize: 20 }} /> },
   { label: "Catégories", href: "/categories", icon: <CategoryOutlined style={{ fontSize: 20 }} /> },
+  { label: "Paramètres", href: "/parametres", icon: <SettingsOutlined style={{ fontSize: 20 }} /> },
 ];
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {

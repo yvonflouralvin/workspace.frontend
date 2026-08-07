@@ -38,8 +38,58 @@ export interface Ressource {
   user_id: number | null;
   capacite: number | null;
   reference: string | null;
+  /** Nul = aucune cible déclarée, donc aucun jugement porté. */
+  heures_hebdo_cible: number | null;
+  heures_mensuel_cible: number | null;
   attributs: Record<string, unknown>;
   active: boolean;
+}
+
+export type StatutUtilisation = "SOUS_UTILISEE" | "CONFORME" | "SUR_UTILISEE" | "SANS_CIBLE";
+
+export interface Verdict {
+  statut: StatutUtilisation;
+  cible: number | null;
+  ecart_heures: number | null;
+  ecart_pct: number | null;
+  message: string;
+}
+
+export interface RapportPlanning {
+  planning: {
+    id: number; nom: string; type: TypePlanning; statut: StatutPlanning;
+    debut: string; fin: string; jours: number;
+  };
+  totaux: {
+    ressources: number; creneaux: number; heures: number; sites: number;
+    heures_sans_site: number; chevauchements: number;
+    heures_par_ressource: number; heures_par_semaine: number;
+  };
+  par_ressource: {
+    ressource_id: number; ressource: string; type: string;
+    creneaux: number; heures: number; sites: number; part: number;
+  }[];
+  par_site: {
+    site_id: number; site: string; ville: string | null;
+    creneaux: number; heures: number; ressources: number;
+  }[];
+}
+
+export interface ActiviteRessource {
+  ressource: {
+    id: number; nom: string; type: TypePlanning; categorie: string | null;
+    active: boolean; heures_hebdo_cible: number | null; heures_mensuel_cible: number | null;
+  };
+  fenetre: { depuis: string; jusqu_a: string; jours: number; semaines: number };
+  totaux: { heures: number; creneaux: number; plannings: number; sites: number };
+  moyennes: { hebdomadaire: number; mensuelle: number };
+  utilisation: { hebdomadaire: Verdict; mensuelle: Verdict };
+  affectations: {
+    id: number; debut: string; fin: string; heures: number; objet: string | null;
+    site: string | null; site_couleur: string | null;
+    planning_id: number | null; planning: string | null; en_chevauchement: boolean;
+  }[];
+  affectations_tronquees: number;
 }
 
 export interface Groupe {
@@ -292,6 +342,12 @@ export const operationsApi = {
   dupliquer: (corps: Record<string, unknown>) =>
     apiFetch("/api/affectations/dupliquer", { method: "POST", body: corps }).then((r) =>
       lire<Lot>(r),
+    ),
+  rapportPlanning: (id: number) =>
+    apiFetch(`/api/plannings/${id}/rapport`).then((r) => lire<RapportPlanning>(r)),
+  activiteRessource: (id: number, params: { depuis?: string; jusqu_a?: string } = {}) =>
+    apiFetch(`/api/ressources/${id}/activite${qs(params)}`).then((r) =>
+      lire<ActiviteRessource>(r),
     ),
   chevauchements: (planning_id?: number) =>
     apiFetch(`/api/chevauchements${qs({ planning_id })}`).then((r) => lire<Affectation[]>(r)),

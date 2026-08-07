@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { AddOutlined, GroupsOutlined, PersonAddAltOutlined } from "@mui/icons-material";
+import Link from "next/link";
+import { AddOutlined, GroupsOutlined, InsightsOutlined, PersonAddAltOutlined } from "@mui/icons-material";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
 import { ConfirmDialog } from "@repo/ui/ConfirmDialog";
 import { Pagination } from "@repo/ui/Pagination";
@@ -147,46 +148,84 @@ export function PanneauRessources() {
           </div>
         ) : (
           <>
-            <div className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-2">
-              {donnees.items.map((r) => (
-                <article
-                  key={r.id}
-                  className={`rounded-2xl border border-outline-soft bg-surface-container-lowest p-4 ${r.active ? "" : "opacity-60"}`}
-                >
-                  <p className="flex flex-wrap items-center gap-2 text-body-md font-medium text-on-surface">
-                    {r.nom_affiche}
-                    {r.employee_id && (
-                      <span className="rounded-full bg-surface-container px-2 py-0.5 text-label-sm text-on-surface-variant">
-                        Fiche RH
-                      </span>
+            {/* Une liste : le nom, ce qui l'identifie, sa cible d'heures — trois
+                colonnes qui se comparent d'une ligne à l'autre. */}
+            <div className="mt-6 overflow-x-auto rounded-2xl border border-outline-soft bg-surface-container-lowest">
+              <table className="w-full min-w-[720px] border-collapse text-left">
+                <thead>
+                  <tr className="border-b border-outline-soft bg-surface-row-alt">
+                    <ThR>{typeCourant?.ressource_libelle ?? "Ressource"}</ThR>
+                    <ThR>Détail</ThR>
+                    {typeCourant?.champs.includes("heures_hebdo_cible") && (
+                      <ThR align="right">Cible / sem.</ThR>
                     )}
-                    {!r.active && (
-                      <span className="rounded-full bg-surface-container px-2 py-0.5 text-label-sm text-on-surface-variant">
-                        Inactif
-                      </span>
-                    )}
-                  </p>
-                  <p className="mt-0.5 text-body-sm text-on-surface-variant">
-                    {[r.categorie, r.reference, r.capacite ? `${r.capacite} places` : null]
-                      .filter(Boolean)
-                      .join(" · ") || "—"}
-                  </p>
-                  {peutGerer && (
-                    <div className="mt-3 flex gap-3">
-                      <button type="button" onClick={() => setEdition(r)} className="text-label-md text-primary">
-                        Modifier
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setASupprimer(r)}
-                        className="text-label-md text-on-surface-variant hover:text-error"
-                      >
-                        Supprimer
-                      </button>
-                    </div>
-                  )}
-                </article>
-              ))}
+                    <ThR align="right">Activité</ThR>
+                    {peutGerer && <ThR align="right">Actions</ThR>}
+                  </tr>
+                </thead>
+                <tbody>
+                  {donnees.items.map((r) => (
+                    <tr
+                      key={r.id}
+                      className={`border-b border-hairline last:border-b-0 hover:bg-surface-container-low ${
+                        r.active ? "" : "opacity-60"
+                      }`}
+                    >
+                      <td className="px-4 py-2.5">
+                        <Link
+                          href={`/ressources/${r.id}`}
+                          className="flex flex-wrap items-center gap-2 text-body-sm font-medium text-on-surface hover:underline"
+                        >
+                          {r.nom_affiche}
+                          {r.employee_id && (
+                            <span className="rounded-full bg-surface-container px-2 py-0.5 text-label-sm font-normal text-on-surface-variant">
+                              Fiche RH
+                            </span>
+                          )}
+                          {!r.active && (
+                            <span className="rounded-full bg-surface-container px-2 py-0.5 text-label-sm font-normal text-on-surface-variant">
+                              Inactif
+                            </span>
+                          )}
+                        </Link>
+                      </td>
+                      <td className="px-4 py-2.5 text-body-sm text-on-surface-variant">
+                        {[r.categorie, r.reference, r.capacite ? `${r.capacite} places` : null]
+                          .filter(Boolean)
+                          .join(" · ") || "—"}
+                      </td>
+                      {typeCourant?.champs.includes("heures_hebdo_cible") && (
+                        <td className="px-4 py-2.5 text-right text-body-sm tabular-nums text-on-surface-variant">
+                          {r.heures_hebdo_cible ? `${r.heures_hebdo_cible} h` : "—"}
+                        </td>
+                      )}
+                      <td className="px-4 py-2.5 text-right">
+                        <Link
+                          href={`/ressources/${r.id}`}
+                          className="inline-flex items-center gap-1 text-label-md text-primary hover:underline"
+                        >
+                          <InsightsOutlined style={{ fontSize: 15 }} />
+                          Voir
+                        </Link>
+                      </td>
+                      {peutGerer && (
+                        <td className="whitespace-nowrap px-4 py-2.5 text-right">
+                          <button type="button" onClick={() => setEdition(r)} className="text-label-md text-primary">
+                            Modifier
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setASupprimer(r)}
+                            className="ml-3 text-label-md text-on-surface-variant hover:text-error"
+                          >
+                            Supprimer
+                          </button>
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
             {donnees.pages > 1 && (
               <div className="mt-4">
@@ -273,5 +312,17 @@ export function PanneauRessources() {
 
       {toast && <Toast message={toast} onDismiss={() => setToast(null)} />}
     </>
+  );
+}
+
+function ThR({ children, align }: { children: React.ReactNode; align?: "right" }) {
+  return (
+    <th
+      className={`px-4 py-2 text-label-sm uppercase tracking-wide text-outline ${
+        align === "right" ? "text-right" : "text-left"
+      }`}
+    >
+      {children}
+    </th>
   );
 }

@@ -24,6 +24,8 @@ export function FormulaireRessource({
   const [categorie, setCategorie] = useState(ressource?.categorie ?? "");
   const [capacite, setCapacite] = useState(ressource?.capacite?.toString() ?? "");
   const [reference, setReference] = useState(ressource?.reference ?? "");
+  const [hebdo, setHebdo] = useState(ressource?.heures_hebdo_cible?.toString() ?? "");
+  const [mensuel, setMensuel] = useState(ressource?.heures_mensuel_cible?.toString() ?? "");
   const [attributs, setAttributs] = useState<Record<string, string>>(
     Object.fromEntries(
       typeDef.attributs.map((a) => [a.cle, String(ressource?.attributs?.[a.cle] ?? "")]),
@@ -44,6 +46,11 @@ export function FormulaireRessource({
       categorie: categorie.trim() || null,
       capacite: utilise("capacite") && capacite ? Number(capacite) : null,
       reference: utilise("reference") ? reference.trim() || null : null,
+      // Vide ≠ zéro : une cible absente veut dire « on ne juge pas », une cible
+      // à 0 h voudrait dire « cette personne ne doit rien faire ».
+      heures_hebdo_cible: utilise("heures_hebdo_cible") && hebdo.trim() ? Number(hebdo) : null,
+      heures_mensuel_cible:
+        utilise("heures_mensuel_cible") && mensuel.trim() ? Number(mensuel) : null,
       attributs: Object.fromEntries(Object.entries(attributs).filter(([, v]) => v.trim())),
       ...(ressource ? { active: actif } : { type: typeDef.cle }),
     };
@@ -106,6 +113,34 @@ export function FormulaireRessource({
               </span>
               <input value={reference} onChange={(e) => setReference(e.target.value)} className={CHAMP} />
             </label>
+          )}
+
+          {utilise("heures_hebdo_cible") && (
+            <div className="rounded-xl border border-outline-soft p-3">
+              <p className="text-label-md text-on-surface-variant">Charge attendue</p>
+              <p className="mt-0.5 text-label-md text-outline">
+                Laissé vide, aucun jugement n&apos;est porté sur cette ressource. Renseigné,
+                son rythme réel y est comparé — avec une tolérance de ± 10 %.
+              </p>
+              <div className="mt-2 grid grid-cols-2 gap-3">
+                <label className="flex flex-col gap-1">
+                  <span className="text-label-md text-on-surface-variant">Heures / semaine</span>
+                  <input
+                    type="number" min={0} step={0.5} value={hebdo}
+                    onChange={(e) => setHebdo(e.target.value)}
+                    placeholder="Ex. : 40" className={CHAMP}
+                  />
+                </label>
+                <label className="flex flex-col gap-1">
+                  <span className="text-label-md text-on-surface-variant">Heures / mois</span>
+                  <input
+                    type="number" min={0} step={0.5} value={mensuel}
+                    onChange={(e) => setMensuel(e.target.value)}
+                    placeholder="Ex. : 173" className={CHAMP}
+                  />
+                </label>
+              </div>
+            </div>
           )}
 
           {typeDef.attributs.map((a) => (

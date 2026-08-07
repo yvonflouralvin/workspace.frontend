@@ -17,9 +17,14 @@ const CHAMP =
  *  Le choix des ressources est filtré sur le TYPE du planning — proposer un
  *  véhicule dans un planning de prestations laisserait l'utilisateur découvrir
  *  le refus après coup. */
+const JOURS_SEMAINE = [
+  "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche",
+];
+
 export function FormulaireAffectation({
   planning,
   jour,
+  heure,
   enCours,
   onClose,
   onSubmit,
@@ -27,6 +32,8 @@ export function FormulaireAffectation({
 }: {
   planning: Planning;
   jour: Date;
+  /** Heure cliquée dans la grille : on la reprend plutôt que de repartir de 8 h. */
+  heure?: number;
   enCours?: boolean;
   onClose: () => void;
   onSubmit: (corps: Record<string, unknown>) => void;
@@ -42,8 +49,15 @@ export function FormulaireAffectation({
   const [siteId, setSiteId] = useState<number | "">("");
   const [objet, setObjet] = useState("");
   const [date, setDate] = useState(() => isoLocal(jour));
-  const [debut, setDebut] = useState("08:00");
-  const [fin, setFin] = useState("16:00");
+  const [debut, setDebut] = useState(
+    heure != null ? `${String(heure).padStart(2, "0")}:00` : "08:00",
+  );
+  const [fin, setFin] = useState(
+    heure != null ? `${String(Math.min(heure + 1, 23)).padStart(2, "0")}:00` : "16:00",
+  );
+  // « unique » : ce jour-là. « hebdomadaire » : tous les jours de semaine
+  // correspondants, sur toute la période du planning.
+  const [repetition, setRepetition] = useState<"unique" | "hebdomadaire">("unique");
   const [erreur, setErreur] = useState<string | null>(null);
 
   useEffect(() => {
@@ -87,8 +101,8 @@ export function FormulaireAffectation({
       site_id: siteId === "" ? null : Number(siteId),
       objet: objet.trim() || null,
     };
-    if (mode === "une") onSubmit({ ...commun, ressource_id: Number(ressourceId) });
-    else onLot({ ...commun, groupe_id: Number(groupeId) });
+    if (mode === "une") onSubmit({ ...commun, repetition, ressource_id: Number(ressourceId) });
+    else onLot({ ...commun, repetition, groupe_id: Number(groupeId) });
   }
 
   return (
@@ -209,6 +223,45 @@ export function FormulaireAffectation({
               className={CHAMP}
             />
           </label>
+
+          {/* Répétition. Le jour de semaine est celui qu'on est en train de
+              planifier : on ne demande pas de le rechoisir. */}
+          <div className="flex flex-col gap-1">
+            <span className="text-label-md text-on-surface-variant">Quand</span>
+            <div className="flex flex-col gap-1.5">
+              {([
+                ["unique", `Ce ${jourDeSemaine(date)} ${new Date(`${date}T12:00:00`).toLocaleDateString("fr-FR")} seulement`],
+                ["hebdomadaire", `Tous les ${jourDeSemaine(date)}s de la période du planning`],
+              ] as const).map(([cle, libelle]) => (
+                <label
+                  key={cle}
+                  className={`flex cursor-pointer items-start gap-2 rounded-lg border px-3 py-2 transition-colors ${
+                    repetition === cle
+                      ? "border-primary bg-surface-container-low"
+                      : "border-outline-soft hover:bg-surface-container-low"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="repetition"
+                    checked={repetition === cle}
+                    onChange={() => setRepetition(cle)}
+                    className="mt-0.5"
+                  />
+                  <span className="text-body-sm text-on-surface">{libelle}</span>
+                </label>
+              ))}
+            </div>
+            {repetition === "hebdomadaire" && (
+              <p className="text-label-md text-on-surface-variant">
+                Un créneau est créé pour chaque {jourDeSemaine(date)} entre le{" "}
+                {new Date(planning.debut).toLocaleDateString("fr-FR")} et le{" "}
+                {new Date(planning.fin).toLocaleDateString("fr-FR")}. Chacun se modifie et se
+                supprime séparément ; les occurrences en conflit sont refusées sans annuler
+                les autres.
+              </p>
+            )}
+          </div>
         </div>
 
         <div className="flex justify-end gap-2 border-t border-outline-soft px-5 py-3">
@@ -237,6 +290,10 @@ export function FormulaireAffectation({
  *  d'un jour selon le fuseau. */
 function isoLocal(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function jourDeSemaine(iso: string) {
+  return JOURS_SEMAINE[(new Date(`${iso}T12:00:00`).getDay() + 6) % 7];
 }
 
 function jourSuivant(iso: string) {

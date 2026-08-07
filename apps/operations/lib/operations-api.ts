@@ -264,9 +264,12 @@ export const operationsApi = {
       jusqu_a?: string;
     } = {},
   ) => apiFetch(`/api/affectations${qs(params)}`).then((r) => lire<Affectation[]>(r)),
+  /** Rend UNE affectation, ou un LOT si `repetition: "hebdomadaire"` — la
+   *  répétition matérialise un créneau par occurrence, et il faut pouvoir dire
+   *  combien sont passés et combien ont été refusés. */
   creerAffectation: (corps: Record<string, unknown>) =>
     apiFetch("/api/affectations", { method: "POST", body: corps }).then((r) =>
-      lire<Affectation>(r),
+      lire<Affectation | Lot>(r),
     ),
   modifierAffectation: (id: number, corps: Record<string, unknown>) =>
     apiFetch(`/api/affectations/${id}`, { method: "PUT", body: corps }).then((r) =>

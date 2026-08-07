@@ -213,6 +213,25 @@ export interface Reservation {
   en_chevauchement: boolean;
 }
 
+export interface OccupationSalles {
+  fenetre: {
+    depuis: string; jusqu_a: string;
+    jours_ouvres: number; heures_ouvrables: number;
+    /** Le dénominateur du taux, en toutes lettres — un pourcentage dont on
+     *  ignore la base ne veut rien dire. */
+    plage: string;
+  };
+  totaux: {
+    salles: number; occupees: number; heures: number;
+    en_attente: number; refusees: number; taux_moyen: number;
+  };
+  salles: {
+    id: number; nom: string; capacite: number | null; active: boolean;
+    categorie: string | null; reservations: number; heures: number;
+    taux: number; en_attente: number; refusees: number;
+  }[];
+}
+
 export interface Page<T> {
   items: T[];
   total: number;
@@ -354,6 +373,8 @@ export const operationsApi = {
 
   // — Salles et réservations —
   salles: () => apiFetch("/api/salles").then((r) => lire<Salle[]>(r)),
+  occupationSalles: (params: { depuis?: string; jusqu_a?: string } = {}) =>
+    apiFetch(`/api/salles/occupation${qs(params)}`).then((r) => lire<OccupationSalles>(r)),
   reservations: (
     params: { salle_id?: number; statut?: string; depuis?: string; jusqu_a?: string } = {},
   ) => apiFetch(`/api/reservations${qs(params)}`).then((r) => lire<Reservation[]>(r)),

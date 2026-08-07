@@ -8,6 +8,7 @@ import {
   ChevronRightOutlined,
   MeetingRoomOutlined,
   PendingActionsOutlined,
+  TableChartOutlined,
   WarningAmberOutlined,
 } from "@mui/icons-material";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
@@ -19,6 +20,9 @@ import { SelecteurVue, type VueDef } from "@/components/SelecteurVue";
 import { ConflitDialog } from "@/components/ConflitDialog";
 import { FormulaireReservation } from "@/components/FormulaireReservation";
 import { DecisionDialog } from "@/components/DecisionDialog";
+import { FriseSalles } from "@/components/salles/FriseSalles";
+import { PanneauSalles } from "@/components/salles/PanneauSalles";
+import { VueMois } from "@/components/VueMois";
 import {
   ConflitError,
   heureCourte,
@@ -30,6 +34,8 @@ import {
 } from "@/lib/operations-api";
 
 const JOURS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
+
+type Echelle = "jour" | "semaine" | "mois";
 const s = { fontSize: 18 };
 
 const VUES: VueDef[] = [
@@ -38,6 +44,12 @@ const VUES: VueDef[] = [
     libelle: "Calendrier",
     description: "Qui occupe quelle salle, et quand",
     icone: <MeetingRoomOutlined style={s} />,
+  },
+  {
+    cle: "salles",
+    libelle: "Salles",
+    description: "L'inventaire des espaces et leur taux d'occupation",
+    icone: <TableChartOutlined style={s} />,
   },
   {
     cle: "demandes",
@@ -65,7 +77,8 @@ function Contenu() {
 
   const [salles, setSalles] = useState<Salle[]>([]);
   const [reservations, setReservations] = useState<Reservation[] | null>(null);
-  const [semaine, setSemaine] = useState(() => lundiDe(new Date()));
+  const [echelle, setEchelle] = useState<Echelle>("semaine");
+  const [ancre, setAncre] = useState(() => new Date());
   const [creation, setCreation] = useState<{ salle?: Salle; jour: Date } | null>(null);
   const [decision, setDecision] = useState<{ r: Reservation; action: "accepter" | "refuser" } | null>(null);
   const [conflit, setConflit] = useState<{ conflit: Conflit; reessayer: (m: string) => void } | null>(null);
@@ -74,7 +87,26 @@ function Contenu() {
   const [toast, setToast] = useState<string | null>(null);
   const [enCours, setEnCours] = useState(false);
 
-  const fin = useMemo(() => new Date(semaine.getTime() + 7 * 86_400_000), [semaine]);
+  /** La fenêtre observée — seule chose qui change entre les trois échelles,
+   *  exactement comme sur la vue d'un planning. */
+  const fenetre = useMemo(() => {
+    if (echelle === "jour") {
+      const debut = new Date(ancre);
+      debut.setHours(0, 0, 0, 0);
+      return { debut, fin: new Date(debut.getTime() + 86_400_000) };
+    }
+    if (echelle === "mois") {
+      const debut = new Date(ancre.getFullYear(), ancre.getMonth(), 1);
+      const fin = new Date(ancre.getFullYear(), ancre.getMonth() + 1, 1);
+      // La grille du mois déborde sur les semaines voisines : on charge large.
+      return {
+        debut: new Date(debut.getTime() - 7 * 86_400_000),
+        fin: new Date(fin.getTime() + 7 * 86_400_000),
+      };
+    }
+    const debut = lundiDe(ancre);
+    return { debut, fin: new Date(debut.getTime() + 7 * 86_400_000) };
+  }, [echelle, ancre]);
 
   const charger = useCallback(async () => {
     try {
@@ -83,8 +115,8 @@ function Contenu() {
         vue === "demandes"
           ? operationsApi.reservations({ statut: "DEMANDEE" })
           : operationsApi.reservations({
-              depuis: semaine.toISOString(),
-              jusqu_a: fin.toISOString(),
+              depuis: fenetre.debut.toISOString(),
+              jusqu_a: fenetre.fin.toISOString(),
             }),
       ]);
       setSalles(liste);
@@ -93,7 +125,7 @@ function Contenu() {
       setErreur(e instanceof Error ? e.message : "Impossible de charger les salles.");
       setReservations([]);
     }
-  }, [vue, semaine, fin]);
+  }, [vue, fenetre.debut, fenetre.fin]);
 
   useEffect(() => {
     void charger();
@@ -125,6 +157,21 @@ function Contenu() {
     }
   }
 
+  const decaler = (pas: number) => {
+    const d = new Date(ancre);
+    if (echelle === "jour") d.setDate(d.getDate() + pas);
+    else if (echelle === "mois") d.setMonth(d.getMonth() + pas);
+    else d.setDate(d.getDate() + pas * 7);
+    setAncre(d);
+  };
+
+  const titrePeriode =
+    echelle === "jour"
+      ? ancre.toLocaleDateString("fr-FR", { weekday: "long", day: "2-digit", month: "long" })
+      : echelle === "mois"
+        ? ancre.toLocaleDateString("fr-FR", { month: "long", year: "numeric" })
+        : `Semaine du ${lundiDe(ancre).toLocaleDateString("fr-FR", { day: "2-digit", month: "long" })}`;
+
   const enAttente = (reservations ?? []).filter((r) => r.statut === "DEMANDEE");
 
   return (
@@ -138,7 +185,7 @@ function Contenu() {
         {peutDemander && vue === "calendrier" && (
           <button
             type="button"
-            onClick={() => setCreation({ jour: semaine })}
+            onClick={() => setCreation({ jour: echelle === "semaine" ? lundiDe(ancre) : ancre })}
             className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-4 text-body-sm font-semibold text-on-primary shadow-button transition-colors hover:bg-primary-container"
           >
             <AddOutlined style={{ fontSize: 16 }} />
@@ -154,7 +201,9 @@ function Contenu() {
           </p>
         )}
 
-        {vue === "demandes" ? (
+        {vue === "salles" ? (
+          <PanneauSalles />
+        ) : vue === "demandes" ? (
           <Demandes
             reservations={enAttente}
             peutValider={peutValider}
@@ -165,31 +214,45 @@ function Contenu() {
         ) : (
           <>
             <div className="mb-4 flex flex-wrap items-center gap-2">
+              <div className="flex rounded-lg border border-outline-soft p-0.5">
+                {(["jour", "semaine", "mois"] as const).map((e) => (
+                  <button
+                    key={e}
+                    type="button"
+                    onClick={() => setEchelle(e)}
+                    className={`h-8 rounded-md px-3 text-body-sm capitalize transition-colors ${
+                      echelle === e
+                        ? "bg-primary text-on-primary"
+                        : "text-on-surface-variant hover:bg-surface-container-low"
+                    }`}
+                  >
+                    {e}
+                  </button>
+                ))}
+              </div>
               <button
                 type="button"
-                aria-label="Semaine précédente"
-                onClick={() => setSemaine(new Date(semaine.getTime() - 7 * 86_400_000))}
+                aria-label="Période précédente"
+                onClick={() => decaler(-1)}
                 className="flex h-9 w-9 items-center justify-center rounded-lg border border-outline-soft text-on-surface-variant hover:bg-surface-container-low"
               >
                 <ChevronLeftOutlined style={{ fontSize: 18 }} />
               </button>
-              <p className="text-body-md text-on-surface">
-                Semaine du {semaine.toLocaleDateString("fr-FR", { day: "2-digit", month: "long" })}
-              </p>
+              <p className="text-body-md capitalize text-on-surface">{titrePeriode}</p>
               <button
                 type="button"
-                aria-label="Semaine suivante"
-                onClick={() => setSemaine(new Date(semaine.getTime() + 7 * 86_400_000))}
+                aria-label="Période suivante"
+                onClick={() => decaler(1)}
                 className="flex h-9 w-9 items-center justify-center rounded-lg border border-outline-soft text-on-surface-variant hover:bg-surface-container-low"
               >
                 <ChevronRightOutlined style={{ fontSize: 18 }} />
               </button>
               <button
                 type="button"
-                onClick={() => setSemaine(lundiDe(new Date()))}
+                onClick={() => setAncre(new Date())}
                 className="h-9 rounded-lg border border-outline-soft px-3 text-body-sm text-on-surface-variant hover:bg-surface-container-low"
               >
-                Cette semaine
+                Aujourd&apos;hui
               </button>
               {enAttente.length > 0 && (
                 <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-surface-container px-3 py-1 text-label-md text-on-surface-variant">
@@ -211,13 +274,57 @@ function Contenu() {
                 </p>
               </div>
             ) : (
-              <CalendrierSalles
-                salles={salles}
-                reservations={reservations}
-                semaine={semaine}
-                peutDemander={peutDemander}
-                onReserver={(salle, jour) => setCreation({ salle, jour })}
-              />
+              echelle === "jour" ? (
+                <FriseSalles
+                  jour={fenetre.debut}
+                  salles={salles}
+                  reservations={reservations}
+                  peutDemander={peutDemander}
+                  onCase={(salle, jour) => setCreation({ salle, jour })}
+                  onReservation={(r) =>
+                    peutValider && r.statut === "DEMANDEE"
+                      ? setDecision({ r, action: "accepter" })
+                      : setARetirer(r)
+                  }
+                />
+              ) : echelle === "mois" ? (
+                <VueMois
+                  mois={ancre}
+                  // Le mois ne montre qu'une charge : seules les réservations
+                  // ACCEPTÉES occupent, une demande en attente ne pèse rien.
+                  affectations={reservations
+                    .filter((r) => r.statut === "ACCEPTEE")
+                    .map((r) => ({
+                      id: r.id,
+                      planning_id: 0,
+                      ressource_id: r.salle_id,
+                      ressource: r.salle,
+                      ressource_type: null,
+                      site_id: null,
+                      site: null,
+                      site_couleur: null,
+                      objet: r.objet,
+                      debut: r.debut,
+                      fin: r.fin,
+                      heures: r.heures,
+                      lot_id: null,
+                      motif_forcage: r.motif_forcage,
+                      en_chevauchement: r.en_chevauchement,
+                    }))}
+                  onJour={(j) => {
+                    setAncre(j);
+                    setEchelle("jour");
+                  }}
+                />
+              ) : (
+                <CalendrierSalles
+                  salles={salles}
+                  reservations={reservations}
+                  semaine={fenetre.debut}
+                  peutDemander={peutDemander}
+                  onReserver={(salle, jour) => setCreation({ salle, jour })}
+                />
+              )
             )}
           </>
         )}

@@ -287,7 +287,7 @@ export const operationsApi = {
     apiFetch("/api/affectations/groupe", { method: "POST", body: corps }).then((r) => lire<Lot>(r)),
   defaireLot: (lotId: string) =>
     apiFetch(`/api/affectations/lot/${lotId}`, { method: "DELETE" }).then((r) =>
-      lire<{ retirees: number }>(r),
+      lire<{ retirees: number; origine_gardee: boolean }>(r),
     ),
   dupliquer: (corps: Record<string, unknown>) =>
     apiFetch("/api/affectations/dupliquer", { method: "POST", body: corps }).then((r) =>

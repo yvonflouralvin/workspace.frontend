@@ -403,14 +403,17 @@ export default function PlanningPage({ params }: { params: Promise<{ id: string 
 
       {aDefaire && (
         <ConfirmDialog
-          title="Défaire tout le lot ?"
-          message="Tous les créneaux posés en même temps que celui-ci seront retirés — y compris les occurrences répétées des autres semaines."
+          title="Défaire la série ?"
+          message="Les occurrences des autres semaines seront retirées. Si la série a été bâtie à partir d'un créneau qui existait déjà, celui-ci reste en place."
           confirmLabel="Défaire"
           onCancel={() => setADefaire(null)}
           onConfirm={async () => {
             try {
               const r = await operationsApi.defaireLot(aDefaire);
-              setToast(`${r.retirees} créneau(x) retiré(s).`);
+              setToast(
+                `${r.retirees} créneau(x) retiré(s)` +
+                  (r.origine_gardee ? ", le créneau d'origine est conservé." : "."),
+              );
               await charger();
             } catch (e) {
               setErreur(e instanceof Error ? e.message : "Opération impossible.");

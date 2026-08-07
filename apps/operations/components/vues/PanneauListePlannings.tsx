@@ -15,6 +15,7 @@ import {
   TEINTES_TYPE,
   operationsApi,
   type Planning,
+  type Ressource,
   type TypeDef,
   type TypePlanning,
 } from "@/lib/operations-api";
@@ -279,6 +280,24 @@ function FormulairePlanning({
   const [erreur, setErreur] = useState<string | null>(null);
   const [enCours, setEnCours] = useState(false);
 
+  // Vide = aucune restriction. C'est le défaut, et c'est ce qu'on veut :
+  // un planning créé sans y penser ne doit pas tout refuser.
+  const [restreint, setRestreint] = useState(false);
+  const [choisies, setChoisies] = useState<number[]>([]);
+  const [ressources, setRessources] = useState<Ressource[]>([]);
+
+  useEffect(() => {
+    setChoisies([]);
+    void (async () => {
+      try {
+        const r = await operationsApi.ressources({ type, actif: true, page: 1 });
+        setRessources(r.items);
+      } catch {
+        setRessources([]);
+      }
+    })();
+  }, [type]);
+
   async function envoyer() {
     if (!nom.trim()) {
       setErreur("Le nom est requis.");
@@ -291,7 +310,10 @@ function FormulairePlanning({
     setEnCours(true);
     setErreur(null);
     try {
-      await operationsApi.creerPlanning({ type, nom: nom.trim(), debut, fin });
+      await operationsApi.creerPlanning({
+        type, nom: nom.trim(), debut, fin,
+        ressource_ids: restreint ? choisies : [],
+      });
       onDone(nom.trim());
     } catch (e) {
       setErreur(e instanceof Error ? e.message : "Création impossible.");

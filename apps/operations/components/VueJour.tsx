@@ -6,7 +6,8 @@ import { heureCourte, type Affectation } from "@/lib/operations-api";
 import { borner } from "@/components/VueSemaine";
 
 const LARGEUR_LIBELLE = 160;
-const HAUTEUR_VOIE = 26;
+const HAUTEUR_VOIE = 36;
+const HAUTEUR_BARRE = 28;
 const MINUTES_JOUR = 1440;
 
 interface Barre {
@@ -115,7 +116,7 @@ export function VueJour({
 
             <div
               className="relative flex-1"
-              style={{ height: voies.length * HAUTEUR_VOIE + 8 }}
+              style={{ height: voies.length * HAUTEUR_VOIE + 6 }}
             >
               {/* Colonnes de fond : elles servent de repère ET de cible de clic
                   pour affecter directement sur une tranche horaire. */}
@@ -143,35 +144,32 @@ export function VueJour({
                     key={b.a.id}
                     type="button"
                     onClick={() => onAffectation?.(b.a)}
-                    title={`${b.a.ressource} · ${heureCourte(b.a.debut)}–${heureCourte(b.a.fin)}${b.a.site ? ` · ${b.a.site}` : ""}`}
-                    className={`absolute flex items-center gap-1 overflow-hidden rounded-md px-1.5 text-left transition-colors ${
+                    title={`${b.a.ressource} · ${heureCourte(b.a.debut)}–${heureCourte(b.a.fin)} · ${b.a.heures} h${b.a.site ? ` · ${b.a.site}` : ""}`}
+                    className={`absolute flex items-center gap-1.5 overflow-hidden rounded-lg px-2 text-left shadow-card ring-1 transition-colors ${
                       b.a.en_chevauchement
-                        ? "bg-error-container hover:brightness-95"
-                        : "bg-primary/85 hover:bg-primary"
+                        ? "bg-error-container text-error ring-error/40 hover:brightness-95"
+                        : "bg-primary/15 text-primary ring-primary/30 hover:bg-primary/25"
                     } ${b.depuisLaVeille ? "rounded-l-none" : ""} ${b.versLeLendemain ? "rounded-r-none" : ""}`}
                     style={{
                       left: `${b.gauche}%`,
                       width: `${b.largeur}%`,
-                      top: v * HAUTEUR_VOIE + 4,
-                      height: HAUTEUR_VOIE - 4,
+                      top: v * HAUTEUR_VOIE + (HAUTEUR_VOIE - HAUTEUR_BARRE) / 2 + 3,
+                      height: HAUTEUR_BARRE,
                     }}
                   >
-                    {b.a.en_chevauchement && (
-                      <WarningAmberOutlined style={{ fontSize: 12 }} className="flex-none text-error" />
-                    )}
-                    {b.a.site_couleur && !b.a.en_chevauchement && (
+                    {b.a.en_chevauchement ? (
+                      <WarningAmberOutlined style={{ fontSize: 13 }} className="flex-none" />
+                    ) : (
                       <span
-                        className="h-2 w-2 flex-none rounded-full ring-1 ring-white/60"
-                        style={{ backgroundColor: b.a.site_couleur }}
+                        className="h-2.5 w-2.5 flex-none rounded-full"
+                        style={{ backgroundColor: b.a.site_couleur ?? "currentColor" }}
                       />
                     )}
-                    <span
-                      className={`truncate text-label-sm ${
-                        b.a.en_chevauchement ? "text-error" : "text-on-primary"
-                      }`}
-                    >
+                    <span className="truncate text-label-md font-semibold tabular-nums">
                       {heureCourte(b.a.debut)}–{heureCourte(b.a.fin)}
-                      {b.a.site ? ` · ${b.a.site}` : ""}
+                    </span>
+                    <span className="truncate text-label-sm opacity-75">
+                      {b.a.heures} h{b.a.site ? ` · ${b.a.site}` : ""}
                     </span>
                   </button>
                 )),

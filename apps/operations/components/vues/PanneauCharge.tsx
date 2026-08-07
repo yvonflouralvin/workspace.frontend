@@ -2,13 +2,12 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { ChevronLeftOutlined, ChevronRightOutlined, WarningAmberOutlined } from "@mui/icons-material";
-import { DashboardShell } from "@/components/DashboardShell";
 import {
   TEINTES_TYPE, isoJour, lundiDe, operationsApi,
   type Charge, type TypeDef,
 } from "@/lib/operations-api";
 
-export default function ChargePage() {
+export function PanneauCharge() {
   const [types, setTypes] = useState<TypeDef[]>([]);
   const [typeChoisi, setTypeChoisi] = useState("");
   const [granularite, setGranularite] = useState<"semaine" | "mois">("semaine");
@@ -46,8 +45,8 @@ export default function ChargePage() {
   const maxHeures = Math.max(1, ...planifiees.map((c) => c.heures));
 
   return (
-    <DashboardShell>
-      <div className="mx-auto max-w-[1024px] p-4 md:p-8">
+    <>
+      <div className="p-4 md:p-8">
         <h1 className="font-display text-headline-md text-on-surface">Charge</h1>
         <p className="mt-1 max-w-[62ch] text-body-sm text-on-surface-variant">
           Prestations et heures par ressource. Une prestation à cheval sur deux périodes
@@ -141,6 +140,6 @@ export default function ChargePage() {
           </>
         )}
       </div>
-    </DashboardShell>
+    </>
   );
 }

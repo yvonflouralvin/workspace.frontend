@@ -5,13 +5,12 @@ import { AddOutlined, PlaceOutlined } from "@mui/icons-material";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
 import { ConfirmDialog } from "@repo/ui/ConfirmDialog";
 import { Toast } from "@repo/ui/Toast";
-import { DashboardShell } from "@/components/DashboardShell";
 import { operationsApi, type Occupation, type Site } from "@/lib/operations-api";
 
 const CHAMP =
   "h-9 w-full rounded-lg border border-outline-soft bg-surface-container-lowest px-3 text-body-sm text-on-surface outline-none transition-colors focus:border-primary";
 
-export default function SitesPage() {
+export function PanneauSites() {
   const { can } = usePermissions();
   const peutGerer = can("operations.sites.manage");
 
@@ -43,8 +42,8 @@ export default function SitesPage() {
   useEffect(() => { void charger(); }, [charger]);
 
   return (
-    <DashboardShell>
-      <div className="mx-auto max-w-[1024px] p-4 md:p-8">
+    <>
+      <div className="p-4 md:p-8">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h1 className="font-display text-headline-md text-on-surface">Sites</h1>
@@ -152,7 +151,7 @@ export default function SitesPage() {
         />
       )}
       {toast && <Toast message={toast} onDismiss={() => setToast(null)} />}
-    </DashboardShell>
+    </>
   );
 }
 

@@ -3,14 +3,13 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { CheckCircleOutlined, WarningAmberOutlined } from "@mui/icons-material";
-import { DashboardShell } from "@/components/DashboardShell";
 import { heureCourte, jourCourt, operationsApi, type Affectation } from "@/lib/operations-api";
 
 /** Ce qui a été forcé, réuni en un écran.
  *
  *  Une trace que personne ne consulte ne sert à rien : cet écran est la raison
  *  pour laquelle on enregistre les chevauchements au lieu de les recalculer. */
-export default function ChevauchementsPage() {
+export function PanneauChevauchements() {
   const [lignes, setLignes] = useState<Affectation[] | null>(null);
   const [erreur, setErreur] = useState<string | null>(null);
 
@@ -26,8 +25,8 @@ export default function ChevauchementsPage() {
   useEffect(() => { void charger(); }, [charger]);
 
   return (
-    <DashboardShell>
-      <div className="mx-auto max-w-[1024px] p-4 md:p-8">
+    <>
+      <div className="p-4 md:p-8">
         <h1 className="font-display text-headline-md text-on-surface">Chevauchements</h1>
         <p className="mt-1 max-w-[62ch] text-body-sm text-on-surface-variant">
           Les affectations maintenues malgré un conflit. La justification donnée au moment
@@ -76,6 +75,6 @@ export default function ChevauchementsPage() {
           </div>
         )}
       </div>
-    </DashboardShell>
+    </>
   );
 }

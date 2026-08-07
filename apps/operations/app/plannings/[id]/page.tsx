@@ -8,7 +8,6 @@ import {
   ChevronLeftOutlined,
   ChevronRightOutlined,
   ContentCopyOutlined,
-  DeleteOutlineOutlined,
   WarningAmberOutlined,
 } from "@mui/icons-material";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
@@ -16,20 +15,24 @@ import { ConfirmDialog } from "@repo/ui/ConfirmDialog";
 import { Toast } from "@repo/ui/Toast";
 import { DashboardShell } from "@/components/DashboardShell";
 import { ConflitDialog } from "@/components/ConflitDialog";
+import { DrawerAffectation } from "@/components/DrawerAffectation";
 import { FormulaireAffectation } from "@/components/FormulaireAffectation";
+import { GrilleHoraire } from "@/components/GrilleHoraire";
+import { VueMois } from "@/components/VueMois";
 import {
   ConflitError,
   TEINTES_TYPE,
-  heureCourte,
   isoJour,
   lundiDe,
   operationsApi,
   type Affectation,
   type Conflit,
+  type Lot,
   type Planning,
+  type Site,
 } from "@/lib/operations-api";
 
-const JOURS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
+type Echelle = "jour" | "semaine" | "mois";
 
 export default function PlanningPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -39,64 +42,87 @@ export default function PlanningPage({ params }: { params: Promise<{ id: string 
 
   const [planning, setPlanning] = useState<Planning | null>(null);
   const [affectations, setAffectations] = useState<Affectation[] | null>(null);
-  const [semaine, setSemaine] = useState(() => lundiDe(new Date()));
-  const [ajout, setAjout] = useState<{ jour: Date } | null>(null);
+  const [sites, setSites] = useState<Site[]>([]);
+
+  const [echelle, setEchelle] = useState<Echelle>("semaine");
+  const [ancre, setAncre] = useState(() => new Date());
+
+  const [ajout, setAjout] = useState<{ jour: Date; heure?: number } | null>(null);
+  const [ouverte, setOuverte] = useState<Affectation | null>(null);
   const [conflit, setConflit] = useState<{ conflit: Conflit; reessayer: (m: string) => void } | null>(null);
   const [aSupprimer, setASupprimer] = useState<Affectation | null>(null);
+  const [aDefaire, setADefaire] = useState<string | null>(null);
   const [duplication, setDuplication] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [enCours, setEnCours] = useState(false);
 
-  const fin = useMemo(() => {
-    const d = new Date(semaine);
-    d.setDate(d.getDate() + 7);
-    return d;
-  }, [semaine]);
+  /** La fenêtre observée. Les jours affichés en découlent — c'est la seule
+   *  chose qui change entre les trois échelles. */
+  const fenetre = useMemo(() => {
+    if (echelle === "jour") {
+      const debut = new Date(ancre);
+      debut.setHours(0, 0, 0, 0);
+      return { debut, fin: new Date(debut.getTime() + 86_400_000), jours: [debut] };
+    }
+    if (echelle === "mois") {
+      const debut = new Date(ancre.getFullYear(), ancre.getMonth(), 1);
+      const fin = new Date(ancre.getFullYear(), ancre.getMonth() + 1, 1);
+      // La grille du mois déborde sur les semaines voisines : on charge large,
+      // sinon les cases des bords paraîtraient vides à tort.
+      const large = new Date(debut.getTime() - 7 * 86_400_000);
+      return { debut: large, fin: new Date(fin.getTime() + 7 * 86_400_000), jours: [] };
+    }
+    const debut = lundiDe(ancre);
+    return {
+      debut,
+      fin: new Date(debut.getTime() + 7 * 86_400_000),
+      jours: Array.from({ length: 7 }, (_, i) => new Date(debut.getTime() + i * 86_400_000)),
+    };
+  }, [echelle, ancre]);
 
   const charger = useCallback(async () => {
     try {
-      const [plannings, lignes] = await Promise.all([
+      const [plannings, lignes, listeSites] = await Promise.all([
         operationsApi.plannings(),
         operationsApi.affectations({
           planning_id: planningId,
-          depuis: semaine.toISOString(),
-          jusqu_a: fin.toISOString(),
+          depuis: fenetre.debut.toISOString(),
+          jusqu_a: fenetre.fin.toISOString(),
         }),
+        operationsApi.sites(true),
       ]);
-      setPlanning(plannings.find((p) => p.id === planningId) ?? null);
+      const trouve = plannings.find((p) => p.id === planningId) ?? null;
+      setPlanning(trouve);
+      // Un planning d'un AUTRE workspace n'est pas listé ici : sans ce message,
+      // la page afficherait un calendrier vide et laisserait croire qu'il n'y a
+      // rien de planifié, alors qu'on n'a simplement pas le droit de le voir.
+      setErreur(trouve ? null : "Ce planning n'existe pas dans ce workspace.");
       setAffectations(lignes);
+      setSites(listeSites);
     } catch (e) {
       setErreur(e instanceof Error ? e.message : "Impossible de charger le planning.");
       setAffectations([]);
     }
-  }, [planningId, semaine, fin]);
+  }, [planningId, fenetre.debut, fenetre.fin]);
 
   useEffect(() => {
     void charger();
   }, [charger]);
 
-  /** Les sept colonnes de la semaine. Une affectation qui déborde d'un jour sur
-   *  l'autre apparaît dans la colonne de son DÉBUT — la découper visuellement
-   *  ferait croire à deux prestations. */
-  const parJour = useMemo(() => {
-    const cases: Affectation[][] = [[], [], [], [], [], [], []];
-    for (const a of affectations ?? []) {
-      const index = Math.floor(
-        (new Date(a.debut).setHours(0, 0, 0, 0) - semaine.getTime()) / 86_400_000,
-      );
-      if (index >= 0 && index < 7) cases[index].push(a);
-    }
-    return cases.map((jour) => jour.sort((x, y) => x.debut.localeCompare(y.debut)));
-  }, [affectations, semaine]);
-
   async function poser(corps: Record<string, unknown>) {
     setEnCours(true);
     try {
-      await operationsApi.creerAffectation({ ...corps, planning_id: planningId });
+      const r = await operationsApi.creerAffectation({ ...corps, planning_id: planningId });
       setAjout(null);
       setConflit(null);
-      setToast("Affectation créée.");
+      const lot = "posees" in r ? (r as Lot) : null;
+      setToast(
+        lot
+          ? `${lot.posees.length} créneau(x) posé(s)` +
+            (lot.refusees.length ? `, ${lot.refusees.length} refusé(s) pour conflit.` : ".")
+          : "Affectation créée.",
+      );
       await charger();
     } catch (e) {
       if (e instanceof ConflitError) {
@@ -112,15 +138,54 @@ export default function PlanningPage({ params }: { params: Promise<{ id: string 
     }
   }
 
-  const decaler = (jours: number) => {
-    const d = new Date(semaine);
-    d.setDate(d.getDate() + jours);
-    setSemaine(d);
+  async function enregistrer(corps: Record<string, unknown>) {
+    if (!ouverte) return;
+    setEnCours(true);
+    try {
+      await operationsApi.modifierAffectation(ouverte.id, corps);
+      setOuverte(null);
+      setConflit(null);
+      setToast("Affectation modifiée.");
+      await charger();
+    } catch (e) {
+      if (e instanceof ConflitError) {
+        const cible = ouverte;
+        setOuverte(null);
+        setConflit({
+          conflit: e.conflit,
+          reessayer: async (motif) => {
+            await operationsApi.modifierAffectation(cible.id, { ...corps, motif_forcage: motif });
+            setConflit(null);
+            setToast("Affectation déplacée malgré le conflit.");
+            await charger();
+          },
+        });
+      } else {
+        setErreur(e instanceof Error ? e.message : "Modification impossible.");
+      }
+    } finally {
+      setEnCours(false);
+    }
+  }
+
+  const decaler = (pas: number) => {
+    const d = new Date(ancre);
+    if (echelle === "jour") d.setDate(d.getDate() + pas);
+    else if (echelle === "mois") d.setMonth(d.getMonth() + pas);
+    else d.setDate(d.getDate() + pas * 7);
+    setAncre(d);
   };
+
+  const titrePeriode =
+    echelle === "jour"
+      ? ancre.toLocaleDateString("fr-FR", { weekday: "long", day: "2-digit", month: "long" })
+      : echelle === "mois"
+        ? ancre.toLocaleDateString("fr-FR", { month: "long", year: "numeric" })
+        : `Semaine du ${lundiDe(ancre).toLocaleDateString("fr-FR", { day: "2-digit", month: "long" })}`;
 
   return (
     <DashboardShell>
-      <div className="mx-auto max-w-[1200px] p-4 md:p-8">
+      <div className="mx-auto max-w-[1280px] p-4 md:p-8">
         <Link
           href="/plannings"
           className="inline-flex items-center gap-1 text-body-sm text-on-surface-variant transition-colors hover:text-on-surface"
@@ -133,10 +198,7 @@ export default function PlanningPage({ params }: { params: Promise<{ id: string 
           <div>
             <h1 className="flex items-center gap-2 font-display text-headline-md text-on-surface">
               {planning && (
-                <span
-                  className="h-6 w-1.5 rounded-full"
-                  style={{ backgroundColor: TEINTES_TYPE[planning.type] }}
-                />
+                <span className="h-6 w-1.5 rounded-full" style={{ backgroundColor: TEINTES_TYPE[planning.type] }} />
               )}
               {planning?.nom ?? "…"}
             </h1>
@@ -165,7 +227,7 @@ export default function PlanningPage({ params }: { params: Promise<{ id: string 
               </button>
               <button
                 type="button"
-                onClick={() => setAjout({ jour: semaine })}
+                onClick={() => setAjout({ jour: echelle === "semaine" ? lundiDe(ancre) : ancre })}
                 className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-4 text-body-sm font-semibold text-on-primary shadow-button transition-colors hover:bg-primary-container"
               >
                 <AddOutlined style={{ fontSize: 16 }} />
@@ -175,127 +237,72 @@ export default function PlanningPage({ params }: { params: Promise<{ id: string 
           )}
         </div>
 
-        {/* Navigation de semaine */}
-        <div className="mt-5 flex items-center gap-2">
+        {/* Échelle + navigation */}
+        <div className="mt-5 flex flex-wrap items-center gap-2">
+          <div className="flex rounded-lg border border-outline-soft p-0.5">
+            {(["jour", "semaine", "mois"] as const).map((e) => (
+              <button
+                key={e}
+                type="button"
+                onClick={() => setEchelle(e)}
+                className={`h-8 rounded-md px-3 text-body-sm capitalize transition-colors ${
+                  echelle === e ? "bg-primary text-on-primary" : "text-on-surface-variant hover:bg-surface-container-low"
+                }`}
+              >
+                {e}
+              </button>
+            ))}
+          </div>
           <button
             type="button"
-            onClick={() => decaler(-7)}
-            aria-label="Semaine précédente"
-            className="flex h-9 w-9 items-center justify-center rounded-lg border border-outline-soft text-on-surface-variant transition-colors hover:bg-surface-container-low"
+            aria-label="Période précédente"
+            onClick={() => decaler(-1)}
+            className="flex h-9 w-9 items-center justify-center rounded-lg border border-outline-soft text-on-surface-variant hover:bg-surface-container-low"
           >
             <ChevronLeftOutlined style={{ fontSize: 18 }} />
           </button>
-          <p className="text-body-md text-on-surface">
-            Semaine du {semaine.toLocaleDateString("fr-FR", { day: "2-digit", month: "long" })}
-          </p>
+          <p className="text-body-md capitalize text-on-surface">{titrePeriode}</p>
           <button
             type="button"
-            onClick={() => decaler(7)}
-            aria-label="Semaine suivante"
-            className="flex h-9 w-9 items-center justify-center rounded-lg border border-outline-soft text-on-surface-variant transition-colors hover:bg-surface-container-low"
+            aria-label="Période suivante"
+            onClick={() => decaler(1)}
+            className="flex h-9 w-9 items-center justify-center rounded-lg border border-outline-soft text-on-surface-variant hover:bg-surface-container-low"
           >
             <ChevronRightOutlined style={{ fontSize: 18 }} />
           </button>
           <button
             type="button"
-            onClick={() => setSemaine(lundiDe(new Date()))}
-            className="h-9 rounded-lg border border-outline-soft px-3 text-body-sm text-on-surface-variant transition-colors hover:bg-surface-container-low"
+            onClick={() => setAncre(new Date())}
+            className="h-9 rounded-lg border border-outline-soft px-3 text-body-sm text-on-surface-variant hover:bg-surface-container-low"
           >
-            Cette semaine
+            Aujourd&apos;hui
           </button>
         </div>
 
         {erreur && (
-          <p className="mt-4 rounded-lg bg-error-container/40 px-3 py-2 text-body-sm text-error">
-            {erreur}
-          </p>
+          <p className="mt-4 rounded-lg bg-error-container/40 px-3 py-2 text-body-sm text-error">{erreur}</p>
         )}
 
-        {/* Une colonne par jour. Sur mobile, elles s'empilent — sept colonnes en
-            390 pt donneraient des bandes illisibles. */}
-        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-7">
-          {JOURS.map((nom, index) => {
-            const jour = new Date(semaine);
-            jour.setDate(jour.getDate() + index);
-            const lignes = parJour[index] ?? [];
-            return (
-              <div
-                key={nom}
-                className="rounded-2xl border border-outline-soft bg-surface-container-lowest p-2"
-              >
-                <p className="px-1 pb-2 text-label-md text-on-surface-variant">
-                  {nom} {jour.getDate()}
-                  {lignes.length > 0 && (
-                    <span className="ml-1 text-outline-variant">{lignes.length}</span>
-                  )}
-                </p>
-                <div className="flex flex-col gap-1.5">
-                  {lignes.length === 0 ? (
-                    <button
-                      type="button"
-                      disabled={!peutAffecter}
-                      onClick={() => setAjout({ jour })}
-                      className="rounded-lg border border-dashed border-outline-soft px-2 py-3 text-label-md text-outline transition-colors hover:bg-surface-container-low disabled:cursor-default disabled:hover:bg-transparent"
-                    >
-                      {peutAffecter ? "Affecter" : "—"}
-                    </button>
-                  ) : (
-                    lignes.map((a) => (
-                      <div
-                        key={a.id}
-                        className={`rounded-lg border px-2 py-1.5 ${
-                          a.en_chevauchement
-                            ? "border-error bg-error-container/30"
-                            : "border-outline-soft bg-surface-container-low"
-                        }`}
-                      >
-                        <p className="flex items-center gap-1 text-label-md text-on-surface-variant">
-                          {a.en_chevauchement && (
-                            <WarningAmberOutlined style={{ fontSize: 13 }} className="text-error" />
-                          )}
-                          {heureCourte(a.debut)}–{heureCourte(a.fin)}
-                          <span className="text-outline-variant">· {a.heures} h</span>
-                        </p>
-                        <p className="truncate text-body-sm font-medium text-on-surface">
-                          {a.ressource}
-                        </p>
-                        {a.site && (
-                          <p className="flex items-center gap-1 truncate text-label-md text-on-surface-variant">
-                            {a.site_couleur && (
-                              <span
-                                className="h-2 w-2 flex-none rounded-full"
-                                style={{ backgroundColor: a.site_couleur }}
-                              />
-                            )}
-                            {a.site}
-                          </p>
-                        )}
-                        {a.objet && (
-                          <p className="truncate text-label-md text-outline">{a.objet}</p>
-                        )}
-                        {a.motif_forcage && (
-                          <p className="mt-0.5 text-label-sm text-error" title={a.motif_forcage}>
-                            Forcé : {a.motif_forcage}
-                          </p>
-                        )}
-                        {peutAffecter && (
-                          <button
-                            type="button"
-                            onClick={() => setASupprimer(a)}
-                            aria-label="Retirer l'affectation"
-                            className="mt-1 inline-flex items-center gap-1 text-label-md text-on-surface-variant transition-colors hover:text-error"
-                          >
-                            <DeleteOutlineOutlined style={{ fontSize: 14 }} />
-                            Retirer
-                          </button>
-                        )}
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            );
-          })}
+        <div className="mt-4">
+          {affectations === null ? (
+            <p className="text-body-sm text-on-surface-variant">Chargement…</p>
+          ) : echelle === "mois" ? (
+            <VueMois
+              mois={ancre}
+              affectations={affectations}
+              onJour={(j) => {
+                setAncre(j);
+                setEchelle("jour");
+              }}
+            />
+          ) : (
+            <GrilleHoraire
+              jours={fenetre.jours}
+              affectations={affectations}
+              onCase={({ jour, heure }) => peutAffecter && setAjout({ jour, heure })}
+              onAffectation={setOuverte}
+            />
+          )}
         </div>
       </div>
 
@@ -303,6 +310,7 @@ export default function PlanningPage({ params }: { params: Promise<{ id: string 
         <FormulaireAffectation
           planning={planning}
           jour={ajout.jour}
+          heure={ajout.heure}
           enCours={enCours}
           onClose={() => setAjout(null)}
           onSubmit={poser}
@@ -325,6 +333,25 @@ export default function PlanningPage({ params }: { params: Promise<{ id: string 
         />
       )}
 
+      {ouverte && (
+        <DrawerAffectation
+          affectation={ouverte}
+          sites={sites}
+          peutModifier={peutAffecter}
+          enCours={enCours}
+          onClose={() => setOuverte(null)}
+          onEnregistrer={enregistrer}
+          onSupprimer={() => {
+            setASupprimer(ouverte);
+            setOuverte(null);
+          }}
+          onDefaireLot={(lotId) => {
+            setADefaire(lotId);
+            setOuverte(null);
+          }}
+        />
+      )}
+
       {conflit && (
         <ConflitDialog
           conflit={conflit.conflit}
@@ -337,7 +364,7 @@ export default function PlanningPage({ params }: { params: Promise<{ id: string 
       {aSupprimer && (
         <ConfirmDialog
           title="Retirer cette affectation ?"
-          message={`${aSupprimer.ressource} — ${heureCourte(aSupprimer.debut)}–${heureCourte(aSupprimer.fin)}. Les marques de chevauchement associées disparaissent avec elle.`}
+          message={`${aSupprimer.ressource} — les marques de chevauchement associées disparaissent avec elle.`}
           confirmLabel="Retirer"
           onCancel={() => setASupprimer(null)}
           onConfirm={async () => {
@@ -354,13 +381,34 @@ export default function PlanningPage({ params }: { params: Promise<{ id: string 
         />
       )}
 
+      {aDefaire && (
+        <ConfirmDialog
+          title="Défaire tout le lot ?"
+          message="Tous les créneaux posés en même temps que celui-ci seront retirés — y compris les occurrences répétées des autres semaines."
+          confirmLabel="Défaire"
+          onCancel={() => setADefaire(null)}
+          onConfirm={async () => {
+            try {
+              const r = await operationsApi.defaireLot(aDefaire);
+              setToast(`${r.retirees} créneau(x) retiré(s).`);
+              await charger();
+            } catch (e) {
+              setErreur(e instanceof Error ? e.message : "Opération impossible.");
+            } finally {
+              setADefaire(null);
+            }
+          }}
+        />
+      )}
+
       {duplication && (
         <DialogueDuplication
-          semaine={semaine}
+          semaine={lundiDe(ancre)}
           onClose={() => setDuplication(false)}
           onDone={async (decalage) => {
             setEnCours(true);
             try {
+              const semaine = lundiDe(ancre);
               const r = await operationsApi.dupliquer({
                 planning_id: planningId,
                 source_debut: isoJour(semaine),
@@ -407,12 +455,9 @@ function DialogueDuplication({
         </div>
         <div className="flex flex-col gap-3 px-5 py-4">
           <p className="text-body-sm text-on-surface-variant">
-            Recopie les affectations de la semaine du{" "}
-            {semaine.toLocaleDateString("fr-FR")} vers celle du{" "}
-            <span className="font-medium text-on-surface">
-              {cible.toLocaleDateString("fr-FR")}
-            </span>
-            .
+            Recopie les affectations de la semaine du {semaine.toLocaleDateString("fr-FR")} vers
+            celle du{" "}
+            <span className="font-medium text-on-surface">{cible.toLocaleDateString("fr-FR")}</span>.
           </p>
           <label className="flex flex-col gap-1">
             <span className="text-label-md text-on-surface-variant">Décalage (semaines)</span>
@@ -426,24 +471,15 @@ function DialogueDuplication({
             />
           </label>
           <p className="text-label-md text-on-surface-variant">
-            Les copies qui tomberaient hors de la période du planning, ou sur une ressource
-            déjà prise, sont refusées et vous seront rapportées — rien n&apos;est omis en
-            silence.
+            Les copies hors période, ou sur une ressource déjà prise, sont refusées et vous
+            seront rapportées — rien n&apos;est omis en silence.
           </p>
         </div>
         <div className="flex justify-end gap-2 border-t border-outline-soft px-5 py-3">
-          <button
-            type="button"
-            onClick={onClose}
-            className="h-9 rounded-lg px-4 text-body-sm font-medium text-on-surface-variant transition-colors hover:bg-surface-container-low"
-          >
+          <button type="button" onClick={onClose} className="h-9 rounded-lg px-4 text-body-sm font-medium text-on-surface-variant hover:bg-surface-container-low">
             Annuler
           </button>
-          <button
-            type="button"
-            onClick={() => onDone(semaines * 7)}
-            className="h-9 rounded-lg bg-primary px-4 text-body-sm font-semibold text-on-primary shadow-button transition-colors"
-          >
+          <button type="button" onClick={() => onDone(semaines * 7)} className="h-9 rounded-lg bg-primary px-4 text-body-sm font-semibold text-on-primary shadow-button">
             Dupliquer
           </button>
         </div>

@@ -134,6 +134,35 @@ export interface Occupation {
   heures: number;
 }
 
+export type StatutReservation = "DEMANDEE" | "ACCEPTEE" | "REFUSEE";
+
+export interface Salle {
+  id: number;
+  libelle: string;
+  capacite: number | null;
+  categorie: string | null;
+  active: boolean;
+  attributs: Record<string, unknown>;
+}
+
+export interface Reservation {
+  id: number;
+  salle_id: number;
+  salle: string | null;
+  capacite: number | null;
+  objet: string | null;
+  debut: string;
+  fin: string;
+  heures: number;
+  statut: StatutReservation;
+  demandeur_user_id: number | null;
+  demandeur: string | null;
+  decide_le: string | null;
+  motif_decision: string | null;
+  motif_forcage: string | null;
+  en_chevauchement: boolean;
+}
+
 export interface Page<T> {
   items: T[];
   total: number;
@@ -257,6 +286,26 @@ export const operationsApi = {
     ),
   chevauchements: (planning_id?: number) =>
     apiFetch(`/api/chevauchements${qs({ planning_id })}`).then((r) => lire<Affectation[]>(r)),
+
+  // — Salles et réservations —
+  salles: () => apiFetch("/api/salles").then((r) => lire<Salle[]>(r)),
+  reservations: (
+    params: { salle_id?: number; statut?: string; depuis?: string; jusqu_a?: string } = {},
+  ) => apiFetch(`/api/reservations${qs(params)}`).then((r) => lire<Reservation[]>(r)),
+  reserver: (corps: Record<string, unknown>) =>
+    apiFetch("/api/reservations", { method: "POST", body: corps }).then((r) =>
+      lire<Reservation>(r),
+    ),
+  accepter: (id: number, motif?: string) =>
+    apiFetch(`/api/reservations/${id}/accepter`, { method: "POST", body: { motif } }).then((r) =>
+      lire<Reservation>(r),
+    ),
+  refuser: (id: number, motif: string) =>
+    apiFetch(`/api/reservations/${id}/refuser`, { method: "POST", body: { motif } }).then((r) =>
+      lire<Reservation>(r),
+    ),
+  annulerReservation: (id: number) =>
+    apiFetch(`/api/reservations/${id}`, { method: "DELETE" }).then((r) => lire<void>(r)),
 
   // — Vues —
   charge: (reference: string, granularite: "semaine" | "mois", type?: string) =>

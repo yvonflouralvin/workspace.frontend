@@ -7,7 +7,6 @@ import { ConfirmDialog } from "@repo/ui/ConfirmDialog";
 import { Pagination } from "@repo/ui/Pagination";
 import { SearchField } from "@repo/ui/SearchField";
 import { Toast } from "@repo/ui/Toast";
-import { DashboardShell } from "@/components/DashboardShell";
 import { FormulaireRessource } from "@/components/FormulaireRessource";
 import { ImportRH } from "@/components/ImportRH";
 import {
@@ -19,7 +18,7 @@ import {
   type TypePlanning,
 } from "@/lib/operations-api";
 
-export default function RessourcesPage() {
+export function PanneauRessources() {
   const { can } = usePermissions();
   const peutGerer = can("operations.ressources.manage");
 
@@ -58,8 +57,8 @@ export default function RessourcesPage() {
   }, [charger]);
 
   return (
-    <DashboardShell>
-      <div className="mx-auto max-w-[1024px] p-4 md:p-8">
+    <>
+      <div className="p-4 md:p-8">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h1 className="font-display text-headline-md text-on-surface">Ressources</h1>
@@ -273,6 +272,6 @@ export default function RessourcesPage() {
       )}
 
       {toast && <Toast message={toast} onDismiss={() => setToast(null)} />}
-    </DashboardShell>
+    </>
   );
 }

@@ -222,17 +222,13 @@ export const OPERATIONS_SHELL: AppShellConfig = {
   appIcon: "O",
   appColor: "#0f766e",
   routeLabels: {
-    "/plannings":   "Plannings",
-    "/ressources":  "Ressources",
-    "/sites":       "Sites",
-    "/charge":      "Charge",
-    "/parametres":  "Paramètres",
+    "/plannings":  "Plannings",
+    "/salles":     "Salles",
+    "/parametres": "Paramètres",
   },
   routeIcons: {
-    "/plannings":  <EventOutlined style={s(15)} />,
-    "/ressources": <GroupsOutlined style={s(15)} />,
-    "/sites":      <PlaceOutlined style={s(15)} />,
-    "/charge":     <QueryStatsOutlined style={s(15)} />,
+    "/plannings": <EventOutlined style={s(15)} />,
+    "/salles":    <PlaceOutlined style={s(15)} />,
   },
 };
 

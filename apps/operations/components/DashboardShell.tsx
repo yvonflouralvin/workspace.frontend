@@ -11,15 +11,16 @@ import { WorkspaceSwitcher } from "@repo/ui/WorkspaceSwitcher";
 import { PLATFORM_APPS, OPERATIONS_SHELL } from "@repo/ui/shell/platform";
 import {
   EventOutlined,
-  GroupsOutlined,
   HomeOutlined,
-  PlaceOutlined,
-  QueryStatsOutlined,
+  MeetingRoomOutlined,
   SettingsOutlined,
-  WarningAmberOutlined,
 } from "@mui/icons-material";
 import type { NavItem } from "@repo/ui/types/shell";
 
+// Un menu = un SUJET d'opérations, pas un écran. Ce qu'on regarde d'un sujet se
+// choisit dans la page, par un sélecteur — sans quoi cette barre s'allongerait
+// d'un cran à chaque écran ajouté, et le lien entre écrans d'un même sujet se
+// perdrait.
 const NAV_ITEMS: NavItem[] = [
   {
     label: "Accueil",
@@ -28,10 +29,7 @@ const NAV_ITEMS: NavItem[] = [
     exact: true,
   },
   { label: "Plannings",  href: "/plannings",  icon: <EventOutlined style={{ fontSize: 20 }} /> },
-  { label: "Ressources", href: "/ressources", icon: <GroupsOutlined style={{ fontSize: 20 }} /> },
-  { label: "Sites",      href: "/sites",      icon: <PlaceOutlined style={{ fontSize: 20 }} /> },
-  { label: "Charge",     href: "/charge",     icon: <QueryStatsOutlined style={{ fontSize: 20 }} /> },
-  { label: "Chevauchements", href: "/chevauchements", icon: <WarningAmberOutlined style={{ fontSize: 20 }} /> },
+  { label: "Salles",     href: "/salles",     icon: <MeetingRoomOutlined style={{ fontSize: 20 }} /> },
   { label: "Paramètres", href: "/parametres", icon: <SettingsOutlined style={{ fontSize: 20 }} /> },
 ];
 

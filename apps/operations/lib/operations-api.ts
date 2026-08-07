@@ -121,6 +121,11 @@ export interface Planning {
   note: string | null;
   affectations_count: number;
   chevauchements_count: number;
+  /** Vide = aucune restriction : n'importe quelle ressource du bon type. */
+  ressource_ids: number[];
+  reservation_mode: "APPROBATION" | "AUTOMATIQUE" | null;
+  /** Adresse publique du formulaire de réservation. Nulle = pas ouvert. */
+  reservation_url: string | null;
 }
 
 export interface Affectation {
@@ -361,6 +366,14 @@ export const operationsApi = {
   dupliquer: (corps: Record<string, unknown>) =>
     apiFetch("/api/affectations/dupliquer", { method: "POST", body: corps }).then((r) =>
       lire<Lot>(r),
+    ),
+  ouvrirLienReservation: (id: number, mode: "APPROBATION" | "AUTOMATIQUE") =>
+    apiFetch(`/api/plannings/${id}/lien-reservation`, { method: "POST", body: { mode } }).then(
+      (r) => lire<{ url: string; mode: string }>(r),
+    ),
+  fermerLienReservation: (id: number) =>
+    apiFetch(`/api/plannings/${id}/lien-reservation`, { method: "DELETE" }).then((r) =>
+      lire<void>(r),
     ),
   rapportPlanning: (id: number) =>
     apiFetch(`/api/plannings/${id}/rapport`).then((r) => lire<RapportPlanning>(r)),

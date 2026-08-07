@@ -18,6 +18,7 @@ import { DashboardShell } from "@/components/DashboardShell";
 import { ConflitDialog } from "@/components/ConflitDialog";
 import { DrawerAffectation, type Repetition } from "@/components/DrawerAffectation";
 import { FormulaireAffectation } from "@/components/FormulaireAffectation";
+import { PanneauLienReservation } from "@/components/PanneauLienReservation";
 import { VueJour } from "@/components/VueJour";
 import { VueMois } from "@/components/VueMois";
 import { VueSemaine } from "@/components/VueSemaine";
@@ -41,6 +42,7 @@ export default function PlanningPage({ params }: { params: Promise<{ id: string 
   const planningId = Number(id);
   const { can } = usePermissions();
   const peutAffecter = can("operations.affectations.manage");
+  const peutGerer = can("operations.plannings.manage");
 
   const [planning, setPlanning] = useState<Planning | null>(null);
   const [affectations, setAffectations] = useState<Affectation[] | null>(null);
@@ -333,6 +335,11 @@ export default function PlanningPage({ params }: { params: Promise<{ id: string 
             />
           )}
         </div>
+        {/* Ouvrir à la réservation ne vaut que pour des espaces : on ne se
+            réserve pas un intervenant par un lien public. */}
+        {planning?.type === "ESPACE" && peutGerer && (
+          <PanneauLienReservation planning={planning} onChange={charger} />
+        )}
       </div>
 
       {ajout && planning && (

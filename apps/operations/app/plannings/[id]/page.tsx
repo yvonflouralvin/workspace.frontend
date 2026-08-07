@@ -15,7 +15,7 @@ import { ConfirmDialog } from "@repo/ui/ConfirmDialog";
 import { Toast } from "@repo/ui/Toast";
 import { DashboardShell } from "@/components/DashboardShell";
 import { ConflitDialog } from "@/components/ConflitDialog";
-import { DrawerAffectation } from "@/components/DrawerAffectation";
+import { DrawerAffectation, type Repetition } from "@/components/DrawerAffectation";
 import { FormulaireAffectation } from "@/components/FormulaireAffectation";
 import { VueJour } from "@/components/VueJour";
 import { VueMois } from "@/components/VueMois";
@@ -139,14 +139,25 @@ export default function PlanningPage({ params }: { params: Promise<{ id: string 
     }
   }
 
-  async function enregistrer(corps: Record<string, unknown>) {
+  async function enregistrer(corps: Record<string, unknown>, repetition: Repetition) {
     if (!ouverte) return;
     setEnCours(true);
     try {
       await operationsApi.modifierAffectation(ouverte.id, corps);
+      // La série se complète APRÈS le déplacement : c'est le créneau corrigé qui
+      // sert de modèle, sinon on répéterait l'ancien jour de semaine.
+      const lot =
+        repetition === "hebdomadaire"
+          ? await operationsApi.repeterAffectation(ouverte.id)
+          : null;
       setOuverte(null);
       setConflit(null);
-      setToast("Affectation modifiée.");
+      setToast(
+        lot
+          ? `Affectation modifiée, ${lot.posees.length} occurrence(s) ajoutée(s)` +
+            (lot.refusees.length ? `, ${lot.refusees.length} refusée(s) pour conflit.` : ".")
+          : "Affectation modifiée.",
+      );
       await charger();
     } catch (e) {
       if (e instanceof ConflitError) {
@@ -344,6 +355,7 @@ export default function PlanningPage({ params }: { params: Promise<{ id: string 
       {ouverte && (
         <DrawerAffectation
           affectation={ouverte}
+          planning={planning}
           sites={sites}
           peutModifier={peutAffecter}
           enCours={enCours}

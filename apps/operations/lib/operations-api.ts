@@ -277,6 +277,12 @@ export const operationsApi = {
     ),
   supprimerAffectation: (id: number) =>
     apiFetch(`/api/affectations/${id}`, { method: "DELETE" }).then((r) => lire<void>(r)),
+  /** Rend hebdomadaire un créneau déjà posé : le créneau d'origine reste le
+   *  même, les occurrences manquantes de la période sont ajoutées au lot. */
+  repeterAffectation: (id: number) =>
+    apiFetch(`/api/affectations/${id}/repeter`, { method: "POST", body: {} }).then((r) =>
+      lire<Lot>(r),
+    ),
   affecterGroupe: (corps: Record<string, unknown>) =>
     apiFetch("/api/affectations/groupe", { method: "POST", body: corps }).then((r) => lire<Lot>(r)),
   defaireLot: (lotId: string) =>

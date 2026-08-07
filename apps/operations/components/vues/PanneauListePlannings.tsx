@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   AddOutlined,
   EventOutlined,
+  InsightsOutlined,
   WarningAmberOutlined,
 } from "@mui/icons-material";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
@@ -130,45 +131,69 @@ export function PanneauListePlannings() {
             </p>
           </div>
         ) : (
-          <div className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-2">
-            {filtres.map((p) => (
-              <Link
-                key={p.id}
-                href={`/plannings/${p.id}`}
-                className="rounded-2xl border border-outline-soft bg-surface-container-lowest p-4 transition-colors hover:border-outline-variant"
-              >
-                <div className="flex items-start gap-3">
-                  <span
-                    className="mt-0.5 h-9 w-1.5 flex-none rounded-full"
-                    style={{ backgroundColor: TEINTES_TYPE[p.type] }}
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p className="flex flex-wrap items-center gap-2 text-body-md font-medium text-on-surface">
-                      {p.nom}
+          /* Une liste, pas des cartes : on compare des plannings entre eux —
+             période, volume, conflits — et une colonne se compare d'un coup
+             d'œil là où une carte oblige à relire chaque bloc. */
+          <div className="mt-6 overflow-x-auto rounded-2xl border border-outline-soft bg-surface-container-lowest">
+            <table className="w-full min-w-[720px] border-collapse text-left">
+              <thead>
+                <tr className="border-b border-outline-soft bg-surface-row-alt">
+                  <Th>Planning</Th>
+                  <Th>Type</Th>
+                  <Th>Période</Th>
+                  <Th align="right">Affectations</Th>
+                  <Th>Statut</Th>
+                  <Th align="right">Rapport</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtres.map((p) => (
+                  <tr key={p.id} className="border-b border-hairline last:border-b-0 hover:bg-surface-container-low">
+                    <td className="px-4 py-2.5">
+                      <Link href={`/plannings/${p.id}`} className="flex items-center gap-2 min-w-0">
+                        <span
+                          className="h-4 w-1 flex-none rounded-full"
+                          style={{ backgroundColor: TEINTES_TYPE[p.type] }}
+                        />
+                        <span className="truncate text-body-sm font-medium text-on-surface">{p.nom}</span>
+                        {p.chevauchements_count > 0 && (
+                          <span
+                            className="inline-flex flex-none items-center gap-0.5 text-label-sm text-error"
+                            title={`${p.chevauchements_count} créneau(x) en chevauchement`}
+                          >
+                            <WarningAmberOutlined style={{ fontSize: 13 }} />
+                            {p.chevauchements_count}
+                          </span>
+                        )}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-2.5 text-body-sm text-on-surface-variant">
+                      {types.find((t) => t.cle === p.type)?.libelle ?? p.type}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-2.5 text-body-sm text-on-surface-variant">
+                      {new Date(p.debut).toLocaleDateString("fr-FR")} → {new Date(p.fin).toLocaleDateString("fr-FR")}
+                    </td>
+                    <td className="px-4 py-2.5 text-right text-body-sm tabular-nums text-on-surface">
+                      {p.affectations_count}
+                    </td>
+                    <td className="px-4 py-2.5">
                       <span className="rounded-full bg-surface-container px-2 py-0.5 text-label-sm text-on-surface-variant">
                         {LIBELLES_STATUT[p.statut] ?? p.statut}
                       </span>
-                    </p>
-                    <p className="mt-0.5 text-body-sm text-on-surface-variant">
-                      Du {new Date(p.debut).toLocaleDateString("fr-FR")} au{" "}
-                      {new Date(p.fin).toLocaleDateString("fr-FR")}
-                    </p>
-                    <p className="mt-1 flex flex-wrap items-center gap-x-3 text-label-md text-outline">
-                      <span>
-                        {p.affectations_count} affectation
-                        {p.affectations_count > 1 ? "s" : ""}
-                      </span>
-                      {p.chevauchements_count > 0 && (
-                        <span className="inline-flex items-center gap-1 text-error">
-                          <WarningAmberOutlined style={{ fontSize: 14 }} />
-                          {p.chevauchements_count} en chevauchement
-                        </span>
-                      )}
-                    </p>
-                  </div>
-                </div>
-              </Link>
-            ))}
+                    </td>
+                    <td className="px-4 py-2.5 text-right">
+                      <Link
+                        href={`/plannings/${p.id}/rapport`}
+                        className="inline-flex items-center gap-1 text-label-md text-primary hover:underline"
+                      >
+                        <InsightsOutlined style={{ fontSize: 15 }} />
+                        Voir
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
@@ -186,6 +211,18 @@ export function PanneauListePlannings() {
       )}
       {toast && <Toast message={toast} onDismiss={() => setToast(null)} />}
     </>
+  );
+}
+
+function Th({ children, align }: { children: React.ReactNode; align?: "right" }) {
+  return (
+    <th
+      className={`px-4 py-2 text-label-sm uppercase tracking-wide text-outline ${
+        align === "right" ? "text-right" : "text-left"
+      }`}
+    >
+      {children}
+    </th>
   );
 }
 

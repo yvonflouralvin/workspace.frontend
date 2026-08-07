@@ -8,6 +8,7 @@ import {
   ChevronLeftOutlined,
   ChevronRightOutlined,
   ContentCopyOutlined,
+  InsightsOutlined,
   WarningAmberOutlined,
 } from "@mui/icons-material";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
@@ -227,8 +228,16 @@ export default function PlanningPage({ params }: { params: Promise<{ id: string 
               </p>
             )}
           </div>
-          {peutAffecter && (
-            <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2">
+            <Link
+              href={`/plannings/${planningId}/rapport`}
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-outline-soft px-3 text-body-sm font-medium text-on-surface-variant transition-colors hover:bg-surface-container-low"
+            >
+              <InsightsOutlined style={{ fontSize: 16 }} />
+              Rapport
+            </Link>
+            {peutAffecter && (
+              <>
               <button
                 type="button"
                 onClick={() => setDuplication(true)}
@@ -245,8 +254,9 @@ export default function PlanningPage({ params }: { params: Promise<{ id: string 
                 <AddOutlined style={{ fontSize: 16 }} />
                 Affecter
               </button>
-            </div>
-          )}
+              </>
+            )}
+          </div>
         </div>
 
         {/* Échelle + navigation */}

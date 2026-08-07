@@ -17,8 +17,9 @@ import { DashboardShell } from "@/components/DashboardShell";
 import { ConflitDialog } from "@/components/ConflitDialog";
 import { DrawerAffectation } from "@/components/DrawerAffectation";
 import { FormulaireAffectation } from "@/components/FormulaireAffectation";
-import { GrilleHoraire } from "@/components/GrilleHoraire";
+import { VueJour } from "@/components/VueJour";
 import { VueMois } from "@/components/VueMois";
+import { VueSemaine } from "@/components/VueSemaine";
 import {
   ConflitError,
   TEINTES_TYPE,
@@ -295,11 +296,18 @@ export default function PlanningPage({ params }: { params: Promise<{ id: string 
                 setEchelle("jour");
               }}
             />
+          ) : echelle === "jour" ? (
+            <VueJour
+              jour={fenetre.jours[0]}
+              affectations={affectations}
+              onCase={peutAffecter ? (jour, heure) => setAjout({ jour, heure }) : undefined}
+              onAffectation={setOuverte}
+            />
           ) : (
-            <GrilleHoraire
+            <VueSemaine
               jours={fenetre.jours}
               affectations={affectations}
-              onCase={({ jour, heure }) => peutAffecter && setAjout({ jour, heure })}
+              onJourVide={peutAffecter ? (jour) => setAjout({ jour }) : undefined}
               onAffectation={setOuverte}
             />
           )}

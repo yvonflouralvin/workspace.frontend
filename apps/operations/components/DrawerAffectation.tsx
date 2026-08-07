@@ -2,10 +2,16 @@
 
 import { useState } from "react";
 import { CloseOutlined, WarningAmberOutlined } from "@mui/icons-material";
-import { heureCourte, type Affectation, type Site } from "@/lib/operations-api";
+import { heureCourte, type Affectation, type Planning, type Site } from "@/lib/operations-api";
 
 const CHAMP =
   "h-9 w-full rounded-lg border border-outline-soft bg-surface-container-lowest px-3 text-body-sm text-on-surface outline-none transition-colors focus:border-primary";
+
+const JOURS_SEMAINE = [
+  "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche",
+];
+
+export type Repetition = "unique" | "hebdomadaire";
 
 /** Le détail d'une affectation, et sa modification, dans un tiroir de droite.
  *
@@ -13,6 +19,7 @@ const CHAMP =
  *  déplace un créneau, ce qui est exactement ce qu'on veut vérifier. */
 export function DrawerAffectation({
   affectation,
+  planning,
   sites,
   peutModifier,
   enCours,
@@ -22,11 +29,14 @@ export function DrawerAffectation({
   onDefaireLot,
 }: {
   affectation: Affectation;
+  /** Absent pour une réservation de salle : sans planning, il n'y a pas de
+   *  période sur laquelle répéter, et le choix ne s'affiche pas. */
+  planning?: Planning | null;
   sites: Site[];
   peutModifier: boolean;
   enCours?: boolean;
   onClose: () => void;
-  onEnregistrer: (corps: Record<string, unknown>) => void;
+  onEnregistrer: (corps: Record<string, unknown>, repetition: Repetition) => void;
   onSupprimer: () => void;
   onDefaireLot?: (lotId: string) => void;
 }) {
@@ -39,8 +49,10 @@ export function DrawerAffectation({
   const [siteId, setSiteId] = useState<number | "">(affectation.site_id ?? "");
   const [objet, setObjet] = useState(affectation.objet ?? "");
   const [edition, setEdition] = useState(false);
+  const [repetition, setRepetition] = useState<Repetition>("unique");
 
   const finJour = fin <= debut ? jourSuivant(date) : date;
+  const jourNomme = JOURS_SEMAINE[(new Date(`${date}T12:00:00`).getDay() + 6) % 7];
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-overlay animate-overlay-in" onClick={onClose}>
@@ -96,23 +108,23 @@ export function DrawerAffectation({
                 terme="Créneau"
                 valeur={`${heureCourte(affectation.debut)} → ${heureCourte(affectation.fin)}`}
               />
-              {affectation.lot_id && (
-                <div>
-                  <dt className="text-label-md text-on-surface-variant">Lot</dt>
-                  <dd className="mt-0.5 text-body-sm text-on-surface">
-                    Posée avec d&apos;autres, d&apos;un seul geste.
-                    {onDefaireLot && peutModifier && (
-                      <button
-                        type="button"
-                        onClick={() => onDefaireLot(affectation.lot_id!)}
-                        className="ml-2 text-label-md text-error"
-                      >
-                        Défaire tout le lot
-                      </button>
-                    )}
-                  </dd>
-                </div>
-              )}
+              <div>
+                <dt className="text-label-md text-on-surface-variant">Quand</dt>
+                <dd className="mt-0.5 text-body-sm text-on-surface">
+                  {affectation.lot_id
+                    ? `Fait partie d'une série posée d'un seul geste — ce ${jourNomme} en est une occurrence.`
+                    : `Le ${jourNomme} ${new Date(affectation.debut).toLocaleDateString("fr-FR")} seulement.`}
+                  {affectation.lot_id && onDefaireLot && peutModifier && (
+                    <button
+                      type="button"
+                      onClick={() => onDefaireLot(affectation.lot_id!)}
+                      className="ml-2 text-label-md text-error"
+                    >
+                      Défaire toute la série
+                    </button>
+                  )}
+                </dd>
+              </div>
             </dl>
           ) : (
             <div className="flex flex-col gap-3">
@@ -152,8 +164,51 @@ export function DrawerAffectation({
                 <span className="text-label-md text-on-surface-variant">Objet</span>
                 <input value={objet} onChange={(e) => setObjet(e.target.value)} className={CHAMP} />
               </label>
+              {/* Le même choix qu'à la création : une date précise, ou ce jour
+                  de semaine sur toute la période du planning. Il manquait ici,
+                  si bien qu'un créneau posé une fois ne pouvait plus devenir
+                  hebdomadaire autrement qu'en le ressaisissant. */}
+              {planning && (
+                <div className="flex flex-col gap-1">
+                  <span className="text-label-md text-on-surface-variant">Quand</span>
+                  {([
+                    ["unique", `Ce ${jourNomme} ${new Date(`${date}T12:00:00`).toLocaleDateString("fr-FR")} seulement`],
+                    ["hebdomadaire", `Tous les ${jourNomme}s de la période du planning`],
+                  ] as const).map(([cle, libelle]) => (
+                    <label
+                      key={cle}
+                      className={`flex cursor-pointer items-start gap-2 rounded-lg border px-3 py-2 transition-colors ${
+                        repetition === cle
+                          ? "border-primary bg-surface-container-low"
+                          : "border-outline-soft hover:bg-surface-container-low"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="repetition-edition"
+                        checked={repetition === cle}
+                        onChange={() => setRepetition(cle)}
+                        className="mt-0.5"
+                      />
+                      <span className="text-body-sm text-on-surface">{libelle}</span>
+                    </label>
+                  ))}
+                  {repetition === "hebdomadaire" && (
+                    <p className="text-label-md text-on-surface-variant">
+                      Un créneau est ajouté pour chaque {jourNomme} entre le{" "}
+                      {new Date(planning.debut).toLocaleDateString("fr-FR")} et le{" "}
+                      {new Date(planning.fin).toLocaleDateString("fr-FR")}. Les dates déjà
+                      couvertes sont laissées telles quelles, et celles en conflit sont
+                      refusées sans annuler les autres.
+                    </p>
+                  )}
+                </div>
+              )}
+
               <p className="text-label-md text-on-surface-variant">
-                Cette modification ne touche que ce créneau, même s&apos;il fait partie d&apos;un lot.
+                {repetition === "unique"
+                  ? "Cette modification ne touche que ce créneau, même s'il fait partie d'une série."
+                  : "Ce créneau est modifié, puis la série est complétée à partir de lui."}
               </p>
             </div>
           )}
@@ -189,12 +244,15 @@ export function DrawerAffectation({
                   type="button"
                   disabled={enCours}
                   onClick={() =>
-                    onEnregistrer({
-                      debut: `${date}T${debut}:00`,
-                      fin: `${finJour}T${fin}:00`,
-                      site_id: siteId === "" ? null : Number(siteId),
-                      objet: objet.trim() || null,
-                    })
+                    onEnregistrer(
+                      {
+                        debut: `${date}T${debut}:00`,
+                        fin: `${finJour}T${fin}:00`,
+                        site_id: siteId === "" ? null : Number(siteId),
+                        objet: objet.trim() || null,
+                      },
+                      repetition,
+                    )
                   }
                   className="h-9 rounded-lg bg-primary px-4 text-body-sm font-semibold text-on-primary shadow-button disabled:opacity-50"
                 >

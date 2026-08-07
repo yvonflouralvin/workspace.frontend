@@ -90,34 +90,41 @@ export function GrilleHoraire({
         </button>
       )}
 
-      <div className="overflow-x-auto">
-        <div className="min-w-[860px]">
-          {/* En-tête des jours */}
-          <div className="grid grid-cols-[56px_repeat(7,1fr)] gap-1">
-            <div />
+      {/* Un vrai tableau : des filets sur les DEUX axes. Sans séparateurs
+          verticaux, les lignes d'heures traversaient toute la largeur et la
+          grille se lisait comme une succession de traits vides. */}
+      <div className="overflow-x-auto rounded-2xl border border-outline-variant">
+        <div style={{ minWidth: jours.length > 1 ? 780 : 320 }}>
+          <div
+            className="grid"
+            style={{ gridTemplateColumns: `52px repeat(${jours.length}, minmax(0, 1fr))` }}
+          >
+            {/* En-tête, collé en haut au défilement : sur 18 lignes, savoir de
+                quel jour est la colonne compte plus que quelques pixels. */}
+            <div className="sticky top-0 z-10 border-b border-outline-variant bg-surface-container-low" />
             {jours.map((j) => {
               const aujourdhui = j.toDateString() === new Date().toDateString();
               return (
                 <div
                   key={j.toISOString()}
-                  className={`px-1 pb-1 text-center ${aujourdhui ? "text-primary" : "text-on-surface-variant"}`}
+                  className={`sticky top-0 z-10 border-b border-l border-outline-variant bg-surface-container-low px-1 py-1.5 text-center ${
+                    aujourdhui ? "text-primary" : "text-on-surface-variant"
+                  }`}
                 >
-                  <p className="text-label-md capitalize">
-                    {j.toLocaleDateString("fr-FR", { weekday: "short" })}
-                  </p>
-                  <p className="text-body-sm font-medium">{j.getDate()}</p>
+                  <span className="text-label-md capitalize">
+                    {j.toLocaleDateString("fr-FR", { weekday: "short" })}{" "}
+                  </span>
+                  <span className="text-body-sm font-medium">{j.getDate()}</span>
                 </div>
               );
             })}
-          </div>
 
-          {/* Une ligne par heure */}
-          <div className="grid grid-cols-[56px_repeat(7,1fr)] gap-1">
             {heures.map((h) => (
               <FragmentHeure
                 key={h}
                 heure={h}
                 jours={jours}
+                detaille={jours.length === 1}
                 cases={cases}
                 deplie={deplie}
                 setDeplie={setDeplie}
@@ -135,6 +142,7 @@ export function GrilleHoraire({
 function FragmentHeure({
   heure,
   jours,
+  detaille,
   cases,
   deplie,
   setDeplie,
@@ -143,15 +151,24 @@ function FragmentHeure({
 }: {
   heure: number;
   jours: Date[];
+  detaille: boolean;
   cases: Affectation[][][];
   deplie: string | null;
   setDeplie: (v: string | null) => void;
   onCase?: (c: CaseCliquee) => void;
   onAffectation?: (a: Affectation) => void;
 }) {
+  // Les heures ouvrables sont laissées claires, les autres légèrement teintées :
+  // l'œil trouve la plage de travail sans avoir à lire les libellés.
+  const ouvrable = heure >= 8 && heure < 18;
+
   return (
     <>
-      <div className="border-t border-hairline py-1 pr-1 text-right text-label-md text-outline">
+      <div
+        className={`flex min-h-[30px] items-start justify-end border-t border-outline-soft px-1.5 pt-0.5 text-label-md text-outline ${
+          ouvrable ? "bg-surface-container-lowest" : "bg-surface-container-low/60"
+        }`}
+      >
         {String(heure).padStart(2, "0")} h
       </div>
       {jours.map((jour, j) => {
@@ -160,11 +177,14 @@ function FragmentHeure({
         const ouvert = deplie === cle;
         const visibles = ouvert ? lignes : lignes.slice(0, MAX_PAR_CASE);
         const reste = lignes.length - visibles.length;
+        const weekend = jour.getDay() === 0 || jour.getDay() === 6;
 
         return (
           <div
             key={cle}
-            className="min-h-[38px] border-t border-hairline p-0.5"
+            className={`min-h-[30px] border-l border-t border-outline-soft p-0.5 ${
+              ouvrable && !weekend ? "bg-surface-container-lowest" : "bg-surface-container-low/60"
+            }`}
             onDoubleClick={() => onCase?.({ jour, heure, affectations: lignes })}
           >
             {lignes.length === 0 ? (
@@ -172,7 +192,7 @@ function FragmentHeure({
                 type="button"
                 onClick={() => onCase?.({ jour, heure, affectations: [] })}
                 aria-label={`Affecter le ${jour.toLocaleDateString("fr-FR")} à ${heure} h`}
-                className="h-full min-h-[34px] w-full rounded text-label-sm text-transparent transition-colors hover:bg-surface-container-low hover:text-outline"
+                className="h-full min-h-[26px] w-full rounded text-label-sm text-transparent transition-colors hover:bg-surface-container hover:text-outline"
               >
                 +
               </button>
@@ -184,7 +204,11 @@ function FragmentHeure({
                     type="button"
                     onClick={() => onAffectation?.(a)}
                     title={`${a.ressource} · ${heureCourte(a.debut)}–${heureCourte(a.fin)}${a.site ? ` · ${a.site}` : ""}`}
-                    className={`flex w-full items-center gap-1 rounded px-1 py-0.5 text-left transition-colors ${
+                    className={`flex max-w-full items-center gap-1 rounded px-1 py-0.5 text-left transition-colors ${
+                      // Une seule colonne : une vignette pleine largeur ferait un ruban
+                      // de 1 200 px pour trois mots. Elle épouse son contenu.
+                      detaille ? "w-fit" : "w-full"
+                    } ${
                       a.en_chevauchement
                         ? "bg-error-container/50 hover:bg-error-container"
                         : "bg-surface-container-low hover:bg-surface-container"
@@ -200,6 +224,12 @@ function FragmentHeure({
                       <WarningAmberOutlined style={{ fontSize: 11 }} className="flex-none text-error" />
                     )}
                     <span className="truncate text-label-md text-on-surface">{a.ressource}</span>
+                    {detaille && (
+                      <span className="flex-none text-label-sm text-on-surface-variant">
+                        {heureCourte(a.debut)}–{heureCourte(a.fin)}
+                        {a.site ? ` · ${a.site}` : ""}
+                      </span>
+                    )}
                   </button>
                 ))}
                 {reste > 0 && (

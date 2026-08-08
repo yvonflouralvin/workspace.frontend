@@ -243,9 +243,13 @@ function ChampDelai({
   onChange: (v: string) => void;
 }) {
   const heures = Number(valeur);
+  // Jours ENTIERS, avec « ≈ » quand le compte ne tombe pas juste : « 8,3 jours »
+  // n'aide personne, et « 8 jours » présenté comme exact serait faux.
   const enJours =
     valeur.trim() && Number.isFinite(heures) && heures >= 24
-      ? `${Math.round((heures / 24) * 10) / 10} jour${heures >= 48 ? "s" : ""}`
+      ? `${heures % 24 === 0 ? "" : "≈ "}${Math.round(heures / 24)} jour${
+          heures >= 48 ? "s" : ""
+        }`
       : null;
 
   return (

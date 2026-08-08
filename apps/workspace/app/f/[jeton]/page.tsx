@@ -53,6 +53,22 @@ export default function FormulairePublicPage() {
 
         {forme && (
           <Questionnaire
+            onOccupations={async (question, ressource, jour) => {
+              const params = new URLSearchParams({
+                question_id: String(question.id),
+                jour,
+                ...(ressource ? { ressource } : {}),
+              });
+              const r = await fetch(
+                `/api/public/formulaires/${jeton}/creneaux?${params.toString()}`,
+              );
+              if (!r.ok) throw new Error("indisponible");
+              const d = await r.json();
+              // Une source qui n'a pas répondu n'est pas une journée libre :
+              // on lève, l'écran affiche « indisponible » plutôt que « rien ».
+              if (d.indisponible) throw new Error("indisponible");
+              return d.occupes ?? [];
+            }}
             titre={forme.titre}
             description={forme.description}
             sections={forme.sections}

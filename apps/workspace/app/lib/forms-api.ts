@@ -17,7 +17,9 @@ export type TypeQuestion =
   | "DATE"
   | "EMAIL"
   | "ECHELLE"
-  | "FICHIER";
+  | "FICHIER"
+  | "HEURE"
+  | "CRENEAU";
 
 export const TYPES_QUESTION: { cle: TypeQuestion; libelle: string; aOptions: boolean }[] = [
   { cle: "TEXTE_COURT", libelle: "Texte court", aOptions: false },
@@ -30,6 +32,8 @@ export const TYPES_QUESTION: { cle: TypeQuestion; libelle: string; aOptions: boo
   { cle: "EMAIL", libelle: "Adresse e-mail", aOptions: false },
   { cle: "ECHELLE", libelle: "Échelle", aOptions: false },
   { cle: "FICHIER", libelle: "Fichier", aOptions: false },
+  { cle: "HEURE", libelle: "Heure", aOptions: false },
+  { cle: "CRENEAU", libelle: "Créneau", aOptions: false },
 ];
 
 /** Plafond absolu d'un dépôt, aligné sur le serveur. Un concepteur ne doit pas
@@ -68,6 +72,20 @@ export const STATUT_LABELS: Record<string, string> = {
   CLOS: "Clos",
 };
 
+export interface ConfigQuestion {
+  min?: number;
+  max?: number;
+  extensions?: string[];
+  taille_max_mo?: number;
+  /** Clé posée par l'application qui a créé le formulaire. */
+  cle?: string;
+  /** CRENEAU : la clé de la question qui porte la ressource concernée. */
+  ressource_cle?: string;
+  /** CRENEAU : bornes de date acceptées. */
+  date_min?: string;
+  date_max?: string;
+}
+
 export interface Question {
   id: number;
   section_id: number | null;
@@ -77,7 +95,7 @@ export interface Question {
   aide: string | null;
   obligatoire: boolean;
   options: string[];
-  config: { min?: number; max?: number; extensions?: string[]; taille_max_mo?: number };
+  config: ConfigQuestion;
   supprimee?: boolean;
   /** Combien de réponses cette question porte — et donc ce qui s'y fige. */
   nb_reponses: number;
@@ -91,7 +109,7 @@ export interface QuestionEcrite {
   aide?: string | null;
   obligatoire: boolean;
   options: string[];
-  config: { min?: number; max?: number; extensions?: string[]; taille_max_mo?: number };
+  config: ConfigQuestion;
 }
 
 export interface Collaborateur {

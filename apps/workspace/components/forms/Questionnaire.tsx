@@ -33,6 +33,7 @@ export function Questionnaire({
   banniereUrl,
   recuUrl,
   onDeposer,
+  onOccupations,
   onEnvoyer,
 }: {
   titre: string;
@@ -51,12 +52,30 @@ export function Questionnaire({
   /** Lien du PDF de la réponse, une fois envoyée. */
   recuUrl?: string | null;
   onDeposer?: (question: Question, fichier: File) => Promise<Depot>;
+  /** Va chercher ce qui est déjà pris, pour une question de créneau. */
+  onOccupations?: (
+    question: Question,
+    ressource: string | null,
+    jour: string,
+  ) => Promise<{ debut: string; fin: string }[]>;
   onEnvoyer: (
     reponses: { question_id: number; valeur: unknown }[],
     identite: { nom: string | null; email: string | null }
   ) => void;
 }) {
   const [valeurs, setValeurs] = useState<Record<number, unknown>>({});
+
+  /** La ressource qu'une question de créneau observe.
+   *
+   *  Elle est portée par UNE AUTRE question, désignée par sa clé. C'est
+   *  l'écran qui fait le lien : le champ, lui, ne voit que sa propre valeur. */
+  const ressourceDe = (question: Question): string | null => {
+    const cle = question.config?.ressource_cle;
+    if (!cle) return null;
+    const porteuse = questions.find((q) => q.config?.cle === cle);
+    const v = porteuse ? valeurs[porteuse.id] : null;
+    return typeof v === "string" ? v : null;
+  };
   const [nom, setNom] = useState("");
   const [email, setEmail] = useState("");
   const [etape, setEtape] = useState(0);
@@ -250,6 +269,8 @@ export function Questionnaire({
             )}
             <div className="mt-3">
               <ChampReponse
+                ressource={ressourceDe(question)}
+                onOccupations={onOccupations}
                 question={question}
                 valeur={valeurs[question.id]}
                 disabled={busy}

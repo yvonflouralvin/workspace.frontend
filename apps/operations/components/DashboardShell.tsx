@@ -12,6 +12,7 @@ import { PLATFORM_APPS, OPERATIONS_SHELL } from "@repo/ui/shell/platform";
 import {
   EventOutlined,
   HomeOutlined,
+  BoltOutlined,
   MeetingRoomOutlined,
   SettingsOutlined,
 } from "@mui/icons-material";
@@ -30,6 +31,7 @@ const NAV_ITEMS: NavItem[] = [
   },
   { label: "Plannings",  href: "/plannings",  icon: <EventOutlined style={{ fontSize: 20 }} /> },
   { label: "Salles",     href: "/salles",     icon: <MeetingRoomOutlined style={{ fontSize: 20 }} /> },
+  { label: "Groupes",    href: "/groupes",    icon: <BoltOutlined style={{ fontSize: 20 }} /> },
   { label: "Paramètres", href: "/parametres", icon: <SettingsOutlined style={{ fontSize: 20 }} /> },
 ];
 

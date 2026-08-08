@@ -2,6 +2,7 @@ import { apiFetch, type ApiFetchInit } from "@repo/network/client";
 import type {
   Member,
   Group,
+  LienRapide,
   AppPermissionGroup,
   AppSettingGroup,
   WorkspaceDetail,
@@ -132,6 +133,28 @@ export async function createGroup(
   return parseResponse(response);
 }
 
+export async function getGroup(workspaceId: number, groupId: number): Promise<Group> {
+  const response = await apiFetch(`/api/workspaces/${workspaceId}/groups/${groupId}`);
+  return parseResponse(response);
+}
+
+export async function setGroupAccueil(
+  workspaceId: number,
+  groupId: number,
+  payload: {
+    landing_app_key?: string | null;
+    accueil_personnalise?: boolean;
+    priorite_accueil?: number;
+    liens_rapides?: Omit<LienRapide, "id">[];
+  },
+): Promise<Group> {
+  const response = await apiFetch(
+    `/api/workspaces/${workspaceId}/groups/${groupId}/accueil`,
+    jsonRequest("PUT", payload),
+  );
+  return parseResponse(response);
+}
+
 export async function updateGroup(
   workspaceId: number,
   groupId: number,
@@ -226,6 +249,17 @@ export async function updateWorkspacePolicy(
   const response = await apiFetch(
     `/api/workspaces/${workspaceId}`,
     jsonRequest("PATCH", { restrict_members_to_workspace: restrictMembersToWorkspace })
+  );
+  return parseResponse(response);
+}
+
+export async function updateWorkspaceTimezone(
+  workspaceId: number,
+  timezone: string | null
+): Promise<WorkspaceDetail> {
+  const response = await apiFetch(
+    `/api/workspaces/${workspaceId}`,
+    jsonRequest("PATCH", { timezone })
   );
   return parseResponse(response);
 }

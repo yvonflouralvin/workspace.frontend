@@ -2,35 +2,46 @@
 
 import { use, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowBackOutlined, WarningAmberOutlined } from "@mui/icons-material";
+import {
+  ArrowBackOutlined,
+  UpcomingOutlined,
+  HistoryOutlined,
+  WarningAmberOutlined,
+} from "@mui/icons-material";
 import { DashboardShell } from "@/components/DashboardShell";
 import { CarteUtilisation, Kpi } from "@/components/Mesures";
 import { heureCourte, operationsApi, type ActiviteRessource } from "@/lib/operations-api";
 
-/** Fenêtres proposées. Une fenêtre d'un jour donnerait une « moyenne
- *  hebdomadaire » de huit heures multipliées par sept — juste arithmétiquement,
- *  absurde comme jugement. On ne descend donc pas sous la semaine. */
-const FENETRES = [
-  { cle: "7", libelle: "7 jours", jours: 7 },
-  { cle: "28", libelle: "4 semaines", jours: 28 },
-  { cle: "90", libelle: "3 mois", jours: 90 },
-] as const;
+/** Fenêtres proposées, et leur SENS.
+ *
+ *  Un planning se lit vers l'avant : regarder en arrière par défaut cachait
+ *  tout ce qui est réservé, c'est-à-dire l'essentiel de ce qu'on vient voir.
+ *  Le passé reste accessible, il se demande — et le libellé dit lequel des
+ *  deux on regarde, « 4 semaines » seul ne le disait pas.
+ *
+ *  On ne descend pas sous la semaine : un seul jour donnerait une « moyenne
+ *  hebdomadaire » de huit heures multipliées par sept. */
+const DUREES = [7, 30, 90] as const;
 
 export default function RessourcePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const ressourceId = Number(id);
 
-  const [jours, setJours] = useState<number>(28);
+  // Deux réglages distincts, parce que ce sont deux questions distinctes :
+  // « dans quel sens je regarde » et « sur quelle profondeur ». Les mêler en
+  // une seule rangée de boutons rendait « 90 derniers jours » inatteignable.
+  const [passe, setPasse] = useState(false);
+  const [jours, setJours] = useState<number>(30);
   const [activite, setActivite] = useState<ActiviteRessource | null>(null);
   const [erreur, setErreur] = useState<string | null>(null);
 
   const charger = useCallback(async () => {
     setActivite(null);
     try {
-      const fin = new Date();
-      fin.setHours(0, 0, 0, 0);
-      fin.setDate(fin.getDate() + 1);
-      const debut = new Date(fin.getTime() - jours * 86_400_000);
+      const minuit = new Date();
+      minuit.setHours(0, 0, 0, 0);
+      const debut = passe ? new Date(minuit.getTime() - jours * 86_400_000) : minuit;
+      const fin = new Date(debut.getTime() + jours * 86_400_000);
       setActivite(
         await operationsApi.activiteRessource(ressourceId, {
           depuis: debut.toISOString(),
@@ -41,7 +52,7 @@ export default function RessourcePage({ params }: { params: Promise<{ id: string
     } catch (e) {
       setErreur(e instanceof Error ? e.message : "Activité indisponible.");
     }
-  }, [ressourceId, jours]);
+  }, [ressourceId, passe, jours]);
 
   useEffect(() => {
     void charger();
@@ -76,21 +87,47 @@ export default function RessourcePage({ params }: { params: Promise<{ id: string
               {activite && !activite.ressource.active && " · inactive"}
             </p>
           </div>
-          <div className="flex rounded-lg border border-outline-soft p-0.5">
-            {FENETRES.map((f) => (
-              <button
-                key={f.cle}
-                type="button"
-                onClick={() => setJours(f.jours)}
-                className={`h-8 rounded-md px-3 text-body-sm transition-colors ${
-                  jours === f.jours
-                    ? "bg-primary text-on-primary"
-                    : "text-on-surface-variant hover:bg-surface-container-low"
-                }`}
-              >
-                {f.libelle}
-              </button>
-            ))}
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex rounded-lg border border-outline-soft p-0.5">
+              {([
+                [false, "À venir"],
+                [true, "Passé"],
+              ] as const).map(([valeur, libelle]) => (
+                <button
+                  key={libelle}
+                  type="button"
+                  onClick={() => setPasse(valeur)}
+                  className={`inline-flex h-8 items-center gap-1 rounded-md px-3 text-body-sm transition-colors ${
+                    passe === valeur
+                      ? "bg-primary text-on-primary"
+                      : "text-on-surface-variant hover:bg-surface-container-low"
+                  }`}
+                >
+                  {valeur ? (
+                    <HistoryOutlined style={{ fontSize: 15 }} />
+                  ) : (
+                    <UpcomingOutlined style={{ fontSize: 15 }} />
+                  )}
+                  {libelle}
+                </button>
+              ))}
+            </div>
+            <div className="flex rounded-lg border border-outline-soft p-0.5">
+              {DUREES.map((d) => (
+                <button
+                  key={d}
+                  type="button"
+                  onClick={() => setJours(d)}
+                  className={`h-8 rounded-md px-3 text-body-sm transition-colors ${
+                    jours === d
+                      ? "bg-surface-container text-on-surface"
+                      : "text-on-surface-variant hover:bg-surface-container-low"
+                  }`}
+                >
+                  {d} j
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -101,7 +138,12 @@ export default function RessourcePage({ params }: { params: Promise<{ id: string
             <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
               <Kpi libelle="Heures sur la période" valeur={activite.totaux.heures} unite="h" />
               <Kpi libelle="Créneaux" valeur={activite.totaux.creneaux} />
-              <Kpi libelle="Plannings" valeur={activite.totaux.plannings} />
+              <Kpi
+                libelle="Demandes en attente"
+                valeur={activite.totaux.en_attente}
+                alerte={activite.totaux.en_attente > 0}
+                note="Elles n'occupent pas encore le créneau"
+              />
               <Kpi libelle="Sites" valeur={activite.totaux.sites} />
             </div>
 
@@ -121,14 +163,23 @@ export default function RessourcePage({ params }: { params: Promise<{ id: string
             <p className="mt-2 text-label-md text-outline">
               Moyennes ramenées à la durée réelle de la fenêtre ({activite.fenetre.semaines}{" "}
               semaine{activite.fenetre.semaines > 1 ? "s" : ""}), pas au nombre de semaines
-              entamées.
+              entamées. Les demandes en attente n&apos;y entrent pas : elles n&apos;occupent
+              rien tant que personne n&apos;a tranché.
             </p>
 
             <section className="mt-8">
-              <h2 className="text-headline-sm text-on-surface">Affectations</h2>
+              <h2 className="text-headline-sm text-on-surface">
+                {passe ? "Affectations passées" : "Affectations à venir"}
+                <span className="ml-2 text-body-sm font-normal text-on-surface-variant">
+                  {new Date(activite.fenetre.depuis).toLocaleDateString("fr-FR")} →{" "}
+                  {new Date(activite.fenetre.jusqu_a).toLocaleDateString("fr-FR")}
+                </span>
+              </h2>
               {activite.affectations.length === 0 ? (
                 <p className="mt-2 rounded-2xl border border-outline-soft bg-surface-container-lowest px-4 py-8 text-center text-body-sm text-on-surface-variant">
-                  Aucune affectation sur cette période.
+                  {passe
+                    ? "Aucune affectation sur cette période."
+                    : "Rien de prévu sur cette période."}
                 </p>
               ) : (
                 <div className="mt-2 overflow-x-auto rounded-2xl border border-outline-soft bg-surface-container-lowest">
@@ -140,6 +191,7 @@ export default function RessourcePage({ params }: { params: Promise<{ id: string
                         <Th align="right">Heures</Th>
                         <Th>Site</Th>
                         <Th>Objet</Th>
+                        <Th>Statut</Th>
                         <Th>Planning</Th>
                       </tr>
                     </thead>
@@ -178,7 +230,16 @@ export default function RessourcePage({ params }: { params: Promise<{ id: string
                             </span>
                           </td>
                           <td className="px-4 py-2.5 text-body-sm text-on-surface-variant">
-                            {a.objet ?? "—"}
+                            {a.objet ?? a.demandeur ?? "—"}
+                          </td>
+                          <td className="px-4 py-2.5">
+                            {a.statut === "DEMANDEE" ? (
+                              <span className="rounded-full bg-surface-container px-2 py-0.5 text-label-sm text-on-surface-variant">
+                                En attente
+                              </span>
+                            ) : (
+                              <span className="text-label-sm text-secondary">Confirmé</span>
+                            )}
                           </td>
                           <td className="px-4 py-2.5 text-body-sm">
                             {a.planning_id ? (

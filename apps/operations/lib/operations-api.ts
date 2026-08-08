@@ -81,13 +81,18 @@ export interface ActiviteRessource {
     active: boolean; heures_hebdo_cible: number | null; heures_mensuel_cible: number | null;
   };
   fenetre: { depuis: string; jusqu_a: string; jours: number; semaines: number };
-  totaux: { heures: number; creneaux: number; plannings: number; sites: number };
+  totaux: {
+    heures: number; creneaux: number; plannings: number; sites: number;
+    en_attente: number;
+  };
   moyennes: { hebdomadaire: number; mensuelle: number };
   utilisation: { hebdomadaire: Verdict; mensuelle: Verdict };
   affectations: {
     id: number; debut: string; fin: string; heures: number; objet: string | null;
     site: string | null; site_couleur: string | null;
-    planning_id: number | null; planning: string | null; en_chevauchement: boolean;
+    planning_id: number | null; planning: string | null;
+    statut: "ACCEPTEE" | "DEMANDEE"; demandeur: string | null;
+    en_chevauchement: boolean;
   }[];
   affectations_tronquees: number;
 }

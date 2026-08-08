@@ -24,6 +24,7 @@ import { Toast } from "@repo/ui/Toast";
 import { projectsApi, toneFor, type Project, type Task } from "@/app/lib/projects-api";
 import { listAuditLogs, listNotificationChannels, listMembers } from "@/app/lib/api";
 import type { AuditLog } from "@/app/lib/types";
+import { AccueilRaccourcis } from "@/components/AccueilRaccourcis";
 
 const SECTION_LABEL = "text-label-sm uppercase text-outline";
 
@@ -62,7 +63,7 @@ function cleOnboarding(workspaceId?: number | string) {
 }
 
 export default function HomePage() {
-  const { user, activeWorkspace } = useSessionStore();
+  const { user, activeWorkspace, accueil } = useSessionStore();
   const { can } = usePermissions();
   const { unreadCount } = useNotifications("/api/notifications");
 
@@ -77,11 +78,23 @@ export default function HomePage() {
   const [toast, setToast] = useState<{ message: string; tone: "success" | "error" } | null>(null);
 
   const canInvite = can("members.invite");
+
+  // Un groupe peut remplacer les widgets par des accès rapides. On le décide
+  // AVANT de charger projets, tâches et journal : les afficher pour ne jamais
+  // les montrer serait autant d'appels réseau pour rien.
+  const raccourcis =
+    accueil?.accueil_personnalise && (accueil.liens_rapides?.length ?? 0) > 0
+      ? accueil
+      : null;
   const canManageProjects = can("projects.manage");
   const canManageSettings = can("workspace.settings.manage");
   const workspaceId = activeWorkspace?.id;
 
   useEffect(() => {
+    if (raccourcis) {
+      setLoading(false);
+      return;
+    }
     Promise.all([
       projectsApi.listProjects().catch(() => [] as Project[]),
       projectsApi.myTasks().catch(() => [] as Task[]),
@@ -96,8 +109,9 @@ export default function HomePage() {
   // Blocs facultatifs : chaque source est gardée par sa permission et n'échoue
   // jamais la page — un bloc sans droit ou sans donnée disparaît, c'est tout.
   useEffect(() => {
+    if (raccourcis) return;
     listApprovalTasks().then(setApprovals).catch(() => setApprovals([]));
-  }, []);
+  }, [raccourcis]);
 
   useEffect(() => {
     if (!can("audit_logs.view")) return;
@@ -153,6 +167,10 @@ export default function HomePage() {
     } catch {
       setToast({ message: "La décision n'a pas pu être enregistrée.", tone: "error" });
     }
+  }
+
+  if (raccourcis) {
+    return <AccueilRaccourcis accueil={raccourcis} prenom={user?.username} />;
   }
 
   return (

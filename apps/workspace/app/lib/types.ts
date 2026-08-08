@@ -33,6 +33,18 @@ export interface Member {
   last_login_at?: string | null;
 }
 
+export interface LienRapide {
+  id?: number;
+  libelle: string;
+  description: string | null;
+  /** Clé de l'app cible, jamais une URL : les domaines changent d'un
+   *  environnement à l'autre. Le front recompose l'adresse. */
+  app_key: string;
+  chemin: string | null;
+  icone: string | null;
+  position: number;
+}
+
 export interface Group {
   id: number;
   name: string;
@@ -41,6 +53,19 @@ export interface Group {
   is_system: boolean;
   permissions: GroupRef[];
   member_count: number;
+  /** Écran d'accueil. Nuls / faux / 100 = comportement par défaut. */
+  landing_app_key: string | null;
+  accueil_personnalise: boolean;
+  priorite_accueil: number;
+  liens_rapides: LienRapide[];
+}
+
+/** Ce que la session rend sur l'accueil résolu du membre. */
+export interface AccueilResolu {
+  landing_app_key: string | null;
+  accueil_personnalise: boolean;
+  liens_rapides: LienRapide[];
+  groupe: { id: number; name: string } | null;
 }
 
 export type SettingType = "text" | "date" | "single_choice" | "multi_choice";
@@ -85,6 +110,8 @@ export interface WorkspaceDetail {
   slug: string;
   type: WorkspaceType;
   restrict_members_to_workspace: boolean;
+  /** Fuseau IANA du workspace. Nul = celui du serveur. */
+  timezone: string | null;
   auth_provider: AuthProvider | null;
   auth_provider_config: Record<string, string> | null;
 }

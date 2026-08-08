@@ -2,15 +2,14 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowBackOutlined, AddOutlined } from "@mui/icons-material";
+import { ArrowBackOutlined, AddOutlined, ChevronRightOutlined, HomeOutlined } from "@mui/icons-material";
 import { useSessionStore } from "@repo/auth/store/session.store";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
 import { ConfirmDialog } from "@repo/ui/ConfirmDialog";
 import { Toast } from "@repo/ui/Toast";
 import { listGroups, listPermissions, deleteGroup, ApiError } from "@/app/lib/api";
 import type { Group, AppPermissionGroup } from "@/app/lib/types";
-import { GroupTree } from "@/components/GroupTree";
-import { GroupEditorPanel } from "@/components/GroupEditorPanel";
+import { SearchField } from "@repo/ui/SearchField";
 import { CreateGroupModal } from "@/components/CreateGroupModal";
 
 export default function GroupsPage() {
@@ -19,7 +18,7 @@ export default function GroupsPage() {
 
   const [groups, setGroups] = useState<Group[]>([]);
   const [permissionCatalog, setPermissionCatalog] = useState<AppPermissionGroup[]>([]);
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [recherche, setRecherche] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   // `undefined` = modale fermée, `null` = création à la racine, sinon le parent.
@@ -52,7 +51,6 @@ export default function GroupsPage() {
     try {
       await deleteGroup(workspaceId, pendingDeletion.id);
       setGroups((prev) => prev.filter((g) => g.id !== pendingDeletion.id));
-      setSelectedId((id) => (id === pendingDeletion.id ? null : id));
       setToast({ message: `Groupe « ${pendingDeletion.name} » supprimé.`, tone: "success" });
       setPendingDeletion(null);
     } catch (err) {
@@ -76,10 +74,14 @@ export default function GroupsPage() {
     );
   }
 
-  const selectedGroup = groups.find((g) => g.id === selectedId) ?? null;
-  const hasChildren = selectedGroup
-    ? groups.some((g) => g.parent_id === selectedGroup.id)
-    : false;
+  const filtres = groups.filter((g) => {
+    const q = recherche.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      g.name.toLowerCase().includes(q) ||
+      (g.description ?? "").toLowerCase().includes(q)
+    );
+  });
 
   return (
     <div className="p-4 md:p-8 max-w-[1024px] mx-auto">
@@ -113,37 +115,105 @@ export default function GroupsPage() {
         </p>
       )}
 
+      <div className="mb-4">
+        <SearchField
+          value={recherche}
+          onChange={setRecherche}
+          placeholder="Rechercher un groupe…"
+          className="w-full sm:w-[280px]"
+        />
+      </div>
+
       {loading ? (
         <p className="text-body-md text-on-surface-variant">Chargement…</p>
+      ) : filtres.length === 0 ? (
+        <div className="rounded-2xl border border-outline-soft bg-surface-container-lowest px-4 py-10 text-center">
+          <p className="text-body-md text-on-surface">
+            {recherche ? "Aucun groupe ne correspond." : "Aucun groupe."}
+          </p>
+          <p className="mt-1 text-body-sm text-on-surface-variant">
+            Un groupe rassemble des droits, et peut aussi décider de l&apos;écran
+            d&apos;accueil de ses membres.
+          </p>
+        </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-          <GroupTree
-            groups={groups}
-            selectedId={selectedId}
-            onSelect={(group) => setSelectedId(group.id)}
-            onAddSubgroup={(parent) => setCreateParent(parent)}
-          />
-
-          <div className="rounded-2xl border border-outline-soft bg-surface-container-lowest p-5">
-            {selectedGroup ? (
-              <GroupEditorPanel
-                workspaceId={workspaceId!}
-                group={selectedGroup}
-                hasChildren={hasChildren}
-                permissionCatalog={permissionCatalog}
-                onUpdated={(updated) => {
-                  setGroups((prev) => prev.map((g) => (g.id === updated.id ? updated : g)));
-                  setToast({ message: "Groupe enregistré.", tone: "success" });
-                }}
-                onRequestDelete={() => setPendingDeletion(selectedGroup)}
-                onError={(message) => setToast({ message, tone: "error" })}
-              />
-            ) : (
-              <p className="py-12 text-center text-body-md text-on-surface-variant">
-                Sélectionnez un groupe pour voir ses détails.
-              </p>
-            )}
-          </div>
+        /* Une liste : on compare des groupes entre eux — droits, membres,
+           accueil configuré — et une colonne se compare d'un coup d'œil. Le
+           détail, lui, a sa propre page. */
+        <div className="overflow-x-auto rounded-2xl border border-outline-soft bg-surface-container-lowest">
+          <table className="w-full min-w-[720px] border-collapse text-left">
+            <thead>
+              <tr className="border-b border-outline-soft bg-surface-row-alt">
+                <Th>Groupe</Th>
+                <Th align="right">Droits</Th>
+                <Th align="right">Membres</Th>
+                <Th>Accueil</Th>
+                <Th align="right" />
+              </tr>
+            </thead>
+            <tbody>
+              {filtres.map((g) => {
+                const parent = g.parent_id
+                  ? groups.find((x) => x.id === g.parent_id)
+                  : null;
+                const accueilRegle =
+                  g.landing_app_key || (g.accueil_personnalise && g.liens_rapides.length > 0);
+                return (
+                  <tr
+                    key={g.id}
+                    className="border-b border-hairline last:border-b-0 hover:bg-surface-container-low"
+                  >
+                    <td className="px-4 py-2.5">
+                      <Link
+                        href={`/members/groups/${g.id}`}
+                        className="text-body-sm font-medium text-on-surface hover:underline"
+                      >
+                        {g.name}
+                      </Link>
+                      {g.is_system && (
+                        <span className="ml-2 rounded-full bg-surface-container px-2 py-0.5 text-label-sm text-on-surface-variant">
+                          Système
+                        </span>
+                      )}
+                      {parent && (
+                        <p className="text-label-sm text-outline">Sous-groupe de {parent.name}</p>
+                      )}
+                      {g.description && (
+                        <p className="mt-0.5 max-w-[46ch] truncate text-label-md text-on-surface-variant">
+                          {g.description}
+                        </p>
+                      )}
+                    </td>
+                    <td className="px-4 py-2.5 text-right text-body-sm tabular-nums text-on-surface-variant">
+                      {g.permissions.length}
+                    </td>
+                    <td className="px-4 py-2.5 text-right text-body-sm tabular-nums text-on-surface-variant">
+                      {g.member_count}
+                    </td>
+                    <td className="px-4 py-2.5">
+                      {accueilRegle ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-secondary/15 px-2 py-0.5 text-label-sm text-secondary">
+                          <HomeOutlined style={{ fontSize: 12 }} />
+                          Configuré
+                        </span>
+                      ) : (
+                        <span className="text-label-md text-outline">Par défaut</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-2.5 text-right">
+                      <Link
+                        href={`/members/groups/${g.id}`}
+                        aria-label={`Ouvrir ${g.name}`}
+                        className="inline-flex text-on-surface-variant hover:text-primary"
+                      >
+                        <ChevronRightOutlined style={{ fontSize: 18 }} />
+                      </Link>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       )}
 
@@ -154,7 +224,6 @@ export default function GroupsPage() {
           onClose={() => setCreateParent(undefined)}
           onCreated={(group) => {
             setGroups((prev) => [...prev, group]);
-            setSelectedId(group.id);
             setToast({ message: `Groupe « ${group.name} » créé.`, tone: "success" });
           }}
         />
@@ -173,5 +242,17 @@ export default function GroupsPage() {
 
       {toast && <Toast message={toast.message} tone={toast.tone} onDismiss={() => setToast(null)} />}
     </div>
+  );
+}
+
+function Th({ children, align }: { children?: React.ReactNode; align?: "right" }) {
+  return (
+    <th
+      className={`px-4 py-2 text-label-sm uppercase tracking-wide text-outline ${
+        align === "right" ? "text-right" : "text-left"
+      }`}
+    >
+      {children}
+    </th>
   );
 }

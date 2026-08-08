@@ -13,6 +13,8 @@ export interface SessionState {
   activeWorkspace: ActiveWorkspace | null;
   workspaces: Workspace[];
   groups: SessionGroup[];
+  /** Écran d'accueil résolu depuis les groupes. Absent = comportement par défaut. */
+  accueil?: SessionResponse["accueil"];
   permissions: string[];
 
   hydrate: (session: SessionResponse) => void;
@@ -29,6 +31,7 @@ export function createSessionStore(initialSession?: SessionResponse) {
     activeWorkspace: initialSession?.active_workspace ?? null,
     workspaces: initialSession?.workspaces ?? [],
     groups: initialSession?.groups ?? [],
+    accueil: initialSession?.accueil,
     permissions: initialSession?.permissions ?? [],
     hydrate(session: SessionResponse) {
       if (!session.authenticated) {
@@ -43,6 +46,7 @@ export function createSessionStore(initialSession?: SessionResponse) {
         activeWorkspace: session.active_workspace,
         workspaces: session.workspaces,
         groups: session.groups,
+        accueil: session.accueil,
         permissions: session.permissions,
       });
     },
@@ -67,6 +71,7 @@ export function createSessionStore(initialSession?: SessionResponse) {
           activeWorkspace: session.active_workspace,
           workspaces: session.workspaces,
           groups: session.groups,
+        accueil: session.accueil,
           permissions: session.permissions,
         });
 
@@ -99,6 +104,7 @@ export function createSessionStore(initialSession?: SessionResponse) {
         activeWorkspace: null,
         workspaces: [],
         groups: [],
+        accueil: undefined,
         permissions: [],
       });
     },

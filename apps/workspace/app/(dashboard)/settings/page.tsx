@@ -26,6 +26,7 @@ import { usePermissions } from "@repo/auth/hooks/usePermissions";
 import { SearchField } from "@repo/ui/SearchField";
 import { SettingRow, isInlineSetting, type SettingRowState } from "@repo/ui/SettingRow";
 import { Switch } from "@repo/ui/Switch";
+import { FuseauHoraireBlock } from "@/components/FuseauHoraireBlock";
 import { MobileAppBlock } from "@repo/ui/MobileAppBlock";
 import { Toast } from "@repo/ui/Toast";
 import {
@@ -353,6 +354,18 @@ export default function SettingsPage() {
                       onError={(message) => setToast({ message, tone: "error" })}
                     />
                   )}
+
+                {workspaceDetail && (
+                  <FuseauHoraireBlock
+                    workspaceId={workspaceId!}
+                    workspaceDetail={workspaceDetail}
+                    onUpdated={(detail) => {
+                      setWorkspaceDetail(detail);
+                      setToast({ message: "Fuseau horaire enregistré.", tone: "success" });
+                    }}
+                    onError={(message) => setToast({ message, tone: "error" })}
+                  />
+                )}
 
                 <NotificationsBlock
                   channels={channels}

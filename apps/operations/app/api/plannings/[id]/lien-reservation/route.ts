@@ -10,6 +10,13 @@ export async function POST(request: NextRequest, { params }: Params) {
   return forwardToBackend(request, API, `/plannings/${id}/lien-reservation`);
 }
 
+// Régler les délais SANS régénérer le lien : ce sont deux gestes distincts, et
+// le second casse les adresses déjà partagées.
+export async function PUT(request: NextRequest, { params }: Params) {
+  const { id } = await params;
+  return forwardToBackend(request, API, `/plannings/${id}/lien-reservation`);
+}
+
 export async function DELETE(request: NextRequest, { params }: Params) {
   const { id } = await params;
   return forwardToBackend(request, API, `/plannings/${id}/lien-reservation`);

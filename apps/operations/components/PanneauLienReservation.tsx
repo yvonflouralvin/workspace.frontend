@@ -39,6 +39,17 @@ export function PanneauLienReservation({
   onChange: () => void;
 }) {
   const [mode, setMode] = useState<Mode>(planning.reservation_mode ?? "APPROBATION");
+  // Défauts proposés, pas règles figées : une salle de réunion se réserve la
+  // veille, un auditoire trois mois à l'avance.
+  const [preavis, setPreavis] = useState(
+    String(planning.reservation_preavis_heures ?? 48),
+  );
+  const [horizon, setHorizon] = useState(String(planning.reservation_horizon_jours ?? 7));
+
+  const delais = {
+    preavis_heures: preavis.trim() ? Number(preavis) : null,
+    horizon_jours: horizon.trim() ? Number(horizon) : null,
+  };
   const [enCours, setEnCours] = useState(false);
   const [copie, setCopie] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
@@ -107,6 +118,33 @@ export function PanneauLienReservation({
         ))}
       </div>
 
+      <div className="mt-3 grid grid-cols-2 gap-3 rounded-xl border border-outline-soft p-3">
+        <label className="flex flex-col gap-1">
+          <span className="text-label-md text-on-surface-variant">Préavis (heures)</span>
+          <input
+            type="number" min={0}
+            value={preavis}
+            onChange={(e) => setPreavis(e.target.value)}
+            placeholder="Aucun"
+            className="h-9 w-full rounded-lg border border-outline-soft bg-surface-container-lowest px-3 text-body-sm text-on-surface outline-none focus:border-primary"
+          />
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className="text-label-md text-on-surface-variant">Ouvert à l&apos;avance (jours)</span>
+          <input
+            type="number" min={0}
+            value={horizon}
+            onChange={(e) => setHorizon(e.target.value)}
+            placeholder="Sans limite"
+            className="h-9 w-full rounded-lg border border-outline-soft bg-surface-container-lowest px-3 text-body-sm text-on-surface outline-none focus:border-primary"
+          />
+        </label>
+        <p className="col-span-2 text-label-md text-outline">
+          Laissé vide, le délai correspondant ne s&apos;applique pas. Les deux bornes se
+          mesurent au moment où quelqu&apos;un remplit le formulaire, pas à la création du lien.
+        </p>
+      </div>
+
       {url ? (
         <>
           <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -131,7 +169,7 @@ export function PanneauLienReservation({
             <button
               type="button"
               disabled={enCours}
-              onClick={() => agir(() => operationsApi.ouvrirLienReservation(planning.id, mode))}
+              onClick={() => agir(() => operationsApi.ouvrirLienReservation(planning.id, mode, delais))}
               className="text-label-md text-primary disabled:opacity-50"
             >
               {mode === planning.reservation_mode
@@ -157,7 +195,7 @@ export function PanneauLienReservation({
         <button
           type="button"
           disabled={enCours}
-          onClick={() => agir(() => operationsApi.ouvrirLienReservation(planning.id, mode))}
+          onClick={() => agir(() => operationsApi.ouvrirLienReservation(planning.id, mode, delais))}
           className="mt-3 h-9 rounded-lg bg-primary px-4 text-body-sm font-semibold text-on-primary shadow-button disabled:opacity-50"
         >
           {enCours ? "…" : "Générer le lien"}

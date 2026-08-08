@@ -128,7 +128,7 @@ export interface Planning {
   reservation_url: string | null;
   /** Politique de délai du lien public. Nuls = aucune contrainte. */
   reservation_preavis_heures: number | null;
-  reservation_horizon_jours: number | null;
+  reservation_horizon_heures: number | null;
 }
 
 export interface Affectation {
@@ -373,13 +373,20 @@ export const operationsApi = {
   ouvrirLienReservation: (
     id: number,
     mode: "APPROBATION" | "AUTOMATIQUE",
-    delais: { preavis_heures: number | null; horizon_jours: number | null },
+    delais: { preavis_heures: number | null; horizon_heures: number | null },
   ) =>
     apiFetch(`/api/plannings/${id}/lien-reservation`, {
       method: "POST",
       body: { mode, ...delais },
     }).then(
       (r) => lire<{ url: string; mode: string }>(r),
+    ),
+  reglerLienReservation: (
+    id: number,
+    delais: { preavis_heures: number | null; horizon_heures: number | null },
+  ) =>
+    apiFetch(`/api/plannings/${id}/lien-reservation`, { method: "PUT", body: delais }).then(
+      (r) => lire<{ preavis_heures: number | null; horizon_heures: number | null }>(r),
     ),
   fermerLienReservation: (id: number) =>
     apiFetch(`/api/plannings/${id}/lien-reservation`, { method: "DELETE" }).then((r) =>

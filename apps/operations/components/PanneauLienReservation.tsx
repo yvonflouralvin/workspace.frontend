@@ -39,17 +39,29 @@ export function PanneauLienReservation({
   onChange: () => void;
 }) {
   const [mode, setMode] = useState<Mode>(planning.reservation_mode ?? "APPROBATION");
-  // Défauts proposés, pas règles figées : une salle de réunion se réserve la
-  // veille, un auditoire trois mois à l'avance.
+  // Ce qui est ENREGISTRÉ, pas ce qu'on proposerait. Afficher « 48 » sur un
+  // lien qui n'a aucune politique laisse croire que la règle s'applique — et
+  // c'est exactement ce qui s'est produit : des réservations passaient au-delà
+  // de l'horizon affiché. Les défauts ne servent qu'au premier réglage.
+  const dejaOuvert = planning.reservation_url !== null;
   const [preavis, setPreavis] = useState(
-    String(planning.reservation_preavis_heures ?? 48),
+    planning.reservation_preavis_heures !== null
+      ? String(planning.reservation_preavis_heures)
+      : dejaOuvert ? "" : "48",
   );
-  const [horizon, setHorizon] = useState(String(planning.reservation_horizon_jours ?? 7));
+  const [horizon, setHorizon] = useState(
+    planning.reservation_horizon_heures !== null
+      ? String(planning.reservation_horizon_heures)
+      : dejaOuvert ? "" : String(24 * 7),
+  );
 
   const delais = {
     preavis_heures: preavis.trim() ? Number(preavis) : null,
-    horizon_jours: horizon.trim() ? Number(horizon) : null,
+    horizon_heures: horizon.trim() ? Number(horizon) : null,
   };
+  const delaisModifies =
+    delais.preavis_heures !== planning.reservation_preavis_heures ||
+    delais.horizon_heures !== planning.reservation_horizon_heures;
   const [enCours, setEnCours] = useState(false);
   const [copie, setCopie] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
@@ -118,31 +130,40 @@ export function PanneauLienReservation({
         ))}
       </div>
 
-      <div className="mt-3 grid grid-cols-2 gap-3 rounded-xl border border-outline-soft p-3">
-        <label className="flex flex-col gap-1">
-          <span className="text-label-md text-on-surface-variant">Préavis (heures)</span>
-          <input
-            type="number" min={0}
-            value={preavis}
-            onChange={(e) => setPreavis(e.target.value)}
-            placeholder="Aucun"
-            className="h-9 w-full rounded-lg border border-outline-soft bg-surface-container-lowest px-3 text-body-sm text-on-surface outline-none focus:border-primary"
+      <div className="mt-3 rounded-xl border border-outline-soft p-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <ChampDelai
+            titre="Pas moins de"
+            suffixe="avant le créneau"
+            valeur={preavis}
+            onChange={setPreavis}
           />
-        </label>
-        <label className="flex flex-col gap-1">
-          <span className="text-label-md text-on-surface-variant">Ouvert à l&apos;avance (jours)</span>
-          <input
-            type="number" min={0}
-            value={horizon}
-            onChange={(e) => setHorizon(e.target.value)}
-            placeholder="Sans limite"
-            className="h-9 w-full rounded-lg border border-outline-soft bg-surface-container-lowest px-3 text-body-sm text-on-surface outline-none focus:border-primary"
+          <ChampDelai
+            titre="Pas plus de"
+            suffixe="avant le créneau"
+            valeur={horizon}
+            onChange={setHorizon}
           />
-        </label>
-        <p className="col-span-2 text-label-md text-outline">
+        </div>
+        <p className="mt-2 text-label-md text-outline">
           Laissé vide, le délai correspondant ne s&apos;applique pas. Les deux bornes se
           mesurent au moment où quelqu&apos;un remplit le formulaire, pas à la création du lien.
         </p>
+        {url && (
+          <div className="mt-2 flex items-center gap-3">
+            <button
+              type="button"
+              disabled={enCours || !delaisModifies}
+              onClick={() => agir(() => operationsApi.reglerLienReservation(planning.id, delais))}
+              className="h-8 rounded-lg border border-outline-soft px-3 text-label-md font-medium text-on-surface-variant hover:bg-surface-container-low disabled:opacity-50"
+            >
+              Enregistrer les délais
+            </button>
+            <span className="text-label-md text-outline">
+              Sans régénérer le lien — l&apos;adresse déjà partagée continue de marcher.
+            </span>
+          </div>
+        )}
       </div>
 
       {url ? (
@@ -202,5 +223,46 @@ export function PanneauLienReservation({
         </button>
       )}
     </section>
+  );
+}
+
+/** Un délai en heures, avec son équivalent en jours dans le titre.
+ *
+ *  Une seule unité stockée — les heures se comparent et se règlent finement —
+ *  et le jour affiché comme aide de lecture : « 168 h » ne se lit pas, « 7
+ *  jours » si. */
+function ChampDelai({
+  titre,
+  suffixe,
+  valeur,
+  onChange,
+}: {
+  titre: string;
+  suffixe: string;
+  valeur: string;
+  onChange: (v: string) => void;
+}) {
+  const heures = Number(valeur);
+  const enJours =
+    valeur.trim() && Number.isFinite(heures) && heures >= 24
+      ? `${Math.round((heures / 24) * 10) / 10} jour${heures >= 48 ? "s" : ""}`
+      : null;
+
+  return (
+    <label className="flex flex-col gap-1">
+      <span className="text-label-md text-on-surface-variant">
+        {titre}{" "}
+        <span className="text-on-surface">{valeur.trim() ? `${valeur} h` : "—"}</span>
+        {enJours && <span className="text-outline"> ({enJours})</span>} {suffixe}
+      </span>
+      <input
+        type="number"
+        min={0}
+        value={valeur}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="Aucune limite"
+        className="h-9 w-full rounded-lg border border-outline-soft bg-surface-container-lowest px-3 text-body-sm text-on-surface outline-none focus:border-primary"
+      />
+    </label>
   );
 }

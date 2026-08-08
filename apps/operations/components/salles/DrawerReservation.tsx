@@ -1,6 +1,7 @@
 "use client";
 
 import { CloseOutlined, WarningAmberOutlined } from "@mui/icons-material";
+import { FilDeNotes } from "@/components/notes/FilDeNotes";
 import { heureCourte, type Reservation } from "@/lib/operations-api";
 
 const LIBELLE_STATUT: Record<string, { mot: string; classe: string }> = {
@@ -113,6 +114,10 @@ export function DrawerReservation({
               Cette demande attend une validation. Elle n&apos;occupe pas encore le créneau.
             </p>
           )}
+
+          <div className="mt-5 border-t border-outline-soft pt-4">
+            <FilDeNotes sujetType="RESERVATION" sujetId={reservation.id} compact />
+          </div>
         </div>
 
         {(peutValider || peutRetirer) && (

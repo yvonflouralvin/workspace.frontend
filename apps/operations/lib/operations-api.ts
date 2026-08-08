@@ -245,6 +245,74 @@ export interface OccupationSalles {
   }[];
 }
 
+// ── Notes et incidents ──────────────────────────────────────────────────────
+
+export type SujetNote = "RESERVATION" | "USAGE_GROUPE";
+export type NatureNote = "NOTE" | "INCIDENT";
+
+export interface NoteOperations {
+  id: number;
+  sujet_type: SujetNote;
+  sujet_id: number;
+  nature: NatureNote;
+  contenu: string;
+  /** Une observation naît close ; un incident naît ouvert. */
+  statut: "OUVERT" | "CLOTURE";
+  auteur: string | null;
+  auteur_user_id: number | null;
+  cree_le: string | null;
+  cloture_le: string | null;
+  cloture_par: string | null;
+  resolution: string | null;
+  sujet: { libelle: string | null; debut: string; fin: string | null } | null;
+}
+
+// ── Groupes électrogènes ────────────────────────────────────────────────────
+
+export interface GroupeElectrogene {
+  id: number;
+  nom: string;
+  reference: string | null;
+  capacite: number | null;
+  categorie: string | null;
+  attributs: Record<string, unknown>;
+  active: boolean;
+  en_marche: boolean;
+  depuis: string | null;
+  usage_ouvert_id: number | null;
+  carburant_recu: number;
+}
+
+export interface UsageGroupe {
+  id: number;
+  ressource_id: number;
+  groupe: string | null;
+  debut: string;
+  fin: string | null;
+  en_cours: boolean;
+  heures: number;
+  motif: string | null;
+  demarre_par: string | null;
+  arrete_par: string | null;
+}
+
+export interface Carburant {
+  /** Déduit des mouvements, jamais saisi. */
+  reserve: number;
+  mouvements: {
+    id: number;
+    source: "FOURNISSEUR" | "RESERVE";
+    destination: "RESERVE" | "GROUPE";
+    ressource_id: number | null;
+    groupe: string | null;
+    quantite: number;
+    date: string;
+    fournisseur: string | null;
+    note: string | null;
+    saisi_par: string | null;
+  }[];
+}
+
 export interface Page<T> {
   items: T[];
   total: number;
@@ -403,6 +471,51 @@ export const operationsApi = {
     apiFetch(`/api/ressources/${id}/activite${qs(params)}`).then((r) =>
       lire<ActiviteRessource>(r),
     ),
+  // — Notes et incidents —
+  notes: (params: {
+    sujet_type?: string; sujet_id?: number; nature?: string; statut?: string;
+  } = {}) => apiFetch(`/api/notes${qs(params)}`).then((r) => lire<NoteOperations[]>(r)),
+  ajouterNote: (corps: Record<string, unknown>) =>
+    apiFetch("/api/notes", { method: "POST", body: corps }).then((r) =>
+      lire<NoteOperations>(r),
+    ),
+  cloturerNote: (id: number, resolution: string) =>
+    apiFetch(`/api/notes/${id}/cloture`, { method: "POST", body: { resolution } }).then((r) =>
+      lire<NoteOperations>(r),
+    ),
+  rouvrirNote: (id: number) =>
+    apiFetch(`/api/notes/${id}/reouverture`, { method: "POST", body: {} }).then((r) =>
+      lire<NoteOperations>(r),
+    ),
+  supprimerNote: (id: number) =>
+    apiFetch(`/api/notes/${id}`, { method: "DELETE" }).then((r) => lire<void>(r)),
+
+  // — Groupes électrogènes —
+  groupesElectrogenes: () =>
+    apiFetch("/api/groupes-electrogenes").then((r) => lire<GroupeElectrogene[]>(r)),
+  usagesGroupe: (params: { ressource_id?: number; en_cours?: boolean } = {}) =>
+    apiFetch(`/api/groupes-electrogenes/usages${qs(params)}`).then((r) =>
+      lire<UsageGroupe[]>(r),
+    ),
+  demarrerGroupe: (corps: Record<string, unknown>) =>
+    apiFetch("/api/groupes-electrogenes/usages", { method: "POST", body: corps }).then((r) =>
+      lire<UsageGroupe>(r),
+    ),
+  arreterGroupe: (id: number, fin?: string | null) =>
+    apiFetch(`/api/groupes-electrogenes/usages/${id}/arret`, {
+      method: "POST", body: { fin: fin ?? null },
+    }).then((r) => lire<UsageGroupe>(r)),
+  carburant: () =>
+    apiFetch("/api/groupes-electrogenes/carburant").then((r) => lire<Carburant>(r)),
+  ravitailler: (corps: Record<string, unknown>) =>
+    apiFetch("/api/groupes-electrogenes/carburant", { method: "POST", body: corps }).then((r) =>
+      lire<{ id: number; reserve: number }>(r),
+    ),
+  annulerRavitaillement: (id: number) =>
+    apiFetch(`/api/groupes-electrogenes/carburant/${id}`, { method: "DELETE" }).then((r) =>
+      lire<void>(r),
+    ),
+
   chevauchements: (planning_id?: number) =>
     apiFetch(`/api/chevauchements${qs({ planning_id })}`).then((r) => lire<Affectation[]>(r)),
 

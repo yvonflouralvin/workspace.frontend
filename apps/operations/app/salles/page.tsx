@@ -8,6 +8,7 @@ import {
   ChevronRightOutlined,
   MeetingRoomOutlined,
   PendingActionsOutlined,
+  ReportProblemOutlined,
   TableChartOutlined,
   WarningAmberOutlined,
 } from "@mui/icons-material";
@@ -23,6 +24,7 @@ import { DecisionDialog } from "@/components/DecisionDialog";
 import { DrawerReservation } from "@/components/salles/DrawerReservation";
 import { FriseSalles } from "@/components/salles/FriseSalles";
 import { PanneauSalles } from "@/components/salles/PanneauSalles";
+import { PanneauIncidents } from "@/components/notes/PanneauIncidents";
 import { VueMois } from "@/components/VueMois";
 import {
   ConflitError,
@@ -51,6 +53,12 @@ const VUES: VueDef[] = [
     libelle: "Salles",
     description: "L'inventaire des espaces et leur taux d'occupation",
     icone: <TableChartOutlined style={s} />,
+  },
+  {
+    cle: "incidents",
+    libelle: "Notes & incidents",
+    description: "Ce qui a été signalé sur les réservations, et ce qui reste ouvert",
+    icone: <ReportProblemOutlined style={s} />,
   },
   {
     cle: "demandes",
@@ -203,7 +211,13 @@ function Contenu() {
           </p>
         )}
 
-        {vue === "salles" ? (
+        {vue === "incidents" ? (
+          <PanneauIncidents
+            sujetType="RESERVATION"
+            titre="Notes & incidents"
+            description="Ce qui a été observé ou signalé sur les réservations de salle. Un incident reste ouvert tant que personne ne l'a clôturé."
+          />
+        ) : vue === "salles" ? (
           <PanneauSalles />
         ) : vue === "demandes" ? (
           <Demandes

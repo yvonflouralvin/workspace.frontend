@@ -20,6 +20,7 @@ import { SelecteurVue, type VueDef } from "@/components/SelecteurVue";
 import { ConflitDialog } from "@/components/ConflitDialog";
 import { FormulaireReservation } from "@/components/FormulaireReservation";
 import { DecisionDialog } from "@/components/DecisionDialog";
+import { DrawerReservation } from "@/components/salles/DrawerReservation";
 import { FriseSalles } from "@/components/salles/FriseSalles";
 import { PanneauSalles } from "@/components/salles/PanneauSalles";
 import { VueMois } from "@/components/VueMois";
@@ -83,6 +84,7 @@ function Contenu() {
   const [decision, setDecision] = useState<{ r: Reservation; action: "accepter" | "refuser" } | null>(null);
   const [conflit, setConflit] = useState<{ conflit: Conflit; reessayer: (m: string) => void } | null>(null);
   const [aRetirer, setARetirer] = useState<Reservation | null>(null);
+  const [ouverte, setOuverte] = useState<Reservation | null>(null);
   const [erreur, setErreur] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [enCours, setEnCours] = useState(false);
@@ -281,11 +283,7 @@ function Contenu() {
                   reservations={reservations}
                   peutDemander={peutDemander}
                   onCase={(salle, jour) => setCreation({ salle, jour })}
-                  onReservation={(r) =>
-                    peutValider && r.statut === "DEMANDEE"
-                      ? setDecision({ r, action: "accepter" })
-                      : setARetirer(r)
-                  }
+                  onReservation={setOuverte}
                 />
               ) : echelle === "mois" ? (
                 <VueMois
@@ -323,12 +321,38 @@ function Contenu() {
                   semaine={fenetre.debut}
                   peutDemander={peutDemander}
                   onReserver={(salle, jour) => setCreation({ salle, jour })}
+                  onReservation={setOuverte}
                 />
               )
             )}
           </>
         )}
       </div>
+
+      {ouverte && (
+        <DrawerReservation
+          reservation={ouverte}
+          peutValider={peutValider}
+          // Un validateur retire n'importe quelle réservation ; les autres,
+          // seulement la leur — retirer celle d'un collègue sans pouvoir la
+          // refuser formellement contournerait le circuit de décision.
+          peutRetirer={peutValider || (moi != null && ouverte.demandeur_user_id === moi)}
+          enCours={enCours}
+          onClose={() => setOuverte(null)}
+          onAccepter={() => {
+            setDecision({ r: ouverte, action: "accepter" });
+            setOuverte(null);
+          }}
+          onRefuser={() => {
+            setDecision({ r: ouverte, action: "refuser" });
+            setOuverte(null);
+          }}
+          onRetirer={() => {
+            setARetirer(ouverte);
+            setOuverte(null);
+          }}
+        />
+      )}
 
       {creation && (
         <FormulaireReservation
@@ -421,12 +445,14 @@ function CalendrierSalles({
   semaine,
   peutDemander,
   onReserver,
+  onReservation,
 }: {
   salles: Salle[];
   reservations: Reservation[];
   semaine: Date;
   peutDemander: boolean;
   onReserver: (salle: Salle, jour: Date) => void;
+  onReservation: (r: Reservation) => void;
 }) {
   return (
     <div className="overflow-x-auto">
@@ -450,6 +476,7 @@ function CalendrierSalles({
               reservations={reservations.filter((r) => r.salle_id === salle.id)}
               peutDemander={peutDemander}
               onReserver={onReserver}
+              onReservation={onReservation}
             />
           ))}
         </div>
@@ -464,12 +491,14 @@ function FragmentSalle({
   reservations,
   peutDemander,
   onReserver,
+  onReservation,
 }: {
   salle: Salle;
   semaine: Date;
   reservations: Reservation[];
   peutDemander: boolean;
   onReserver: (salle: Salle, jour: Date) => void;
+  onReservation: (r: Reservation) => void;
 }) {
   return (
     <>
@@ -499,9 +528,11 @@ function FragmentSalle({
             ) : (
               <div className="flex flex-col gap-1">
                 {duJour.map((r) => (
-                  <div
+                  <button
                     key={r.id}
-                    className={`rounded border px-1.5 py-1 ${TEINTE_STATUT[r.statut] ?? ""}`}
+                    type="button"
+                    onClick={() => onReservation(r)}
+                    className={`w-full rounded border px-1.5 py-1 text-left transition-colors hover:brightness-95 ${TEINTE_STATUT[r.statut] ?? ""}`}
                     title={r.objet ?? undefined}
                   >
                     <p className="flex items-center gap-1 text-label-sm text-on-surface-variant">
@@ -516,7 +547,7 @@ function FragmentSalle({
                     {r.statut === "DEMANDEE" && (
                       <p className="text-label-sm text-on-surface-variant">en attente</p>
                     )}
-                  </div>
+                  </button>
                 ))}
               </div>
             )}

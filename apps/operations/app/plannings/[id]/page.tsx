@@ -19,6 +19,7 @@ import { ConflitDialog } from "@/components/ConflitDialog";
 import { DrawerAffectation, type Repetition } from "@/components/DrawerAffectation";
 import { FormulaireAffectation } from "@/components/FormulaireAffectation";
 import { PanneauLienReservation } from "@/components/PanneauLienReservation";
+import { PanneauRessourcesPlanning } from "@/components/PanneauRessourcesPlanning";
 import { VueJour } from "@/components/VueJour";
 import { VueMois } from "@/components/VueMois";
 import { VueSemaine } from "@/components/VueSemaine";
@@ -335,6 +336,10 @@ export default function PlanningPage({ params }: { params: Promise<{ id: string 
             />
           )}
         </div>
+        {planning && peutGerer && (
+          <PanneauRessourcesPlanning planning={planning} onChange={charger} />
+        )}
+
         {/* Ouvrir à la réservation ne vaut que pour des espaces : on ne se
             réserve pas un intervenant par un lien public. */}
         {planning?.type === "ESPACE" && peutGerer && (

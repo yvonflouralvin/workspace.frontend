@@ -126,6 +126,9 @@ export interface Planning {
   reservation_mode: "APPROBATION" | "AUTOMATIQUE" | null;
   /** Adresse publique du formulaire de réservation. Nulle = pas ouvert. */
   reservation_url: string | null;
+  /** Politique de délai du lien public. Nuls = aucune contrainte. */
+  reservation_preavis_heures: number | null;
+  reservation_horizon_jours: number | null;
 }
 
 export interface Affectation {
@@ -367,8 +370,15 @@ export const operationsApi = {
     apiFetch("/api/affectations/dupliquer", { method: "POST", body: corps }).then((r) =>
       lire<Lot>(r),
     ),
-  ouvrirLienReservation: (id: number, mode: "APPROBATION" | "AUTOMATIQUE") =>
-    apiFetch(`/api/plannings/${id}/lien-reservation`, { method: "POST", body: { mode } }).then(
+  ouvrirLienReservation: (
+    id: number,
+    mode: "APPROBATION" | "AUTOMATIQUE",
+    delais: { preavis_heures: number | null; horizon_jours: number | null },
+  ) =>
+    apiFetch(`/api/plannings/${id}/lien-reservation`, {
+      method: "POST",
+      body: { mode, ...delais },
+    }).then(
       (r) => lire<{ url: string; mode: string }>(r),
     ),
   fermerLienReservation: (id: number) =>

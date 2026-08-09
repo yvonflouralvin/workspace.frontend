@@ -8,7 +8,7 @@ import { DataList, type DataListColumn } from "@repo/ui/DataList";
 import { DashboardShell } from "@/components/DashboardShell";
 import { GardePermission } from "@/components/GardePermission";
 import { ConsoleTabs } from "@/components/ConsoleTabs";
-import { listFlows, ApiError } from "@/app/lib/api";
+import { listFlows, updateFlow, ApiError } from "@/app/lib/api";
 import type { FlowSummary } from "@repo/approval-flows/types/flow";
 
 function statusLabel(flow: FlowSummary): string {
@@ -21,6 +21,7 @@ export default function FlowsPage() {
   const router = useRouter();
   const { can } = usePermissions();
   const canManage = can("approval_flows.manage");
+  const [bascule, setBascule] = useState<string | null>(null);
 
   const [items, setItems] = useState<FlowSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -47,7 +48,56 @@ export default function FlowsPage() {
       render: (flow) => (flow.app_key ? `Template (${flow.app_key})` : "Créé librement"),
     },
     { key: "status", header: "Statut", render: (flow) => statusLabel(flow) },
+    {
+      key: "catalogue",
+      header: "Au catalogue",
+      render: (flow) => (
+        <button
+          type="button"
+          disabled={!flow.configured || bascule === flow.id}
+          title={
+            !flow.configured
+              ? "Publiez une version : il n'y a rien à remplir pour l'instant."
+              : flow.catalogue_visible
+                ? "Proposé dans « Nouvelle demande ». Cliquez pour le retirer."
+                : "Absent de « Nouvelle demande » — il se remplit depuis son application. Cliquez pour l'ouvrir."
+          }
+          onClick={(e) => {
+            e.stopPropagation();
+            void basculerCatalogue(flow);
+          }}
+          className={`rounded-full px-2.5 py-1 text-label-md transition-colors disabled:opacity-40 ${
+            flow.catalogue_visible
+              ? "bg-secondary/15 text-secondary"
+              : "bg-surface-container text-on-surface-variant"
+          }`}
+        >
+          {flow.catalogue_visible ? "Proposé" : "Masqué"}
+        </button>
+      ),
+    },
   ];
+
+  /** Ouvrir ou retirer un formulaire du catalogue.
+   *
+   *  Le clic ne doit pas ouvrir l'éditeur : c'est un réglage, pas une
+   *  navigation — d'où le `stopPropagation` sur la ligne cliquable. */
+  async function basculerCatalogue(flow: FlowSummary) {
+    setBascule(flow.id);
+    try {
+      const maj = await updateFlow(flow.id, {
+        visible_group_ids: flow.visible_group_ids,
+        destination_user_ids: flow.destination_user_ids,
+        destination_group_ids: flow.destination_group_ids,
+        catalogue_visible: !flow.catalogue_visible,
+      });
+      setItems((prev) => prev.map((f) => (f.id === flow.id ? { ...f, ...maj } : f)));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Réglage impossible.");
+    } finally {
+      setBascule(null);
+    }
+  }
 
   function handleRowClick(flow: FlowSummary) {
     router.push(`/flows/${flow.id}/edit`);

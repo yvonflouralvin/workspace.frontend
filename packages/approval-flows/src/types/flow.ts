@@ -72,6 +72,10 @@ export interface FlowSummary {
   // destinataires des demandes une fois entièrement approuvées (cumulables, [] = personne désigné)
   destination_user_ids: number[];
   destination_group_ids: number[];
+  /** Ce formulaire se propose-t-il au catalogue « nouvelle demande » ?
+   *  Vrai par défaut pour un flow libre, faux pour un modèle d'app — dont
+   *  l'application porteuse a son propre écran. */
+  catalogue_visible: boolean;
 }
 
 export interface FlowDetail extends FlowSummary {
@@ -95,4 +99,6 @@ export interface FlowPatch {
   visible_group_ids: number[];
   destination_user_ids: number[];
   destination_group_ids: number[];
+  /** Omis = on ne touche pas au réglage. */
+  catalogue_visible?: boolean;
 }

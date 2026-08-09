@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   AddOutlined,
+  EditNoteOutlined,
   AssignmentOutlined,
   SearchOutlined,
 } from "@mui/icons-material";
@@ -104,14 +105,25 @@ export default function FormulairesPage() {
             n&apos;importe qui peut ouvrir sans compte — et dépouillez les réponses.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => setCreation((v) => !v)}
-          className="inline-flex h-9 flex-none items-center gap-1.5 rounded-lg bg-primary px-4 text-body-sm font-semibold text-on-primary shadow-button transition-colors hover:bg-primary-container"
-        >
-          <AddOutlined style={{ fontSize: 16 }} />
-          Créer
-        </button>
+        <div className="flex flex-none flex-wrap gap-2">
+          {/* La porte d'entrée de tout ce qui se remplit — formulaires du
+              module ET demandes à circuit. Deux moteurs, une seule question. */}
+          <Link
+            href="/forms/remplir"
+            className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-outline-soft px-3 text-body-sm font-medium text-on-surface-variant transition-colors hover:bg-surface-container-low"
+          >
+            <EditNoteOutlined style={{ fontSize: 17 }} />
+            Remplir un formulaire
+          </Link>
+          <button
+            type="button"
+            onClick={() => setCreation((v) => !v)}
+            className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-4 text-body-sm font-semibold text-on-primary shadow-button transition-colors hover:bg-primary-container"
+          >
+            <AddOutlined style={{ fontSize: 16 }} />
+            Créer
+          </button>
+        </div>
       </div>
 
       {creation && (

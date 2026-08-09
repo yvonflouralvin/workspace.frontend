@@ -66,6 +66,20 @@ Formulaires façon Google Forms : conception (`/forms/{id}`), réponse
 (`/forms/{id}/repondre`), dépouillement (`/forms/{id}/resultats`) et **page
 publique `/f/{jeton}`**.
 
+**Catalogue unique — `/forms/remplir`.** Deux moteurs répondent à la même question
+de l'utilisateur, « quel formulaire puis-je remplir ? » : le module Formulaire, qui
+consigne une réponse, et les circuits d'`approval-flows`, qui font circuler une
+demande. Un formulaire publié restait donc introuvable selon l'endroit où l'on
+cherchait. `app/lib/catalogue-formulaires.ts` réunit **la porte, pas les moteurs** :
+les formulaires `portee=a_remplir` plus les circuits `configured && catalogue_visible`
+(réglage « Au catalogue » dans la console approval-flows — un flux porté par une app
+reste masqué tant que personne ne l'ouvre, parce que l'app a en général sa propre
+porte). Chaque source est interrogée avec la session de l'utilisateur : ses droits
+s'appliquent sans être rejoués côté client, et la panne d'une source rend une liste
+vide plutôt qu'une erreur — l'autre reste remplissable. L'écran DIT ce qui se passe
+après l'envoi ; c'est la seule différence qui compte, et elle compte après avoir
+choisi, pas pendant qu'on cherche.
+
 **La page publique est la seule route de l'app joignable sans compte.** Deux
 endroits l'autorisent, et il faut les tenir ensemble : `proxy.ts` (préfixes
 `/f/` et `/api/public/`, plus l'en-tête `x-pathname` qu'il pose) et

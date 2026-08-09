@@ -19,18 +19,17 @@ export function NewRequestModal({
   // soumissible depuis le composant métier qui l'embarque (ApprovalFlowWrapper côté
   // app consommatrice), jamais en libre-service ici. Seuls les flows créés librement
   // dans ce workspace (mode 2, app_key null) sont éligibles à ce raccourci.
-  const submittable = flows.filter((flow) => flow.configured && flow.app_key === null);
-
-  // Les modèles d'application sont MONTRÉS mais non soumissibles ici. Les
-  // taire faisait chercher en vain un formulaire pourtant publié et ouvert à
-  // tout le workspace — on le nomme, et on dit où le remplir.
-  const portesParUneApp = flows.filter((flow) => flow.configured && flow.app_key !== null);
+  // Un formulaire se propose s'il est CONFIGURÉ (une version publiée existe,
+  // donc quelque chose à remplir) et OUVERT AU CATALOGUE. Le second est un
+  // réglage : un modèle d'app en est absent par défaut, parce que
+  // l'application qui le porte a son propre écran — mais une app qui n'en
+  // offre pas peut l'ouvrir ici, sans quoi son formulaire reste introuvable.
+  const submittable = flows.filter((flow) => flow.configured && flow.catalogue_visible);
 
   const correspond = (flow: FlowSummary) =>
     !query || flow.title.toLowerCase().includes(query.toLowerCase());
 
   const filtered = query ? submittable.filter(correspond) : submittable.slice(0, 5);
-  const ailleurs = portesParUneApp.filter(correspond);
 
   return (
     <div
@@ -52,11 +51,9 @@ export function NewRequestModal({
           />
         </div>
         <div className="max-h-80 overflow-y-auto">
-          {filtered.length === 0 && ailleurs.length === 0 ? (
+          {filtered.length === 0 ? (
             <p className="px-4 py-8 text-sm text-on-surface-variant text-center">
-              {submittable.length === 0 && portesParUneApp.length === 0
-                ? "Aucun formulaire disponible."
-                : "Aucun formulaire trouvé."}
+              {submittable.length === 0 ? "Aucun formulaire disponible." : "Aucun formulaire trouvé."}
             </p>
           ) : (
             <>
@@ -71,25 +68,6 @@ export function NewRequestModal({
                 </button>
               ))}
 
-              {ailleurs.length > 0 && (
-                <>
-                  <p className="border-t border-outline-variant px-4 pb-1 pt-3 text-label-sm uppercase tracking-wide text-outline">
-                    Se remplissent depuis leur application
-                  </p>
-                  {ailleurs.map((flow) => (
-                    <div
-                      key={flow.id}
-                      className="px-4 py-3 text-sm"
-                      title="Ce formulaire garde un lien avec la fiche de l'application qui le porte : il se soumet depuis elle."
-                    >
-                      <span className="text-on-surface-variant">{flow.title}</span>
-                      <span className="ml-2 rounded-full bg-surface-container px-2 py-0.5 text-label-sm text-on-surface-variant">
-                        {flow.app_key}
-                      </span>
-                    </div>
-                  ))}
-                </>
-              )}
             </>
           )}
         </div>

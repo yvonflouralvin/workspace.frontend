@@ -6,6 +6,7 @@ import { AddOutlined } from "@mui/icons-material";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
 import { DataList, type DataListColumn } from "@repo/ui/DataList";
 import { DashboardShell } from "@/components/DashboardShell";
+import { GardePermission } from "@/components/GardePermission";
 import { ConsoleTabs } from "@/components/ConsoleTabs";
 import { listFlows, ApiError } from "@/app/lib/api";
 import type { FlowSummary } from "@repo/approval-flows/types/flow";
@@ -54,6 +55,7 @@ export default function FlowsPage() {
 
   return (
     <DashboardShell>
+      <GardePermission permission="approval_flows.manage" quoi="Conception des flux">
       <div className="p-4 md:p-8 max-w-[1024px] mx-auto space-y-5">
         <ConsoleTabs />
         <div className="flex items-start justify-between">
@@ -91,6 +93,7 @@ export default function FlowsPage() {
           />
         )}
       </div>
+    </GardePermission>
     </DashboardShell>
   );
 }

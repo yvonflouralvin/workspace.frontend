@@ -3,6 +3,7 @@
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { DashboardShell } from "@/components/DashboardShell";
+import { GardePermission } from "@/components/GardePermission";
 import { FlowForm } from "@/components/FlowForm";
 import { getFlow, ApiError } from "@/app/lib/api";
 import type { FlowDetail } from "@repo/approval-flows/types/flow";
@@ -24,6 +25,7 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
 
   return (
     <DashboardShell>
+      <GardePermission permission="approval_flows.manage" quoi="Conception des flux">
       <div className="p-4 md:p-8 max-w-3xl mx-auto space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-on-surface">
@@ -46,6 +48,7 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
           </div>
         )}
       </div>
+    </GardePermission>
     </DashboardShell>
   );
 }

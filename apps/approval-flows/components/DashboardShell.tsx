@@ -14,11 +14,27 @@ import { useSearch } from "@repo/ui/shell/useSearch";
 import { HomeOutlined, AccountTreeOutlined, AssignmentTurnedInOutlined, OutboxOutlined } from "@mui/icons-material";
 import type { NavItem } from "@repo/ui/types/shell";
 
-const NAV_ITEMS: NavItem[] = [
+/** La navigation, et ce qu'il faut pour voir chaque entrée.
+ *
+ *  « Mes demandes » et « À traiter » sont les écrans de TOUT LE MONDE : sa
+ *  propre file, ses propres demandes. Concevoir les flux et lire toutes les
+ *  soumissions du workspace sont deux responsabilités distinctes, et une barre
+ *  qui les affiche à qui ne les a pas promet ce qu'elle ne tiendra pas. */
+const NAV_ITEMS: (NavItem & { permission?: string })[] = [
   { label: "Mes demandes", href: "/", icon: <HomeOutlined style={{ fontSize: 20 }} />, exact: true },
   { label: "À traiter", href: "/requests", icon: <AssignmentTurnedInOutlined style={{ fontSize: 20 }} /> },
-  { label: "Flux", href: "/flows", icon: <AccountTreeOutlined style={{ fontSize: 20 }} /> },
-  { label: "Soumissions", href: "/submissions", icon: <OutboxOutlined style={{ fontSize: 20 }} /> },
+  {
+    label: "Flux",
+    href: "/flows",
+    icon: <AccountTreeOutlined style={{ fontSize: 20 }} />,
+    permission: "approval_flows.manage",
+  },
+  {
+    label: "Soumissions",
+    href: "/submissions",
+    icon: <OutboxOutlined style={{ fontSize: 20 }} />,
+    permission: "approval_flows.requests.view_all",
+  },
 ];
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
@@ -32,13 +48,14 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     : null;
 
   const visibleApps = PLATFORM_APPS.filter((app) => can(`${app.id}.access`));
+  const navItems = NAV_ITEMS.filter((item) => !item.permission || can(item.permission));
 
   return (
     <AppShell
       sidebar={
         <Sidebar
           topSlot={<WorkspaceSwitcher filterPermission="approval_flows.access" />}
-          navItems={NAV_ITEMS}
+          navItems={navItems}
           bottomSlot={<UserFooter user={userSummary} onLogout={handleLogout} />}
         />
       }

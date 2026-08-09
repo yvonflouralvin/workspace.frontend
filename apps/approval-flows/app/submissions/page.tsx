@@ -1,6 +1,7 @@
 "use client";
 
 import { DashboardShell } from "@/components/DashboardShell";
+import { GardePermission } from "@/components/GardePermission";
 import { ConsoleTabs } from "@/components/ConsoleTabs";
 
 // "Mes soumissions" (liste + filtres) a migré sur l'accueil de l'app
@@ -9,6 +10,7 @@ import { ConsoleTabs } from "@/components/ConsoleTabs";
 export default function SubmissionPage() {
   return (
     <DashboardShell>
+      <GardePermission permission="approval_flows.requests.view_all" quoi="Soumissions du workspace">
       <div className="p-4 md:p-8 max-w-[1024px] mx-auto space-y-5">
         <ConsoleTabs />
         <div>
@@ -22,6 +24,7 @@ export default function SubmissionPage() {
           Bientôt disponible.
         </p>
       </div>
+    </GardePermission>
     </DashboardShell>
   );
 }

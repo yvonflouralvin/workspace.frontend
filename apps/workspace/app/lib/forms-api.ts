@@ -177,6 +177,23 @@ export interface Soumission {
   approbation_decide_le: string | null;
 }
 
+export interface MonEnvoi {
+  soumission_id: number;
+  formulaire_id: number;
+  formulaire_titre: string;
+  envoye_le: string;
+  jeton_recu: string | null;
+  approbation_statut: "EN_ATTENTE" | "APPROUVEE" | "REFUSEE" | null;
+  approbation_decide_le: string | null;
+}
+
+export interface MesEnvois {
+  items: MonEnvoi[];
+  total: number;
+  page: number;
+  taille: number;
+}
+
 export interface FormulairePublic {
   titre: string;
   description: string | null;
@@ -204,6 +221,14 @@ export const formsApi = {
     if (params.q) query.set("q", params.q);
     const suffixe = query.toString() ? `?${query}` : "";
     return apiFetch(`/api/formulaires${suffixe}`).then((r) => lire<FormulaireResume[]>(r));
+  },
+  mesEnvois: (params: { page?: number; taille?: number; q?: string } = {}) => {
+    const query = new URLSearchParams();
+    if (params.page) query.set("page", String(params.page));
+    if (params.taille) query.set("taille", String(params.taille));
+    if (params.q) query.set("q", params.q);
+    const suffixe = query.toString() ? `?${query}` : "";
+    return apiFetch(`/api/formulaires/mes-envois${suffixe}`).then((r) => lire<MesEnvois>(r));
   },
   creer: (titre: string) =>
     apiFetch("/api/formulaires", { method: "POST", body: { titre } }).then((r) =>

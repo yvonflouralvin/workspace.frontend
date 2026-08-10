@@ -11,6 +11,7 @@ import { useEffect, useRef } from "react";
 import { listMembers } from "@/app/lib/api";
 import type { Member } from "@/app/lib/types";
 import { ACCES_LABELS, formsApi } from "@/app/lib/forms-api";
+import { circuitsUtilisables, listerCircuits, type Circuit } from "@/app/lib/circuits-api";
 import { useFormulaire } from "../form-context";
 
 const CHAMP =
@@ -29,6 +30,7 @@ export default function ParametresFormulairePage() {
   const id = forme.id;
   const workspaceId = useSessionStore((s) => s.activeWorkspace?.id);
   const [membres, setMembres] = useState<Member[]>([]);
+  const [circuits, setCircuits] = useState<Circuit[]>([]);
   const [busy, setBusy] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -41,6 +43,10 @@ export default function ParametresFormulairePage() {
       .then((r) => setMembres(r.members))
       .catch(() => {});
   }, [workspaceId]);
+
+  useEffect(() => {
+    listerCircuits().then((c) => setCircuits(circuitsUtilisables(c)));
+  }, []);
 
   async function appliquer(
     corps: Parameters<typeof formsApi.modifier>[1],
@@ -202,11 +208,23 @@ export default function ParametresFormulairePage() {
               onChange={(e) => appliquer({ acces: e.target.value }, "Accès mis à jour.")}
             >
               {Object.entries(ACCES_LABELS).map(([cle, libelle]) => (
-                <option key={cle} value={cle}>
+                <option
+                  key={cle}
+                  value={cle}
+                  // Barré plutôt que refusé après coup : le serveur dirait non,
+                  // mais après avoir laissé croire que c'était possible.
+                  disabled={cle === "PUBLIC" && !!forme.approbation_flow_id}
+                >
                   {libelle}
                 </option>
               ))}
             </select>
+            {forme.approbation_flow_id && (
+              <p className="mt-1.5 text-label-md text-outline">
+                Le lien public est écarté : ce formulaire part en approbation, et une
+                demande a besoin d&apos;un demandeur identifié.
+              </p>
+            )}
 
             <div className="mt-3">
               <p className="text-label-md text-outline">
@@ -258,6 +276,40 @@ export default function ParametresFormulairePage() {
               <p className="mt-1 text-label-md text-outline">
                 Sans compte, on ne sait pas qui revient : cette règle ne s&apos;applique
                 qu&apos;aux membres connectés.
+              </p>
+            )}
+          </section>
+
+          <section className="rounded-2xl border border-outline-soft bg-surface-container-lowest p-4">
+            <label className={LABEL}>Après l&apos;envoi</label>
+            <select
+              className={CHAMP}
+              value={forme.approbation_flow_id ?? ""}
+              disabled={busy || estPublic}
+              onChange={(e) =>
+                appliquer(
+                  { approbation_flow_id: e.target.value },
+                  e.target.value ? "Circuit d'approbation branché." : "Circuit retiré."
+                )
+              }
+            >
+              <option value="">La réponse est enregistrée</option>
+              {circuits.map((c) => (
+                <option key={c.id} value={c.id}>
+                  Elle part en approbation — {c.title}
+                </option>
+              ))}
+            </select>
+            <p className="mt-2 text-label-md text-outline">
+              {estPublic
+                ? "Un lien public ne sait pas qui revient : une approbation a besoin d'un demandeur identifié. Changez d'abord « qui peut répondre »."
+                : forme.approbation_flow_id
+                  ? "Chaque réponse ouvre une demande au nom de son auteur. Le formulaire pose les questions, le circuit dit qui décide."
+                  : "La réponse est simplement consignée dans les résultats."}
+            </p>
+            {!estPublic && circuits.length === 0 && (
+              <p className="mt-1 text-label-md text-outline">
+                Aucun circuit publié dans ce workspace pour l&apos;instant.
               </p>
             )}
           </section>

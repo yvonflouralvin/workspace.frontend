@@ -127,6 +127,8 @@ export interface Formulaire {
   jeton_public: string;
   une_reponse_par_personne: boolean;
   message_confirmation: string | null;
+  /** Le circuit d'approbation par lequel partent les réponses, s'il y en a un. */
+  approbation_flow_id: string | null;
   created_by: number | null;
   created_at: string;
   publie_le: string | null;
@@ -152,6 +154,7 @@ export interface FormulaireResume {
   created_at: string;
   nb_questions: number;
   nb_soumissions: number;
+  approbation_flow_id: string | null;
   mon_role: string | null;
   peut_modifier: boolean;
   peut_voir_resultats: boolean;
@@ -168,6 +171,10 @@ export interface Soumission {
   /** Autorise à retirer le PDF de CETTE réponse — y compris sans compte. */
   jeton_recu: string | null;
   reponses: Record<string, unknown>;
+  /** Où en est la demande, quand le formulaire passe par un circuit. */
+  approbation_request_id: string | null;
+  approbation_statut: "EN_ATTENTE" | "APPROUVEE" | "REFUSEE" | null;
+  approbation_decide_le: string | null;
 }
 
 export interface FormulairePublic {
@@ -212,6 +219,8 @@ export const formsApi = {
       statut: string;
       une_reponse_par_personne: boolean;
       message_confirmation: string | null;
+      /** `""` retire le circuit ; un identifiant de flux l'installe. */
+      approbation_flow_id: string | null;
       sections: SectionEcrite[];
       questions: QuestionEcrite[];
     }>

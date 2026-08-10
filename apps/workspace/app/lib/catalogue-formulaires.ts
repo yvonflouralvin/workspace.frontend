@@ -1,5 +1,5 @@
-import { apiFetch } from "@repo/network/client";
 import { formsApi, type FormulaireResume } from "@/app/lib/forms-api";
+import { listerCircuits } from "@/app/lib/circuits-api";
 
 /** Le catalogue des formulaires à remplir.
  *
@@ -27,28 +27,16 @@ export interface EntreeCatalogue {
   apres: string;
 }
 
-interface FlowSummaryPartiel {
-  id: string;
-  title: string;
-  configured: boolean;
-  catalogue_visible: boolean;
-  app_key: string | null;
-}
-
 /** Les circuits d'approbation ouverts au catalogue.
  *
  *  Une panne de ce service ne doit pas vider le catalogue : les formulaires du
- *  module Formulaire restent, eux, parfaitement remplissables. On rend donc une
- *  liste vide plutôt que de laisser l'erreur remonter.
+ *  module Formulaire restent, eux, parfaitement remplissables — `listerCircuits`
+ *  rend donc une liste vide plutôt que de laisser l'erreur remonter.
  */
 async function circuits(): Promise<EntreeCatalogue[]> {
-  try {
-    const reponse = await apiFetch("/api/approval-flows/flows");
-    if (!reponse.ok) return [];
-    const flows = (await reponse.json()) as FlowSummaryPartiel[];
-    if (!Array.isArray(flows)) return [];
-
-    return flows
+  const flows = await listerCircuits();
+  return (
+    flows
       // Configuré : une version publiée existe, il y a quelque chose à
       // remplir. Ouvert au catalogue : son application n'a pas déjà sa porte.
       .filter((f) => f.configured && f.catalogue_visible)
@@ -59,20 +47,22 @@ async function circuits(): Promise<EntreeCatalogue[]> {
         description: null,
         href: `${process.env.NEXT_PUBLIC_AUTH_API_APPROVAL_FLOWS_DOMAIN ?? ""}/submit/${encodeURIComponent(f.id)}`,
         apres: "Passe par un circuit d'approbation",
-      }));
-  } catch {
-    return [];
-  }
+      }))
+  );
 }
 
 function depuisFormulaire(f: FormulaireResume): EntreeCatalogue {
   return {
     cle: `formulaire:${f.id}`,
-    source: "FORMULAIRE",
+    source: f.approbation_flow_id ? "APPROBATION" : "FORMULAIRE",
     titre: f.titre,
     description: f.description,
     href: `/forms/${f.id}/repondre`,
-    apres: "Réponse enregistrée",
+    // Ce qui compte au moment d'envoyer se dit avant de choisir : un
+    // formulaire du module peut lui aussi partir en approbation.
+    apres: f.approbation_flow_id
+      ? "Passe par un circuit d'approbation"
+      : "Réponse enregistrée",
   };
 }
 

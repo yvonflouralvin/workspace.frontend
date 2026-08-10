@@ -51,7 +51,13 @@ export default function RemplirPage() {
             const soumission = await formsApi.soumettre(forme.id, reponses);
             setRecu(soumission.jeton_recu);
             setConfirmation(
-              forme.message_confirmation || "Merci, votre réponse a bien été enregistrée."
+              forme.message_confirmation ||
+                // Ce qui se passe ENSUITE n'est pas le même selon le
+                // formulaire : dire « enregistrée » à quelqu'un qui attend une
+                // décision lui ferait croire que c'est fini.
+                (soumission.approbation_request_id
+                  ? "Merci, votre demande est partie en approbation. Vous serez prévenu de la décision."
+                  : "Merci, votre réponse a bien été enregistrée.")
             );
             await recharger();
           } catch (e) {

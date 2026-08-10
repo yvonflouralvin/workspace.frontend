@@ -80,6 +80,17 @@ vide plutôt qu'une erreur — l'autre reste remplissable. L'écran DIT ce qui s
 après l'envoi ; c'est la seule différence qui compte, et elle compte après avoir
 choisi, pas pendant qu'on cherche.
 
+**Un formulaire peut partir en approbation.** Réglage « Après l'envoi » dans les
+paramètres (`approbation_flow_id` = le `slug` d'un circuit d'`approval-flows`). Le
+formulaire garde ses questions, le circuit ne fournit que ses étapes — un même
+circuit sert donc plusieurs formulaires, et la demande porte son propre
+`fields_snapshot` pour que l'approbateur lise les questions posées. La demande part
+**au nom du répondant** (son cookie est relayé), d'où l'exclusion entre circuit et
+lien public : une approbation a besoin d'un demandeur identifié. Si le circuit ne
+répond pas, la soumission entière est annulée — une réponse enregistrée sans
+demande ouverte n'aurait aucune reprise. La décision revient par un rappel interne
+et se lit dans les résultats (colonne « Approbation », reprise dans l'export CSV).
+
 **La page publique est la seule route de l'app joignable sans compte.** Deux
 endroits l'autorisent, et il faut les tenir ensemble : `proxy.ts` (préfixes
 `/f/` et `/api/public/`, plus l'en-tête `x-pathname` qu'il pose) et

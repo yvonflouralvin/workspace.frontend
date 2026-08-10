@@ -8,6 +8,30 @@ import { useFormulaire } from "../form-context";
 
 type Vue = "tableau" | "synthese";
 
+/** Où en est la demande ouverte par cette réponse.
+ *
+ *  « En attente » est un état, pas une absence : la décision revient par un
+ *  rappel du circuit, et tant qu'il n'est pas arrivé, c'est la vérité.
+ */
+function EtatApprobation({ statut }: { statut: Soumission["approbation_statut"] }) {
+  const teintes: Record<string, string> = {
+    EN_ATTENTE: "bg-surface-container text-on-surface-variant",
+    APPROUVEE: "bg-secondary/15 text-secondary",
+    REFUSEE: "bg-error-container/60 text-error",
+  };
+  const libelles: Record<string, string> = {
+    EN_ATTENTE: "En attente",
+    APPROUVEE: "Approuvée",
+    REFUSEE: "Refusée",
+  };
+  if (!statut) return <span className="text-outline-variant">—</span>;
+  return (
+    <span className={`rounded-full px-2 py-0.5 text-label-md ${teintes[statut]}`}>
+      {libelles[statut]}
+    </span>
+  );
+}
+
 export default function ResultatsPage() {
   const { forme } = useFormulaire();
   const id = forme.id;
@@ -72,12 +96,23 @@ export default function ResultatsPage() {
       const texte = Array.isArray(brut) ? brut.join(" | ") : String(brut ?? "");
       return `"${texte.replace(/"/g, '""')}"`;
     };
+    // L'export dit ce que dit l'écran : omettre la décision ferait lire des
+    // demandes refusées comme des réponses ordinaires.
+    const circuit = Boolean(forme.approbation_flow_id);
     const lignes = [
-      ["Date", "Répondant", ...colonnes.map((q) => q.libelle)].map(echapper).join(","),
+      [
+        "Date",
+        "Répondant",
+        ...(circuit ? ["Approbation"] : []),
+        ...colonnes.map((q) => q.libelle),
+      ]
+        .map(echapper)
+        .join(","),
       ...soumissions.map((s) =>
         [
           new Date(s.created_at).toLocaleString("fr-FR"),
           s.repondant_nom ?? (s.repondant_user_id ? `#${s.repondant_user_id}` : "Anonyme"),
+          ...(circuit ? [s.approbation_statut ?? ""] : []),
           ...colonnes.map((q) => s.reponses[String(q.id)]),
         ]
           .map(echapper)
@@ -213,6 +248,11 @@ export default function ResultatsPage() {
                   Répondant
                 </th>
                 <th className="px-3 py-2 text-left text-label-sm uppercase text-outline">PDF</th>
+                {forme.approbation_flow_id && (
+                  <th className="whitespace-nowrap px-3 py-2 text-left text-label-sm uppercase text-outline">
+                    Approbation
+                  </th>
+                )}
                 {colonnes.map((q) => (
                   <th
                     key={q.id}
@@ -254,6 +294,11 @@ export default function ResultatsPage() {
                       </a>
                     )}
                   </td>
+                  {forme.approbation_flow_id && (
+                    <td className="whitespace-nowrap px-3 py-2">
+                      <EtatApprobation statut={s.approbation_statut} />
+                    </td>
+                  )}
                   {colonnes.map((q) => (
                     <td key={q.id} className="px-3 py-2 text-on-surface">
                       <ValeurLisible

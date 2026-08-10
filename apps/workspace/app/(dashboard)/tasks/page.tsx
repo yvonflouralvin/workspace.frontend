@@ -24,6 +24,7 @@ import { PriorityBars } from "@repo/ui/PriorityBars";
 import { FilCommentaires } from "@/components/projects/FilCommentaires";
 import { KanbanBoard } from "@/components/projects/KanbanBoard";
 import { useSessionStore } from "@repo/auth/store/session.store";
+import { TachesAilleurs } from "@/components/TachesAilleurs";
 import { useRouter } from "next/navigation";
 
 type Vue = "liste" | "kanban";
@@ -190,6 +191,8 @@ export default function TasksPage() {
           {erreur}
         </p>
       )}
+
+      <TachesAilleurs />
 
       <div className="mt-4 flex flex-wrap items-center gap-1.5">
         <Bascule actif={miennes} onClick={() => setMiennes(true)}>

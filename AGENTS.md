@@ -66,6 +66,20 @@ Formulaires façon Google Forms : conception (`/forms/{id}`), réponse
 (`/forms/{id}/repondre`), dépouillement (`/forms/{id}/resultats`) et **page
 publique `/f/{jeton}`**.
 
+**`/forms` = « mes envois ».** La page listait trois choses en onglets — ce que je
+conçois, ce qu'on m'a partagé, ce que je peux remplir — trois métiers sur un même
+écran. Elle ne répond plus qu'à la question de tout le monde : ce que J'AI envoyé et
+où ça en est (`GET /formulaires/mes-envois`, paginé côté serveur). « Nouveau » ouvre
+la palette (`@repo/ui/PaletteRecherche`, le geste de la recherche globale) sur le
+catalogue ; « Créer » n'apparaît qu'avec `projects.formulaires.creer` — concevoir
+n'est pas répondre. Les formulaires que je conçois vivent sur `/forms/miens`.
+
+**Ce que d'autres apps attendent de moi** (`components/TachesAilleurs.tsx`, écran
+`/tasks`) : une demande d'approbation dont c'est mon tour apparaît dans « Mes
+tâches ». Bloc à part, jamais fondu dans la liste — ces tâches n'ont ni état, ni
+priorité, ni échéance, et ne se cochent pas ici : elles se terminent là où elles se
+jouent. Contrat côté `projects` (`POST /internal/taches`, `/internal/taches/clore`).
+
 **Catalogue unique — `/forms/remplir`.** Deux moteurs répondent à la même question
 de l'utilisateur, « quel formulaire puis-je remplir ? » : le module Formulaire, qui
 consigne une réponse, et les circuits d'`approval-flows`, qui font circuler une

@@ -103,7 +103,10 @@ export default function FormulaireLayout({ children }: { children: ReactNode }) 
             >
               {STATUT_LABELS[forme.statut]}
             </span>
-            {forme.nb_soumissions} réponse{forme.nb_soumissions > 1 ? "s" : ""}
+            {/* Le compteur relève du dépouillement : un répondant n'a pas à
+                savoir combien d'autres sont passés avant lui. */}
+            {forme.peut_voir_resultats &&
+              `${forme.nb_soumissions} réponse${forme.nb_soumissions > 1 ? "s" : ""}`}
           </span>
           <h1 className="mt-0.5 font-display text-headline-md text-on-surface">{forme.titre}</h1>
         </div>

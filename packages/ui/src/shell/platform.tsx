@@ -61,6 +61,14 @@ export const PLATFORM_APPS: AppDefinition[] = [
     description: "Planification des prestations, espaces, matériels et véhicules",
   },
   {
+    id: "sgr",
+    name: "SGR",
+    icon: "S",
+    url: process.env.NEXT_PUBLIC_AUTH_API_SGR_DOMAIN ?? "http://localhost:3014",
+    color: "#7c2d12",
+    description: "Secrétariat Général à la Recherche — dossiers de troisième cycle",
+  },
+  {
     id: "hr",
     name: "RH",
     icon: "H",
@@ -200,6 +208,24 @@ export const STOCK_SHELL: AppShellConfig = {
   routeIcons: {
     "/items":      <Inventory2Outlined style={s(15)} />,
     "/categories": <CategoryOutlined style={s(15)} />,
+  },
+};
+
+export const SGR_SHELL: AppShellConfig = {
+  appName: "SGR",
+  appHref: "/",
+  appIcon: "S",
+  appColor: "#7c2d12",
+  routeLabels: {
+    "/mon-dossier": "Mon dossier",
+    "/dossiers": "Dossiers",
+    "/rendez-vous": "Rendez-vous",
+    "/parametres": "Paramètres",
+  },
+  routeIcons: {
+    "/mon-dossier": <DescriptionOutlined style={s(15)} />,
+    "/dossiers": <FolderOpenOutlined style={s(15)} />,
+    "/rendez-vous": <EventOutlined style={s(15)} />,
   },
 };
 

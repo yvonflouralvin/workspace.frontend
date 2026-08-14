@@ -61,6 +61,14 @@ export const PLATFORM_APPS: AppDefinition[] = [
     description: "Planification des prestations, espaces, matériels et véhicules",
   },
   {
+    id: "academique",
+    name: "Academia",
+    icon: "A",
+    url: process.env.NEXT_PUBLIC_AUTH_API_ACADEMIQUE_DOMAIN ?? "http://localhost:3015",
+    color: "#1d4ed8",
+    description: "Structure académique, années, étudiants et inscriptions",
+  },
+  {
     id: "sgr",
     name: "SGR",
     icon: "S",
@@ -208,6 +216,25 @@ export const STOCK_SHELL: AppShellConfig = {
   routeIcons: {
     "/items":      <Inventory2Outlined style={s(15)} />,
     "/categories": <CategoryOutlined style={s(15)} />,
+  },
+};
+
+export const ACADEMIQUE_SHELL: AppShellConfig = {
+  appName: "Academia",
+  appHref: "/",
+  appIcon: "A",
+  appColor: "#1d4ed8",
+  routeLabels: {
+    "/structure": "Structure",
+    "/annees": "Années",
+    "/promotions": "Promotions",
+    "/etudiants": "Étudiants",
+    "/enseignants": "Enseignants",
+  },
+  routeIcons: {
+    "/structure": <AccountTreeOutlined style={s(15)} />,
+    "/annees": <EventOutlined style={s(15)} />,
+    "/etudiants": <GroupsOutlined style={s(15)} />,
   },
 };
 

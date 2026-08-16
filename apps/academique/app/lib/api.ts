@@ -65,6 +65,91 @@ export interface Promotion {
   actif: boolean;
 }
 
+export interface ElementConstitutif {
+  id: number;
+  unite_enseignement_id: number;
+  promotion_id: number;
+  intitule: string;
+  credits: number;
+  cmi: number;
+  td: number;
+  tp: number;
+  volume_total: number;
+  titulaire_id: number | null;
+  titulaire_nom: string;
+  assistant_id: number | null;
+  assistant_nom: string;
+  assistant_secondaire_id: number | null;
+  assistant_secondaire_nom: string;
+  est_projet: boolean;
+  est_stage: boolean;
+  description: string | null;
+  contenu_minimum: string | null;
+  objectifs: string | null;
+  resultats_attendus: string | null;
+  position: number;
+}
+
+export interface UniteEnseignement {
+  id: number;
+  promotion_id: number;
+  code: string;
+  intitule: string;
+  periode: number;
+  bcc: "FONDAMENTALE" | "TRANSVERSALE" | "DECOUVERTE";
+  bcc_libelle: string;
+  position: number;
+  credits: number;
+  cmi: number;
+  td: number;
+  tp: number;
+  nombre_ec: number;
+  elements: ElementConstitutif[];
+}
+
+export interface Programme {
+  promotion_id: number;
+  promotion_libelle: string;
+  annee_id: number;
+  annee_libelle: string;
+  annee_modifiable: boolean;
+  total_credits: number;
+  total_volume: number;
+  unites: UniteEnseignement[];
+}
+
+export interface Reprise {
+  unites: number;
+  elements: number;
+  ecarts: string[];
+}
+
+export interface LigneCharge {
+  element_id: number;
+  intitule: string;
+  code_ue: string;
+  intitule_ue: string;
+  periode: number;
+  promotion_id: number;
+  promotion_libelle: string;
+  annee_id: number;
+  role: "TITULAIRE" | "ASSISTANT" | "ASSISTANT_SECONDAIRE";
+  credits: number;
+  cmi: number;
+  td: number;
+  tp: number;
+  volume_total: number;
+}
+
+export interface ChargeHoraire {
+  enseignant_id: number;
+  enseignant_nom: string;
+  annee_id: number | null;
+  total_volume: number;
+  total_credits: number;
+  lignes: LigneCharge[];
+}
+
 export interface Reconduction {
   creees: number;
   ignorees: { promotion: string; raison: string }[];
@@ -304,4 +389,41 @@ export const api = {
     }).then((r) => lire<Enseignant>(r)),
   enseignantsDeLUnite: (unite_id: number) =>
     apiFetch(`${base}/unites/${unite_id}/enseignants`).then((r) => lire<Enseignant[]>(r)),
+
+  // ── Programme ──────────────────────────────────────────────────────────
+  programme: (promotion_id: number) =>
+    apiFetch(`${base}/promotions/${promotion_id}/programme`).then((r) => lire<Programme>(r)),
+  creerUE: (promotion_id: number, corps: Record<string, unknown>) =>
+    apiFetch(`${base}/promotions/${promotion_id}/unites-enseignement`, {
+      method: "POST",
+      body: corps,
+    }).then((r) => lire<UniteEnseignement>(r)),
+  modifierUE: (id: number, corps: Record<string, unknown>) =>
+    apiFetch(`${base}/unites-enseignement/${id}`, { method: "PATCH", body: corps }).then((r) =>
+      lire<UniteEnseignement>(r)
+    ),
+  supprimerUE: (id: number, avecElements = false) =>
+    apiFetch(
+      `${base}/unites-enseignement/${id}${avecElements ? "?avec_elements=true" : ""}`,
+      { method: "DELETE" }
+    ).then((r) => lire<void>(r)),
+  creerEC: (ue_id: number, corps: Record<string, unknown>) =>
+    apiFetch(`${base}/unites-enseignement/${ue_id}/elements`, { method: "POST", body: corps }).then(
+      (r) => lire<ElementConstitutif>(r)
+    ),
+  modifierEC: (id: number, corps: Record<string, unknown>) =>
+    apiFetch(`${base}/elements/${id}`, { method: "PATCH", body: corps }).then((r) =>
+      lire<ElementConstitutif>(r)
+    ),
+  supprimerEC: (id: number) =>
+    apiFetch(`${base}/elements/${id}`, { method: "DELETE" }).then((r) => lire<void>(r)),
+  reprendreProgramme: (promotion_id: number, source_promotion_id: number, avec_titulaires: boolean) =>
+    apiFetch(`${base}/promotions/${promotion_id}/programme/reprendre`, {
+      method: "POST",
+      body: { source_promotion_id, avec_titulaires },
+    }).then((r) => lire<Reprise>(r)),
+  chargeHoraire: (enseignant_id: number, annee?: number) =>
+    apiFetch(
+      `${base}/enseignants/${enseignant_id}/charge-horaire${annee ? `?annee=${annee}` : ""}`
+    ).then((r) => lire<ChargeHoraire>(r)),
 };

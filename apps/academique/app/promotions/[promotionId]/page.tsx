@@ -2,7 +2,12 @@
 
 import { use, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowBackOutlined, GroupsOutlined, TrendingFlatOutlined } from "@mui/icons-material";
+import {
+  ArrowBackOutlined,
+  GroupsOutlined,
+  MenuBookOutlined,
+  TrendingFlatOutlined,
+} from "@mui/icons-material";
 import { Toast } from "@repo/ui/Toast";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
 import { DashboardShell } from "@/components/DashboardShell";
@@ -98,6 +103,14 @@ export default function PromotionPage({
         <p className="mt-1 text-body-sm text-on-surface-variant">
           {promotion ? `${promotion.unite_libelle} · ${promotion.annee_libelle}` : ""}
         </p>
+
+        <Link
+          href={`/promotions/${id}/programme`}
+          className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-outline-soft px-3 py-1.5 text-body-sm font-medium text-on-surface-variant transition-colors hover:border-primary hover:text-primary"
+        >
+          <MenuBookOutlined style={{ fontSize: 17 }} />
+          Programme de la promotion
+        </Link>
 
         {erreur && (
           <p className="mt-4 rounded-lg bg-error-container/40 px-3 py-2 text-body-sm text-error">

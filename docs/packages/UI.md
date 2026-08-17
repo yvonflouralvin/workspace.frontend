@@ -51,8 +51,11 @@ employés d'un groupe dans `GroupFolderView` (voir `docs/apps/hr/HR.md`).
 
 ### `Tabs` (`src/Tabs.tsx`)
 
-Liste d'onglets + panneau de contenu, Tailwind pur, état actif géré en interne. Pas
-d'animation, pas de dépendance externe.
+Liste d'onglets + panneau de contenu, Tailwind pur, pas d'animation, pas de dépendance
+externe. **L'état actif est interne par défaut, ou CONTRÔLÉ** : passer `activeTab` +
+`onChange` remonte l'onglet courant à l'appelant — c'est ce qu'il faut quand chaque
+onglet charge ses propres données et qu'on ne veut pas les charger toutes à l'ouverture
+de la page (fiche étudiant d'`academique`).
 
 ```tsx
 <Tabs
@@ -64,7 +67,8 @@ d'animation, pas de dépendance externe.
 />
 ```
 
-Utilisé par `apps/hr` : fiche employé (`EmployeeDetailView`, voir `docs/apps/hr/HR.md`).
+Utilisé par `apps/hr` (fiche employé, `EmployeeDetailView`), `apps/ventes` (fiche client)
+et `apps/academique` (fiche étudiant, en mode contrôlé).
 
 ### `GraphQLSelect` (`src/GraphQLSelect.tsx`)
 
@@ -532,6 +536,38 @@ notification éphémère sur `inverse-surface`, auto-dismiss 2,6 s, `tone` `succ
 )}
 {toast && <Toast message={toast.message} tone={toast.tone} onDismiss={() => setToast(null)} />}
 ```
+
+### `SaisieRapide` (`src/SaisieRapide.tsx`)
+
+**Le geste de la palette de recherche, appliqué à une CRÉATION.** Surimpression
+centrée haut, premier champ focalisé au montage, `Entrée` valide, `Échap` et le clic
+extérieur ferment. À préférer à un formulaire en ligne dépliant quand la création se
+fait au guichet, en trois ou quatre champs, et que la suite se remplit sur la fiche.
+
+Elle ne sait rien de ce qu'elle crée : l'appelant déclare ses `champs` (`texte` ou
+`choix`, `requis`, `large`, `aide`) et reçoit les valeurs dans `onValider`. Elle
+**n'enregistre pas** et ne connaît aucun backend — l'appelant garde `busy` et `erreur`.
+
+```tsx
+{creation && (
+  <SaisieRapide
+    titre="Nouvel étudiant"
+    intro="Le matricule est attribué par l'établissement."
+    busy={busy}
+    erreur={erreur}
+    champs={[
+      { nom: "nom", libelle: "Nom", requis: true },
+      { nom: "postnom", libelle: "Post-nom" },
+      { nom: "sexe", libelle: "Sexe", type: "choix",
+        options: [{ valeur: "M", libelle: "Masculin" }, { valeur: "F", libelle: "Féminin" }] },
+    ]}
+    onValider={creer}
+    onFermer={() => setCreation(false)}
+  />
+)}
+```
+
+Utilisé par `apps/academique` : registre des étudiants → la fiche du nouvel inscrit.
 
 ### `SettingRow` (`src/SettingRow.tsx`) et `Switch` (`src/Switch.tsx`)
 

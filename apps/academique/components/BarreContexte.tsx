@@ -10,6 +10,12 @@ const CHAMP =
  *  Visible en permanence, parce que se tromper d'année est l'erreur la plus
  *  coûteuse du domaine : on inscrit dans la mauvaise, et personne ne s'en
  *  aperçoit avant la rentrée.
+ *
+ *  Les deux listes portent leur NOM en clair. Une liste déroulante nue posée en
+ *  haut d'un écran n'apprend pas ce qu'elle commande : on lit « ISP — Institut
+ *  Supérieur… » sans savoir si c'est un filtre de la liste, un choix de
+ *  destination, ou autre chose. L'établissement n'apparaît que si le workspace
+ *  en compte plusieurs — sinon il n'y a rien à choisir.
  */
 export function BarreContexte({
   etablissements,
@@ -29,21 +35,24 @@ export function BarreContexte({
   return (
     <div className="mb-5 flex flex-wrap items-center gap-2">
       {(etablissements?.length ?? 0) > 1 && (
-        <select
-          aria-label="Établissement"
-          className={CHAMP}
-          value={etablissement?.id ?? ""}
-          onChange={(e) => {
-            const choisi = etablissements?.find((x) => x.id === Number(e.target.value));
-            if (choisi) onEtablissement(choisi);
-          }}
-        >
-          {etablissements?.map((e) => (
-            <option key={e.id} value={e.id}>
-              {e.sigle ? `${e.sigle} — ${e.nom}` : e.nom}
-            </option>
-          ))}
-        </select>
+        <label className="flex items-center gap-2 text-body-sm text-on-surface-variant">
+          Établissement
+          <select
+            aria-label="Établissement"
+            className={CHAMP}
+            value={etablissement?.id ?? ""}
+            onChange={(e) => {
+              const choisi = etablissements?.find((x) => x.id === Number(e.target.value));
+              if (choisi) onEtablissement(choisi);
+            }}
+          >
+            {etablissements?.map((e) => (
+              <option key={e.id} value={e.id}>
+                {e.sigle ? `${e.sigle} — ${e.nom}` : e.nom}
+              </option>
+            ))}
+          </select>
+        </label>
       )}
 
       {annees && onAnnee && (

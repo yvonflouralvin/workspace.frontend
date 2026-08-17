@@ -97,7 +97,7 @@ export function SaisieRapide({
       <div
         role="dialog"
         aria-label={titre}
-        className="animate-pop-in w-full max-w-[24rem] overflow-hidden rounded-2xl border border-outline-soft bg-surface-container-lowest shadow-modal"
+        className="animate-pop-in w-full max-w-[20rem] overflow-hidden rounded-2xl border border-outline-soft bg-surface-container-lowest shadow-modal"
       >
         <header className="border-b border-hairline px-4 py-3">
           <p className="font-display text-body-lg font-semibold text-on-surface">{titre}</p>

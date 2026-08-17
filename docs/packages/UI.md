@@ -540,12 +540,15 @@ notification éphémère sur `inverse-surface`, auto-dismiss 2,6 s, `tone` `succ
 ### `SaisieRapide` (`src/SaisieRapide.tsx`)
 
 **Le geste de la palette de recherche, appliqué à une CRÉATION.** Surimpression
-centrée haut, premier champ focalisé au montage, `Entrée` valide, `Échap` et le clic
-extérieur ferment. À préférer à un formulaire en ligne dépliant quand la création se
+centrée haut (`24rem`, **une seule colonne**), premier champ focalisé au montage,
+`Entrée` valide, `Échap` et le clic extérieur ferment. Trois ou quatre champs courts se
+lisent de haut en bas ; deux colonnes donnaient la largeur d'un formulaire complet et
+faisaient perdre l'impression de fenêtre légère. Une création qui a besoin de plus de
+champs que ça n'est pas une saisie rapide : elle appartient à un écran. À préférer à un formulaire en ligne dépliant quand la création se
 fait au guichet, en trois ou quatre champs, et que la suite se remplit sur la fiche.
 
 Elle ne sait rien de ce qu'elle crée : l'appelant déclare ses `champs` (`texte` ou
-`choix`, `requis`, `large`, `aide`) et reçoit les valeurs dans `onValider`. Elle
+`choix`, `requis`, `aide`) et reçoit les valeurs dans `onValider`. Elle
 **n'enregistre pas** et ne connaît aucun backend — l'appelant garde `busy` et `erreur`.
 
 ```tsx

@@ -4,6 +4,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 /** Une saisie rapide en surimpression — le geste de la recherche globale.
  *
+ *  **Étroite et sur une seule colonne, volontairement.** Trois ou quatre champs
+ *  courts se lisent de haut en bas ; les étaler sur deux colonnes donne la
+ *  largeur d'un formulaire de saisie complète, et fait perdre l'impression de
+ *  fenêtre légère qui rend la palette agréable. Une création qui a besoin de
+ *  plus de champs que ça n'est pas une saisie rapide : elle appartient à un
+ *  écran.
+ *
  *  Surgir par-dessus la page, prendre le clavier, se fermer à Échap : c'est ce
  *  que l'utilisateur a déjà appris de la palette. Un formulaire de création qui
  *  s'ouvre autrement lui demande d'apprendre une deuxième fois.
@@ -26,8 +33,6 @@ export interface ChampRapide {
   /** Un champ requis désactive la validation tant qu'il est vide. */
   requis?: boolean;
   options?: { valeur: string; libelle: string }[];
-  /** Largeur en colonnes de la grille (1 ou 2). Deux = pleine largeur. */
-  large?: boolean;
   aide?: string;
 }
 
@@ -92,19 +97,16 @@ export function SaisieRapide({
       <div
         role="dialog"
         aria-label={titre}
-        className="animate-pop-in w-full max-w-[34rem] overflow-hidden rounded-2xl border border-outline-soft bg-surface-container-lowest shadow-modal"
+        className="animate-pop-in w-full max-w-[24rem] overflow-hidden rounded-2xl border border-outline-soft bg-surface-container-lowest shadow-modal"
       >
         <header className="border-b border-hairline px-4 py-3">
           <p className="font-display text-body-lg font-semibold text-on-surface">{titre}</p>
           {intro && <p className="mt-0.5 text-label-md text-outline">{intro}</p>}
         </header>
 
-        <div className="grid gap-3 p-4 sm:grid-cols-2">
+        <div className="space-y-2.5 p-4">
           {champs.map((champ, rang) => (
-            <label
-              key={champ.nom}
-              className={`block ${champ.large ? "sm:col-span-2" : ""}`}
-            >
+            <label key={champ.nom} className="block">
               <span className="block text-label-md font-medium text-on-surface-variant">
                 {champ.libelle}
                 {champ.requis && <span className="ml-0.5 text-error">*</span>}
@@ -152,7 +154,7 @@ export function SaisieRapide({
           </p>
         )}
 
-        <footer className="flex items-center gap-2 border-t border-hairline px-4 py-3">
+        <footer className="flex flex-wrap items-center gap-2 border-t border-hairline px-4 py-3">
           <button
             type="button"
             disabled={busy || !complet}
@@ -168,9 +170,7 @@ export function SaisieRapide({
           >
             Annuler
           </button>
-          <span className="ml-auto text-label-sm text-outline">
-            Entrée pour valider · Échap pour fermer
-          </span>
+          <span className="ml-auto text-label-sm text-outline">Entrée · Échap</span>
         </footer>
       </div>
     </div>

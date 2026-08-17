@@ -15,7 +15,9 @@ import {
   EventOutlined,
   GroupsOutlined,
   HomeOutlined,
+  HowToRegOutlined,
   SchoolOutlined,
+  SettingsOutlined,
   ClassOutlined,
 } from "@mui/icons-material";
 import type { NavItem } from "@repo/ui/types/shell";
@@ -47,6 +49,15 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           },
         ]
       : []),
+    ...(can("academique.candidatures.traiter")
+      ? [
+          {
+            label: "Candidatures",
+            href: "/candidatures",
+            icon: <HowToRegOutlined style={{ fontSize: 20 }} />,
+          },
+        ]
+      : []),
     ...(can("academique.structure.view")
       ? [
           {
@@ -65,6 +76,11 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             icon: <SchoolOutlined style={{ fontSize: 20 }} />,
           },
           { label: "Années", href: "/annees", icon: <EventOutlined style={{ fontSize: 20 }} /> },
+          {
+            label: "Paramètres",
+            href: "/parametres",
+            icon: <SettingsOutlined style={{ fontSize: 20 }} />,
+          },
         ]
       : []),
   ];

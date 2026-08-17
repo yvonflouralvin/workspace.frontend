@@ -1,18 +1,13 @@
 "use client";
 
-import { use, useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import {
-  ArrowBackOutlined,
-  GroupsOutlined,
-  MenuBookOutlined,
-  TrendingFlatOutlined,
-} from "@mui/icons-material";
+import { GroupsOutlined, TrendingFlatOutlined } from "@mui/icons-material";
 import { Toast } from "@repo/ui/Toast";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
-import { DashboardShell } from "@/components/DashboardShell";
 import { useContexte } from "@/app/lib/etablissement";
 import { api, type Inscription, type Passage, type Promotion } from "@/app/lib/api";
+import { usePromotion } from "./promotion-context";
 
 const CHAMP =
   "h-9 rounded-lg border border-outline-soft bg-surface-container-lowest px-3 text-body-sm text-on-surface outline-none transition-colors focus:border-primary";
@@ -30,13 +25,8 @@ const TEINTE: Record<string, string> = {
  *  tout le monde. Le rapport de passage NOMME celui qui reste — c'est ce qu'on
  *  risquerait de ne pas voir, et qui se découvrirait sinon à la rentrée.
  */
-export default function PromotionPage({
-  params,
-}: {
-  params: Promise<{ promotionId: string }>;
-}) {
-  const { promotionId } = use(params);
-  const id = Number(promotionId);
+export default function ClassePage() {
+  const { promotionId: id } = usePromotion();
   const { can } = usePermissions();
   const peutInscrire = can("academique.inscriptions.manage");
   const contexte = useContexte();
@@ -87,31 +77,8 @@ export default function PromotionPage({
   }
 
   return (
-    <DashboardShell>
-      <div className="mx-auto max-w-[960px] p-4 md:p-8">
-        <Link
-          href="/promotions"
-          className="mb-4 inline-flex items-center gap-1.5 text-body-sm font-medium text-on-surface-variant transition-colors hover:text-primary"
-        >
-          <ArrowBackOutlined style={{ fontSize: 15 }} />
-          Promotions
-        </Link>
-
-        <h1 className="font-display text-headline-md text-on-surface">
-          {promotion?.libelle ?? "Promotion"}
-        </h1>
-        <p className="mt-1 text-body-sm text-on-surface-variant">
-          {promotion ? `${promotion.unite_libelle} · ${promotion.annee_libelle}` : ""}
-        </p>
-
-        <Link
-          href={`/promotions/${id}/programme`}
-          className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-outline-soft px-3 py-1.5 text-body-sm font-medium text-on-surface-variant transition-colors hover:border-primary hover:text-primary"
-        >
-          <MenuBookOutlined style={{ fontSize: 17 }} />
-          Programme de la promotion
-        </Link>
-
+    <div>
+      <div>
         {erreur && (
           <p className="mt-4 rounded-lg bg-error-container/40 px-3 py-2 text-body-sm text-error">
             {erreur}
@@ -119,7 +86,7 @@ export default function PromotionPage({
         )}
 
         {peutInscrire && (
-          <section className="mt-5 rounded-2xl border border-outline-soft bg-surface-container-lowest p-4">
+          <section className="mb-5 rounded-2xl border border-outline-soft bg-surface-container-lowest p-4">
             <h2 className="text-body-md font-semibold text-on-surface">Passage d&apos;année</h2>
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <select
@@ -175,7 +142,7 @@ export default function PromotionPage({
           </section>
         )}
 
-        <div className="mt-5 flex items-center justify-between gap-2">
+        <div className="flex items-center justify-between gap-2">
           <h2 className="text-body-md font-semibold text-on-surface">
             Liste de classe {classe && `— ${classe.length}`}
           </h2>
@@ -241,6 +208,6 @@ export default function PromotionPage({
 
         {toast && <Toast message={toast} onDismiss={() => setToast(null)} />}
       </div>
-    </DashboardShell>
+    </div>
   );
 }

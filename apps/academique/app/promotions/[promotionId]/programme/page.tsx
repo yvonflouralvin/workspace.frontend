@@ -1,10 +1,8 @@
 "use client";
 
-import { use, useCallback, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   AddOutlined,
-  ArrowBackOutlined,
   ContentCopyOutlined,
   DeleteOutlineOutlined,
   MenuBookOutlined,
@@ -12,8 +10,8 @@ import {
 import { ConfirmDialog } from "@repo/ui/ConfirmDialog";
 import { Toast } from "@repo/ui/Toast";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
-import { DashboardShell } from "@/components/DashboardShell";
 import { useContexte } from "@/app/lib/etablissement";
+import { usePromotion } from "../promotion-context";
 import {
   api,
   type ElementConstitutif,
@@ -44,13 +42,8 @@ const TEINTE_BCC: Record<string, string> = {
  *  aucun. C'est ce qui empêche une maquette d'annoncer 30 h quand ses éléments
  *  en totalisent 45.
  */
-export default function ProgrammePage({
-  params,
-}: {
-  params: Promise<{ promotionId: string }>;
-}) {
-  const { promotionId } = use(params);
-  const id = Number(promotionId);
+export default function ProgrammePage() {
+  const { promotionId: id } = usePromotion();
   const { can } = usePermissions();
   const peutGerer = can("academique.programme.manage");
   const contexte = useContexte();
@@ -117,22 +110,14 @@ export default function ProgrammePage({
   const vide = programme !== null && programme.unites.length === 0;
 
   return (
-    <DashboardShell>
-      <div className="mx-auto max-w-[1040px] p-4 md:p-8">
-        <Link
-          href={`/promotions/${id}`}
-          className="mb-4 inline-flex items-center gap-1.5 text-body-sm font-medium text-on-surface-variant transition-colors hover:text-primary"
-        >
-          <ArrowBackOutlined style={{ fontSize: 15 }} />
-          {programme?.promotion_libelle ?? "Promotion"}
-        </Link>
-
+    <div>
+      <div>
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="font-display text-headline-md text-on-surface">Programme</h1>
-            <p className="mt-1 text-body-sm text-on-surface-variant">
-              {programme?.annee_libelle}
-              {programme && !programme.annee_modifiable && " · année clôturée, en lecture seule"}
+            <p className="text-body-sm text-on-surface-variant">
+              {programme && !programme.annee_modifiable
+                ? "Année clôturée — le programme est en lecture seule."
+                : "Les volumes d'une unité sont la somme de ses éléments."}
             </p>
           </div>
           {programme && programme.unites.length > 0 && (
@@ -163,7 +148,7 @@ export default function ProgrammePage({
             Proposé seulement quand la maquette est VIDE : au-delà, le serveur
             refuse d'écraser un travail en cours, et l'offrir serait mentir. */}
         {modifiable && vide && (
-          <section className="mt-5 rounded-2xl border border-outline-soft bg-surface-container-lowest p-4">
+          <section className="mt-4 rounded-2xl border border-outline-soft bg-surface-container-lowest p-4">
             <h2 className="text-body-md font-semibold text-on-surface">
               Reprendre un programme existant
             </h2>
@@ -322,7 +307,7 @@ export default function ProgrammePage({
 
         {toast && <Toast message={toast} onDismiss={() => setToast(null)} />}
       </div>
-    </DashboardShell>
+    </div>
   );
 }
 

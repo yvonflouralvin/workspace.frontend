@@ -296,6 +296,9 @@ export const api = {
     }).then((r) => lire<Annee>(r)),
 
   // ── Promotions ─────────────────────────────────────────────────────────
+  /** Une promotion par son identifiant — l'écran n'a plus à la chercher dans la
+   *  liste de l'établissement mémorisé côté navigateur. */
+  promotion: (id: number) => apiFetch(`${base}/promotions/${id}`).then((r) => lire<Promotion>(r)),
   promotions: (etab: number, params: { annee?: number; unite?: number } = {}) => {
     const query = new URLSearchParams();
     if (params.annee) query.set("annee", String(params.annee));
@@ -471,6 +474,8 @@ export const api = {
     }).then((r) => lire<BilanSaisie>(r)),
   auditCotes: (etudiant_id: number) =>
     apiFetch(`${base}/etudiants/${etudiant_id}/audit-cotes`).then((r) => lire<AuditCotes>(r)),
+  resultats: (etudiant_id: number) =>
+    apiFetch(`${base}/etudiants/${etudiant_id}/resultats`).then((r) => lire<ParcoursResultats>(r)),
 
   // ── C4 : examens ────────────────────────────────────────────────────────
   planningExamens: (promotion_id: number, session = "NORMALE") =>
@@ -837,6 +842,32 @@ export interface LigneAudit {
   motif: string | null;
   par: number | null;
   le: string;
+}
+
+/** Une décision ARRÊTÉE, telle qu'elle a été figée le jour de la délibération. */
+export interface ResultatAnnee {
+  deliberation_id: number;
+  promotion_id: number;
+  promotion_libelle: string;
+  annee_libelle: string;
+  session: string;
+  session_libelle: string;
+  periode: number;
+  close_le: string;
+  credits_acquis: number;
+  credits_totaux: number;
+  moyenne: number | null;
+  mention: string | null;
+  decision: string;
+  decision_libelle: string;
+}
+
+export interface ParcoursResultats {
+  etudiant_id: number;
+  nom_complet: string;
+  matricule: string;
+  credits_cumules: number;
+  annees: ResultatAnnee[];
 }
 
 export interface AuditCotes {

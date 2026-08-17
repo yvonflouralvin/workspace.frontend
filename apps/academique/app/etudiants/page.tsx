@@ -2,21 +2,26 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { AddOutlined, GroupsOutlined, UploadFileOutlined } from "@mui/icons-material";
 import { SearchField } from "@repo/ui/SearchField";
 import { Pagination } from "@repo/ui/Pagination";
-import { Toast } from "@repo/ui/Toast";
+import { SaisieRapide } from "@repo/ui/SaisieRapide";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
 import { DashboardShell } from "@/components/DashboardShell";
 import { BarreContexte } from "@/components/BarreContexte";
 import { useContexte } from "@/app/lib/etablissement";
 import { api, type EtudiantsPage, type RapportImport } from "@/app/lib/api";
 
-const CHAMP =
-  "h-9 rounded-lg border border-outline-soft bg-surface-container-lowest px-3 text-body-sm text-on-surface outline-none transition-colors focus:border-primary";
 const TAILLE = 25;
 
 /** Le registre des étudiants.
+ *
+ *  « Ajouter » ouvre une SAISIE RAPIDE — le geste de la recherche globale :
+ *  nom, post-nom, prénom, sexe, et on arrive sur la fiche. Le matricule est
+ *  attribué par l'établissement, et le reste de la fiche se complète là où on
+ *  la lit. L'ancien formulaire en ligne demandait un matricule au guichet, ce
+ *  qui faisait inventer un format à la personne qui accueille.
  *
  *  Paginé côté serveur : l'ISP en compte des milliers, et une liste complète
  *  ferait un écran qui met dix secondes à s'ouvrir.
@@ -27,6 +32,7 @@ const TAILLE = 25;
  *  manquants.
  */
 export default function EtudiantsPage_() {
+  const router = useRouter();
   const { can } = usePermissions();
   const peutGerer = can("academique.etudiants.manage");
   const contexte = useContexte();
@@ -37,11 +43,9 @@ export default function EtudiantsPage_() {
   const [page, setPage] = useState(1);
   const [archives, setArchives] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const [creation, setCreation] = useState(false);
-  const [fiche, setFiche] = useState({ matricule: "", nom: "", postnom: "", prenom: "" });
 
   const [importOuvert, setImportOuvert] = useState(false);
   const [csv, setCsv] = useState("");
@@ -65,21 +69,21 @@ export default function EtudiantsPage_() {
     return () => clearTimeout(t);
   }, [charger]);
 
-  async function creer() {
-    if (!etab || !fiche.matricule.trim() || !fiche.nom.trim()) return;
+  async function creer(valeurs: Record<string, string>) {
+    if (!etab) return;
     setBusy(true);
     setErreur(null);
     try {
-      await api.creerEtudiant(etab.id, {
-        matricule: fiche.matricule.trim(),
-        nom: fiche.nom.trim(),
-        postnom: fiche.postnom.trim() || null,
-        prenom: fiche.prenom.trim() || null,
+      // Pas de matricule ici : l'établissement en produit un. Le demander au
+      // guichet fait inventer un format à la personne qui accueille.
+      const cree = await api.creerEtudiant(etab.id, {
+        nom: valeurs.nom.trim(),
+        postnom: valeurs.postnom.trim() || null,
+        prenom: valeurs.prenom.trim() || null,
+        sexe: valeurs.sexe || null,
       });
-      setFiche({ matricule: "", nom: "", postnom: "", prenom: "" });
       setCreation(false);
-      setToast("Étudiant ajouté au registre.");
-      await charger();
+      router.push(`/etudiants/${cree.id}`);
     } catch (e) {
       setErreur(e instanceof Error ? e.message : "Création impossible.");
     } finally {
@@ -138,7 +142,7 @@ export default function EtudiantsPage_() {
               </button>
               <button
                 type="button"
-                onClick={() => setCreation((v) => !v)}
+                onClick={() => setCreation(true)}
                 className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-4 text-body-sm font-semibold text-on-primary shadow-button transition-colors hover:bg-primary-container"
               >
                 <AddOutlined style={{ fontSize: 16 }} />
@@ -160,43 +164,6 @@ export default function EtudiantsPage_() {
           <p className="mb-4 rounded-lg bg-error-container/40 px-3 py-2 text-body-sm text-error">
             {erreur ?? contexte.erreur}
           </p>
-        )}
-
-        {creation && (
-          <section className="mb-4 grid gap-2 rounded-2xl border border-outline-soft bg-surface-container-lowest p-4 md:grid-cols-4">
-            <input
-              className={CHAMP}
-              placeholder="Matricule *"
-              value={fiche.matricule}
-              onChange={(e) => setFiche({ ...fiche, matricule: e.target.value })}
-            />
-            <input
-              className={CHAMP}
-              placeholder="Nom *"
-              value={fiche.nom}
-              onChange={(e) => setFiche({ ...fiche, nom: e.target.value })}
-            />
-            <input
-              className={CHAMP}
-              placeholder="Post-nom"
-              value={fiche.postnom}
-              onChange={(e) => setFiche({ ...fiche, postnom: e.target.value })}
-            />
-            <input
-              className={CHAMP}
-              placeholder="Prénom"
-              value={fiche.prenom}
-              onChange={(e) => setFiche({ ...fiche, prenom: e.target.value })}
-            />
-            <button
-              type="button"
-              disabled={busy || !fiche.matricule.trim() || !fiche.nom.trim()}
-              onClick={creer}
-              className="h-9 rounded-lg bg-primary px-4 text-body-sm font-semibold text-on-primary transition-colors hover:bg-primary-container disabled:opacity-50"
-            >
-              Enregistrer
-            </button>
-          </section>
         )}
 
         {importOuvert && (
@@ -319,7 +286,33 @@ export default function EtudiantsPage_() {
           </>
         )}
 
-        {toast && <Toast message={toast} onDismiss={() => setToast(null)} />}
+        {creation && (
+          <SaisieRapide
+            titre="Nouvel étudiant"
+            intro="Le matricule est attribué par l'établissement ; le reste de la fiche se complète après."
+            busy={busy}
+            erreur={erreur}
+            champs={[
+              { nom: "nom", libelle: "Nom", requis: true },
+              { nom: "postnom", libelle: "Post-nom" },
+              { nom: "prenom", libelle: "Prénom" },
+              {
+                nom: "sexe",
+                libelle: "Sexe",
+                type: "choix",
+                options: [
+                  { valeur: "M", libelle: "Masculin" },
+                  { valeur: "F", libelle: "Féminin" },
+                ],
+              },
+            ]}
+            onValider={creer}
+            onFermer={() => {
+              setCreation(false);
+              setErreur(null);
+            }}
+          />
+        )}
       </div>
     </DashboardShell>
   );

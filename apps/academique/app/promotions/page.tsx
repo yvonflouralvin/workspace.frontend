@@ -113,9 +113,8 @@ export default function PromotionsPage() {
 
         <div className="mt-4">
           <BarreContexte
-            etablissements={contexte.etablissements}
             etablissement={etab}
-            onEtablissement={contexte.setEtablissement}
+            surnombre={contexte.surnombre}
             annees={annees}
             annee={anneeCourante}
             onAnnee={contexte.choisirAnnee}

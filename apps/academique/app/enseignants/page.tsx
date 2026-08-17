@@ -81,9 +81,8 @@ export default function EnseignantsPage() {
 
         <div className="mt-4">
           <BarreContexte
-            etablissements={contexte.etablissements}
             etablissement={etab}
-            onEtablissement={contexte.setEtablissement}
+            surnombre={contexte.surnombre}
           />
         </div>
 

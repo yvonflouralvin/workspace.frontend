@@ -5,17 +5,21 @@ import { api, type Annee, type Etablissement } from "@/app/lib/api";
 
 /** L'établissement et l'année sur lesquels on travaille.
  *
- *  Tous les écrans en dépendent, et aucun ne devrait redemander les deux à
- *  chaque navigation. Le choix d'établissement vit dans le navigateur — c'est
- *  une préférence d'écran ; celui de l'année vit sur le SERVEUR (`/moi/annee`),
+ *  **Un workspace, un établissement.** Il n'y a donc rien à choisir : l'écran
+ *  ne demande plus lequel, il le lit. L'ancienne liste déroulante posait une
+ *  question dont la réponse était toujours la même, et laissait croire qu'un
+ *  workspace pouvait en abriter plusieurs.
+ *
+ *  L'année, elle, se choisit — et son choix vit sur le SERVEUR (`/moi/annee`),
  *  parce qu'un agent le retrouve d'un poste à l'autre, et que le back-end s'en
  *  sert déjà pour répondre.
  */
-const CLE = "academique.etablissement";
-
 export function useContexte() {
-  const [etablissements, setEtablissements] = useState<Etablissement[] | null>(null);
-  const [etablissement, setEtablissementEtat] = useState<Etablissement | null>(null);
+  const [etablissement, setEtablissement] = useState<Etablissement | null>(null);
+  /** Les établissements en trop, s'il y en a. Le service refuse désormais d'en
+   *  créer un second, mais une base peut en porter d'anciens : les ignorer en
+   *  silence ferait disparaître des étudiants d'un registre sans explication. */
+  const [surnombre, setSurnombre] = useState<Etablissement[]>([]);
   const [annee, setAnnee] = useState<Annee | null>(null);
   const [erreur, setErreur] = useState<string | null>(null);
 
@@ -23,15 +27,11 @@ export function useContexte() {
     api
       .etablissements()
       .then((liste) => {
-        setEtablissements(liste);
-        const memorise = Number(
-          typeof window !== "undefined" ? window.localStorage.getItem(CLE) : 0
-        );
-        setEtablissementEtat(liste.find((e) => e.id === memorise) ?? liste[0] ?? null);
+        setEtablissement(liste[0] ?? null);
+        setSurnombre(liste.slice(1));
       })
       .catch((e) => {
         setErreur(e instanceof Error ? e.message : "Chargement impossible.");
-        setEtablissements([]);
       });
   }, []);
 
@@ -50,20 +50,14 @@ export function useContexte() {
     void rechargerAnnee(etablissement);
   }, [etablissement, rechargerAnnee]);
 
-  function setEtablissement(etab: Etablissement) {
-    window.localStorage.setItem(CLE, String(etab.id));
-    setEtablissementEtat(etab);
-  }
-
   async function choisirAnnee(annee_id: number) {
     if (!etablissement) return;
     setAnnee(await api.choisirMonAnnee(etablissement.id, annee_id));
   }
 
   return {
-    etablissements,
     etablissement,
-    setEtablissement,
+    surnombre,
     annee,
     choisirAnnee,
     rechargerAnnee: () => rechargerAnnee(etablissement),

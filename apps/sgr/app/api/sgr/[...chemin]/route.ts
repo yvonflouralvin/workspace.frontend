@@ -10,9 +10,9 @@ const SGR_API_URL = process.env.SGR_API_URL!;
  *  ne décide de rien ici : il relaie, chiffre, et laisse le service trancher.
  */
 function chemin(request: NextRequest): string {
-  const url = new URL(request.url);
-  const suffixe = url.pathname.replace(/^\/api\/sgr/, "") || "/";
-  return suffixe + url.search;
+  // Le chemin SEUL : `forwardToBackend` ajoute déjà la chaîne de requête, et la
+  // remettre ici la doublait — le backend refusait alors en 422, sans message.
+  return new URL(request.url).pathname.replace(/^\/api\/sgr/, "") || "/";
 }
 
 export async function GET(request: NextRequest) {

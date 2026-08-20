@@ -7,6 +7,27 @@ import { AppDefinition } from "../types/shell";
 
 const RECENT_KEY = "ws_recent_apps";
 
+/** Une app dont le domaine n'est pas configuré retombe sur `localhost:<port>`
+ *  (cf. `platform.tsx`), ce qui est juste quand on développe en local et FAUX
+ *  partout ailleurs : depuis un domaine public, le lien mène à une page qui
+ *  n'existe pas, sans un mot d'explication.
+ *
+ *  On ne propose donc pas ces apps quand on n'est pas soi-même sur localhost.
+ *  Les taire vaut mieux qu'un cul-de-sac : l'utilisateur ne peut pas deviner
+ *  qu'il manque une variable d'environnement au conteneur.
+ */
+function joignable(app: AppDefinition): boolean {
+  if (typeof window === "undefined") return true;
+  const ici = window.location.hostname;
+  if (ici === "localhost" || ici === "127.0.0.1") return true;
+  try {
+    const cible = new URL(app.url).hostname;
+    return cible !== "localhost" && cible !== "127.0.0.1";
+  } catch {
+    return false;
+  }
+}
+
 function useRecentApps(apps: AppDefinition[]) {
   const [recentIds, setRecentIds] = useState<string[]>([]);
 
@@ -38,9 +59,14 @@ interface AppSelectorProps {
   onClose: () => void;
 }
 
-export function AppSelector({ apps, allAppsUrl, onClose }: AppSelectorProps) {
+export function AppSelector({ apps: toutes, allAppsUrl, onClose }: AppSelectorProps) {
   const [query, setQuery] = useState("");
   const ref = useRef<HTMLDivElement>(null);
+  // Le filtre est appliqué APRÈS le montage : au rendu serveur on garde tout,
+  // sinon l'hydratation trouverait une liste différente de celle du HTML.
+  const [monte, setMonte] = useState(false);
+  useEffect(() => setMonte(true), []);
+  const apps = monte ? toutes.filter(joignable) : toutes;
   const { recentApps, track } = useRecentApps(apps);
 
   useEffect(() => {

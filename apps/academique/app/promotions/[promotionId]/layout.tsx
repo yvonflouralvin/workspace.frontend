@@ -8,6 +8,7 @@ import { usePermissions } from "@repo/auth/hooks/usePermissions";
 import { DashboardShell } from "@/components/DashboardShell";
 import { useContexte } from "@/app/lib/etablissement";
 import { api, type Promotion, type SessionEvaluation } from "@/app/lib/api";
+import { filDAriane } from "@/app/lib/ascendance";
 import { PromotionProvider } from "./promotion-context";
 import { SECTIONS, sectionPour } from "./sections";
 
@@ -71,8 +72,23 @@ export default function PromotionLayout({
             <h1 className="truncate font-display text-headline-md text-on-surface">
               {promotion?.libelle ?? "Promotion"}
             </h1>
-            <p className="mt-0.5 text-body-sm text-on-surface-variant">
-              {promotion ? `${promotion.unite_libelle} · ${promotion.annee_libelle}` : ""}
+            {/* Où se situe cette classe dans l'établissement.
+                « Première » ne dit rien : il y en a une par filière. Le fil
+                d'Ariane, racine d'abord, la place — et c'est la seule façon de
+                savoir, sur cet écran atteint par lien, dans quelle faculté on
+                se trouve. */}
+            <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-body-sm text-on-surface-variant">
+              {filDAriane(promotion?.unite_chemin_libelles).map((etage, i, tous) => (
+                <span key={`${etage}-${i}`} className="flex items-center gap-1.5">
+                  <span className={i === tous.length - 1 ? "text-on-surface" : undefined}>
+                    {etage}
+                  </span>
+                  {i < tous.length - 1 && <span className="text-outline">›</span>}
+                </span>
+              ))}
+              {promotion && (
+                <span className="text-outline">· {promotion.annee_libelle}</span>
+              )}
             </p>
           </div>
 

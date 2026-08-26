@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { AddOutlined, DeleteOutlineOutlined } from "@mui/icons-material";
+import { SearchSelect } from "@repo/ui/SearchSelect";
 import { Switch } from "@repo/ui/Switch";
 import { Toast } from "@repo/ui/Toast";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
@@ -9,6 +10,7 @@ import { DashboardShell } from "@/components/DashboardShell";
 import { BarreContexte } from "@/components/BarreContexte";
 import { useContexte } from "@/app/lib/etablissement";
 import { api, type TypeUnite, type Unite } from "@/app/lib/api";
+import { libelleAvecParents } from "@/app/lib/ascendance";
 
 const CHAMP =
   "h-9 w-full rounded-lg border border-outline-soft bg-surface-container-lowest px-3 text-body-sm text-on-surface outline-none transition-colors focus:border-primary";
@@ -41,7 +43,6 @@ export default function StructurePage() {
     libelle: "",
     parent_type_id: "",
     inscriptible_par_defaut: false,
-    niveaux: "",
   });
   const [nouvelleUnite, setNouvelleUnite] = useState({
     type_unite_id: "",
@@ -67,7 +68,17 @@ export default function StructurePage() {
   }, [charger]);
 
   async function creerType() {
-    if (!etab || !nouveauType.cle.trim() || !nouveauType.libelle.trim()) return;
+    // Sans établissement, l'ancien code sortait EN SILENCE : « Ajouter le
+    // type » ne faisait rien, et rien ne disait pourquoi. Un type d'unité
+    // appartient à un établissement — c'est un état, pas une panne.
+    if (!etab) {
+      setErreur(
+        "Cet espace n'a pas d'établissement : activez Academia depuis " +
+          "Workspace › Applications. Un type d'unité appartient à un établissement."
+      );
+      return;
+    }
+    if (!nouveauType.cle.trim() || !nouveauType.libelle.trim()) return;
     setBusy(true);
     setErreur(null);
     try {
@@ -76,10 +87,6 @@ export default function StructurePage() {
         libelle: nouveauType.libelle.trim(),
         parent_type_id: nouveauType.parent_type_id ? Number(nouveauType.parent_type_id) : null,
         inscriptible_par_defaut: nouveauType.inscriptible_par_defaut,
-        niveaux_par_defaut: nouveauType.niveaux
-          .split(",")
-          .map((n) => n.trim())
-          .filter(Boolean),
         position: types.length,
       });
       setNouveauType({
@@ -87,7 +94,6 @@ export default function StructurePage() {
         libelle: "",
         parent_type_id: "",
         inscriptible_par_defaut: false,
-        niveaux: "",
       });
       setToast("Type d'unité ajouté.");
       await charger();
@@ -99,7 +105,14 @@ export default function StructurePage() {
   }
 
   async function creerUnite() {
-    if (!etab || !nouvelleUnite.type_unite_id || !nouvelleUnite.libelle.trim()) return;
+    if (!etab) {
+      setErreur(
+        "Cet espace n'a pas d'établissement : activez Academia depuis " +
+          "Workspace › Applications. Une unité appartient à un établissement."
+      );
+      return;
+    }
+    if (!nouvelleUnite.type_unite_id || !nouvelleUnite.libelle.trim()) return;
     setBusy(true);
     setErreur(null);
     try {
@@ -119,6 +132,19 @@ export default function StructurePage() {
   }
 
   const typeChoisi = types.find((t) => t.id === Number(nouvelleUnite.type_unite_id));
+
+  async function chercherType(q: string): Promise<TypeUnite[]> {
+    const terme = q.trim().toLowerCase();
+    return types.filter((t) => !terme || t.libelle.toLowerCase().includes(terme));
+  }
+
+  async function chercherParent(q: string): Promise<Unite[]> {
+    const mots = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    return parentsPossibles.filter((u) => {
+      const foin = libelleAvecParents(u.chemin_libelles).toLowerCase();
+      return mots.every((m) => foin.includes(m));
+    });
+  }
   // Seules les unités du TYPE PARENT attendu peuvent accueillir la nouvelle :
   // proposer les autres ferait choisir un rattachement que le serveur refusera.
   const parentsPossibles = (unites ?? []).filter(
@@ -148,6 +174,25 @@ export default function StructurePage() {
           </p>
         )}
 
+        {/* L'établissement ne se crée pas ici — ni nulle part à la main.
+            Il naît à l'activation d'Academia pour le workspace, au nom du
+            workspace. Cet écran dit donc quoi faire, au lieu de proposer un
+            formulaire qui produirait un second chemin de création. */}
+        {contexte.pret && !etab && !contexte.erreur && (
+          <section className="mb-4 rounded-2xl border border-outline-soft bg-surface-container-lowest p-4">
+            <h2 className="text-body-md font-semibold text-on-surface">
+              Academia n&apos;est pas encore activée pour cet espace
+            </h2>
+            <p className="mt-1 max-w-[68ch] text-body-sm text-on-surface-variant">
+              L&apos;établissement naît à l&apos;activation de l&apos;application, au nom de
+              l&apos;espace de travail — et tout s&apos;y rattache : types d&apos;unités, unités,
+              années, étudiants. Activez Academia depuis{" "}
+              <span className="text-on-surface">Workspace › Applications</span>, puis renseignez
+              son adresse et ses identifiants légaux dans les paramètres d&apos;Academia.
+            </p>
+          </section>
+        )}
+
         {/* ── Les types ── */}
         <section className="rounded-2xl border border-outline-soft bg-surface-container-lowest p-4">
           <h2 className="text-body-md font-semibold text-on-surface">Types d&apos;unité</h2>
@@ -164,8 +209,6 @@ export default function StructurePage() {
                     <span className="block text-body-sm text-on-surface">{t.libelle}</span>
                     <span className="block text-label-md text-outline">
                       {parent ? `sous « ${parent.libelle} »` : "racine"}
-                      {t.niveaux_par_defaut.length > 0 &&
-                        ` · niveaux : ${t.niveaux_par_defaut.join(", ")}`}
                     </span>
                   </span>
                   {t.inscriptible_par_defaut && (
@@ -178,7 +221,11 @@ export default function StructurePage() {
             })}
             {types.length === 0 && (
               <p className="py-3 text-body-sm text-on-surface-variant">
-                Aucun type déclaré. Commencez par la racine — « Faculté », « Section »…
+                {!contexte.pret
+                  ? "Chargement…"
+                  : etab
+                    ? "Aucun type déclaré. Commencez par la racine — « Faculté », « Section »…"
+                    : "Rien à déclarer : Academia n'est pas activée pour cet espace."}
               </p>
             )}
           </div>
@@ -197,26 +244,14 @@ export default function StructurePage() {
                 value={nouveauType.libelle}
                 onChange={(e) => setNouveauType({ ...nouveauType, libelle: e.target.value })}
               />
-              <select
-                aria-label="Se range sous"
-                className={CHAMP}
-                value={nouveauType.parent_type_id}
-                onChange={(e) =>
-                  setNouveauType({ ...nouveauType, parent_type_id: e.target.value })
+              <SearchSelect<TypeUnite>
+                fetchOptions={chercherType}
+                value={nouveauType.parent_type_id ? Number(nouveauType.parent_type_id) : null}
+                onChange={(v) =>
+                  setNouveauType({ ...nouveauType, parent_type_id: v ? String(v) : "" })
                 }
-              >
-                <option value="">Racine — ne se range sous rien</option>
-                {types.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    sous « {t.libelle} »
-                  </option>
-                ))}
-              </select>
-              <input
-                className={CHAMP}
-                placeholder="Niveaux, séparés par des virgules (L1, L2, L3)"
-                value={nouveauType.niveaux}
-                onChange={(e) => setNouveauType({ ...nouveauType, niveaux: e.target.value })}
+                getOptionLabel={(t) => `sous « ${t.libelle} »`}
+                placeholder="Racine — ne se range sous rien"
               />
               <label className="flex items-center gap-2 text-body-sm text-on-surface-variant">
                 <Switch
@@ -230,7 +265,10 @@ export default function StructurePage() {
               </label>
               <button
                 type="button"
-                disabled={busy || !nouveauType.cle.trim() || !nouveauType.libelle.trim()}
+                disabled={
+                  busy || !etab || !nouveauType.cle.trim() || !nouveauType.libelle.trim()
+                }
+                title={etab ? undefined : "Activez Academia pour cet espace."}
                 onClick={creerType}
                 className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-primary px-4 text-body-sm font-semibold text-on-primary transition-colors hover:bg-primary-container disabled:opacity-50"
               >
@@ -249,7 +287,11 @@ export default function StructurePage() {
             <p className="mt-2 text-body-sm text-on-surface-variant">Chargement…</p>
           ) : unites.length === 0 ? (
             <p className="mt-2 text-body-sm text-on-surface-variant">
-              Aucune unité. Créez d&apos;abord une racine.
+              {!etab
+                ? "Academia n'est pas activée pour cet espace."
+                : types.length === 0
+                  ? "Aucune unité — et aucun type déclaré. Une unité EST d'un type : déclarez au moins un type racine ci-dessus, le formulaire de création apparaîtra ici."
+                  : "Aucune unité. Créez d'abord une racine, ci-dessous."}
             </p>
           ) : (
             <div className="mt-3 divide-y divide-hairline">
@@ -265,7 +307,6 @@ export default function StructurePage() {
                     </span>
                     <span className="block text-label-md text-outline">
                       {u.type_libelle}
-                      {u.niveaux.length > 0 && ` · ${u.niveaux.join(", ")}`}
                     </span>
                   </span>
                   {peutGerer && (
@@ -310,47 +351,42 @@ export default function StructurePage() {
             </div>
           )}
 
+          {peutGerer && types.length === 0 && unites !== null && unites.length > 0 && (
+            <p className="mt-3 border-t border-outline-soft pt-3 text-body-sm text-on-surface-variant">
+              Déclarez un type d&apos;unité ci-dessus pour pouvoir en créer une.
+            </p>
+          )}
+
           {peutGerer && types.length > 0 && (
             <div className="mt-3 grid gap-2 border-t border-outline-soft pt-3 md:grid-cols-3">
-              <select
-                aria-label="Type de l'unité"
-                className={CHAMP}
-                value={nouvelleUnite.type_unite_id}
-                onChange={(e) =>
+              <SearchSelect<TypeUnite>
+                fetchOptions={chercherType}
+                value={nouvelleUnite.type_unite_id ? Number(nouvelleUnite.type_unite_id) : null}
+                onChange={(v) =>
                   setNouvelleUnite({
                     ...nouvelleUnite,
-                    type_unite_id: e.target.value,
+                    type_unite_id: v ? String(v) : "",
                     parent_id: "",
                   })
                 }
-              >
-                <option value="">Type…</option>
-                {types.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.libelle}
-                  </option>
-                ))}
-              </select>
-              <select
-                aria-label="Rattachée à"
-                className={CHAMP}
-                disabled={!typeChoisi || typeChoisi.parent_type_id === null}
-                value={nouvelleUnite.parent_id}
-                onChange={(e) =>
-                  setNouvelleUnite({ ...nouvelleUnite, parent_id: e.target.value })
+                getOptionLabel={(t) => t.libelle}
+                placeholder="Type…"
+              />
+              {/* Le parent se nomme avec SON ascendance : « Math-Info » seul ne
+                  dit pas de quelle faculté, et deux départements homonymes
+                  existent dès qu'un établissement grandit. */}
+              <SearchSelect<Unite>
+                fetchOptions={chercherParent}
+                value={nouvelleUnite.parent_id ? Number(nouvelleUnite.parent_id) : null}
+                onChange={(v) =>
+                  setNouvelleUnite({ ...nouvelleUnite, parent_id: v ? String(v) : "" })
                 }
-              >
-                <option value="">
-                  {typeChoisi && typeChoisi.parent_type_id === null
-                    ? "Racine"
-                    : "Rattachée à…"}
-                </option>
-                {parentsPossibles.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.libelle}
-                  </option>
-                ))}
-              </select>
+                getOptionLabel={(u) => libelleAvecParents(u.chemin_libelles)}
+                disabled={!typeChoisi || typeChoisi.parent_type_id === null}
+                placeholder={
+                  typeChoisi && typeChoisi.parent_type_id === null ? "Racine" : "Rattachée à…"
+                }
+              />
               <input
                 className={CHAMP}
                 placeholder="Libellé"
@@ -361,7 +397,10 @@ export default function StructurePage() {
               />
               <button
                 type="button"
-                disabled={busy || !nouvelleUnite.type_unite_id || !nouvelleUnite.libelle.trim()}
+                disabled={
+                  busy || !etab || !nouvelleUnite.type_unite_id || !nouvelleUnite.libelle.trim()
+                }
+                title={etab ? undefined : "Activez Academia pour cet espace."}
                 onClick={creerUnite}
                 className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-primary px-4 text-body-sm font-semibold text-on-primary transition-colors hover:bg-primary-container disabled:opacity-50 md:col-start-3"
               >

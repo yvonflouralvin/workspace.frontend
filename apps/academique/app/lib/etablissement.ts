@@ -22,18 +22,28 @@ export function useContexte() {
   const [surnombre, setSurnombre] = useState<Etablissement[]>([]);
   const [annee, setAnnee] = useState<Annee | null>(null);
   const [erreur, setErreur] = useState<string | null>(null);
+  /** Vrai dès que la question « ce workspace a-t-il un établissement ? » a une
+   *  réponse. Sans lui, `etablissement === null` veut dire deux choses — « pas
+   *  encore chargé » et « il n'y en a pas » — et l'écran annonce un espace vide
+   *  le temps d'un aller-retour réseau. */
+  const [pret, setPret] = useState(false);
+
+  const rechargerEtablissement = useCallback(async () => {
+    try {
+      const liste = await api.etablissements();
+      setEtablissement(liste[0] ?? null);
+      setSurnombre(liste.slice(1));
+      setErreur(null);
+    } catch (e) {
+      setErreur(e instanceof Error ? e.message : "Chargement impossible.");
+    } finally {
+      setPret(true);
+    }
+  }, []);
 
   useEffect(() => {
-    api
-      .etablissements()
-      .then((liste) => {
-        setEtablissement(liste[0] ?? null);
-        setSurnombre(liste.slice(1));
-      })
-      .catch((e) => {
-        setErreur(e instanceof Error ? e.message : "Chargement impossible.");
-      });
-  }, []);
+    void rechargerEtablissement();
+  }, [rechargerEtablissement]);
 
   const rechargerAnnee = useCallback(async (etab: Etablissement | null) => {
     if (!etab) return;
@@ -59,8 +69,10 @@ export function useContexte() {
     etablissement,
     surnombre,
     annee,
+    pret,
     choisirAnnee,
     rechargerAnnee: () => rechargerAnnee(etablissement),
+    rechargerEtablissement,
     erreur,
   };
 }

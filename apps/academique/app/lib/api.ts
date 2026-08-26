@@ -6,9 +6,18 @@ export interface Etablissement {
   id: number;
   nom: string;
   sigle: string | null;
+  /** Le nom court dans l'URL publique : `/candidature/isp-gombe`. */
+  slug: string | null;
   adresse: string | null;
+  ville: string | null;
+  boite_postale: string | null;
   telephone: string | null;
   email: string | null;
+  site_web: string | null;
+  rccm: string | null;
+  id_national: string | null;
+  nif: string | null;
+  numero_autorisation: string | null;
   actif: boolean;
 }
 
@@ -19,7 +28,6 @@ export interface TypeUnite {
   libelle: string;
   parent_type_id: number | null;
   inscriptible_par_defaut: boolean;
-  niveaux_par_defaut: string[];
   position: number;
 }
 
@@ -32,9 +40,10 @@ export interface Unite {
   libelle: string;
   code: string | null;
   chemin: string;
+  /** L'ascendance en clair, de la racine à l'unité. */
+  chemin_libelles: string[];
   profondeur: number;
   peut_inscrire: boolean;
-  niveaux: string[];
   actif: boolean;
   position: number;
 }
@@ -57,7 +66,8 @@ export interface Promotion {
   unite_id: number;
   unite_libelle: string;
   unite_chemin: string;
-  niveau: string;
+  /** L'ascendance de l'unité, de la racine à elle. */
+  unite_chemin_libelles: string[];
   annee_id: number;
   annee_libelle: string;
   libelle: string;
@@ -199,7 +209,6 @@ export interface Inscription {
   inscrit_le: string;
   motif: string | null;
   clos_le: string | null;
-  niveau: string;
   unite_id: number | null;
   unite_libelle: string;
   unite_chemin: string;
@@ -226,6 +235,39 @@ export interface Enseignant {
   fonction: string | null;
 }
 
+export interface ImportEtudiants {
+  id: number;
+  etablissement_id: number;
+  nom_fichier: string;
+  etat: "EN_ATTENTE" | "EN_COURS" | "TERMINE" | "ECHOUE";
+  etat_libelle: string;
+  total_lignes: number;
+  lignes_traitees: number;
+  restantes: number;
+  crees: number;
+  ignores: number;
+  message: string | null;
+  cree_par: number | null;
+  created_at: string;
+  demarre_le: string | null;
+  termine_le: string | null;
+}
+
+export interface LigneImport {
+  ligne: number;
+  statut: string;
+  matricule: string | null;
+  nom: string | null;
+  raison: string;
+}
+
+export interface LignesImportPage {
+  items: LigneImport[];
+  total: number;
+  page: number;
+  taille: number;
+}
+
 async function lire<T>(reponse: Response): Promise<T> {
   if (!reponse.ok) {
     const corps = await reponse.json().catch(() => ({}));
@@ -244,6 +286,10 @@ export const api = {
   etablissements: () => apiFetch(`${base}/etablissements`).then((r) => lire<Etablissement[]>(r)),
   creerEtablissement: (corps: Record<string, unknown>) =>
     apiFetch(`${base}/etablissements`, { method: "POST", body: corps }).then((r) =>
+      lire<Etablissement>(r)
+    ),
+  modifierEtablissement: (id: number, corps: Record<string, unknown>) =>
+    apiFetch(`${base}/etablissements/${id}`, { method: "PATCH", body: corps }).then((r) =>
       lire<Etablissement>(r)
     ),
 
@@ -322,6 +368,16 @@ export const api = {
       body: { depuis_annee_id },
     }).then((r) => lire<Reconduction>(r)),
 
+  /** Ouvrir l'année depuis la STRUCTURE : une promotion par unité qui inscrit.
+   *
+   *  L'autre geste de rentrée. Reconduire recopie l'année passée — ses
+   *  capacités, ses libellés retouchés ; celui-ci suit ce que l'établissement a
+   *  décidé depuis, et sert la première année, qui n'a rien à reconduire. */
+  ouvrirDepuisStructure: (annee_id: number) =>
+    apiFetch(`${base}/annees/${annee_id}/ouvrir-depuis-structure`, { method: "POST" }).then(
+      (r) => lire<Reconduction>(r)
+    ),
+
   // ── Étudiants ──────────────────────────────────────────────────────────
   etudiants: (
     etab: number,
@@ -350,6 +406,51 @@ export const api = {
     apiFetch(`${base}/etudiants/${id}/compte`, { method: "PUT", body: { user_id } }).then((r) =>
       lire<Etudiant>(r)
     ),
+  // ── Import d'un fichier ────────────────────────────────────────────────
+  // Octets bruts : le classeur ne survit pas au chiffrement JSON du relais
+  // générique. Le téléversement passe par XHR et non `fetch`, parce que seul
+  // XHR sait dire OÙ EN EST l'envoi — un fichier de dix mille lignes met
+  // plusieurs secondes à monter, et une barre figée passe pour une panne.
+  deposerImport: (
+    etab: number,
+    fichier: File,
+    onProgres?: (pourcent: number) => void
+  ): Promise<ImportEtudiants> =>
+    new Promise((resoudre, rejeter) => {
+      const form = new FormData();
+      form.append("fichier", fichier);
+      const requete = new XMLHttpRequest();
+      requete.open("POST", `/api/academique-fichiers/etablissements/${etab}/etudiants/imports`);
+      requete.upload.onprogress = (e) => {
+        if (e.lengthComputable && onProgres) onProgres(Math.round((e.loaded / e.total) * 100));
+      };
+      requete.onload = () => {
+        let corps: { detail?: string } & ImportEtudiants;
+        try {
+          corps = JSON.parse(requete.responseText);
+        } catch {
+          rejeter(new Error(`Erreur ${requete.status}`));
+          return;
+        }
+        if (requete.status >= 200 && requete.status < 300) resoudre(corps);
+        else rejeter(new Error(corps?.detail ?? `Erreur ${requete.status}`));
+      };
+      requete.onerror = () => rejeter(new Error("Le téléversement a été interrompu."));
+      requete.send(form);
+    }),
+  imports: (etab: number, limite = 10) =>
+    apiFetch(`${base}/etablissements/${etab}/etudiants/imports?limite=${limite}`).then((r) =>
+      lire<ImportEtudiants[]>(r)
+    ),
+  suivreImport: (id: number) =>
+    apiFetch(`${base}/etudiants/imports/${id}`).then((r) => lire<ImportEtudiants>(r)),
+  journalImport: (id: number, page = 1, taille = 50) =>
+    apiFetch(`${base}/etudiants/imports/${id}/lignes?page=${page}&taille=${taille}`).then((r) =>
+      lire<LignesImportPage>(r)
+    ),
+  modeleImportUrl: (etab: number) =>
+    `/api/academique-fichiers/etablissements/${etab}/etudiants/imports/modele`,
+
   importer: (etab: number, lignes: Record<string, unknown>[]) =>
     apiFetch(`${base}/etablissements/${etab}/etudiants/import`, {
       method: "POST",
@@ -593,6 +694,25 @@ export const api = {
     ),
 
   // ── C8 : candidatures ───────────────────────────────────────────────────
+  //
+  // Les trois routes `public*` sont les SEULES d'Academia joignables sans
+  // compte. Elles passent par le même BFF chiffré : le relais transmet le
+  // cookie s'il y en a un, et le backend ne le regarde pas.
+  /** `reference` est le NOM COURT de l'établissement, ou son identifiant : un
+   *  lien déjà imprimé ne se rappelle pas. */
+  ouvertureCandidatures: (reference: string | number) =>
+    apiFetch(
+      `${base}/public/candidatures/ouverture?etablissement=${encodeURIComponent(String(reference))}`
+    ).then((r) => lire<OuvertureCandidatures>(r)),
+  deposerCandidature: (corps: Record<string, unknown>) =>
+    apiFetch(`${base}/public/candidatures`, { method: "POST", body: corps }).then((r) =>
+      lire<RecuCandidature>(r)
+    ),
+  suivreCandidature: (reference: string, annee: number) =>
+    apiFetch(
+      `${base}/public/candidatures/suivi?reference=${encodeURIComponent(reference)}&annee=${annee}`
+    ).then((r) => lire<SuiviCandidature>(r)),
+
   candidatures: (etab: number, annee: number, filtres: Record<string, string> = {}) => {
     const q = new URLSearchParams({ annee: String(annee), ...filtres });
     return apiFetch(`${base}/etablissements/${etab}/candidatures?${q}`).then((r) =>
@@ -1177,6 +1297,48 @@ export interface Paiement {
 }
 
 // ── C8 : candidatures ─────────────────────────────────────────────────────
+export interface UniteOuverte {
+  id: number;
+  libelle: string;
+  chemin_libelles: string[];
+}
+
+export interface LigneParcours {
+  nature: string;
+  annee: string;
+  etablissement: string;
+  section: string;
+  document_obtenu: string;
+  pourcentage: string;
+}
+
+export interface OuvertureCandidatures {
+  etablissement_id: number;
+  etablissement_libelle: string;
+  ouvertes: boolean;
+  raison: string | null;
+  annee_id: number | null;
+  annee_libelle: string | null;
+  unites: UniteOuverte[];
+}
+
+export interface RecuCandidature {
+  reference: string;
+  statut: string;
+  statut_libelle: string;
+  soumis_le: string;
+  message: string;
+}
+
+export interface SuiviCandidature {
+  reference: string;
+  statut: string;
+  statut_libelle: string;
+  soumis_le: string;
+  decide_le: string | null;
+  motif: string | null;
+}
+
 export interface ParcoursCandidature {
   id: number;
   nature: string;
@@ -1204,9 +1366,7 @@ export interface Candidature {
   province: string | null;
   choix_unite_id: number;
   choix_unite_libelle: string;
-  choix_niveau: string;
   second_choix_unite_id: number | null;
-  second_choix_niveau: string | null;
   annee_terminale: string | null;
   etablissement_terminal: string | null;
   section_terminale: string | null;

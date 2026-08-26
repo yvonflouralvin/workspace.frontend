@@ -3,14 +3,13 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { GroupsOutlined, TrendingFlatOutlined } from "@mui/icons-material";
+import { SearchSelect } from "@repo/ui/SearchSelect";
 import { Toast } from "@repo/ui/Toast";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
 import { useContexte } from "@/app/lib/etablissement";
 import { api, type Inscription, type Passage, type Promotion } from "@/app/lib/api";
+import { libelleAvecParents } from "@/app/lib/ascendance";
 import { usePromotion } from "./promotion-context";
-
-const CHAMP =
-  "h-9 rounded-lg border border-outline-soft bg-surface-container-lowest px-3 text-body-sm text-on-surface outline-none transition-colors focus:border-primary";
 
 const TEINTE: Record<string, string> = {
   INSCRIT: "bg-secondary/15 text-secondary",
@@ -62,6 +61,18 @@ export default function ClassePage() {
   // même année n'est pas un passage, et le serveur le refuse.
   const cibles = promotions.filter((p) => promotion && p.annee_id !== promotion.annee_id);
 
+  /** La recherche porte sur toute l'ascendance : taper « droit » doit remonter
+   *  la deuxième année de Droit, que le mot ne figure que chez un parent. */
+  async function chercherCible(q: string): Promise<Promotion[]> {
+    const mots = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    if (!mots.length) return cibles;
+    return cibles.filter((p) => {
+      const foin = `${libelleAvecParents(p.unite_chemin_libelles)} ${p.libelle} ${p.annee_libelle}`
+        .toLowerCase();
+      return mots.every((m) => foin.includes(m));
+    });
+  }
+
   async function passer() {
     if (!cible) return;
     setBusy(true);
@@ -89,19 +100,21 @@ export default function ClassePage() {
           <section className="mb-5 rounded-2xl border border-outline-soft bg-surface-container-lowest p-4">
             <h2 className="text-body-md font-semibold text-on-surface">Passage d&apos;année</h2>
             <div className="mt-2 flex flex-wrap items-center gap-2">
-              <select
-                aria-label="Promotion d'arrivée"
-                className={CHAMP}
-                value={cible}
-                onChange={(e) => setCible(e.target.value)}
-              >
-                <option value="">Faire monter vers…</option>
-                {cibles.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.libelle} — {p.annee_libelle}
-                  </option>
-                ))}
-              </select>
+              {/* Le choix le plus lourd de l'écran : se tromper de classe
+                  d'arrivée déplace toute une promotion. On la nomme donc par
+                  son ascendance — « Deuxième — Droit Générale — Droit » — et on
+                  la cherche au lieu de la faire dérouler. */}
+              <div className="w-[24rem] max-w-full">
+                <SearchSelect<Promotion>
+                  fetchOptions={chercherCible}
+                  value={cible ? Number(cible) : null}
+                  onChange={(v) => setCible(v ? String(v) : "")}
+                  getOptionLabel={(p) =>
+                    `${libelleAvecParents(p.unite_chemin_libelles) || p.libelle} — ${p.annee_libelle}`
+                  }
+                  placeholder="Faire monter vers…"
+                />
+              </div>
               <button
                 type="button"
                 disabled={busy || !cible}

@@ -8,6 +8,8 @@ import { DashboardShell } from "@/components/DashboardShell";
 import { useContexte } from "@/app/lib/etablissement";
 import { api, type Mention, type Parametre, type Periode } from "@/app/lib/api";
 import { BOUTON, BOUTON_PLAT, CHAMP, Carte, Erreur, Pastille, Vide } from "@/components/Bloc";
+import { IdentiteEtablissement } from "@/components/IdentiteEtablissement";
+import { LienCandidature } from "@/components/LienCandidature";
 
 /** Les réglages de l'établissement — NOMMÉS.
  *
@@ -83,6 +85,41 @@ export default function ParametresPage() {
         </div>
 
         <Erreur message={erreur} />
+
+        {contexte.pret && !contexte.etablissement && (
+          <Carte titre="Academia n'est pas encore activée pour cet espace">
+            <p className="px-4 py-4 text-body-sm text-on-surface-variant">
+              L&apos;établissement de cet espace naît à l&apos;activation d&apos;Academia, au nom
+              de l&apos;espace de travail. Activez l&apos;application depuis
+              <span className="text-on-surface"> Workspace › Applications</span>, puis revenez
+              ici pour renseigner l&apos;adresse et les identifiants légaux. Sans établissement,
+              ni type d&apos;unité, ni unité, ni étudiant n&apos;est possible.
+            </p>
+          </Carte>
+        )}
+
+        {contexte.etablissement && (
+          <IdentiteEtablissement
+            etablissement={contexte.etablissement}
+            peutModifier={peutStructurer}
+            onEnregistre={(message) => {
+              setToast(message);
+              void contexte.rechargerEtablissement();
+            }}
+          />
+        )}
+
+        {contexte.etablissement && (
+          <LienCandidature
+            etablissementId={contexte.etablissement.id}
+            slug={contexte.etablissement.slug}
+            ouvertes={["oui", "true", "1", "vrai"].includes(
+              ((parametres ?? []).find((p) => p.cle === "candidatures_ouvertes")?.valeur ?? "")
+                .trim()
+                .toLowerCase()
+            )}
+          />
+        )}
 
         {parametres === null ? (
           <p className="text-body-sm text-on-surface-variant">Chargement…</p>

@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
@@ -15,9 +16,15 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // La page de candidature est PUBLIQUE : un candidat n'a pas de compte, et un
+  // agent connecté ailleurs qui clique sur le lien ne doit pas se voir opposer
+  // « accès refusé » — il n'a rien demandé d'interne.
+  const chemin = (await headers()).get("x-pathname") ?? "";
+  const publique = chemin.startsWith("/candidature/");
+
   const session = await getServerSession();
   const accessDenied =
-    session.authenticated && !session.permissions.includes("academique.access");
+    !publique && session.authenticated && !session.permissions.includes("academique.access");
   const canSwitchTo = session.workspaces.some(
     (ws) => ws.id !== session.active_workspace?.id && ws.permissions.includes("academique.access")
   );

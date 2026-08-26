@@ -186,30 +186,69 @@ export function PanneauLienReservation({
             </button>
           </div>
 
-          <div className="mt-3 flex flex-wrap gap-3">
+          {/* Suspendre / reprendre ne touche PAS à l'adresse.
+              Elle vit dans un message déjà envoyé, sur une affiche, dans un QR
+              code collé à la porte d'une salle — et personne ne rediffuse une
+              affiche. Seule la régénération la casse, et elle le dit. */}
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            {planning.reservation_suspendue ? (
+              <button
+                type="button"
+                disabled={enCours}
+                onClick={() =>
+                  agir(() => operationsApi.ouvrirLienReservation(planning.id, mode, delais))
+                }
+                className="h-9 rounded-lg bg-primary px-4 text-body-sm font-semibold text-on-primary shadow-button disabled:opacity-50"
+              >
+                Rouvrir les réservations
+              </button>
+            ) : (
+              <button
+                type="button"
+                disabled={enCours}
+                onClick={() => agir(() => operationsApi.suspendreLienReservation(planning.id))}
+                className="inline-flex h-9 items-center gap-1 rounded-lg border border-outline-soft px-3 text-body-sm text-on-surface-variant disabled:opacity-50"
+              >
+                <LinkOffOutlined style={{ fontSize: 14 }} />
+                Suspendre les réservations
+              </button>
+            )}
+            {mode !== planning.reservation_mode && (
+              <button
+                type="button"
+                disabled={enCours}
+                onClick={() =>
+                  agir(() => operationsApi.ouvrirLienReservation(planning.id, mode, delais))
+                }
+                className="text-label-md text-primary disabled:opacity-50"
+              >
+                Appliquer ce mode
+              </button>
+            )}
             <button
               type="button"
               disabled={enCours}
-              onClick={() => agir(() => operationsApi.ouvrirLienReservation(planning.id, mode, delais))}
-              className="text-label-md text-primary disabled:opacity-50"
+              onClick={() => {
+                if (
+                  !window.confirm(
+                    "Régénérer casse l'adresse actuelle : tous ceux qui l'ont — message, " +
+                      "affiche, QR code — ne pourront plus réserver. À ne faire que si le " +
+                      "lien a fuité.",
+                  )
+                ) {
+                  return;
+                }
+                agir(() => operationsApi.regenererLienReservation(planning.id));
+              }}
+              className="ml-auto text-label-md text-error disabled:opacity-50"
             >
-              {mode === planning.reservation_mode
-                ? "Régénérer le lien"
-                : "Appliquer ce mode et régénérer"}
-            </button>
-            <button
-              type="button"
-              disabled={enCours}
-              onClick={() => agir(() => operationsApi.fermerLienReservation(planning.id))}
-              className="inline-flex items-center gap-1 text-label-md text-error disabled:opacity-50"
-            >
-              <LinkOffOutlined style={{ fontSize: 14 }} />
-              Révoquer
+              Régénérer (casse l&apos;adresse)
             </button>
           </div>
           <p className="mt-1 text-label-md text-outline">
-            Régénérer ou révoquer coupe l&apos;ancien lien immédiatement : ceux qui l&apos;ont déjà
-            ne pourront plus réserver.
+            {planning.reservation_suspendue
+              ? "Les réservations sont fermées. Le lien n'a pas changé : le rouvrir suffit."
+              : "Suspendre ferme les réservations sans changer l'adresse — rien à rediffuser."}
           </p>
         </>
       ) : (

@@ -151,7 +151,7 @@ export function PanneauListePlannings() {
                 {filtres.map((p) => (
                   <tr key={p.id} className="border-b border-hairline last:border-b-0 hover:bg-surface-container-low">
                     <td className="px-4 py-2.5">
-                      <Link href={`/plannings/${p.id}`} className="flex items-center gap-2 min-w-0">
+                      <Link href={`/plannings/${p.slug ?? p.id}`} className="flex items-center gap-2 min-w-0">
                         <span
                           className="h-4 w-1 flex-none rounded-full"
                           style={{ backgroundColor: TEINTES_TYPE[p.type] }}
@@ -184,7 +184,7 @@ export function PanneauListePlannings() {
                     </td>
                     <td className="px-4 py-2.5 text-right">
                       <Link
-                        href={`/plannings/${p.id}/rapport`}
+                        href={`/plannings/${p.slug ?? p.id}/rapport`}
                         className="inline-flex items-center gap-1 text-label-md text-primary hover:underline"
                       >
                         <InsightsOutlined style={{ fontSize: 15 }} />

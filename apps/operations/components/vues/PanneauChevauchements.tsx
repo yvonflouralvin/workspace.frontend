@@ -55,6 +55,9 @@ export function PanneauChevauchements() {
                     <WarningAmberOutlined style={{ fontSize: 16 }} className="text-error" />
                     {a.ressource}
                   </p>
+                  {/* Par identifiant : une affectation ne porte pas le nom
+                      court de son planning, et l'ajouter coûterait une requête
+                      par ligne. La page de destination accepte les deux. */}
                   <Link href={`/plannings/${a.planning_id}`} className="text-label-md text-primary">
                     Ouvrir le planning
                   </Link>

@@ -20,13 +20,17 @@ frontends/
     workspace/    → port 3005  (app principale SAAS)
     hr/           → port 3003  (module RH)
     approval-flows/ → port 3006  (création/gestion libre de workflows d'approbation)
+    operations/   → port 3013  (exploitation : plannings, sites, process)
     ventes/       → port 3011  (Facturation — nom d'affichage ; dossier/id restent "ventes")
     dashboard/    → port 3012  (Rapports temps réel agrégés — contrat de reporting)
+    website/      → port 3017  (builder de sites façon Elementor)
+    site/         → port 3018  (RENDERER public des sites publiés — voir plus bas)
     web/                       (landing page)
     docs/                      (documentation)
   packages/
     ui/                        (@repo/ui — inclut src/charts/ : LineChart, BarChart, Sparkline SVG)
     reporting-widgets/         (@repo/reporting-widgets — KpiCard, ReportWidget, TableWidget…)
+    site-widgets/              (@repo/site-widgets — catalogue de widgets + rendu partagé builder/public)
     auth/                      (@repo/auth)
     network/                   (@repo/network)
     design-system/             (@repo/design-system)
@@ -55,10 +59,29 @@ frontends/
 | `stock-inventaire` | 3010 | Gestion des stocks et inventaires — articles, catégories, mouvements (backend `stock` port 5009) |
 | `ventes`    | 3011 | **Facturation** (nom d'affichage ; id/backend restent `ventes`) — Clients, Produits (catégories, prix, TVA), Commandes, Factures, Paramètres. Produits/clients locaux, lien optionnel vers Stock/Tiers. Auto-enregistrement de produits par d'autres apps (ex. hosto) avec champs verrouillés. | — |
 | `dashboard` | 3012 | Rapports temps réel agrégés. Découvre le contrat de reporting de chaque app (backend `dashboard`), rend les rapports via `@repo/reporting-widgets` avec rafraîchissement live. Voir le contrat de reporting dans l'`AGENTS.md` racine. | — |
+| `operations`| 3013 | **Exploitation** — ressources et groupes, plannings de réservation (lien public stable par planning), sites, et module **Process** : des routines à exécuter (ronde de contrôle, clôture). Un process a des **étapes** (sections) et, dedans, des **points de contrôle** qui sont des **questions** au vocabulaire du module Formulaire (case fait/pas fait, valeur à relever avec bornes, commentaire, choix, date, heure). Chaque **exécution fige** la checklist et porte ses réponses ; hors bornes = anomalie signalée, jamais un blocage. | — |
+| `website`   | 3017 | Builder de sites façon Elementor — sites, pages, sections/widgets par clic **et par glissé**, modèles de sections, en-tête/pied partagés, historique des versions, médias, thème, domaines clients, **boutique** (catalogue, commandes, clients, abonnés). Rend le canevas avec `@repo/site-widgets`, le même paquet que le renderer. | `docs/apps/website/WEBSITE.md` |
+| `site`      | 3018 | **Renderer public** des sites publiés. Résout le site depuis l'en-tête `Host`, sert `/`, `/_media/<jeton>`, `/_apercu/<jeton>`, `robots.txt`, `sitemap.xml`, et la boutique : `/boutique`, `/boutique/<slug>`, `/panier`, `/commande`. Les écritures publiques passent par `app/api/boutique` (liste blanche d'actions, cookies). | `docs/apps/website/WEBSITE.md` |
 | `web`       | —    | Landing page publique                              | —                                      |
 | `docs`      | —    | Documentation produit                              | —                                      |
 
 ---
+
+### L'app `site` — trois règles qui ne s'appliquent qu'à elle
+
+1. **Elle tourne en mode PRODUCTION dans la stack de dev** (`next build && next
+   start`). `next dev` bloque silencieusement l'hydratation pour toute origine
+   absente d'`allowedDevOrigins` — or elle sert des noms de domaine qui
+   appartiennent aux clients et qu'on ne peut donc pas énumérer.
+2. **Elle n'importe PAS `design-system/tokens.css`**, seule app du dépôt dans ce
+   cas. Un site client n'a pas à hériter des couleurs de la plateforme : son
+   apparence vient de son thème, transformé en variables `--site-*`.
+3. **Les dossiers `_media` et `_apercu` s'écrivent `%5Fmedia` et `%5Fapercu`
+   sur le disque.** Next traite un dossier préfixé `_` comme privé et ne le
+   route pas ; `%5F` produit le chemin `/_media` tout en restant routé. Le
+   préfixe est nécessaire : l'attrape-tout `[[...chemin]]` sert les pages du
+   client, et sans lui `/media` serait à la fois une route technique et une
+   page qu'un client a le droit de créer.
 
 ### Module Form (app `workspace`)
 

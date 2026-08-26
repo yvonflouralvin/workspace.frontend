@@ -1,0 +1,29 @@
+{
+  "name": "@repo/site-widgets",
+  "version": "0.0.0",
+  "private": true,
+  "exports": {
+    "./types": "./src/types.ts",
+    "./catalogue": "./src/catalogue.tsx",
+    "./arbre": "./src/arbre.ts",
+    "./theme": "./src/theme.ts",
+    "./*": "./src/*.tsx",
+    "./modeles": "./src/modeles.ts"
+  },
+  "scripts": {
+    "lint": "eslint . --max-warnings 0",
+    "check-types": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@repo/eslint-config": "*",
+    "@repo/typescript-config": "*",
+    "@types/react": "19.2.2",
+    "@types/react-dom": "19.2.2",
+    "typescript": "5.9.2"
+  },
+  "dependencies": {
+    "@mui/icons-material": "^9.1.1",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  }
+}

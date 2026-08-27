@@ -120,6 +120,9 @@ export interface Planning {
   id: number;
   type: TypePlanning;
   nom: string;
+  /** Le nom court dans l'adresse : `/plannings/gardiennage-mars-2026`.
+   *  Nul sur d'anciens plannings — l'écran retombe alors sur l'identifiant. */
+  slug: string | null;
   debut: string;
   fin: string;
   statut: StatutPlanning;
@@ -131,6 +134,9 @@ export interface Planning {
   reservation_mode: "APPROBATION" | "AUTOMATIQUE" | null;
   /** Adresse publique du formulaire de réservation. Nulle = pas ouvert. */
   reservation_url: string | null;
+  /** Le lien existe mais n'accepte plus rien. Il n'a pas changé : le rouvrir
+   *  ne demande de rediffuser aucune adresse. */
+  reservation_suspendue: boolean;
   /** Politique de délai du lien public. Nuls = aucune contrainte. */
   reservation_preavis_heures: number | null;
   reservation_horizon_heures: number | null;
@@ -360,6 +366,166 @@ function qs(params: Record<string, string | number | boolean | undefined>) {
   return p.length ? `?${p.join("&")}` : "";
 }
 
+// ── Process ────────────────────────────────────────────────────────────────
+//
+// Une routine à exécuter — une ronde de contrôle — et la trace de ce qu'une
+// équipe a réellement fait. Le process et son exécution sont DEUX objets : la
+// liste évolue, la ronde d'hier doit rester ce qu'elle était.
+
+/** Le vocabulaire des questions, repris du module Formulaire — un point de
+ *  contrôle n'est pas toujours une case à cocher : « les extincteurs sont-ils
+ *  en place ? » se coche, « quel est l'index du compteur ? » se relève,
+ *  « qu'avez-vous constaté ? » s'écrit. */
+export type TypePoint =
+  | "CASE"
+  | "TEXTE_COURT"
+  | "TEXTE_LONG"
+  | "NOMBRE"
+  | "CHOIX_UNIQUE"
+  | "CHOIX_MULTIPLE"
+  | "DATE"
+  | "HEURE";
+
+export interface PointControle {
+  id: number;
+  libelle: string;
+  aide: string | null;
+  type: TypePoint;
+  type_libelle: string;
+  options: string[];
+  obligatoire: boolean;
+  /** Bornes d'une valeur à relever. Hors bornes = anomalie, jamais un refus :
+   *  un relevé aberrant est précisément ce qu'une ronde doit faire remonter. */
+  minimum: number | null;
+  maximum: number | null;
+  unite: string | null;
+  position: number;
+}
+
+export interface SectionProcess {
+  id: number;
+  titre: string;
+  consigne: string | null;
+  position: number;
+  points: PointControle[];
+}
+
+export type RoleProcess = "CONCEPTEUR" | "EXECUTANT" | "CONSULTATEUR";
+export type Visibilite = "WORKSPACE" | "RESTREINTE";
+
+export interface CollaborateurProcess {
+  user_id: number;
+  nom: string | null;
+  role: RoleProcess;
+  role_libelle: string;
+}
+
+/** Ce que CETTE session peut faire sur ce process, décidé par le serveur.
+ *  L'écran ne rejoue pas la règle, il l'affiche — la rejouer en ferait deux,
+ *  qui divergeraient au premier ajustement. */
+export interface DroitsProcess {
+  concevoir: boolean;
+  executer: boolean;
+  consulter: boolean;
+}
+
+export interface MembreEspace {
+  id: number;
+  user: { id: number; email: string; username: string };
+}
+
+export interface GroupeEspace {
+  id: number;
+  name: string;
+  description: string | null;
+  member_count?: number;
+}
+
+export interface Process {
+  id: number;
+  nom: string;
+  slug: string;
+  description: string | null;
+  site_id: number | null;
+  site_nom: string | null;
+  actif: boolean;
+  archive_le: string | null;
+  archive_par: number | null;
+  archive_par_nom: string | null;
+  /** Incrémentée à chaque réécriture de la checklist. Elle ne FAIT pas la
+   *  cohérence des exécutions passées — chaque réponse porte sa propre copie
+   *  de la question — elle la rend lisible : deux rondes aux résultats opposés
+   *  peuvent ainsi dire qu'elles n'ont pas contrôlé la même chose. */
+  version: number;
+  created_by: number | null;
+  proprietaire_nom: string | null;
+  /** Deux visibilités et non une : « tout le monde passe la ronde, seul le
+   *  responsable lit le registre » est le cas courant. */
+  visibilite_execution: Visibilite;
+  visibilite_execution_libelle: string;
+  visibilite_journal: Visibilite;
+  visibilite_journal_libelle: string;
+  collaborateurs: CollaborateurProcess[];
+  /** Les groupes admis, par portée. On stocke leur identifiant et non leurs
+   *  membres : une arrivée dans l'équipe hérite de l'accès sans que personne
+   *  n'y pense. */
+  groupes_execution: number[];
+  groupes_journal: number[];
+  mes_droits: DroitsProcess | null;
+  sections: SectionProcess[];
+  points: number;
+  executions: number;
+  derniere_execution_le: string | null;
+}
+
+export type ValeurPoint = string | number | boolean | string[] | null;
+
+export interface ReponsePoint {
+  id: number;
+  section_titre: string | null;
+  section_consigne: string | null;
+  section_position: number;
+  point_libelle: string;
+  point_aide: string | null;
+  type: TypePoint;
+  type_libelle: string;
+  options: string[];
+  obligatoire: boolean;
+  minimum: number | null;
+  maximum: number | null;
+  unite: string | null;
+  position: number;
+  /** `null` = pas encore répondu. Pour une case, `false` EST une réponse —
+   *  « pas fait » se relève, et le confondre avec « pas encore vu » ferait
+   *  passer un manquement pour un oubli. */
+  valeur: ValeurPoint;
+  anomalie: boolean;
+  commentaire: string | null;
+  repondu_par: number | null;
+  repondu_le: string | null;
+}
+
+export type StatutExecution = "EN_COURS" | "TERMINEE" | "ABANDONNEE";
+
+export interface ExecutionProcess {
+  id: number;
+  process_id: number;
+  process_nom: string;
+  process_version: number;
+  statut: StatutExecution;
+  statut_libelle: string;
+  ouverte_par: number | null;
+  ouverte_le: string;
+  close_le: string | null;
+  close_par: number | null;
+  note: string | null;
+  points: number;
+  repondus: number;
+  anomalies: number;
+  restants: number;
+  reponses: ReponsePoint[];
+}
+
 export const operationsApi = {
   types: () => apiFetch("/api/types").then((r) => lire<{ types: TypeDef[] }>(r)),
 
@@ -384,6 +550,86 @@ export const operationsApi = {
     apiFetch(`/api/groupes/${id}`, { method: "PUT", body: corps }).then((r) => lire<Groupe>(r)),
   supprimerGroupe: (id: number) =>
     apiFetch(`/api/groupes/${id}`, { method: "DELETE" }).then((r) => lire<void>(r)),
+
+  // — Process —
+  process: (params: { q?: string; archives?: boolean; page?: number; page_size?: number } = {}) =>
+    apiFetch(`/api/process${qs(params)}`).then((r) => lire<Page<Process>>(r)),
+  unProcess: (reference: string) =>
+    apiFetch(`/api/process/${reference}`).then((r) => lire<Process>(r)),
+  creerProcess: (corps: Record<string, unknown>) =>
+    apiFetch("/api/process", { method: "POST", body: corps }).then((r) => lire<Process>(r)),
+  modifierProcess: (reference: string, corps: Record<string, unknown>) =>
+    apiFetch(`/api/process/${reference}`, { method: "PATCH", body: corps }).then((r) =>
+      lire<Process>(r),
+    ),
+  poserSections: (reference: string, sections: Record<string, unknown>[]) =>
+    apiFetch(`/api/process/${reference}/sections`, { method: "PUT", body: sections }).then((r) =>
+      lire<Process>(r),
+    ),
+  poserCollaborateurs: (reference: string, collaborateurs: Record<string, unknown>[]) =>
+    apiFetch(`/api/process/${reference}/collaborateurs`, {
+      method: "PUT",
+      body: collaborateurs,
+    }).then((r) => lire<Process>(r)),
+  rolesProcess: () =>
+    apiFetch("/api/process/roles").then((r) => lire<{ cle: RoleProcess; libelle: string }[]>(r)),
+  visibilites: () =>
+    apiFetch("/api/process/visibilites").then((r) =>
+      lire<{ cle: Visibilite; libelle: string }[]>(r),
+    ),
+  /** Les groupes RBAC de l'espace — à ne pas confondre avec `groupes`, qui
+   *  sont les groupes de ressources de ce module. */
+  groupesEspace: (workspaceId: number) =>
+    apiFetch(`/api/workspaces/${workspaceId}/groups`).then((r) =>
+      lire<{ groups: GroupeEspace[] }>(r),
+    ),
+  membres: (workspaceId: number) =>
+    apiFetch(`/api/workspaces/${workspaceId}/members?limit=200&offset=0`).then((r) =>
+      lire<{ members: MembreEspace[]; total: number }>(r),
+    ),
+  typesPoints: () =>
+    apiFetch("/api/process/types-points").then((r) =>
+      lire<{ cle: TypePoint; libelle: string }[]>(r),
+    ),
+  archiverProcess: (reference: string) =>
+    apiFetch(`/api/process/${reference}/archiver`, { method: "POST" }).then((r) =>
+      lire<Process>(r),
+    ),
+  restaurerProcess: (reference: string) =>
+    apiFetch(`/api/process/${reference}/restaurer`, { method: "POST" }).then((r) =>
+      lire<Process>(r),
+    ),
+  dupliquerProcess: (reference: string, nom?: string) =>
+    apiFetch(`/api/process/${reference}/dupliquer`, { method: "POST", body: { nom } }).then((r) =>
+      lire<Process>(r),
+    ),
+  retirerProcess: (reference: string) =>
+    apiFetch(`/api/process/${reference}`, { method: "DELETE" }).then((r) => lire<void>(r)),
+
+  executionsDe: (
+    reference: string,
+    params: { statut?: string; du?: string; au?: string; page?: number } = {},
+  ) =>
+    apiFetch(`/api/process/${reference}/executions${qs(params)}`).then((r) =>
+      lire<Page<ExecutionProcess>>(r),
+    ),
+  ouvrirExecution: (reference: string) =>
+    apiFetch(`/api/process/${reference}/executions`, { method: "POST" }).then((r) =>
+      lire<ExecutionProcess>(r),
+    ),
+  execution: (id: number) =>
+    apiFetch(`/api/executions/${id}`).then((r) => lire<ExecutionProcess>(r)),
+  repondre: (id: number, reponseId: number, corps: Record<string, unknown>) =>
+    apiFetch(`/api/executions/${id}/reponses/${reponseId}`, { method: "PATCH", body: corps }).then(
+      (r) => lire<ExecutionProcess>(r),
+    ),
+  conclureExecution: (id: number, statut: string, note?: string) =>
+    apiFetch(`/api/executions/${id}/conclure`, { method: "POST", body: { statut, note } }).then(
+      (r) => lire<ExecutionProcess>(r),
+    ),
+  journalExecutions: (
+    params: { q?: string; statut?: string; du?: string; au?: string; page?: number } = {},
+  ) => apiFetch(`/api/executions${qs(params)}`).then((r) => lire<Page<ExecutionProcess>>(r)),
 
   // — Sites —
   sites: (actif?: boolean) => apiFetch(`/api/sites${qs({ actif })}`).then((r) => lire<Site[]>(r)),
@@ -461,7 +707,14 @@ export const operationsApi = {
     apiFetch(`/api/plannings/${id}/lien-reservation`, { method: "PUT", body: delais }).then(
       (r) => lire<{ preavis_heures: number | null; horizon_heures: number | null }>(r),
     ),
-  fermerLienReservation: (id: number) =>
+  /** Tire un NOUVEAU jeton : l'ancienne adresse meurt. Geste à part, parce que
+   *  personne n'attend d'une réouverture qu'elle casse une affiche déjà posée. */
+  regenererLienReservation: (id: number) =>
+    apiFetch(`/api/plannings/${id}/lien-reservation/regenerer`, { method: "POST" }).then((r) =>
+      lire<{ url: string; mode: string; suspendue: boolean }>(r),
+    ),
+  /** Suspend les réservations SANS toucher au lien. */
+  suspendreLienReservation: (id: number) =>
     apiFetch(`/api/plannings/${id}/lien-reservation`, { method: "DELETE" }).then((r) =>
       lire<void>(r),
     ),

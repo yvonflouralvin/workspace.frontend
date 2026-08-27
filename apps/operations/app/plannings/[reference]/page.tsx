@@ -38,9 +38,15 @@ import {
 
 type Echelle = "jour" | "semaine" | "mois";
 
-export default function PlanningPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
-  const planningId = Number(id);
+export default function PlanningPage({
+  params,
+}: {
+  params: Promise<{ reference: string }>;
+}) {
+  const { reference } = use(params);
+  // L'identifiant réel du planning — trouvé après chargement. Les appels
+  // d'API en ont besoin ; l'ADRESSE, elle, porte le nom court.
+  const [planningId, setPlanningId] = useState(0);
   const { can } = usePermissions();
   const peutAffecter = can("operations.affectations.manage");
   const peutGerer = can("operations.plannings.manage");
@@ -88,17 +94,30 @@ export default function PlanningPage({ params }: { params: Promise<{ id: string 
 
   const charger = useCallback(async () => {
     try {
-      const [plannings, lignes, listeSites] = await Promise.all([
+      // L'adresse porte un NOM COURT : il faut résoudre le planning avant de
+      // pouvoir demander ses affectations. Les demander en parallèle enverrait
+      // une requête sur un identifiant encore inconnu, puis la même une seconde
+      // fois — deux allers-retours pour une seule information.
+      const [plannings, listeSites] = await Promise.all([
         operationsApi.plannings(),
-        operationsApi.affectations({
-          planning_id: planningId,
-          depuis: fenetre.debut.toISOString(),
-          jusqu_a: fenetre.fin.toISOString(),
-        }),
         operationsApi.sites(true),
       ]);
-      const trouve = plannings.find((p) => p.id === planningId) ?? null;
+      // Par nom court d'abord, par identifiant ensuite : un lien déjà partagé ou
+      // mis en favori porte l'ancien identifiant, et il doit continuer d'ouvrir
+      // la bonne page.
+      const trouve =
+        plannings.find((p) => p.slug === reference) ??
+        plannings.find((p) => String(p.id) === reference) ??
+        null;
+      setPlanningId(trouve?.id ?? 0);
       setPlanning(trouve);
+      const lignes = trouve
+        ? await operationsApi.affectations({
+            planning_id: trouve.id,
+            depuis: fenetre.debut.toISOString(),
+            jusqu_a: fenetre.fin.toISOString(),
+          })
+        : [];
       // Un planning d'un AUTRE workspace n'est pas listé ici : sans ce message,
       // la page afficherait un calendrier vide et laisserait croire qu'il n'y a
       // rien de planifié, alors qu'on n'a simplement pas le droit de le voir.
@@ -109,7 +128,7 @@ export default function PlanningPage({ params }: { params: Promise<{ id: string 
       setErreur(e instanceof Error ? e.message : "Impossible de charger le planning.");
       setAffectations([]);
     }
-  }, [planningId, fenetre.debut, fenetre.fin]);
+  }, [reference, fenetre.debut, fenetre.fin]);
 
   useEffect(() => {
     void charger();
@@ -233,7 +252,7 @@ export default function PlanningPage({ params }: { params: Promise<{ id: string 
           </div>
           <div className="flex flex-wrap gap-2">
             <Link
-              href={`/plannings/${planningId}/rapport`}
+              href={`/plannings/${reference}/rapport`}
               className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-outline-soft px-3 text-body-sm font-medium text-on-surface-variant transition-colors hover:bg-surface-container-low"
             >
               <InsightsOutlined style={{ fontSize: 16 }} />

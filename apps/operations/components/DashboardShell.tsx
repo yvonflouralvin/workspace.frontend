@@ -10,6 +10,7 @@ import { UserFooter } from "@repo/ui/shell/UserFooter";
 import { WorkspaceSwitcher } from "@repo/ui/WorkspaceSwitcher";
 import { PLATFORM_APPS, OPERATIONS_SHELL } from "@repo/ui/shell/platform";
 import {
+  ChecklistOutlined,
   EventOutlined,
   HomeOutlined,
   BoltOutlined,
@@ -32,6 +33,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Plannings",  href: "/plannings",  icon: <EventOutlined style={{ fontSize: 20 }} /> },
   { label: "Salles",     href: "/salles",     icon: <MeetingRoomOutlined style={{ fontSize: 20 }} /> },
   { label: "Groupes",    href: "/groupes",    icon: <BoltOutlined style={{ fontSize: 20 }} /> },
+  { label: "Process",    href: "/process",    icon: <ChecklistOutlined style={{ fontSize: 20 }} /> },
   { label: "Paramètres", href: "/parametres", icon: <SettingsOutlined style={{ fontSize: 20 }} /> },
 ];
 

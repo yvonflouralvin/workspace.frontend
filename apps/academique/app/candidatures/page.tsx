@@ -248,7 +248,7 @@ export default function CandidaturesPage() {
                           {d.nom_complet}
                         </td>
                         <td className="px-2 py-1.5 text-label-md text-on-surface-variant">
-                          {d.choix_unite_libelle} · {d.choix_niveau}
+                          {d.choix_unite_libelle}
                         </td>
                         <td className="px-2 py-1.5 text-right text-body-sm tabular-nums text-on-surface">
                           {d.pourcentage_diplome ?? "—"}

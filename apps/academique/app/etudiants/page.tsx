@@ -11,7 +11,8 @@ import { usePermissions } from "@repo/auth/hooks/usePermissions";
 import { DashboardShell } from "@/components/DashboardShell";
 import { BarreContexte } from "@/components/BarreContexte";
 import { useContexte } from "@/app/lib/etablissement";
-import { api, type EtudiantsPage, type RapportImport } from "@/app/lib/api";
+import { ImportEtudiants } from "@/components/ImportEtudiants";
+import { api, type EtudiantsPage, type ImportEtudiants as TacheImport } from "@/app/lib/api";
 
 const TAILLE = 25;
 
@@ -26,10 +27,11 @@ const TAILLE = 25;
  *  Paginé côté serveur : l'ISP en compte des milliers, et une liste complète
  *  ferait un écran qui met dix secondes à s'ouvrir.
  *
- *  L'import colle un fichier CSV — première ligne d'en-têtes — et rend le
- *  compte de ce qui a été écarté, ligne par ligne. On l'affiche en entier : un
- *  total seul obligerait à comparer le fichier au registre pour retrouver les
- *  manquants.
+ *  L'import prend un CLASSEUR et le traite en tâche de fond : dix mille lignes
+ *  ne tiennent pas dans le temps d'une requête, et un écran figé pendant trois
+ *  minutes passe pour une panne. L'écran suit l'avancement, puis donne le
+ *  journal des lignes écartées — un total seul obligerait à comparer le fichier
+ *  au registre pour retrouver les manquants.
  */
 export default function EtudiantsPage_() {
   const router = useRouter();
@@ -48,8 +50,9 @@ export default function EtudiantsPage_() {
   const [creation, setCreation] = useState(false);
 
   const [importOuvert, setImportOuvert] = useState(false);
-  const [csv, setCsv] = useState("");
-  const [rapport, setRapport] = useState<RapportImport | null>(null);
+  /** La dernière tâche d'import connue. Fermer la fenêtre ne l'arrête pas :
+   *  l'écran continue de la suivre, sinon on croirait l'avoir annulée. */
+  const [tacheImport, setTacheImport] = useState<TacheImport | null>(null);
 
   const charger = useCallback(async () => {
     if (!etab) return;
@@ -70,7 +73,16 @@ export default function EtudiantsPage_() {
   }, [charger]);
 
   async function creer(valeurs: Record<string, string>) {
-    if (!etab) return;
+    // Sans établissement, l'ancien code sortait EN SILENCE : le bouton
+    // « Créer » ne faisait rien, et rien n'expliquait pourquoi. Un workspace
+    // neuf n'en a pas encore un — c'est un état, pas une panne, et il se dit.
+    if (!etab) {
+      setErreur(
+        "Cet espace n'a pas encore d'établissement. Ouvrez « Structure » pour le créer : " +
+          "un étudiant appartient à un établissement."
+      );
+      return;
+    }
     setBusy(true);
     setErreur(null);
     try {
@@ -91,31 +103,29 @@ export default function EtudiantsPage_() {
     }
   }
 
-  async function importer() {
-    if (!etab || !csv.trim()) return;
-    setBusy(true);
-    setErreur(null);
-    try {
-      // Le CSV se découpe ici : le serveur reçoit des lignes typées, et n'a pas
-      // à deviner un séparateur ni un encodage.
-      const lignes = csv.trim().split(/\r?\n/);
-      const entetes = lignes[0].split(/[;,\t]/).map((h) => h.trim().toLowerCase());
-      const corps = lignes.slice(1).map((ligne) => {
-        const cellules = ligne.split(/[;,\t]/);
-        const objet: Record<string, unknown> = {};
-        entetes.forEach((entete, i) => {
-          objet[entete] = (cellules[i] ?? "").trim();
-        });
-        return objet;
-      });
-      setRapport(await api.importer(etab.id, corps));
-      await charger();
-    } catch (e) {
-      setErreur(e instanceof Error ? e.message : "Import impossible.");
-    } finally {
-      setBusy(false);
-    }
-  }
+  // On continue de suivre l'import même fenêtre fermée : « continuer en
+  // arrière-plan » ne veut rien dire si l'écran cesse de savoir où ça en est.
+  const importActif =
+    tacheImport !== null &&
+    (tacheImport.etat === "EN_ATTENTE" || tacheImport.etat === "EN_COURS");
+
+  // On dépend de l'IDENTIFIANT, pas de la tâche : chaque tour en produit un
+  // nouvel objet, et l'intervalle se reconstruirait à chaque battement.
+  const idSuivi = tacheImport?.id ?? null;
+
+  useEffect(() => {
+    if (!importActif || importOuvert || idSuivi === null) return;
+    const minuteur = setInterval(async () => {
+      try {
+        const suivi = await api.suivreImport(idSuivi);
+        setTacheImport(suivi);
+        if (suivi.etat === "TERMINE" && suivi.crees > 0) void charger();
+      } catch {
+        // Un trou de réseau n'efface pas l'avancement déjà affiché.
+      }
+    }, 3000);
+    return () => clearInterval(minuteur);
+  }, [importActif, importOuvert, idSuivi, charger]);
 
   const pages = Math.max(1, Math.ceil((liste?.total ?? 0) / TAILLE));
 
@@ -134,8 +144,10 @@ export default function EtudiantsPage_() {
             <div className="flex flex-none flex-wrap gap-2">
               <button
                 type="button"
-                onClick={() => setImportOuvert((v) => !v)}
-                className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-outline-soft px-3 text-body-sm font-medium text-on-surface-variant transition-colors hover:bg-surface-container-low"
+                onClick={() => setImportOuvert(true)}
+                disabled={!etab}
+                title={etab ? undefined : "Créez d'abord l'établissement, dans « Structure »."}
+                className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-outline-soft px-3 text-body-sm font-medium text-on-surface-variant transition-colors hover:bg-surface-container-low disabled:opacity-50"
               >
                 <UploadFileOutlined style={{ fontSize: 17 }} />
                 Importer
@@ -143,7 +155,9 @@ export default function EtudiantsPage_() {
               <button
                 type="button"
                 onClick={() => setCreation(true)}
-                className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-4 text-body-sm font-semibold text-on-primary shadow-button transition-colors hover:bg-primary-container"
+                disabled={!etab}
+                title={etab ? undefined : "Créez d'abord l'établissement, dans « Structure »."}
+                className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-4 text-body-sm font-semibold text-on-primary shadow-button transition-colors hover:bg-primary-container disabled:opacity-50"
               >
                 <AddOutlined style={{ fontSize: 16 }} />
                 Ajouter
@@ -165,55 +179,54 @@ export default function EtudiantsPage_() {
           </p>
         )}
 
-        {importOuvert && (
-          <section className="mb-4 rounded-2xl border border-outline-soft bg-surface-container-lowest p-4">
-            <p className="text-body-sm text-on-surface">
-              Collez le contenu du fichier — première ligne, les en-têtes.
+        {!etab && !contexte.erreur && (
+          // Un workspace neuf n'a pas encore d'établissement. Le taire faisait
+          // un écran vide et deux boutons qui ne répondaient pas.
+          <div className="mb-4 rounded-2xl border border-outline-soft bg-surface-container-lowest px-4 py-6">
+            <p className="text-body-md text-on-surface">
+              Cet espace n&apos;a pas encore d&apos;établissement.
             </p>
-            <p className="mt-0.5 text-label-md text-outline">
-              Colonnes reconnues : matricule, nom, postnom, prenom, sexe, telephone, email.
+            <p className="mt-1 max-w-[62ch] text-body-sm text-on-surface-variant">
+              Un étudiant appartient à un établissement : il faut donc le créer avant de tenir un
+              registre.
             </p>
-            <textarea
-              rows={6}
-              aria-label="Contenu CSV"
-              className="mt-2 w-full rounded-lg border border-outline-soft bg-surface-container-lowest px-3 py-2 font-mono text-label-md text-on-surface outline-none focus:border-primary"
-              placeholder={"matricule;nom;postnom;prenom\nISP/2025/001;LONGO;KAYEMBE;Mardochée"}
-              value={csv}
-              onChange={(e) => setCsv(e.target.value)}
-            />
+            <Link
+              href="/structure"
+              className="mt-3 inline-flex h-9 items-center rounded-lg bg-primary px-4 text-body-sm font-semibold text-on-primary transition-colors hover:bg-primary-container"
+            >
+              Ouvrir la structure
+            </Link>
+          </div>
+        )}
+
+        {tacheImport && !importOuvert && (tacheImport.etat !== "TERMINE" || tacheImport.crees > 0) && (
+          <div className="mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-outline-soft bg-surface-container-low px-4 py-3">
+            <div className="min-w-0 flex-1">
+              <p className="text-body-sm text-on-surface">
+                {tacheImport.etat_libelle} — {tacheImport.nom_fichier}
+              </p>
+              <p className="text-label-md text-outline">
+                {tacheImport.lignes_traitees} ligne
+                {tacheImport.lignes_traitees > 1 ? "s" : ""} sur {tacheImport.total_lignes} ·{" "}
+                {tacheImport.crees} créé{tacheImport.crees > 1 ? "s" : ""}
+                {tacheImport.ignores > 0 && ` · ${tacheImport.ignores} écartée${tacheImport.ignores > 1 ? "s" : ""}`}
+              </p>
+            </div>
             <button
               type="button"
-              disabled={busy || !csv.trim()}
-              onClick={importer}
-              className="mt-2 h-9 rounded-lg bg-primary px-4 text-body-sm font-semibold text-on-primary transition-colors hover:bg-primary-container disabled:opacity-50"
+              onClick={() => setImportOuvert(true)}
+              className="h-9 flex-none rounded-lg border border-outline-soft px-3 text-body-sm text-on-surface-variant transition-colors hover:bg-surface-container"
             >
-              Importer
+              {importActif ? "Suivre" : "Voir le journal"}
             </button>
-
-            {rapport && (
-              <div className="mt-3 rounded-xl bg-surface-container-low p-3 text-body-sm">
-                <p className="font-medium text-on-surface">
-                  {rapport.crees} étudiant{rapport.crees > 1 ? "s" : ""} ajouté
-                  {rapport.crees > 1 ? "s" : ""}.
-                </p>
-                {rapport.ignores.length > 0 && (
-                  <>
-                    <p className="mt-1 text-on-surface-variant">
-                      Lignes écartées — {rapport.ignores.length} :
-                    </p>
-                    <ul className="mt-1 space-y-0.5">
-                      {rapport.ignores.map((i, n) => (
-                        <li key={n} className="text-label-md text-on-surface-variant">
-                          <span className="text-on-surface">ligne {i.ligne}</span>
-                          {i.matricule && ` (${i.matricule})`} — {i.raison}
-                        </li>
-                      ))}
-                    </ul>
-                  </>
-                )}
-              </div>
-            )}
-          </section>
+            <button
+              type="button"
+              onClick={() => setTacheImport(null)}
+              className="h-9 flex-none rounded-lg px-3 text-body-sm text-outline transition-colors hover:bg-surface-container"
+            >
+              Masquer
+            </button>
+          </div>
         )}
 
         <div className="mb-4 flex flex-wrap items-center gap-3">
@@ -288,6 +301,7 @@ export default function EtudiantsPage_() {
         {creation && (
           <SaisieRapide
             titre="Nouvel étudiant"
+            largeur="moyenne"
             intro="Le matricule est attribué par l'établissement ; le reste de la fiche se complète après."
             busy={busy}
             erreur={erreur}
@@ -310,6 +324,18 @@ export default function EtudiantsPage_() {
               setCreation(false);
               setErreur(null);
             }}
+          />
+        )}
+
+        {importOuvert && etab && (
+          <ImportEtudiants
+            etablissementId={etab.id}
+            tacheInitiale={tacheImport}
+            onFerme={(tache) => {
+              setImportOuvert(false);
+              setTacheImport(tache);
+            }}
+            onTermine={() => void charger()}
           />
         )}
       </div>

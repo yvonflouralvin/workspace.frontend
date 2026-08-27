@@ -1,0 +1,18 @@
+@import "tailwindcss";
+@source "../../../packages/site-widgets/src";
+
+/* Le renderer public N'IMPORTE PAS `design-system/tokens.css`, contrairement
+   aux seize autres applications du dépôt. C'est délibéré : un site client ne
+   doit pas hériter du bleu de la plateforme ni de son échelle d'espacement.
+   Le thème du site est posé en variables CSS `--site-*` par `RenduPage`. */
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+img {
+  max-width: 100%;
+}

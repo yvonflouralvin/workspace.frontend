@@ -31,6 +31,10 @@ import {
   EventOutlined,
   StorageOutlined,
   WidgetsOutlined,
+  WorkOutlineOutlined,
+  HomeWorkOutlined,
+  LanguageOutlined,
+  PhotoLibraryOutlined,
 } from "@mui/icons-material";
 import type { AppDefinition } from "../types/shell";
 
@@ -67,6 +71,22 @@ export const PLATFORM_APPS: AppDefinition[] = [
     url: process.env.NEXT_PUBLIC_AUTH_API_ACADEMIQUE_DOMAIN ?? "http://localhost:3015",
     color: "#1d4ed8",
     description: "Structure académique, années, étudiants et inscriptions",
+  },
+  {
+    id: "isp",
+    name: "ISP",
+    icon: "I",
+    url: process.env.NEXT_PUBLIC_AUTH_API_ISP_DOMAIN ?? "http://localhost:3016",
+    color: "#0e7490",
+    description: "Stages, mémoires et projets tutorés",
+  },
+  {
+    id: "website",
+    name: "Website",
+    icon: "W",
+    url: process.env.NEXT_PUBLIC_AUTH_API_WEBSITE_DOMAIN ?? "http://localhost:3017",
+    color: "#0d9488",
+    description: "Construire et publier le site web de l'organisation",
   },
   {
     id: "sgr",
@@ -235,6 +255,43 @@ export const ACADEMIQUE_SHELL: AppShellConfig = {
     "/structure": <AccountTreeOutlined style={s(15)} />,
     "/annees": <EventOutlined style={s(15)} />,
     "/etudiants": <GroupsOutlined style={s(15)} />,
+  },
+};
+
+export const WEBSITE_SHELL: AppShellConfig = {
+  appName: "Website",
+  appHref: "/",
+  appIcon: "W",
+  appColor: "#0d9488",
+  routeLabels: {
+    "/sites": "Sites",
+    "/medias": "Médias",
+    "/domaines": "Domaines",
+    "/parametres": "Paramètres",
+  },
+  routeIcons: {
+    "/sites": <LanguageOutlined style={s(15)} />,
+    "/medias": <PhotoLibraryOutlined style={s(15)} />,
+  },
+};
+
+export const ISP_SHELL: AppShellConfig = {
+  appName: "ISP",
+  appHref: "/",
+  appIcon: "I",
+  appColor: "#0e7490",
+  routeLabels: {
+    "/memoires": "Mémoires",
+    "/projets": "Projets tutorés",
+    "/stages": "Stages",
+    "/depots": "Dépôts de mémoire",
+    "/referentiel": "Référentiel",
+  },
+  routeIcons: {
+    "/memoires": <DescriptionOutlined style={s(15)} />,
+    "/projets": <GroupsOutlined style={s(15)} />,
+    "/stages": <WorkOutlineOutlined style={s(15)} />,
+    "/depots": <HomeWorkOutlined style={s(15)} />,
   },
 };
 

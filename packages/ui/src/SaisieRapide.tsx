@@ -4,12 +4,16 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 /** Une saisie rapide en surimpression — le geste de la recherche globale.
  *
- *  **Étroite et sur une seule colonne, volontairement.** Trois ou quatre champs
- *  courts se lisent de haut en bas ; les étaler sur deux colonnes donne la
- *  largeur d'un formulaire de saisie complète, et fait perdre l'impression de
- *  fenêtre légère qui rend la palette agréable. Une création qui a besoin de
- *  plus de champs que ça n'est pas une saisie rapide : elle appartient à un
- *  écran.
+ *  **Sur une seule colonne, volontairement.** Trois ou quatre champs courts se
+ *  lisent de haut en bas ; les étaler sur deux colonnes donne la mise en page
+ *  d'un formulaire de saisie complète, et fait perdre l'impression de fenêtre
+ *  légère qui rend la palette agréable. Une création qui a besoin de plus de
+ *  champs que ça n'est pas une saisie rapide : elle appartient à un écran.
+ *
+ *  **La largeur, elle, se règle.** `compacte` convient à deux champs ; à partir
+ *  de trois, les libellés et les valeurs saisies se serrent contre les bords —
+ *  d'où `moyenne`, qui reste une fenêtre et non un écran. Le défaut ne change
+ *  pas : les appels existants gardent la largeur qu'ils avaient.
  *
  *  Surgir par-dessus la page, prendre le clavier, se fermer à Échap : c'est ce
  *  que l'utilisateur a déjà appris de la palette. Un formulaire de création qui
@@ -26,6 +30,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 export type TypeChamp = "texte" | "choix";
 
+export type LargeurRapide = "compacte" | "moyenne" | "large";
+
+const LARGEURS: Record<LargeurRapide, string> = {
+  compacte: "max-w-[20rem]",
+  moyenne: "max-w-[32rem]",
+  large: "max-w-[44rem]",
+};
+
 export interface ChampRapide {
   nom: string;
   libelle: string;
@@ -41,6 +53,7 @@ export function SaisieRapide({
   intro,
   champs,
   libelleValider = "Créer",
+  largeur = "compacte",
   busy = false,
   erreur,
   onValider,
@@ -50,6 +63,7 @@ export function SaisieRapide({
   intro?: string;
   champs: ChampRapide[];
   libelleValider?: string;
+  largeur?: LargeurRapide;
   busy?: boolean;
   erreur?: string | null;
   onValider: (valeurs: Record<string, string>) => void;
@@ -97,7 +111,7 @@ export function SaisieRapide({
       <div
         role="dialog"
         aria-label={titre}
-        className="animate-pop-in w-full max-w-[20rem] overflow-hidden rounded-2xl border border-outline-soft bg-surface-container-lowest shadow-modal"
+        className={`animate-pop-in w-full ${LARGEURS[largeur]} overflow-hidden rounded-2xl border border-outline-soft bg-surface-container-lowest shadow-modal`}
       >
         <header className="border-b border-hairline px-4 py-3">
           <p className="font-display text-body-lg font-semibold text-on-surface">{titre}</p>

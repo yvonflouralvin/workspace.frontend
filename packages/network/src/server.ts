@@ -134,15 +134,33 @@ export async function forwardToBackend(
 
   // 204/304/… : pas de corps autorisé — le relayer tel quel (sinon TypeError).
   if (NULL_BODY_STATUS.has(res.status)) {
-    return new NextResponse(null, { status: res.status });
+    return relayerCookies(res, new NextResponse(null, { status: res.status }));
   }
 
   const contentType = res.headers.get("content-type") ?? "";
 
   if (!contentType.includes("application/json")) {
-    return new NextResponse(await res.text(), { status: res.status });
+    return relayerCookies(res, new NextResponse(await res.text(), { status: res.status }));
   }
 
   const data = await res.json().catch(() => ({}));
-  return encryptResponseBody(data, { status: res.status });
+  return relayerCookies(res, await encryptResponseBody(data, { status: res.status }));
+}
+
+/** Rendre au navigateur les cookies que le backend a posés.
+ *
+ *  Le relais les avalait : un `Set-Cookie` émis par le service ne franchissait
+ *  pas le BFF. C'est ce qui empêchait la session de se prolonger — `auth`
+ *  réémettait bien le jeton, personne ne le recevait. Les routes qui posaient
+ *  un cookie devaient donc le faire elles-mêmes, une par une.
+ *
+ *  `getSetCookie()` et non `get("set-cookie")` : plusieurs cookies arrivent
+ *  dans plusieurs en-têtes, et les concaténer en un seul les corromprait — les
+ *  dates d'expiration contiennent des virgules.
+ */
+function relayerCookies(amont: Response, reponse: NextResponse): NextResponse {
+  for (const cookie of amont.headers.getSetCookie?.() ?? []) {
+    reponse.headers.append("set-cookie", cookie);
+  }
+  return reponse;
 }

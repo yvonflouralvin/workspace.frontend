@@ -12,7 +12,7 @@ import { WorkspaceSwitcher } from "@repo/ui/WorkspaceSwitcher";
 import { PLATFORM_APPS, DOCUMENTS_SHELL } from "@repo/ui/shell/platform";
 import { DescriptionOutlined, HomeOutlined } from "@mui/icons-material";
 import type { NavItem, UserSummary } from "@repo/ui/types/shell";
-import { entreesAutorisees } from "@repo/ui/shell/AccueilApp";
+import { menuDeSession } from "@repo/ui/shell/AccueilApp";
 
 const WORKSPACE_DOMAIN = process.env.NEXT_PUBLIC_WORKSPACE_DOMAIN ?? "http://localhost:3005";
 
@@ -26,6 +26,7 @@ export const NAV_ITEMS: NavItem[] = [
     href: WORKSPACE_DOMAIN,
     icon: <HomeOutlined style={{ fontSize: 20 }} />,
     exact: true,
+    accueil: true,
   },
   {
     label: "Templates PDF",
@@ -38,6 +39,9 @@ export const NAV_ITEMS: NavItem[] = [
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const { user } = useSessionStore();
   const { can } = usePermissions();
+  // « Accueil » mène chez CE membre : Workspace par défaut, sa page de
+  // démarrage quand son groupe lui en a donné une.
+  const landingAppKey = useSessionStore((s) => s.accueil?.landing_app_key);
   const handleLogout = useLogout("/api/auth/logout");
 
   const userSummary: UserSummary | null = user
@@ -50,7 +54,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     <AppShell
       sidebar={
         <Sidebar
-          navItems={entreesAutorisees(NAV_ITEMS, can)}
+          navItems={menuDeSession(NAV_ITEMS, can, landingAppKey)}
           bottomSlot={<UserFooter user={userSummary} onLogout={handleLogout} />}
           topSlot={<WorkspaceSwitcher />}
         />

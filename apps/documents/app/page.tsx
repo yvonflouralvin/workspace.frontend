@@ -156,15 +156,23 @@ function Templates() {
  */
 export default function Racine() {
   const chargement = useSessionAccueil((s) => s.loading);
+  const accueil = useSessionAccueil((s) => s.accueil);
+  const prenom = useSessionAccueil((s) => s.user?.username);
   const { can } = usePermissionsAccueil();
 
-  if (!chargement && !can("documents.templates.view")) {
+  // Les raccourcis du groupe passent AVANT le module par défaut : c'est un
+  // accueil qu'on a choisi pour ce membre, pas un pis-aller.
+  const raccourcis = !!accueil?.accueil_personnalise && accueil.liens_rapides.length > 0;
+
+  if (!chargement && (raccourcis || !can("documents.templates.view"))) {
     return (
       <DashboardShell>
         <AccueilApp
           items={NAV_ITEMS}
           can={can}
           appName="Documents"
+          accueil={accueil}
+          prenom={prenom}
           pret={!chargement}
         />
       </DashboardShell>

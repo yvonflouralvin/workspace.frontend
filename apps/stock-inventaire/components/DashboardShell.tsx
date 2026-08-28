@@ -19,9 +19,10 @@ import {
   SettingsOutlined,
 } from "@mui/icons-material";
 import type { NavItem } from "@repo/ui/types/shell";
+import { menuDeSession } from "@repo/ui/shell/AccueilApp";
 
 const NAV_ITEMS: NavItem[] = [
-  { label: "Accueil",    href: process.env.NEXT_PUBLIC_WORKSPACE_DOMAIN ?? "http://localhost:3005", icon: <HomeOutlined style={{ fontSize: 20 }} />, exact: true },
+  { label: "Accueil",    href: process.env.NEXT_PUBLIC_WORKSPACE_DOMAIN ?? "http://localhost:3005", icon: <HomeOutlined style={{ fontSize: 20 }} />, exact: true, accueil: true },
   { label: "Inventaire", href: "/",           icon: <DashboardOutlined style={{ fontSize: 20 }} />, exact: true },
   { label: "Articles",   href: "/items",      icon: <Inventory2Outlined style={{ fontSize: 20 }} /> },
   { label: "Catégories", href: "/categories", icon: <CategoryOutlined style={{ fontSize: 20 }} /> },
@@ -31,6 +32,9 @@ const NAV_ITEMS: NavItem[] = [
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const { user } = useSessionStore();
   const { can } = usePermissions();
+  // « Accueil » mène chez CE membre : Workspace par défaut, sa page de
+  // démarrage quand son groupe lui en a donné une.
+  const landingAppKey = useSessionStore((s) => s.accueil?.landing_app_key);
   const handleLogout = useLogout("/api/auth/logout");
   const handleSearch = useSearch();
 
@@ -45,7 +49,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       sidebar={
         <Sidebar
           topSlot={<WorkspaceSwitcher filterPermission="stock.access" />}
-          navItems={NAV_ITEMS}
+          navItems={menuDeSession(NAV_ITEMS, can, landingAppKey)}
           bottomSlot={<UserFooter user={userSummary} onLogout={handleLogout} />}
         />
       }

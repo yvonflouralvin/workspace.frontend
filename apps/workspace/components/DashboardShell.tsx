@@ -24,7 +24,7 @@ import {
   HelpOutlineOutlined,
 } from "@mui/icons-material";
 import type { NavItem } from "@repo/ui/types/shell";
-import { entreesAutorisees } from "@repo/ui/shell/AccueilApp";
+import { menuDeSession } from "@repo/ui/shell/AccueilApp";
 
 // Chaque entrée porte la permission qui l'ouvre. Sans elle, le menu affiche des
 // portes verrouillées : l'utilisateur clique, prend un 403, et croit que son
@@ -34,7 +34,7 @@ import { entreesAutorisees } from "@repo/ui/shell/AccueilApp";
 // quiconque entre ici, et leur donner une permission qui n'existe pas au
 // catalogue les ferait disparaître pour tout le monde.
 export const NAV_ITEMS: NavItem[] = [
-  { label: "Accueil",  href: "/",         icon: <HomeOutlined style={{ fontSize: 20 }} />,        exact: true },
+  { label: "Accueil",  href: "/",         icon: <HomeOutlined style={{ fontSize: 20 }} />,        exact: true, accueil: true },
   { label: "Projets",  href: "/projects",  icon: <FolderOpenOutlined style={{ fontSize: 20 }} />, permission: "projects.view" },
   { label: "Tâches",   href: "/tasks",     icon: <ChecklistOutlined style={{ fontSize: 20 }} />, permission: "projects.view" },
   { label: "Agenda", href: "/agenda", icon: <CalendarMonthOutlined style={{ fontSize: 20 }} /> },
@@ -52,6 +52,9 @@ const SECONDARY_ITEMS: NavItem[] = [
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const { user, activeWorkspace } = useSessionStore();
   const { can } = usePermissions();
+  // « Accueil » mène chez CE membre : Workspace par défaut, sa page de
+  // démarrage quand son groupe lui en a donné une.
+  const landingAppKey = useSessionStore((s) => s.accueil?.landing_app_key);
   const handleLogout = useLogout();
   const handleSearch = useSearch();
 
@@ -74,8 +77,8 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       sidebar={
         <Sidebar
           topSlot={<WorkspaceSwitcher />}
-          navItems={entreesAutorisees(NAV_ITEMS, can)}
-          secondaryItems={entreesAutorisees(SECONDARY_ITEMS, can)}
+          navItems={menuDeSession(NAV_ITEMS, can, landingAppKey)}
+          secondaryItems={menuDeSession(SECONDARY_ITEMS, can, landingAppKey)}
           bottomSlot={<UserFooter user={userSummary} onLogout={handleLogout} subtitle={roleLabel} />}
         />
       }

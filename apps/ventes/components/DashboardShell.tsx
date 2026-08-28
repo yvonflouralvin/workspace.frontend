@@ -21,7 +21,7 @@ import {
   SettingsOutlined,
 } from "@mui/icons-material";
 import type { NavItem } from "@repo/ui/types/shell";
-import { entreesAutorisees } from "@repo/ui/shell/AccueilApp";
+import { menuDeSession } from "@repo/ui/shell/AccueilApp";
 
 // Chaque entrée porte la permission qui l'ouvre. Sans elle, le menu affiche des
 // portes verrouillées : l'utilisateur clique, prend un 403, et croit que son
@@ -33,6 +33,7 @@ export const NAV_ITEMS: NavItem[] = [
     href: process.env.NEXT_PUBLIC_WORKSPACE_DOMAIN ?? "http://localhost:3005",
     icon: <HomeOutlined style={{ fontSize: 20 }} />,
     exact: true,
+    accueil: true,
   },
   { label: "Tableau de bord", href: "/tableau-de-bord", icon: <QueryStatsOutlined style={{ fontSize: 20 }} />, permission: "ventes.commandes.view" },
   { label: "Clients",    href: "/clients",    icon: <PeopleAltOutlined style={{ fontSize: 20 }} />, permission: "ventes.clients.view" },
@@ -45,6 +46,9 @@ export const NAV_ITEMS: NavItem[] = [
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const { user } = useSessionStore();
   const { can } = usePermissions();
+  // « Accueil » mène chez CE membre : Workspace par défaut, sa page de
+  // démarrage quand son groupe lui en a donné une.
+  const landingAppKey = useSessionStore((s) => s.accueil?.landing_app_key);
   const handleLogout = useLogout("/api/auth/logout");
 
   const userSummary = user
@@ -58,7 +62,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       sidebar={
         <Sidebar
           topSlot={<WorkspaceSwitcher filterPermission="ventes.access" />}
-          navItems={entreesAutorisees(NAV_ITEMS, can)}
+          navItems={menuDeSession(NAV_ITEMS, can, landingAppKey)}
           bottomSlot={<UserFooter user={userSummary} onLogout={handleLogout} />}
         />
       }

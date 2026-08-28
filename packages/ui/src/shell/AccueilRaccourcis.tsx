@@ -2,14 +2,18 @@
 
 import Link from "next/link";
 import * as Icones from "@mui/icons-material";
-import { PLATFORM_APPS } from "@repo/ui/shell/platform";
-import type { AccueilResolu } from "@/app/lib/types";
+import { PLATFORM_APPS } from "./platform";
+import type { AccueilResolu } from "./AccueilApp";
 
 /** L'accueil d'un groupe qui a choisi des raccourcis plutôt que des widgets.
  *
  *  Pensé pour des membres qui n'ont que quelques gestes à faire : un agent de
  *  sécurité y trouve le planning des salles et le démarrage d'un groupe, pas
  *  une liste de tâches ni un fil de notifications qui ne le concernent pas.
+ *
+ *  **Partagé, et non propre à Workspace.** Il n'y vivait que là, alors que le
+ *  groupe qui le configure atterrit souvent AILLEURS : ses membres ne le
+ *  voyaient donc jamais.
  */
 export function AccueilRaccourcis({
   accueil,

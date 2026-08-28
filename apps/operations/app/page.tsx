@@ -15,11 +15,15 @@ import { DashboardShell, NAV_ITEMS } from "@/components/DashboardShell";
  */
 export default function AccueilPage() {
   const loading = useSessionStore((s) => s.loading);
+  const accueil = useSessionStore((s) => s.accueil);
+  const prenom = useSessionStore((s) => s.user?.username);
   const { can } = usePermissions();
 
   return (
     <DashboardShell>
-      <AccueilApp items={NAV_ITEMS} can={can} appName="Operations" pret={!loading} />
+      <AccueilApp items={NAV_ITEMS} can={can} appName="Operations"
+          accueil={accueil}
+          prenom={prenom} pret={!loading} />
     </DashboardShell>
   );
 }

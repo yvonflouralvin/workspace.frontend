@@ -24,7 +24,7 @@ import { Toast } from "@repo/ui/Toast";
 import { projectsApi, toneFor, type Project, type Task } from "@/app/lib/projects-api";
 import { listAuditLogs, listNotificationChannels, listMembers } from "@/app/lib/api";
 import type { AuditLog } from "@/app/lib/types";
-import { AccueilRaccourcis } from "@/components/AccueilRaccourcis";
+import { AccueilRaccourcis } from "@repo/ui/shell/AccueilRaccourcis";
 
 const SECTION_LABEL = "text-label-sm uppercase text-outline";
 

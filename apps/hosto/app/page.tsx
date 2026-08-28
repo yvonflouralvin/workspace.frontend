@@ -1,5 +1,10 @@
 "use client";
 
+import { useSessionStore as useSessionAccueil } from "@repo/auth/store/session.store";
+import { usePermissions as usePermissionsAccueil } from "@repo/auth/hooks/usePermissions";
+import { AccueilApp } from "@repo/ui/shell/AccueilApp";
+import { NAV_ITEMS } from "@/components/DashboardShell";
+
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -38,7 +43,7 @@ function ageFrom(iso: string): string {
 
 const SEXE_SHORT: Record<string, string> = { M: "M", F: "F", A: "A" };
 
-export default function PatientsPage() {
+function Patients() {
   const router = useRouter();
   const { can } = usePermissions();
   const canView = can("hosto.patients.view");
@@ -233,4 +238,25 @@ export default function PatientsPage() {
       </div>
     </DashboardShell>
   );
+}
+
+/** La porte d'entrée de Hosto.
+ *
+ *  Son accueil EST un module, et tout le monde n'y a pas droit : sans cette
+ *  garde, un membre dont le groupe fait de Hosto sa page de démarrage
+ *  atterrissait sur un 403 juste après s'être connecté. On l'envoie vers le
+ *  premier module qui lui est ouvert — ou on le lui dit franchement.
+ */
+export default function Racine() {
+  const chargement = useSessionAccueil((s) => s.loading);
+  const { can } = usePermissionsAccueil();
+
+  if (!chargement && !can("hosto.menu.patients.access")) {
+    return (
+      <DashboardShell>
+        <AccueilApp items={NAV_ITEMS} can={can} appName="Hosto" pret={!chargement} />
+      </DashboardShell>
+    );
+  }
+  return <Patients />;
 }

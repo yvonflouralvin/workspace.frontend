@@ -12,10 +12,15 @@ import { WorkspaceSwitcher } from "@repo/ui/WorkspaceSwitcher";
 import { PLATFORM_APPS, DOCUMENTS_SHELL } from "@repo/ui/shell/platform";
 import { DescriptionOutlined, HomeOutlined } from "@mui/icons-material";
 import type { NavItem, UserSummary } from "@repo/ui/types/shell";
+import { entreesAutorisees } from "@repo/ui/shell/AccueilApp";
 
 const WORKSPACE_DOMAIN = process.env.NEXT_PUBLIC_WORKSPACE_DOMAIN ?? "http://localhost:3005";
 
-const NAV_ITEMS: NavItem[] = [
+// Chaque entrée porte la permission qui l'ouvre. Sans elle, le menu affiche des
+// portes verrouillées : l'utilisateur clique, prend un 403, et croit que son
+// compte est cassé. L'ORDRE compte aussi — c'est celui dans lequel la porte
+// d'entrée de l'app cherche où atterrir (cf. `AccueilApp`).
+export const NAV_ITEMS: NavItem[] = [
   {
     label: "Accueil",
     href: WORKSPACE_DOMAIN,
@@ -26,6 +31,7 @@ const NAV_ITEMS: NavItem[] = [
     label: "Templates PDF",
     href: "/",
     icon: <DescriptionOutlined style={{ fontSize: 20 }} />,
+    permission: "documents.templates.view",
   },
 ];
 
@@ -44,7 +50,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     <AppShell
       sidebar={
         <Sidebar
-          navItems={NAV_ITEMS}
+          navItems={entreesAutorisees(NAV_ITEMS, can)}
           bottomSlot={<UserFooter user={userSummary} onLogout={handleLogout} />}
           topSlot={<WorkspaceSwitcher />}
         />

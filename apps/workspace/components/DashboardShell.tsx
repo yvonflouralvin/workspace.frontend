@@ -24,20 +24,28 @@ import {
   HelpOutlineOutlined,
 } from "@mui/icons-material";
 import type { NavItem } from "@repo/ui/types/shell";
+import { entreesAutorisees } from "@repo/ui/shell/AccueilApp";
 
-const NAV_ITEMS: NavItem[] = [
+// Chaque entrée porte la permission qui l'ouvre. Sans elle, le menu affiche des
+// portes verrouillées : l'utilisateur clique, prend un 403, et croit que son
+// compte est cassé.
+//
+// « Accueil », « Agenda » et « Inbox » n'en portent pas : ils appartiennent à
+// quiconque entre ici, et leur donner une permission qui n'existe pas au
+// catalogue les ferait disparaître pour tout le monde.
+export const NAV_ITEMS: NavItem[] = [
   { label: "Accueil",  href: "/",         icon: <HomeOutlined style={{ fontSize: 20 }} />,        exact: true },
-  { label: "Projets",  href: "/projects",  icon: <FolderOpenOutlined style={{ fontSize: 20 }} /> },
-  { label: "Tâches",   href: "/tasks",     icon: <ChecklistOutlined style={{ fontSize: 20 }} /> },
+  { label: "Projets",  href: "/projects",  icon: <FolderOpenOutlined style={{ fontSize: 20 }} />, permission: "projects.view" },
+  { label: "Tâches",   href: "/tasks",     icon: <ChecklistOutlined style={{ fontSize: 20 }} />, permission: "projects.view" },
   { label: "Agenda", href: "/agenda", icon: <CalendarMonthOutlined style={{ fontSize: 20 }} /> },
-  { label: "Formulaires", href: "/forms", icon: <AssignmentOutlined style={{ fontSize: 20 }} /> },
-  { label: "Membres",  href: "/members",   icon: <GroupOutlined style={{ fontSize: 20 }} /> },
+  { label: "Formulaires", href: "/forms", icon: <AssignmentOutlined style={{ fontSize: 20 }} />, permission: "projects.access" },
+  { label: "Membres",  href: "/members",   icon: <GroupOutlined style={{ fontSize: 20 }} />, permission: "members.view" },
   { label: "Inbox",    href: "/inbox",     icon: <InboxOutlined style={{ fontSize: 20 }} /> },
-  { label: "Journal d'activité", href: "/audit-logs", icon: <HistoryOutlined style={{ fontSize: 20 }} /> },
+  { label: "Journal d'activité", href: "/audit-logs", icon: <HistoryOutlined style={{ fontSize: 20 }} />, permission: "audit_logs.view" },
 ];
 
 const SECONDARY_ITEMS: NavItem[] = [
-  { label: "Paramètres", href: "/settings", icon: <SettingsOutlined style={{ fontSize: 20 }} /> },
+  { label: "Paramètres", href: "/settings", icon: <SettingsOutlined style={{ fontSize: 20 }} />, permission: "workspace.settings.manage" },
   { label: "Aide",       href: "/help",     icon: <HelpOutlineOutlined style={{ fontSize: 20 }} /> },
 ];
 
@@ -66,8 +74,8 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       sidebar={
         <Sidebar
           topSlot={<WorkspaceSwitcher />}
-          navItems={NAV_ITEMS}
-          secondaryItems={SECONDARY_ITEMS}
+          navItems={entreesAutorisees(NAV_ITEMS, can)}
+          secondaryItems={entreesAutorisees(SECONDARY_ITEMS, can)}
           bottomSlot={<UserFooter user={userSummary} onLogout={handleLogout} subtitle={roleLabel} />}
         />
       }

@@ -18,23 +18,53 @@ import {
   SettingsOutlined,
 } from "@mui/icons-material";
 import type { NavItem } from "@repo/ui/types/shell";
+import { entreesAutorisees } from "@repo/ui/shell/AccueilApp";
 
 // Un menu = un SUJET d'opérations, pas un écran. Ce qu'on regarde d'un sujet se
 // choisit dans la page, par un sélecteur — sans quoi cette barre s'allongerait
 // d'un cran à chaque écran ajouté, et le lien entre écrans d'un même sujet se
 // perdrait.
-const NAV_ITEMS: NavItem[] = [
+// Chaque entrée porte la permission qui l'ouvre. Sans elle, le menu affiche des
+// portes verrouillées : l'utilisateur clique, prend un 403, et croit que son
+// compte est cassé. L'ORDRE compte aussi — c'est celui dans lequel la porte
+// d'entrée de l'app cherche où atterrir (cf. `AccueilApp`).
+export const NAV_ITEMS: NavItem[] = [
   {
     label: "Accueil",
     href: process.env.NEXT_PUBLIC_WORKSPACE_DOMAIN ?? "http://localhost:3005",
     icon: <HomeOutlined style={{ fontSize: 20 }} />,
     exact: true,
   },
-  { label: "Plannings",  href: "/plannings",  icon: <EventOutlined style={{ fontSize: 20 }} /> },
-  { label: "Salles",     href: "/salles",     icon: <MeetingRoomOutlined style={{ fontSize: 20 }} /> },
-  { label: "Groupes",    href: "/groupes",    icon: <BoltOutlined style={{ fontSize: 20 }} /> },
-  { label: "Process",    href: "/process",    icon: <ChecklistOutlined style={{ fontSize: 20 }} /> },
-  { label: "Paramètres", href: "/parametres", icon: <SettingsOutlined style={{ fontSize: 20 }} /> },
+  {
+    label: "Plannings",
+    href: "/plannings",
+    icon: <EventOutlined style={{ fontSize: 20 }} />,
+    permission: "operations.plannings.view",
+  },
+  {
+    label: "Salles",
+    href: "/salles",
+    icon: <MeetingRoomOutlined style={{ fontSize: 20 }} />,
+    permission: "operations.reservations.demander",
+  },
+  {
+    label: "Groupes",
+    href: "/groupes",
+    icon: <BoltOutlined style={{ fontSize: 20 }} />,
+    permission: "operations.groupes.manage",
+  },
+  {
+    label: "Process",
+    href: "/process",
+    icon: <ChecklistOutlined style={{ fontSize: 20 }} />,
+    permission: "operations.process.view",
+  },
+  {
+    label: "Paramètres",
+    href: "/parametres",
+    icon: <SettingsOutlined style={{ fontSize: 20 }} />,
+    permission: "operations.settings.manage",
+  },
 ];
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
@@ -53,7 +83,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       sidebar={
         <Sidebar
           topSlot={<WorkspaceSwitcher filterPermission="operations.access" />}
-          navItems={NAV_ITEMS}
+          navItems={entreesAutorisees(NAV_ITEMS, can)}
           bottomSlot={<UserFooter user={userSummary} onLogout={handleLogout} />}
         />
       }

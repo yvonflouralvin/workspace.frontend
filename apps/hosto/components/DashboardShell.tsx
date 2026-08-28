@@ -30,7 +30,7 @@ import {
 } from "@mui/icons-material";
 import type { NavItem } from "@repo/ui/types/shell";
 
-const NAV_ITEMS: NavItem[] = [
+export const NAV_ITEMS: NavItem[] = [
   {
     label: "Accueil",
     href: process.env.NEXT_PUBLIC_WORKSPACE_DOMAIN ?? "http://localhost:3005",

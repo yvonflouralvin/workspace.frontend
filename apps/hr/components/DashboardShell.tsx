@@ -19,13 +19,18 @@ import {
   SettingsOutlined,
 } from "@mui/icons-material";
 import type { NavItem } from "@repo/ui/types/shell";
+import { entreesAutorisees } from "@repo/ui/shell/AccueilApp";
 
-const NAV_ITEMS: NavItem[] = [
+// Chaque entrée porte la permission qui l'ouvre. Sans elle, le menu affiche des
+// portes verrouillées : l'utilisateur clique, prend un 403, et croit que son
+// compte est cassé. L'ORDRE compte aussi — c'est celui dans lequel la porte
+// d'entrée de l'app cherche où atterrir (cf. `AccueilApp`).
+export const NAV_ITEMS: NavItem[] = [
   { label: "Accueil", href: process.env.NEXT_PUBLIC_WORKSPACE_DOMAIN ?? "http://localhost:3005", icon: <HomeOutlined style={{ fontSize: 20 }} />, exact: true },
-  { label: "Départements", href: "/", icon: <CorporateFareOutlined style={{ fontSize: 20 }} />, exact: true },
-  { label: "Organigramme", href: "/groups", icon: <AccountTreeOutlined style={{ fontSize: 20 }} /> },
-  { label: "Employés", href: "/employees", icon: <PeopleAltOutlined style={{ fontSize: 20 }} /> },
-  { label: "Paramètres", href: "/parametres", icon: <SettingsOutlined style={{ fontSize: 20 }} /> },
+  { label: "Départements", href: "/", icon: <CorporateFareOutlined style={{ fontSize: 20 }} />, exact: true, permission: "hr.departments.view" },
+  { label: "Organigramme", href: "/groups", icon: <AccountTreeOutlined style={{ fontSize: 20 }} />, permission: "hr.departments.view" },
+  { label: "Employés", href: "/employees", icon: <PeopleAltOutlined style={{ fontSize: 20 }} />, permission: "hr.employees.view" },
+  { label: "Paramètres", href: "/parametres", icon: <SettingsOutlined style={{ fontSize: 20 }} />, permission: "hr.contracts.manage" },
 ];
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
@@ -45,7 +50,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       sidebar={
         <Sidebar
           topSlot={<WorkspaceSwitcher filterPermission="hr.access" />}
-          navItems={NAV_ITEMS}
+          navItems={entreesAutorisees(NAV_ITEMS, can)}
           bottomSlot={<UserFooter user={userSummary} onLogout={handleLogout} />}
         />
       }

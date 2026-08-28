@@ -1,5 +1,10 @@
 "use client";
 
+import { useSessionStore as useSessionAccueil } from "@repo/auth/store/session.store";
+import { usePermissions as usePermissionsAccueil } from "@repo/auth/hooks/usePermissions";
+import { AccueilApp } from "@repo/ui/shell/AccueilApp";
+import { NAV_ITEMS } from "@/components/DashboardShell";
+
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
@@ -34,7 +39,7 @@ const CONGES_DEMO = [
   { id: 3, name: "Josée Kalonji", dates: "26 – 27 août", color: "#9a3412" },
 ];
 
-export default function HomePage() {
+function Departements() {
   const { can } = usePermissions();
   const activeWorkspace = useSessionStore((s) => s.activeWorkspace);
   const canView = can("hr.departments.view");
@@ -276,4 +281,30 @@ export default function HomePage() {
       </div>
     </DashboardShell>
   );
+}
+
+/** La porte d'entrée de RH.
+ *
+ *  Son accueil EST un module, et tout le monde n'y a pas droit : sans cette
+ *  garde, un membre dont le groupe fait de RH sa page de démarrage
+ *  atterrissait sur un 403 juste après s'être connecté. On l'envoie vers le
+ *  premier module qui lui est ouvert — ou on le lui dit franchement.
+ */
+export default function Racine() {
+  const chargement = useSessionAccueil((s) => s.loading);
+  const { can } = usePermissionsAccueil();
+
+  if (!chargement && !can("hr.departments.view")) {
+    return (
+      <DashboardShell>
+        <AccueilApp
+          items={NAV_ITEMS}
+          can={can}
+          appName="RH"
+          pret={!chargement}
+        />
+      </DashboardShell>
+    );
+  }
+  return <Departements />;
 }

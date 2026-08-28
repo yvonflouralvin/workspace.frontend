@@ -324,7 +324,7 @@ export default function ProcessPage() {
                           : "jamais exécuté"}
                       </span>
 
-                      {p.actif && peutExecuter && (
+                      {p.actif && peutExecuter && p.mes_droits?.executer !== false && (
                         <Link
                           href={`/process/${p.slug}`}
                           className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-outline-soft px-2.5 text-label-md text-on-surface-variant transition-colors hover:border-primary hover:text-primary"

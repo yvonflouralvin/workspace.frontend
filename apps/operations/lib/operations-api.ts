@@ -340,6 +340,20 @@ export class ConflitError extends Error {
   }
 }
 
+/** Une erreur qui a gardé son statut.
+ *
+ *  « Réservé » et « n'existe pas » ne se disent pas pareil : sans le statut,
+ *  un écran ne peut que servir le même message aux deux, et on cherche un
+ *  process qu'on a bien sous les yeux. */
+export class ErreurApi extends Error {
+  statut: number;
+  constructor(message: string, statut: number) {
+    super(message);
+    this.name = "ErreurApi";
+    this.statut = statut;
+  }
+}
+
 async function lire<T>(r: Response): Promise<T> {
   if (r.status === 204) return undefined as T;
   const corps = await r.json().catch(() => ({}));
@@ -354,7 +368,7 @@ async function lire<T>(r: Response): Promise<T> {
         : (detail as { message?: string })?.message ??
           (corps as { message?: string })?.message ??
           `Erreur ${r.status}`;
-    throw new Error(message);
+    throw new ErreurApi(message, r.status);
   }
   return corps as T;
 }

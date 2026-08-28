@@ -30,7 +30,12 @@ import {
   versBrouillon,
   type SectionBrouillon,
 } from "@/components/EditeurChecklist";
-import { operationsApi, type ExecutionProcess, type Process } from "@/lib/operations-api";
+import {
+  ErreurApi,
+  operationsApi,
+  type ExecutionProcess,
+  type Process,
+} from "@/lib/operations-api";
 
 type Onglet = "conception" | "executions";
 
@@ -49,7 +54,7 @@ export default function ProcessDetailPage() {
   const peutGerer = can("operations.process.manage");
   const peutExecuter = can("operations.process.executer");
 
-  const [onglet, setOnglet] = useState<Onglet>("conception");
+  const [onglet, setOnglet] = useState<Onglet | null>(null);
   const [process, setProcess] = useState<Process | null>(null);
   const [executions, setExecutions] = useState<ExecutionProcess[] | null>(null);
   const [filtres, setFiltres] = useState<FiltresExec>(FILTRES_VIDES);
@@ -60,7 +65,9 @@ export default function ProcessDetailPage() {
   const [erreur, setErreur] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [introuvable, setIntrouvable] = useState(false);
+  // « Réservé » et « n'existe pas » ne se disent pas pareil : servir le même
+  // message aux deux ferait chercher un process qu'on a sous les yeux.
+  const [refus, setRefus] = useState<"introuvable" | "reserve" | null>(null);
   const [aArchiver, setAArchiver] = useState(false);
   const [aDupliquer, setADupliquer] = useState(false);
 
@@ -70,8 +77,8 @@ export default function ProcessDetailPage() {
       setProcess(p);
       setSections(versBrouillon(p));
       setErreur(null);
-    } catch {
-      setIntrouvable(true);
+    } catch (e) {
+      setRefus(e instanceof ErreurApi && e.statut === 403 ? "reserve" : "introuvable");
     }
   }, [reference]);
 
@@ -102,6 +109,18 @@ export default function ProcessDetailPage() {
   // Un filtre qui change remet à la première page : rester en page 4 d'un
   // résultat qui n'en a plus que 2 afficherait une liste vide sans raison.
   useEffect(() => setPageExec(1), [filtres]);
+
+  // Un onglet ne s'affiche que s'il a quelque chose à montrer À CETTE
+  // PERSONNE. Un agent qui passe la ronde n'a rien à faire dans l'écran de
+  // conception : lui servir la checklist en lecture seule, c'est l'envoyer
+  // dans un contenu qui ne le concerne pas et où il ne peut rien faire.
+  const voitConception = !!process?.mes_droits?.concevoir && peutGerer;
+  const voitExecutions = !!process?.mes_droits?.consulter;
+
+  useEffect(() => {
+    if (onglet !== null || !process) return;
+    setOnglet(voitConception ? "conception" : voitExecutions ? "executions" : null);
+  }, [onglet, process, voitConception, voitExecutions]);
 
   const modifie =
     process !== null && JSON.stringify(sections) !== JSON.stringify(versBrouillon(process));
@@ -188,11 +207,15 @@ export default function ProcessDetailPage() {
     }
   }
 
-  if (introuvable) {
+  if (refus) {
     return (
       <DashboardShell>
         <div className="mx-auto max-w-[900px] p-8">
-          <p className="text-body-md text-on-surface-variant">Ce process n&apos;existe pas.</p>
+          <p className="text-body-md text-on-surface-variant">
+            {refus === "reserve"
+              ? "Ce process est réservé à ses collaborateurs. Demandez à son propriétaire de vous y ajouter."
+              : "Ce process n'existe pas."}
+          </p>
           <Link href="/process" className="mt-2 inline-block text-body-sm text-primary">
             Retour aux process
           </Link>
@@ -261,20 +284,39 @@ export default function ProcessDetailPage() {
           </p>
         )}
 
-        <nav className="mt-5 flex gap-1 border-b border-outline-soft">
-          <OngletBouton actif={onglet === "conception"} onClick={() => setOnglet("conception")}>
-            Conception
-          </OngletBouton>
-          <OngletBouton
-            actif={onglet === "executions"}
-            onClick={() => setOnglet("executions")}
-            badge={totalExec || undefined}
-          >
-            Exécutions
-          </OngletBouton>
-        </nav>
+        {(voitConception || voitExecutions) && (
+          <nav className="mt-5 flex gap-1 border-b border-outline-soft">
+            {voitConception && (
+              <OngletBouton
+                actif={onglet === "conception"}
+                onClick={() => setOnglet("conception")}
+              >
+                Conception
+              </OngletBouton>
+            )}
+            {voitExecutions && (
+              <OngletBouton
+                actif={onglet === "executions"}
+                onClick={() => setOnglet("executions")}
+                badge={totalExec || undefined}
+              >
+                Exécutions
+              </OngletBouton>
+            )}
+          </nav>
+        )}
 
-        {onglet === "conception" ? (
+        {/* Ni la conception ni le registre : il reste ce pour quoi cette
+            personne est venue — passer la checklist. */}
+        {process && !voitConception && !voitExecutions && (
+          <p className="mt-5 rounded-2xl border border-dashed border-outline-soft px-4 py-8 text-center text-body-sm text-on-surface-variant">
+            {process.mes_droits?.executer
+              ? "Vous pouvez exécuter ce process. Sa conception et son registre sont réservés à ses collaborateurs."
+              : "Ce process est réservé à ses collaborateurs."}
+          </p>
+        )}
+
+        {onglet === "conception" && voitConception ? (
           <section className="mt-4 rounded-2xl border border-outline-soft bg-surface-container-lowest p-4">
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-body-md font-semibold text-on-surface">Points à contrôler</h2>
@@ -324,7 +366,7 @@ export default function ProcessDetailPage() {
           </section>
         ) : null}
 
-        {onglet === "conception" && process && (
+        {onglet === "conception" && voitConception && process && (
           <PartageProcess
             process={process}
             onChange={setProcess}
@@ -333,7 +375,7 @@ export default function ProcessDetailPage() {
         )}
 
         {/* Tout en bas : ces gestes-là ne se font pas en passant. */}
-        {onglet === "conception" && process && peutGerer && (
+        {onglet === "conception" && voitConception && process && (
           <section className="mt-4 rounded-2xl border border-outline-soft bg-surface-container-lowest p-4">
             <h2 className="text-body-md font-semibold text-on-surface">Ce process</h2>
 
@@ -391,7 +433,7 @@ export default function ProcessDetailPage() {
           </section>
         )}
 
-        {onglet === "executions" && (
+        {onglet === "executions" && voitExecutions && (
           <>
             <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
               <FiltresExecutions

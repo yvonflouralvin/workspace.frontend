@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { SessionProvider } from "@repo/auth/SessionProvider";
-import { getServerSession } from "@repo/auth/api/session.server";
+import { exigerSession } from "@repo/auth/api/session.server";
 import { AccessDenied } from "@repo/ui/AccessDenied";
 import { WorkspaceSwitcher } from "@repo/ui/WorkspaceSwitcher";
 
@@ -22,7 +22,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const chemin = (await headers()).get("x-pathname") ?? "";
   const publique = chemin.startsWith("/candidature/");
 
-  const session = await getServerSession();
+  // Session expirée ou absente : retour à la connexion, plutôt que la
+  // coquille de l'app avec une session vide.
+  const session = await exigerSession({ publique });
   const accessDenied =
     !publique && session.authenticated && !session.permissions.includes("academique.access");
   const canSwitchTo = session.workspaces.some(

@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getServerSession } from "@repo/auth/api/session.server";
 import { LoginForm } from "./LoginForm";
-import { destinationDepuisSession } from "./lib/accueil";
+import { destinationDepuisSession, retourDeConfiance } from "./lib/accueil";
 
 /** L'écran de connexion — ou la sortie, pour qui est déjà connecté.
  *
@@ -13,11 +13,16 @@ import { destinationDepuisSession } from "./lib/accueil";
  *  `redirect()` exige une URL absolue avec son schéma — un host nu serait lu
  *  comme un chemin relatif (→ auth-dev.saas.cd/workspace-dev.saas.cd).
  */
-export default async function Home() {
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<{ retour?: string }>;
+}) {
   const session = await getServerSession();
 
   if (session.authenticated) {
-    redirect(destinationDepuisSession(session));
+    const { retour } = await searchParams;
+    redirect(retourDeConfiance(retour ?? null) ?? destinationDepuisSession(session));
   }
 
   return <LoginForm />;

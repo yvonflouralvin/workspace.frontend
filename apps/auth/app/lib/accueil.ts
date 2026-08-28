@@ -37,6 +37,33 @@ function accessible(appId: string, permissions: string[]): boolean {
  *  qu'il a le droit d'ouvrir. Atterrir sur un écran « accès refusé » après une
  *  connexion réussie donne l'impression que le compte est cassé.
  */
+/** L'adresse d'où l'on a été renvoyé, quand elle est digne de confiance.
+ *
+ *  Une session qui expire renvoie ici avec `?retour=`, pour ramener la
+ *  personne là où elle travaillait plutôt que sur un accueil générique. Mais
+ *  une adresse qui arrive par l'URL vient de n'importe où : on ne la suit que
+ *  si elle désigne une app de la plateforme. Sans ce filtre, un lien
+ *  `?retour=https://ailleurs` ferait de l'écran de connexion un tremplin.
+ */
+export function retourDeConfiance(brut: string | null): string | null {
+  if (!brut) return null;
+  try {
+    const cible = new URL(brut);
+    const connues = [WORKSPACE_DOMAIN, ...PLATFORM_APPS.map((a) => a.url)];
+    return connues.some((connue) => {
+      try {
+        return new URL(connue).origin === cible.origin;
+      } catch {
+        return false;
+      }
+    })
+      ? cible.toString()
+      : null;
+  } catch {
+    return null;
+  }
+}
+
 export function destinationDepuisSession(session: SessionLue): string {
   const permissions = Array.isArray(session?.permissions) ? session.permissions : [];
 
@@ -55,11 +82,16 @@ export function destinationDepuisSession(session: SessionLue): string {
 }
 
 export async function destinationApresConnexion(): Promise<string> {
+  const retour = retourDeConfiance(
+    new URLSearchParams(window.location.search).get("retour"),
+  );
   try {
     const reponse = await apiFetch("/api/auth/session");
-    if (!reponse.ok) return WORKSPACE_DOMAIN;
-    return destinationDepuisSession(await reponse.json());
+    if (!reponse.ok) return retour ?? WORKSPACE_DOMAIN;
+    // Reprendre où l'on en était l'emporte sur la page de démarrage : celle-ci
+    // dit où commencer, pas où revenir.
+    return retour ?? destinationDepuisSession(await reponse.json());
   } catch {
-    return WORKSPACE_DOMAIN;
+    return retour ?? WORKSPACE_DOMAIN;
   }
 }

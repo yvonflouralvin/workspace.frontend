@@ -5,6 +5,41 @@ import { useRouter } from "next/navigation";
 import { LockOutlined } from "@mui/icons-material";
 
 import type { NavItem } from "../types/shell";
+import { PLATFORM_APPS } from "./platform";
+import { AccueilRaccourcis } from "./AccueilRaccourcis";
+
+/** Un raccourci configuré sur un groupe : une carte vers un écran précis. */
+export interface LienRapide {
+  id?: number;
+  libelle: string;
+  description: string | null;
+  app_key: string;
+  chemin: string | null;
+  icone: string | null;
+  position: number;
+}
+
+/** L'écran d'accueil résolu par `auth` depuis les groupes du membre. */
+export interface AccueilResolu {
+  landing_app_key: string | null;
+  accueil_personnalise: boolean;
+  liens_rapides: LienRapide[];
+  groupe: { id: number; name: string } | null;
+}
+
+const WORKSPACE_URL = process.env.NEXT_PUBLIC_WORKSPACE_DOMAIN ?? "http://localhost:3005";
+
+/** Où mène « Accueil » POUR CETTE PERSONNE.
+ *
+ *  Workspace reste le défaut, mais un membre dont le groupe atterrit ailleurs
+ *  n'a rien à y faire — l'entrée le renvoyait vers une app où il n'a parfois
+ *  aucun droit. Le chez-soi de quelqu'un, c'est la page de démarrage qu'on lui
+ *  a donnée.
+ */
+export function urlAccueil(landingAppKey?: string | null): string {
+  if (!landingAppKey || landingAppKey === "workspace") return WORKSPACE_URL;
+  return PLATFORM_APPS.find((a) => a.id === landingAppKey)?.url ?? WORKSPACE_URL;
+}
 
 /** Les entrées de menu que cette session peut réellement ouvrir.
  *
@@ -17,6 +52,27 @@ export function entreesAutorisees(
   can: (permission: string) => boolean,
 ): NavItem[] {
   return items.filter((item) => !item.permission || can(item.permission));
+}
+
+/** Le menu tel que ce membre doit le voir : réduit à ses droits, et l'entrée
+ *  « Accueil » pointée sur SA page de démarrage.
+ *
+ *  Elle était câblée sur Workspace partout. Un membre dont le groupe atterrit
+ *  sur Operations y trouvait donc un « Accueil » qui l'envoyait vers une app
+ *  où il n'a parfois aucun droit — le contraire d'un chez-soi. On ne réécrit
+ *  que pour une page de démarrage NON par défaut : ailleurs, le lien relatif
+ *  déjà en place évite un rechargement complet.
+ */
+export function menuDeSession(
+  items: NavItem[],
+  can: (permission: string) => boolean,
+  landingAppKey?: string | null,
+): NavItem[] {
+  const visibles = entreesAutorisees(items, can);
+  if (!landingAppKey || landingAppKey === "workspace") return visibles;
+  return visibles.map((item) =>
+    item.accueil ? { ...item, href: urlAccueil(landingAppKey) } : item,
+  );
 }
 
 /** Où atterrit cette session dans cette app : sa PREMIÈRE entrée accessible.
@@ -51,12 +107,18 @@ export function AccueilApp({
   items,
   can,
   appName,
+  accueil,
+  prenom,
   sauf = "/",
   pret = true,
 }: {
   items: NavItem[];
   can: (permission: string) => boolean;
   appName: string;
+  /** L'accueil résolu du membre. Quand son groupe a choisi des raccourcis, ils
+   *  passent AVANT la redirection : c'est un écran voulu, pas un pis-aller. */
+  accueil?: AccueilResolu;
+  prenom?: string;
   /** Chemin à ne pas proposer — la page courante, en général « / ». */
   sauf?: string;
   /** `false` tant que la session n'est pas chargée : rediriger sur des
@@ -64,7 +126,9 @@ export function AccueilApp({
   pret?: boolean;
 }) {
   const router = useRouter();
-  const destination = pret ? premiereDestination(items, can, sauf) : null;
+  const raccourcis =
+    accueil?.accueil_personnalise && accueil.liens_rapides.length > 0 ? accueil : null;
+  const destination = pret && !raccourcis ? premiereDestination(items, can, sauf) : null;
 
   useEffect(() => {
     // `replace` et non `push` : le bouton Retour doit ramener d'où l'on vient,
@@ -73,6 +137,7 @@ export function AccueilApp({
   }, [destination, router]);
 
   if (!pret || destination) return null;
+  if (raccourcis) return <AccueilRaccourcis accueil={raccourcis} prenom={prenom} />;
 
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center px-6 text-center">

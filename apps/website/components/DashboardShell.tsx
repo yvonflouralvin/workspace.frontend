@@ -12,6 +12,7 @@ import { WorkspaceSwitcher } from "@repo/ui/WorkspaceSwitcher";
 import { PLATFORM_APPS, WEBSITE_SHELL } from "@repo/ui/shell/platform";
 import { HomeOutlined, LanguageOutlined } from "@mui/icons-material";
 import type { NavItem } from "@repo/ui/types/shell";
+import { menuDeSession } from "@repo/ui/shell/AccueilApp";
 
 /** La coque de l'application.
  *
@@ -22,6 +23,9 @@ import type { NavItem } from "@repo/ui/types/shell";
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const { user } = useSessionStore();
   const { can } = usePermissions();
+  // « Accueil » mène chez CE membre : Workspace par défaut, sa page de
+  // démarrage quand son groupe lui en a donné une.
+  const landingAppKey = useSessionStore((s) => s.accueil?.landing_app_key);
   const handleLogout = useLogout("/api/auth/logout");
 
   const navItems: NavItem[] = [
@@ -30,6 +34,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       href: process.env.NEXT_PUBLIC_WORKSPACE_DOMAIN ?? "http://localhost:3005",
       icon: <HomeOutlined style={{ fontSize: 20 }} />,
       exact: true,
+      accueil: true,
     },
     ...(can("website.sites.view")
       ? [
@@ -50,7 +55,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       sidebar={
         <Sidebar
           topSlot={<WorkspaceSwitcher filterPermission="website.access" />}
-          navItems={navItems}
+          navItems={menuDeSession(navItems, can, landingAppKey)}
           bottomSlot={<UserFooter user={userSummary} onLogout={handleLogout} />}
         />
       }

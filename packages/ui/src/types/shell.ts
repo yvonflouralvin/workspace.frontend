@@ -9,6 +9,9 @@ export interface NavItem {
   // Quand défini, l'entrée n'est rendue que si la session détient cette permission.
   // Le filtrage est fait par l'app (le Sidebar reste agnostique de @repo/auth).
   permission?: string;
+  // L'entrée « chez soi ». Sa cible dépend du membre : Workspace par défaut,
+  // sa page de démarrage quand son groupe lui en a donné une. Cf. `menuDeSession`.
+  accueil?: boolean;
 }
 
 export interface AppDefinition {

@@ -18,7 +18,7 @@ import {
   SettingsOutlined,
 } from "@mui/icons-material";
 import type { NavItem } from "@repo/ui/types/shell";
-import { entreesAutorisees } from "@repo/ui/shell/AccueilApp";
+import { menuDeSession } from "@repo/ui/shell/AccueilApp";
 
 // Un menu = un SUJET d'opérations, pas un écran. Ce qu'on regarde d'un sujet se
 // choisit dans la page, par un sélecteur — sans quoi cette barre s'allongerait
@@ -34,6 +34,7 @@ export const NAV_ITEMS: NavItem[] = [
     href: process.env.NEXT_PUBLIC_WORKSPACE_DOMAIN ?? "http://localhost:3005",
     icon: <HomeOutlined style={{ fontSize: 20 }} />,
     exact: true,
+    accueil: true,
   },
   {
     label: "Plannings",
@@ -70,6 +71,9 @@ export const NAV_ITEMS: NavItem[] = [
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const { user } = useSessionStore();
   const { can } = usePermissions();
+  // « Accueil » mène chez CE membre : Workspace par défaut, sa page de
+  // démarrage quand son groupe lui en a donné une.
+  const landingAppKey = useSessionStore((s) => s.accueil?.landing_app_key);
   const handleLogout = useLogout("/api/auth/logout");
 
   const userSummary = user
@@ -83,7 +87,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       sidebar={
         <Sidebar
           topSlot={<WorkspaceSwitcher filterPermission="operations.access" />}
-          navItems={entreesAutorisees(NAV_ITEMS, can)}
+          navItems={menuDeSession(NAV_ITEMS, can, landingAppKey)}
           bottomSlot={<UserFooter user={userSummary} onLogout={handleLogout} />}
         />
       }

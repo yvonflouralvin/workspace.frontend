@@ -26,6 +26,30 @@ const CHAMP =
 
 type Ecriture = { valeur?: ValeurPoint; commentaire?: string | null; anomalie?: boolean | null };
 
+/** L'heure seule quand le relevé est du même jour que la lecture, la date
+ *  entière sinon : « 09:42 » suffit sur une ronde du matin, et on ne fait pas
+ *  répéter la date à quarante lignes. */
+function heure(iso: string): string {
+  const quand = new Date(iso);
+  const memeJour = quand.toDateString() === new Date().toDateString();
+  return memeJour
+    ? quand.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })
+    : quand.toLocaleString("fr-FR");
+}
+
+/** Combien de temps la ronde a pris. Deux exécutions du même process aux durées
+ *  très différentes disent quelque chose que les compteurs ne disent pas. */
+function duree(debut: string, fin: string): string {
+  const minutes = Math.max(
+    0,
+    Math.round((new Date(fin).getTime() - new Date(debut).getTime()) / 60000),
+  );
+  if (minutes < 60) return `${minutes} min`;
+  const heures = Math.floor(minutes / 60);
+  const reste = minutes % 60;
+  return reste ? `${heures} h ${String(reste).padStart(2, "0")}` : `${heures} h`;
+}
+
 /** Passer la checklist.
  *
  *  **Chaque point est une question**, et son type décide de la saisie : une
@@ -130,10 +154,15 @@ export default function ExecutionPage() {
         </h1>
         {execution && (
           <p className="mt-1 text-body-sm text-on-surface-variant">
-            Ouverte le {new Date(execution.ouverte_le).toLocaleString("fr-FR")} · checklist
+            Ouverte le {new Date(execution.ouverte_le).toLocaleString("fr-FR")}
+            {execution.ouverte_par_nom ? ` par ${execution.ouverte_par_nom}` : ""} · checklist
             version {execution.process_version} · {execution.statut_libelle}
             {execution.close_le
               ? ` le ${new Date(execution.close_le).toLocaleString("fr-FR")}`
+              : ""}
+            {execution.close_par_nom ? ` par ${execution.close_par_nom}` : ""}
+            {execution.close_le
+              ? ` · ${duree(execution.ouverte_le, execution.close_le)}`
               : ""}
           </p>
         )}
@@ -241,6 +270,13 @@ export default function ExecutionPage() {
                             </button>
                           </span>
                         </div>
+
+                        {r.repondu_le && (
+                          <p className="mt-1 text-label-md text-outline">
+                            Relevé à {heure(r.repondu_le)}
+                            {r.repondu_par_nom ? ` par ${r.repondu_par_nom}` : ""}
+                          </p>
+                        )}
 
                         <div className="mt-2">
                           <SaisiePoint

@@ -17,6 +17,7 @@ import { usePermissions } from "@repo/auth/hooks/usePermissions";
 
 import { DashboardShell } from "@/components/DashboardShell";
 import { ExportExecutions } from "@/components/ExportExecutions";
+import { ChecklistLecture } from "@/components/ChecklistLecture";
 import { PartageProcess } from "@/components/PartageProcess";
 import { BasDeListe, ListeExecutions } from "@/app/process/page";
 import {
@@ -37,7 +38,7 @@ import {
   type Process,
 } from "@/lib/operations-api";
 
-type Onglet = "conception" | "executions";
+type Onglet = "checklist" | "conception" | "executions";
 
 /** Un process : sa checklist, et l'historique de ses passages.
  *
@@ -115,12 +116,24 @@ export default function ProcessDetailPage() {
   // conception : lui servir la checklist en lecture seule, c'est l'envoyer
   // dans un contenu qui ne le concerne pas et où il ne peut rien faire.
   const voitConception = !!process?.mes_droits?.concevoir && peutGerer;
+  // La checklist se LIT dès qu'on peut ouvrir le process : avant de démarrer,
+  // on veut savoir ce qu'on va devoir contrôler. Elle laisse la place à
+  // l'éditeur pour qui a le droit d'écrire — deux vues du même objet.
+  const voitChecklist = !!process && !voitConception;
   const voitExecutions = !!process?.mes_droits?.consulter;
 
   useEffect(() => {
     if (onglet !== null || !process) return;
-    setOnglet(voitConception ? "conception" : voitExecutions ? "executions" : null);
-  }, [onglet, process, voitConception, voitExecutions]);
+    setOnglet(
+      voitConception
+        ? "conception"
+        : voitChecklist
+          ? "checklist"
+          : voitExecutions
+            ? "executions"
+            : null,
+    );
+  }, [onglet, process, voitConception, voitChecklist, voitExecutions]);
 
   const modifie =
     process !== null && JSON.stringify(sections) !== JSON.stringify(versBrouillon(process));
@@ -284,8 +297,13 @@ export default function ProcessDetailPage() {
           </p>
         )}
 
-        {(voitConception || voitExecutions) && (
+        {(voitConception || voitChecklist || voitExecutions) && (
           <nav className="mt-5 flex gap-1 border-b border-outline-soft">
+            {voitChecklist && (
+              <OngletBouton actif={onglet === "checklist"} onClick={() => setOnglet("checklist")}>
+                Checklist
+              </OngletBouton>
+            )}
             {voitConception && (
               <OngletBouton
                 actif={onglet === "conception"}
@@ -306,9 +324,13 @@ export default function ProcessDetailPage() {
           </nav>
         )}
 
+        {onglet === "checklist" && voitChecklist && process && (
+          <ChecklistLecture process={process} />
+        )}
+
         {/* Ni la conception ni le registre : il reste ce pour quoi cette
             personne est venue — passer la checklist. */}
-        {process && !voitConception && !voitExecutions && (
+        {process && !voitConception && !voitChecklist && !voitExecutions && (
           <p className="mt-5 rounded-2xl border border-dashed border-outline-soft px-4 py-8 text-center text-body-sm text-on-surface-variant">
             {process.mes_droits?.executer
               ? "Vous pouvez exécuter ce process. Sa conception et son registre sont réservés à ses collaborateurs."

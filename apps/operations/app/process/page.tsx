@@ -172,13 +172,13 @@ export default function ProcessPage() {
               laisse sa trace : ce qui a été relevé, ce qui ne l&apos;était pas, et par qui.
             </p>
           </div>
-          {onglet === "process" && (
+          {/* Masqué et non grisé : un bouton qu'on ne peut pas presser n'informe
+              de rien, il encombre et fait espérer. */}
+          {onglet === "process" && peutGerer && (
             <button
               type="button"
-              disabled={!peutGerer}
               onClick={() => setOuvert(true)}
-              title={peutGerer ? undefined : "Vous n'avez pas le droit de créer un process."}
-              className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-label-lg text-on-primary transition-opacity hover:opacity-90 disabled:opacity-40"
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-label-lg text-on-primary transition-opacity hover:opacity-90"
             >
               <AddOutlined style={{ fontSize: 18 }} />
               Nouveau process

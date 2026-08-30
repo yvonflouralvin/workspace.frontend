@@ -516,6 +516,10 @@ export interface ReponsePoint {
   anomalie: boolean;
   commentaire: string | null;
   repondu_par: number | null;
+  repondu_par_nom: string | null;
+  /** L'heure du relevé. Une ronde ouverte à 9 h et close à 10 h ne dit pas
+   *  quand le sous-sol a été contrôlé — or c'est la question qu'on pose après
+   *  un incident. */
   repondu_le: string | null;
 }
 
@@ -529,9 +533,11 @@ export interface ExecutionProcess {
   statut: StatutExecution;
   statut_libelle: string;
   ouverte_par: number | null;
+  ouverte_par_nom: string | null;
   ouverte_le: string;
   close_le: string | null;
   close_par: number | null;
+  close_par_nom: string | null;
   note: string | null;
   points: number;
   repondus: number;

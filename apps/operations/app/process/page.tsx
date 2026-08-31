@@ -41,6 +41,7 @@ type Onglet = "executions" | "process";
  */
 export default function ProcessPage() {
   const { can } = usePermissions();
+  const peutVoir = can("operations.process.view");
   const peutGerer = can("operations.process.manage");
   const peutExecuter = can("operations.process.executer");
 
@@ -209,7 +210,11 @@ export default function ProcessPage() {
           <>
             <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
               <FiltresExecutions valeurs={filtres} onChange={setFiltres} />
-              <ExportExecutions base="/api/executions/export" filtres={filtres} />
+              {/* Masqué et non grisé : exporter suppose de pouvoir lire le
+                  registre, et un bouton qui refuse n'apprend rien. */}
+              {peutVoir && (
+                <ExportExecutions base="/api/executions/export" filtres={filtres} />
+              )}
             </div>
 
             {journal === null ? (

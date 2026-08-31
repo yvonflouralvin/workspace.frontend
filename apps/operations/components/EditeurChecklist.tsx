@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   AddOutlined,
   ArrowDownwardOutlined,
@@ -329,19 +329,10 @@ export function EditeurChecklist({
 
                       {(point.type === "CHOIX_UNIQUE" || point.type === "CHOIX_MULTIPLE") && (
                         <div className="mt-2 pl-7">
-                          <input
-                            className={PETIT}
-                            placeholder="Les réponses possibles, séparées par des virgules"
-                            value={point.options.join(", ")}
+                          <ChampOptions
+                            options={point.options}
                             disabled={lecture}
-                            onChange={(e) =>
-                              majPoint(i, j, {
-                                options: e.target.value
-                                  .split(",")
-                                  .map((o) => o.trim())
-                                  .filter(Boolean),
-                              })
-                            }
+                            onChange={(options) => majPoint(i, j, { options })}
                           />
                         </div>
                       )}
@@ -379,4 +370,57 @@ export function EditeurChecklist({
       )}
     </div>
   );
+}
+
+/** Les réponses possibles d'un choix, saisies sur une ligne.
+ *
+ *  **Le texte tapé vit ICI, pas dans le modèle.** Le champ était contrôlé par
+ *  `options.join(", ")` : taper « Bon, » redécoupait aussitôt en `["Bon"]`,
+ *  qu'on rejoignait en « Bon » — la virgule disparaissait sous les doigts, et
+ *  il devenait impossible d'écrire une seconde option. On garde donc la frappe
+ *  telle quelle et on ne la redécoupe que pour prévenir le parent.
+ *
+ *  Le point-virgule sépare aussi : c'est ce que les gens ont tapé quand la
+ *  virgule refusait de s'écrire.
+ */
+function ChampOptions({
+  options,
+  disabled,
+  onChange,
+}: {
+  options: string[];
+  disabled: boolean;
+  onChange: (options: string[]) => void;
+}) {
+  const [texte, setTexte] = useState(() => options.join(", "));
+
+  // Le parent reprend la main quand il change les options AILLEURS qu'ici —
+  // au chargement, ou après un enregistrement. On compare les valeurs
+  // découpées : sinon, chaque frappe se verrait réécrire.
+  useEffect(() => {
+    if (JSON.stringify(decouper(texte)) !== JSON.stringify(options)) {
+      setTexte(options.join(", "));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [options]);
+
+  return (
+    <input
+      className={PETIT}
+      placeholder="Les réponses possibles, séparées par des virgules"
+      value={texte}
+      disabled={disabled}
+      onChange={(e) => {
+        setTexte(e.target.value);
+        onChange(decouper(e.target.value));
+      }}
+    />
+  );
+}
+
+function decouper(texte: string): string[] {
+  return texte
+    .split(/[,;]/)
+    .map((o) => o.trim())
+    .filter(Boolean);
 }

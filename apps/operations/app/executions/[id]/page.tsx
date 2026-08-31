@@ -408,6 +408,7 @@ function SaisiePoint({
       <div className="flex flex-wrap items-center gap-2">
         <input
           type="number"
+          step="any"
           className={`${CHAMP} w-40`}
           placeholder="Valeur relevée"
           defaultValue={typeof valeur === "number" ? valeur : ""}

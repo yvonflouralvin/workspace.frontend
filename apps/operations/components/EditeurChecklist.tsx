@@ -289,8 +289,12 @@ export function EditeurChecklist({
                       {point.type === "NOMBRE" && (
                         <div className="mt-2 flex flex-wrap items-center gap-2 pl-7">
                           <span className="text-label-md text-outline">Attendu entre</span>
+                          {/* `step="any"` : une pression tient entre 1,5 et 2,5
+                              bar. Sans lui le navigateur refuse la décimale et
+                              n'explique pas pourquoi. */}
                           <input
                             type="number"
+                            step="any"
                             className={`${PETIT} w-24`}
                             placeholder="min"
                             value={point.minimum ?? ""}
@@ -304,6 +308,7 @@ export function EditeurChecklist({
                           <span className="text-label-md text-outline">et</span>
                           <input
                             type="number"
+                            step="any"
                             className={`${PETIT} w-24`}
                             placeholder="max"
                             value={point.maximum ?? ""}

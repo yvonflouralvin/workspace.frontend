@@ -9,6 +9,7 @@ import {
   QueryStatsOutlined,
   WarningAmberOutlined,
 } from "@mui/icons-material";
+import { usePermissions } from "@repo/auth/hooks/usePermissions";
 import { DashboardShell } from "@/components/DashboardShell";
 import { SelecteurVue, type VueDef } from "@/components/SelecteurVue";
 import { PanneauListePlannings } from "@/components/vues/PanneauListePlannings";
@@ -19,36 +20,46 @@ import { PanneauChevauchements } from "@/components/vues/PanneauChevauchements";
 
 const s = { fontSize: 18 };
 
-const VUES: VueDef[] = [
+// Chaque vue porte la permission qui la rend visible — même logique que
+// `NAV_ITEMS` dans `DashboardShell` (cf. `entreesAutorisees`). Sans ce garde,
+// un groupe cantonné à `operations.plannings.view` voyait quand même
+// Ressources/Sites dans le sélecteur : l'API les refusait (403), mais
+// l'option n'aurait jamais dû apparaître.
+const VUES: (VueDef & { permission: string })[] = [
   {
     cle: "plannings",
     libelle: "Plannings",
     description: "Les calendriers d'affectation et leurs créneaux",
     icone: <EventOutlined style={s} />,
+    permission: "operations.plannings.view",
   },
   {
     cle: "ressources",
     libelle: "Ressources",
     description: "Qui l'on affecte — importés des RH ou saisis ici",
     icone: <GroupsOutlined style={s} />,
+    permission: "operations.ressources.view",
   },
   {
     cle: "sites",
     libelle: "Sites",
     description: "Où l'on intervient",
     icone: <PlaceOutlined style={s} />,
+    permission: "operations.sites.view",
   },
   {
     cle: "charge",
     libelle: "Charge",
     description: "Prestations et heures par ressource",
     icone: <QueryStatsOutlined style={s} />,
+    permission: "operations.plannings.view",
   },
   {
     cle: "chevauchements",
     libelle: "Chevauchements",
     description: "Ce qui a été maintenu malgré un conflit",
     icone: <WarningAmberOutlined style={s} />,
+    permission: "operations.plannings.view",
   },
 ];
 
@@ -64,7 +75,15 @@ const VUES: VueDef[] = [
 function Contenu() {
   const router = useRouter();
   const params = useSearchParams();
-  const vue = params.get("vue") ?? "plannings";
+  const { can } = usePermissions();
+  const vuesAutorisees = VUES.filter((v) => can(v.permission));
+  // Vue demandée par l'URL mais hors permissions (lien partagé, saisie manuelle) :
+  // on retombe sur la première vue accessible plutôt que d'afficher un panneau
+  // qui n'obtiendra qu'un 403 de l'API.
+  const demandee = params.get("vue") ?? "plannings";
+  const vue = vuesAutorisees.some((v) => v.cle === demandee)
+    ? demandee
+    : (vuesAutorisees[0]?.cle ?? demandee);
 
   const changer = useCallback(
     (cle: string) => {
@@ -75,10 +94,20 @@ function Contenu() {
     [router],
   );
 
+  if (vuesAutorisees.length === 0) {
+    return (
+      <div className="mx-auto max-w-[1200px] p-4 md:p-8">
+        <p className="text-body-md text-on-surface-variant">
+          Vous n&apos;avez accès à aucun écran de ce menu.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto max-w-[1200px]">
       <div className="px-4 pt-4 md:px-8 md:pt-8">
-        <SelecteurVue vues={VUES} courante={vue} onChange={changer} />
+        <SelecteurVue vues={vuesAutorisees} courante={vue} onChange={changer} />
       </div>
 
       {vue === "ressources" ? (

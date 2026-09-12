@@ -9,7 +9,7 @@ import { TopBar } from "@repo/ui/shell/TopBar";
 import { NotificationBell } from "@repo/notifications/NotificationBell";
 import { UserFooter } from "@repo/ui/shell/UserFooter";
 import { WorkspaceSwitcher } from "@repo/ui/WorkspaceSwitcher";
-import { PLATFORM_APPS, SGR_SHELL } from "@repo/ui/shell/platform";
+import { appsAutorisees, SGR_SHELL } from "@repo/ui/shell/platform";
 import {
   DescriptionOutlined,
   EventOutlined,
@@ -32,6 +32,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   // « Accueil » mène chez CE membre : Workspace par défaut, sa page de
   // démarrage quand son groupe lui en a donné une.
   const landingAppKey = useSessionStore((s) => s.accueil?.landing_app_key);
+  const appsActifs = useSessionStore((s) => s.activeWorkspace?.apps_actifs);
   const handleLogout = useLogout("/api/auth/logout");
 
   const navItems: NavItem[] = [
@@ -72,7 +73,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     ? { id: user.id, username: user.username, email: user.email }
     : null;
 
-  const visibleApps = PLATFORM_APPS.filter((app) => can(`${app.id}.access`));
+  const visibleApps = appsAutorisees(can, appsActifs);
 
   return (
     <AppShell

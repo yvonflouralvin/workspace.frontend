@@ -9,7 +9,7 @@ import { TopBar } from "@repo/ui/shell/TopBar";
 import { NotificationBell } from "@repo/notifications/NotificationBell";
 import { UserFooter } from "@repo/ui/shell/UserFooter";
 import { WorkspaceSwitcher } from "@repo/ui/WorkspaceSwitcher";
-import { PLATFORM_APPS, WORKSPACE_SHELL } from "@repo/ui/shell/platform";
+import { appsAutorisees, WORKSPACE_SHELL } from "@repo/ui/shell/platform";
 import { useSearch } from "@repo/ui/shell/useSearch";
 import {
   AssignmentOutlined,
@@ -62,7 +62,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     ? { id: user.id, username: user.username, email: user.email }
     : null;
 
-  const visibleApps = PLATFORM_APPS.filter((app) => can(`${app.id}.access`));
+  const visibleApps = appsAutorisees(can, activeWorkspace?.apps_actifs);
 
   // Pas de rôle stocké côté auth : on l'affiche d'après la propriété du
   // workspace et les droits d'administration détenus.

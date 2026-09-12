@@ -163,6 +163,10 @@ function TiroirAjoutDroits({
 
   const q = recherche.trim().toLowerCase();
   const blocs = catalogue
+    // Une app désactivée n'a plus de droit à distribuer — mais si le groupe
+    // en tient déjà un, il reste visible ailleurs (le bloc au-dessus), on ne
+    // le propose juste plus ICI, à l'ajout.
+    .filter((app) => app.actif)
     .map((app) => ({
       ...app,
       // On ne propose que ce que le groupe n'a pas : lui reproposer ce qu'il

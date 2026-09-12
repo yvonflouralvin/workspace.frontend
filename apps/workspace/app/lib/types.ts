@@ -9,6 +9,12 @@ export interface AppPermissionGroup {
   key: string | null;
   name: string;
   permissions: PermissionDef[];
+  /** L'app est-elle activée pour CE workspace ? Le catalogue reste complet
+   *  (un groupe peut déjà porter un droit d'une app depuis désactivée), mais
+   *  composer un NOUVEAU droit ne doit proposer que ce qui existe vraiment
+   *  aujourd'hui — filtrer là où l'on OFFRE à choisir, jamais là où l'on lit
+   *  ce qui est déjà accordé. */
+  actif: boolean;
 }
 
 export interface GroupRef {

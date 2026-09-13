@@ -10,6 +10,8 @@ import {
   PendingActionsOutlined,
   ReportProblemOutlined,
   TableChartOutlined,
+  ViewListOutlined,
+  ViewTimelineOutlined,
   WarningAmberOutlined,
 } from "@mui/icons-material";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
@@ -23,6 +25,7 @@ import { FormulaireReservation } from "@/components/FormulaireReservation";
 import { DecisionDialog } from "@/components/DecisionDialog";
 import { DrawerReservation } from "@/components/salles/DrawerReservation";
 import { FriseSalles } from "@/components/salles/FriseSalles";
+import { ListeSalles } from "@/components/salles/ListeSalles";
 import { PanneauSalles } from "@/components/salles/PanneauSalles";
 import { PanneauIncidents } from "@/components/notes/PanneauIncidents";
 import { VueMois } from "@/components/VueMois";
@@ -87,6 +90,9 @@ function Contenu() {
   const [salles, setSalles] = useState<Salle[]>([]);
   const [reservations, setReservations] = useState<Reservation[] | null>(null);
   const [echelle, setEchelle] = useState<Echelle>("semaine");
+  // Ne s'applique qu'à l'échelle « jour » — la semaine et le mois ont déjà
+  // leur propre lecture, une liste chronologique n'y ajouterait rien.
+  const [modeJour, setModeJour] = useState<"frise" | "liste">("frise");
   const [ancre, setAncre] = useState(() => new Date());
   const [creation, setCreation] = useState<{ salle?: Salle; jour: Date } | null>(null);
   const [decision, setDecision] = useState<{ r: Reservation; action: "accepter" | "refuser" } | null>(null);
@@ -246,6 +252,36 @@ function Contenu() {
                   </button>
                 ))}
               </div>
+              {echelle === "jour" && (
+                <div className="flex rounded-lg border border-outline-soft p-0.5">
+                  <button
+                    type="button"
+                    aria-label="Vue frise"
+                    title="Vue frise"
+                    onClick={() => setModeJour("frise")}
+                    className={`flex h-8 w-8 items-center justify-center rounded-md transition-colors ${
+                      modeJour === "frise"
+                        ? "bg-primary text-on-primary"
+                        : "text-on-surface-variant hover:bg-surface-container-low"
+                    }`}
+                  >
+                    <ViewTimelineOutlined style={{ fontSize: 17 }} />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Vue liste"
+                    title="Vue liste"
+                    onClick={() => setModeJour("liste")}
+                    className={`flex h-8 w-8 items-center justify-center rounded-md transition-colors ${
+                      modeJour === "liste"
+                        ? "bg-primary text-on-primary"
+                        : "text-on-surface-variant hover:bg-surface-container-low"
+                    }`}
+                  >
+                    <ViewListOutlined style={{ fontSize: 17 }} />
+                  </button>
+                </div>
+              )}
               <button
                 type="button"
                 aria-label="Période précédente"
@@ -291,14 +327,18 @@ function Contenu() {
               </div>
             ) : (
               echelle === "jour" ? (
-                <FriseSalles
-                  jour={fenetre.debut}
-                  salles={salles}
-                  reservations={reservations}
-                  peutDemander={peutDemander}
-                  onCase={(salle, jour) => setCreation({ salle, jour })}
-                  onReservation={setOuverte}
-                />
+                modeJour === "liste" ? (
+                  <ListeSalles reservations={reservations} onReservation={setOuverte} />
+                ) : (
+                  <FriseSalles
+                    jour={fenetre.debut}
+                    salles={salles}
+                    reservations={reservations}
+                    peutDemander={peutDemander}
+                    onCase={(salle, jour) => setCreation({ salle, jour })}
+                    onReservation={setOuverte}
+                  />
+                )
               ) : echelle === "mois" ? (
                 <VueMois
                   mois={ancre}

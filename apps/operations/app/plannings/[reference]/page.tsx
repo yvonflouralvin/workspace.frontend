@@ -98,9 +98,16 @@ export default function PlanningPage({
       // pouvoir demander ses affectations. Les demander en parallèle enverrait
       // une requête sur un identifiant encore inconnu, puis la même une seconde
       // fois — deux allers-retours pour une seule information.
+      //
+      // Les sites, eux, ne servent qu'au sélecteur du tiroir d'édition
+      // (`operations.affectations.manage`) — chaque affectation porte déjà son
+      // site (nom, couleur) pour l'affichage. Un membre cantonné à
+      // `operations.plannings.view` (sans `operations.sites.view`) doit quand
+      // même pouvoir CONSULTER le planning : un 403 ici ne doit pas faire
+      // échouer toute la page.
       const [plannings, listeSites] = await Promise.all([
         operationsApi.plannings(),
-        operationsApi.sites(true),
+        operationsApi.sites(true).catch(() => []),
       ]);
       // Par nom court d'abord, par identifiant ensuite : un lien déjà partagé ou
       // mis en favori porte l'ancien identifiant, et il doit continuer d'ouvrir

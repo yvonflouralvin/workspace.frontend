@@ -162,6 +162,21 @@ export const PLATFORM_APPS: AppDefinition[] = [
   },
 ];
 
+/** Le sélecteur d'apps de chaque écran : une permission `.access` ne suffit
+ *  pas, l'app doit aussi être active pour CE workspace — sinon un groupe qui
+ *  porte encore la permission d'une app désactivée depuis la boutique
+ *  continue de la voir dans le sélecteur. `appsActifs` vient de
+ *  `session.active_workspace.apps_actifs` ; `undefined` (session pas encore
+ *  chargée) rend une liste vide plutôt que de retomber sur la permission
+ *  seule, qui rouvrirait le trou pendant le chargement. */
+export function appsAutorisees(
+  can: (permission: string) => boolean,
+  appsActifs: string[] | undefined,
+): AppDefinition[] {
+  const actifs = new Set(appsActifs ?? []);
+  return PLATFORM_APPS.filter((app) => actifs.has(app.id) && can(`${app.id}.access`));
+}
+
 const s = (fontSize: number) => ({ fontSize });
 
 export const WORKSPACE_SHELL: AppShellConfig = {

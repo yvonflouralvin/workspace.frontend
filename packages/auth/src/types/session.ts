@@ -14,6 +14,10 @@ export interface ActiveWorkspace {
   type: "individual" | "organization";
   restrict_members_to_workspace: boolean;
   is_owner: boolean;
+  /** Clés des apps réellement activées pour ce workspace (boutique) — à
+   *  croiser avec les permissions pour le sélecteur d'apps : une permission
+   *  `.access` ne suffit pas, l'app doit aussi être active. */
+  apps_actifs: string[];
 }
 
 export interface User {

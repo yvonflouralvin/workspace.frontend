@@ -9,7 +9,7 @@ import { TopBar } from "@repo/ui/shell/TopBar";
 import { NotificationBell } from "@repo/notifications/NotificationBell";
 import { UserFooter } from "@repo/ui/shell/UserFooter";
 import { WorkspaceSwitcher } from "@repo/ui/WorkspaceSwitcher";
-import { PLATFORM_APPS, APPROVAL_FLOWS_SHELL } from "@repo/ui/shell/platform";
+import { appsAutorisees, APPROVAL_FLOWS_SHELL } from "@repo/ui/shell/platform";
 import { useSearch } from "@repo/ui/shell/useSearch";
 import { HomeOutlined, AccountTreeOutlined, AssignmentTurnedInOutlined, OutboxOutlined } from "@mui/icons-material";
 import type { NavItem } from "@repo/ui/types/shell";
@@ -39,6 +39,7 @@ const NAV_ITEMS: (NavItem & { permission?: string })[] = [
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const { user } = useSessionStore();
+  const appsActifs = useSessionStore((s) => s.activeWorkspace?.apps_actifs);
   const { can } = usePermissions();
   const handleLogout = useLogout();
   const handleSearch = useSearch();
@@ -47,7 +48,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     ? { id: user.id, username: user.username, email: user.email }
     : null;
 
-  const visibleApps = PLATFORM_APPS.filter((app) => can(`${app.id}.access`));
+  const visibleApps = appsAutorisees(can, appsActifs);
   const navItems = NAV_ITEMS.filter((item) => !item.permission || can(item.permission));
 
   return (

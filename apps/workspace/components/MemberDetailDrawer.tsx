@@ -302,7 +302,11 @@ function PermissionsPanel({
         <div className="space-y-1.5">
           <p className="text-body-sm font-medium text-on-surface">Permissions directes</p>
           <PermissionPicker
-            groups={permissionCatalog}
+            // Une app désactivée n'a plus de droit à accorder ici — un droit
+            // déjà tenu depuis une app depuis désactivée reste dans
+            // `permissionIds` (donc conservé à l'enregistrement), juste plus
+            // proposé à l'ajout.
+            groups={permissionCatalog.filter((g) => g.actif)}
             selectedIds={permissionIds}
             onToggle={togglePermission}
           />

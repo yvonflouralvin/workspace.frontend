@@ -32,14 +32,23 @@ export const CATEGORIES_MODELES: { cle: string; libelle: string }[] = [
   { cle: "appel", libelle: "Appel à l'action" },
 ];
 
+/** Ce qu'un aperçu peut empiler dans une colonne — assez pour reconnaître un
+ *  modèle d'un coup d'œil, pas plus : ce n'est pas un second moteur de rendu. */
+export type BlocApercu = "titre" | "texte" | "bouton" | "image" | "icones";
+
+export interface ApercuModele {
+  colonnes: { largeur: number; blocs: BlocApercu[] }[];
+  /** Fond sombre — pour reconnaître un héros ou un CTA sombre sans lire le
+   *  libellé, comme le ferait une vraie vignette. */
+  sombre?: boolean;
+}
+
 export interface ModeleSection {
   cle: string;
   libelle: string;
   description: string;
   categorie: string;
-  /** Une esquisse de la forme, en parts de largeur par ligne — de quoi
-   *  reconnaître le modèle sans lire son nom. */
-  apercu: number[][];
+  apercu: ApercuModele;
   construire: () => Noeud;
 }
 
@@ -118,7 +127,12 @@ export const MODELES: ModeleSection[] = [
     libelle: "Bandeau d'accueil",
     description: "Un titre fort, une phrase, un bouton — et une image à droite.",
     categorie: "heros",
-    apercu: [[55, 45]],
+    apercu: {
+      colonnes: [
+        { largeur: 55, blocs: ["titre", "texte", "bouton"] },
+        { largeur: 45, blocs: ["image"] },
+      ],
+    },
     construire: () =>
       garnir(colonnes("1-1", 72), [
         [
@@ -135,7 +149,7 @@ export const MODELES: ModeleSection[] = [
     libelle: "Héros centré",
     description: "Titre, phrase et bouton centrés, sans image — pour aller droit au but.",
     categorie: "heros",
-    apercu: [[100]],
+    apercu: { colonnes: [{ largeur: 100, blocs: ["titre", "texte", "bouton"] }] },
     construire: () =>
       garnir(bande(88), [
         [
@@ -154,7 +168,7 @@ export const MODELES: ModeleSection[] = [
     libelle: "Héros sur fond sombre",
     description: "Bandeau plein écran, fond foncé, texte clair — pour marquer l'entrée du site.",
     categorie: "heros",
-    apercu: [[100]],
+    apercu: { colonnes: [{ largeur: 100, blocs: ["titre", "texte", "bouton"] }], sombre: true },
     construire: () =>
       garnir(bande(96, { fond: FOND_SOMBRE, hauteur_min: { valeur: 60, unite: "vh" }, alignement_vertical: "centre" }), [
         [
@@ -172,7 +186,12 @@ export const MODELES: ModeleSection[] = [
     libelle: "Héros avec arguments",
     description: "Une image, et à côté un titre suivi de trois arguments courts.",
     categorie: "heros",
-    apercu: [[45, 55]],
+    apercu: {
+      colonnes: [
+        { largeur: 45, blocs: ["image"] },
+        { largeur: 55, blocs: ["titre", "icones", "bouton"] },
+      ],
+    },
     construire: () =>
       garnir(colonnes("1-1", 72), [
         [image()],
@@ -194,7 +213,7 @@ export const MODELES: ModeleSection[] = [
     libelle: "Bandeau de page",
     description: "Un titre et un sous-titre courts, pour l'en-tête d'une page intérieure.",
     categorie: "heros",
-    apercu: [[100]],
+    apercu: { colonnes: [{ largeur: 100, blocs: ["titre", "texte"] }] },
     construire: () =>
       garnir(bande(48), [
         [titre("Nom de la page", "h1", "center"), paragraphe("Une phrase pour la situer.", "center")],
@@ -207,7 +226,12 @@ export const MODELES: ModeleSection[] = [
     libelle: "Texte et image",
     description: "Une image à gauche, un bloc de texte à droite.",
     categorie: "apropos",
-    apercu: [[45, 55]],
+    apercu: {
+      colonnes: [
+        { largeur: 45, blocs: ["image"] },
+        { largeur: 55, blocs: ["titre", "texte"] },
+      ],
+    },
     construire: () =>
       garnir(colonnes("1-1", 48), [
         [image()],
@@ -222,7 +246,12 @@ export const MODELES: ModeleSection[] = [
     libelle: "Texte et image (inversé)",
     description: "Le même duo, texte à gauche cette fois — pour alterner d'une section à l'autre.",
     categorie: "apropos",
-    apercu: [[55, 45]],
+    apercu: {
+      colonnes: [
+        { largeur: 55, blocs: ["titre", "texte"] },
+        { largeur: 45, blocs: ["image"] },
+      ],
+    },
     construire: () =>
       garnir(colonnes("1-1", 48), [
         [
@@ -237,7 +266,7 @@ export const MODELES: ModeleSection[] = [
     libelle: "Notre histoire",
     description: "Un titre et un texte plus long, centrés, sans image — pour se présenter.",
     categorie: "apropos",
-    apercu: [[100]],
+    apercu: { colonnes: [{ largeur: 100, blocs: ["titre", "texte"] }] },
     construire: () =>
       garnir(bande(64), [
         [
@@ -256,7 +285,13 @@ export const MODELES: ModeleSection[] = [
     libelle: "Trois atouts",
     description: "Trois colonnes égales : un titre court et une explication.",
     categorie: "fonctionnalites",
-    apercu: [[33, 33, 34]],
+    apercu: {
+      colonnes: [
+        { largeur: 33, blocs: ["titre", "texte"] },
+        { largeur: 33, blocs: ["titre", "texte"] },
+        { largeur: 34, blocs: ["titre", "texte"] },
+      ],
+    },
     construire: () =>
       garnir(
         colonnes("1-1-1"),
@@ -268,7 +303,13 @@ export const MODELES: ModeleSection[] = [
     libelle: "Trois fonctionnalités avec icônes",
     description: "Une icône, un titre, une explication — répété trois fois.",
     categorie: "fonctionnalites",
-    apercu: [[33, 33, 34]],
+    apercu: {
+      colonnes: [
+        { largeur: 33, blocs: ["icones", "titre", "texte"] },
+        { largeur: 33, blocs: ["icones", "titre", "texte"] },
+        { largeur: 34, blocs: ["icones", "titre", "texte"] },
+      ],
+    },
     construire: () =>
       garnir(
         colonnes("1-1-1"),
@@ -288,7 +329,9 @@ export const MODELES: ModeleSection[] = [
     libelle: "Quatre fonctionnalités",
     description: "La même idée sur quatre colonnes plus étroites.",
     categorie: "fonctionnalites",
-    apercu: [[25, 25, 25, 25]],
+    apercu: {
+      colonnes: Array.from({ length: 4 }, () => ({ largeur: 25, blocs: ["titre", "texte"] as BlocApercu[] })),
+    },
     construire: () =>
       garnir(
         colonnes("1-1-1-1"),
@@ -305,7 +348,9 @@ export const MODELES: ModeleSection[] = [
     libelle: "Chiffres clés",
     description: "Quatre nombres imposants, chacun avec sa légende.",
     categorie: "chiffres",
-    apercu: [[25, 25, 25, 25]],
+    apercu: {
+      colonnes: Array.from({ length: 4 }, () => ({ largeur: 25, blocs: ["titre", "texte"] as BlocApercu[] })),
+    },
     construire: () =>
       garnir(
         colonnes("1-1-1-1", 56),
@@ -322,7 +367,9 @@ export const MODELES: ModeleSection[] = [
     libelle: "Ils nous font confiance",
     description: "Une rangée de logos clients, sobre, sans autre texte.",
     categorie: "chiffres",
-    apercu: [[25, 25, 25, 25]],
+    apercu: {
+      colonnes: Array.from({ length: 4 }, () => ({ largeur: 25, blocs: ["image"] as BlocApercu[] })),
+    },
     construire: () =>
       garnir(
         poser(colonnes("1-1-1-1", 40), { alignement_vertical: "centre" }),
@@ -336,7 +383,7 @@ export const MODELES: ModeleSection[] = [
     libelle: "Grande citation",
     description: "Une phrase mise en avant, seule, centrée — pour souligner un mot fort.",
     categorie: "temoignages",
-    apercu: [[100]],
+    apercu: { colonnes: [{ largeur: 100, blocs: ["texte"] }] },
     construire: () =>
       garnir(bande(64), [
         [poser(paragraphe("« Une citation qui résume ce qui vous distingue. »", "center"), { taille: 24 })],
@@ -347,7 +394,7 @@ export const MODELES: ModeleSection[] = [
     libelle: "Un avis client",
     description: "Une citation, un nom et une fonction — un seul témoignage mis en valeur.",
     categorie: "temoignages",
-    apercu: [[100]],
+    apercu: { colonnes: [{ largeur: 100, blocs: ["texte", "titre", "texte"] }] },
     construire: () =>
       garnir(bande(64), [
         [
@@ -363,7 +410,13 @@ export const MODELES: ModeleSection[] = [
     libelle: "Trois avis clients",
     description: "Trois citations côte à côte, chacune avec son nom.",
     categorie: "temoignages",
-    apercu: [[33, 33, 34]],
+    apercu: {
+      colonnes: [
+        { largeur: 33, blocs: ["texte", "titre"] },
+        { largeur: 33, blocs: ["texte", "titre"] },
+        { largeur: 34, blocs: ["texte", "titre"] },
+      ],
+    },
     construire: () =>
       garnir(
         colonnes("1-1-1"),
@@ -382,7 +435,13 @@ export const MODELES: ModeleSection[] = [
     libelle: "Tarifs (trois formules)",
     description: "Trois formules côte à côte, chacune avec sa liste et son bouton.",
     categorie: "tarifs",
-    apercu: [[33, 33, 34]],
+    apercu: {
+      colonnes: [
+        { largeur: 33, blocs: ["titre", "titre", "icones", "bouton"] },
+        { largeur: 33, blocs: ["titre", "titre", "icones", "bouton"] },
+        { largeur: 34, blocs: ["titre", "titre", "icones", "bouton"] },
+      ],
+    },
     construire: () =>
       garnir(
         colonnes("1-1-1"),
@@ -403,7 +462,12 @@ export const MODELES: ModeleSection[] = [
     libelle: "Tarifs (deux formules)",
     description: "Deux formules, plus larges — quand il n'y a que deux choix à présenter.",
     categorie: "tarifs",
-    apercu: [[50, 50]],
+    apercu: {
+      colonnes: [
+        { largeur: 50, blocs: ["titre", "titre", "icones", "bouton"] },
+        { largeur: 50, blocs: ["titre", "titre", "icones", "bouton"] },
+      ],
+    },
     construire: () =>
       garnir(
         colonnes("1-1"),
@@ -426,7 +490,9 @@ export const MODELES: ModeleSection[] = [
     libelle: "Équipe (quatre portraits)",
     description: "Quatre portraits avec un nom et un rôle.",
     categorie: "equipe",
-    apercu: [[25, 25, 25, 25]],
+    apercu: {
+      colonnes: Array.from({ length: 4 }, () => ({ largeur: 25, blocs: ["image", "titre", "texte"] as BlocApercu[] })),
+    },
     construire: () =>
       garnir(
         colonnes("1-1-1-1"),
@@ -438,7 +504,12 @@ export const MODELES: ModeleSection[] = [
     libelle: "Deux portraits",
     description: "Deux portraits plus grands — pour présenter les fondateurs.",
     categorie: "equipe",
-    apercu: [[50, 50]],
+    apercu: {
+      colonnes: [
+        { largeur: 50, blocs: ["image", "titre", "texte"] },
+        { largeur: 50, blocs: ["image", "titre", "texte"] },
+      ],
+    },
     construire: () =>
       garnir(
         colonnes("1-1"),
@@ -452,7 +523,9 @@ export const MODELES: ModeleSection[] = [
     libelle: "Galerie photo",
     description: "Une grille de quatre images, sans texte — pour montrer plutôt que dire.",
     categorie: "galerie",
-    apercu: [[25, 25, 25, 25]],
+    apercu: {
+      colonnes: Array.from({ length: 4 }, () => ({ largeur: 25, blocs: ["image"] as BlocApercu[] })),
+    },
     construire: () => garnir(colonnes("1-1-1-1", 24), Array.from({ length: 4 }, () => [image()])),
   },
   {
@@ -460,7 +533,13 @@ export const MODELES: ModeleSection[] = [
     libelle: "Nos réalisations",
     description: "Trois projets : une image, un titre et une courte description chacun.",
     categorie: "galerie",
-    apercu: [[33, 33, 34]],
+    apercu: {
+      colonnes: [
+        { largeur: 33, blocs: ["image", "titre", "texte"] },
+        { largeur: 33, blocs: ["image", "titre", "texte"] },
+        { largeur: 34, blocs: ["image", "titre", "texte"] },
+      ],
+    },
     construire: () =>
       garnir(
         colonnes("1-1-1"),
@@ -474,7 +553,7 @@ export const MODELES: ModeleSection[] = [
     libelle: "Questions fréquentes",
     description: "Quatre questions et leurs réponses, l'une sous l'autre.",
     categorie: "faq",
-    apercu: [[100]],
+    apercu: { colonnes: [{ largeur: 100, blocs: ["titre", "texte", "titre", "texte"] }] },
     construire: () =>
       garnir(bande(56), [
         Array.from({ length: 4 }).flatMap(() => [
@@ -489,7 +568,12 @@ export const MODELES: ModeleSection[] = [
     libelle: "FAQ en deux colonnes",
     description: "Les mêmes questions, réparties sur deux colonnes pour aller plus vite à lire.",
     categorie: "faq",
-    apercu: [[50, 50]],
+    apercu: {
+      colonnes: [
+        { largeur: 50, blocs: ["titre", "texte", "titre", "texte"] },
+        { largeur: 50, blocs: ["titre", "texte", "titre", "texte"] },
+      ],
+    },
     construire: () =>
       garnir(
         colonnes("1-1"),
@@ -509,7 +593,12 @@ export const MODELES: ModeleSection[] = [
     libelle: "Nous contacter",
     description: "Vos coordonnées à gauche, un bouton d'action à droite.",
     categorie: "contact",
-    apercu: [[50, 50]],
+    apercu: {
+      colonnes: [
+        { largeur: 50, blocs: ["titre", "icones"] },
+        { largeur: 50, blocs: ["texte", "bouton"] },
+      ],
+    },
     construire: () =>
       garnir(colonnes("1-1", 56), [
         [
@@ -532,7 +621,7 @@ export const MODELES: ModeleSection[] = [
     libelle: "Newsletter",
     description: "Une bande centrée pour recueillir une adresse e-mail.",
     categorie: "contact",
-    apercu: [[100]],
+    apercu: { colonnes: [{ largeur: 100, blocs: ["titre", "texte", "bouton"] }] },
     construire: () =>
       garnir(bande(56, { fond: "#eff4ff" }), [
         [
@@ -550,7 +639,7 @@ export const MODELES: ModeleSection[] = [
     libelle: "Appel à l'action",
     description: "Une bande centrée : une phrase, un bouton.",
     categorie: "appel",
-    apercu: [[100]],
+    apercu: { colonnes: [{ largeur: 100, blocs: ["titre", "texte", "bouton"] }], sombre: true },
     construire: () =>
       garnir(bande(64, { fond: FOND_SOMBRE }), [
         [
@@ -566,7 +655,7 @@ export const MODELES: ModeleSection[] = [
     libelle: "Appel à l'action avec réassurance",
     description: "La même bande, complétée par une ligne de garanties.",
     categorie: "appel",
-    apercu: [[100]],
+    apercu: { colonnes: [{ largeur: 100, blocs: ["titre", "texte", "bouton", "icones"] }], sombre: true },
     construire: () =>
       garnir(bande(64, { fond: FOND_SOMBRE }), [
         [

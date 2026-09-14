@@ -6,6 +6,7 @@ import Link from "next/link";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
 import { ConfirmDialog } from "@repo/ui/ConfirmDialog";
 import { Toast } from "@repo/ui/Toast";
+import { Tabs } from "@repo/ui/Tabs";
 import { DashboardShell } from "@/components/DashboardShell";
 import {
   getTiers,
@@ -16,6 +17,7 @@ import {
   type TiersUpdateInput,
 } from "@/lib/tiers-api";
 import { TiersAvatar, TypeBadge } from "../page";
+import { ContactsPanel } from "./ContactsPanel";
 import {
   ArrowBackOutlined,
   EditOutlined,
@@ -237,13 +239,90 @@ export default function TiersDetailPage() {
           )}
         </div>
 
-        {saveError && (
-          <p className="text-body-sm text-error bg-error-container/40 rounded-lg px-3 py-2 mb-4">
-            {saveError}
-          </p>
+        <Tabs
+          tabs={[
+            {
+              key: "info",
+              label: "Informations générales",
+              content: (
+                <>
+                  {saveError && (
+                    <p className="text-body-sm text-error bg-error-container/40 rounded-lg px-3 py-2 mb-4">
+                      {saveError}
+                    </p>
+                  )}
+                  <InformationsGeneralesForm
+                    f={f}
+                    entreprise={entreprise}
+                    nomLabel={nomLabel}
+                    editing={editing}
+                    saving={saving}
+                    set={set}
+                    save={save}
+                    onCancel={() => {
+                      setEditing(false);
+                      setForm(toForm(tiers));
+                      setSaveError(null);
+                    }}
+                    tiers={tiers}
+                  />
+                </>
+              ),
+            },
+            ...(entreprise
+              ? [
+                  {
+                    key: "contacts",
+                    label: "Contacts",
+                    content: (
+                      <ContactsPanel tiersId={tiers.id} canEdit={canEdit} onToast={setToast} />
+                    ),
+                  },
+                ]
+              : []),
+          ]}
+        />
+
+        {confirmArchive && (
+          <ConfirmDialog
+            title={`Archiver « ${tiers.nom} » ?`}
+            message="Le tiers sortira du répertoire actif. Vous pourrez le réactiver depuis le filtre « Afficher les archivés »."
+            confirmLabel="Archiver"
+            busy={saving}
+            onConfirm={archive}
+            onCancel={() => setConfirmArchive(false)}
+          />
         )}
 
-        <form onSubmit={save} className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-5 items-start">
+        {toast && <Toast message={toast} onDismiss={() => setToast(null)} />}
+      </div>
+    </DashboardShell>
+  );
+}
+
+function InformationsGeneralesForm({
+  f,
+  entreprise,
+  nomLabel,
+  editing,
+  saving,
+  set,
+  save,
+  onCancel,
+  tiers,
+}: {
+  f: Record<string, string>;
+  entreprise: boolean;
+  nomLabel: string;
+  editing: boolean;
+  saving: boolean;
+  set: (field: keyof TiersUpdateInput, value: string) => void;
+  save: (e: React.FormEvent) => void;
+  onCancel: () => void;
+  tiers: TiersDetail;
+}) {
+  return (
+    <form onSubmit={save} className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-5 items-start">
           <div className="space-y-5">
             <Section title="Identité">
               <Field label={nomLabel}>
@@ -400,11 +479,7 @@ export default function TiersDetailPage() {
               <div className="flex items-center justify-end gap-2.5">
                 <button
                   type="button"
-                  onClick={() => {
-                    setEditing(false);
-                    setForm(toForm(tiers));
-                    setSaveError(null);
-                  }}
+                  onClick={onCancel}
                   className="h-11 md:h-[38px] px-4 rounded-lg border border-outline-soft bg-surface-container-lowest text-body-sm font-semibold text-on-surface-variant hover:bg-surface-container-low transition-colors"
                 >
                   Annuler
@@ -449,22 +524,7 @@ export default function TiersDetailPage() {
               </span>
             </MetaRow>
           </aside>
-        </form>
-
-        {confirmArchive && (
-          <ConfirmDialog
-            title={`Archiver « ${tiers.nom} » ?`}
-            message="Le tiers sortira du répertoire actif. Vous pourrez le réactiver depuis le filtre « Afficher les archivés »."
-            confirmLabel="Archiver"
-            busy={saving}
-            onConfirm={archive}
-            onCancel={() => setConfirmArchive(false)}
-          />
-        )}
-
-        {toast && <Toast message={toast} onDismiss={() => setToast(null)} />}
-      </div>
-    </DashboardShell>
+    </form>
   );
 }
 

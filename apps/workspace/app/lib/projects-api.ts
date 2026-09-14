@@ -67,6 +67,10 @@ export interface Project {
   lead_user_id: number | null;
   start_date: string | null;
   due_date: string | null;
+  /** Lien optionnel vers un client du service Tiers — comme crm_client_id côté ventes. */
+  tiers_id?: number | null;
+  budget?: number | null;
+  heures_prevues?: number | null;
   task_count?: number;
   done_count?: number;
   /** Unité dans laquelle les éléments sont estimés — vit au PROJET pour que deux

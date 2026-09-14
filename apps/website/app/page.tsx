@@ -9,10 +9,10 @@ import {
   PendingOutlined,
 } from "@mui/icons-material";
 import { Toast } from "@repo/ui/Toast";
-import { SaisieRapide } from "@repo/ui/SaisieRapide";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
 
 import { DashboardShell } from "@/components/DashboardShell";
+import { NouveauSiteModal } from "@/components/NouveauSiteModal";
 import { ETATS_SITE, api, type Site } from "@/app/lib/api";
 
 const TEINTE: Record<Site["etat"], string> = {
@@ -34,7 +34,6 @@ export default function SitesPage() {
   const [erreur, setErreur] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [ouvert, setOuvert] = useState(false);
-  const [busy, setBusy] = useState(false);
 
   const charger = useCallback(async () => {
     try {
@@ -50,19 +49,14 @@ export default function SitesPage() {
     void charger();
   }, [charger]);
 
-  async function creer(nom: string) {
-    setBusy(true);
-    setErreur(null);
-    try {
-      const site = await api.creerSite({ nom: nom.trim() });
-      setOuvert(false);
-      setToast(`« ${site.nom} » est créé. Sa page d'accueil vous attend.`);
-      await charger();
-    } catch (e) {
-      setErreur(e instanceof Error ? e.message : "Création impossible.");
-    } finally {
-      setBusy(false);
-    }
+  async function siteCree(site: Site) {
+    setOuvert(false);
+    setToast(
+      site.etat === "EN_LIGNE"
+        ? `« ${site.nom} » est créé et publié.`
+        : `« ${site.nom} » est créé. Sa page d'accueil vous attend.`,
+    );
+    await charger();
   }
 
   return (
@@ -151,21 +145,7 @@ export default function SitesPage() {
         )}
       </div>
 
-      {ouvert && (
-        <SaisieRapide
-          titre="Nouveau site"
-          intro="L'adresse provisoire du site est tirée de son nom. Vous brancherez votre propre nom de domaine plus tard."
-          largeur="moyenne"
-          champs={[
-            { nom: "nom", libelle: "Nom du site", requis: true },
-          ]}
-          libelleValider="Créer"
-          busy={busy}
-          erreur={erreur}
-          onValider={(valeurs) => void creer(valeurs.nom ?? "")}
-          onFermer={() => setOuvert(false)}
-        />
-      )}
+      {ouvert && <NouveauSiteModal onFerme={() => setOuvert(false)} onCree={(site) => void siteCree(site)} />}
 
       {toast && <Toast message={toast} onDismiss={() => setToast(null)} />}
     </DashboardShell>

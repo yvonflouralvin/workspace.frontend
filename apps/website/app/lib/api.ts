@@ -276,6 +276,11 @@ export const api = {
   site: (id: number) => apiFetch(`${base}/sites/${id}`).then((r) => lire<Site>(r)),
   creerSite: (corps: { nom: string; slug?: string; langue?: string }) =>
     apiFetch(`${base}/sites`, { method: "POST", body: corps }).then((r) => lire<Site>(r)),
+  // Hors `base` : cette route orchestre plusieurs appels côté serveur (dont
+  // le téléversement des images du thème) — ce n'est pas un simple relais
+  // vers le service Website, `forwardToBackend` ne suffirait pas.
+  creerSiteDepuisTheme: (corps: { themeCle: string; nom: string; slug?: string }) =>
+    apiFetch(`/api/sites/depuis-theme`, { method: "POST", body: corps }).then((r) => lire<Site>(r)),
   modifierSite: (id: number, corps: Record<string, unknown>) =>
     apiFetch(`${base}/sites/${id}`, { method: "PATCH", body: corps }).then((r) =>
       lire<Site>(r),

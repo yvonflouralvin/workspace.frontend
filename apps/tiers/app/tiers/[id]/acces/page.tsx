@@ -12,15 +12,29 @@ import {
   getAcces,
   setAcces,
   listMembers,
+  listGroups,
   type TiersDetail,
   type Acces,
   type Grant,
   type WorkspaceMember,
+  type WorkspaceGroup,
 } from "@/lib/tiers-api";
-import { ArrowBackOutlined, ExpandMoreOutlined, LockOutlined, CloseOutlined } from "@mui/icons-material";
+import {
+  ArrowBackOutlined,
+  ExpandMoreOutlined,
+  LockOutlined,
+  CloseOutlined,
+  GroupsOutlined,
+} from "@mui/icons-material";
 
 function displayName(m: WorkspaceMember): string {
   return m.user.username || m.user.email;
+}
+
+/** Une personne et un groupe peuvent partager le même id numérique côté auth
+ *  — la clé d'un grant doit donc porter son type, pas juste l'id cible. */
+function grantKey(g: Grant): string {
+  return g.user_id !== null ? `u:${g.user_id}` : `g:${g.groupe_id}`;
 }
 
 export default function AccesTiersPage() {
@@ -31,8 +45,9 @@ export default function AccesTiersPage() {
   const [tiers, setTiers] = useState<TiersDetail | null>(null);
   const [acces, setAccesState] = useState<Acces | null>(null);
   const [members, setMembers] = useState<WorkspaceMember[]>([]);
+  const [groups, setGroups] = useState<WorkspaceGroup[]>([]);
   const [grants, setGrants] = useState<Grant[]>([]);
-  const [expanded, setExpanded] = useState<number | null>(null);
+  const [expanded, setExpanded] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -41,12 +56,13 @@ export default function AccesTiersPage() {
 
   useEffect(() => {
     if (!workspaceId) return;
-    Promise.all([getTiers(Number(id)), getAcces(Number(id)), listMembers(workspaceId)])
-      .then(([t, a, m]) => {
+    Promise.all([getTiers(Number(id)), getAcces(Number(id)), listMembers(workspaceId), listGroups(workspaceId)])
+      .then(([t, a, m, gr]) => {
         setTiers(t);
         setAccesState(a);
         setGrants(a.grants);
         setMembers(m);
+        setGroups(gr);
       })
       .catch(() => setError("Impossible de charger les droits d'accès."))
       .finally(() => setLoading(false));
@@ -60,37 +76,54 @@ export default function AccesTiersPage() {
     [members, acces],
   );
 
+  const groupeOptions = useMemo(() => groups.map((g) => ({ id: g.id, label: g.name })), [groups]);
+
   const createur = members.find((m) => m.user.id === acces?.created_by);
 
-  function memberLabel(userId: number): string {
-    const m = members.find((mb) => mb.user.id === userId);
-    return m ? displayName(m) : `Utilisateur #${userId}`;
+  function grantLabel(g: Grant): string {
+    if (g.user_id !== null) {
+      const m = members.find((mb) => mb.user.id === g.user_id);
+      return m ? displayName(m) : `Utilisateur #${g.user_id}`;
+    }
+    const gr = groups.find((gp) => gp.id === g.groupe_id);
+    return gr ? gr.name : `Groupe #${g.groupe_id}`;
   }
 
-  function onSelectionChange(ids: (string | number)[]) {
+  function onMembersChange(ids: (string | number)[]) {
     const idSet = new Set(ids as number[]);
-    const kept = grants.filter((g) => idSet.has(g.user_id));
+    const kept = grants.filter((g) => g.groupe_id !== null || idSet.has(g.user_id as number));
     const added = (ids as number[])
       .filter((uid) => !grants.some((g) => g.user_id === uid))
-      .map((uid) => ({ user_id: uid, sections: [] as string[] }));
+      .map((uid) => ({ user_id: uid, groupe_id: null, sections: [] as string[] }));
     setGrants([...kept, ...added]);
   }
 
-  function removeGrant(userId: number) {
-    setGrants((gs) => gs.filter((g) => g.user_id !== userId));
-    if (expanded === userId) setExpanded(null);
+  function onGroupsChange(ids: (string | number)[]) {
+    const idSet = new Set(ids as number[]);
+    const kept = grants.filter((g) => g.user_id !== null || idSet.has(g.groupe_id as number));
+    const added = (ids as number[])
+      .filter((gid) => !grants.some((g) => g.groupe_id === gid))
+      .map((gid) => ({ user_id: null, groupe_id: gid, sections: [] as string[] }));
+    setGrants([...kept, ...added]);
   }
 
-  function toggleSection(userId: number, sectionKey: string) {
+  function removeGrant(g: Grant) {
+    const key = grantKey(g);
+    setGrants((gs) => gs.filter((x) => grantKey(x) !== key));
+    if (expanded === key) setExpanded(null);
+  }
+
+  function toggleSection(g: Grant, sectionKey: string) {
+    const key = grantKey(g);
     const available = acces?.available_sections.map((s) => s.key) ?? [];
     setGrants((gs) =>
-      gs.map((g) => {
-        if (g.user_id !== userId) return g;
-        const current = g.sections.length === 0 ? available : g.sections;
+      gs.map((x) => {
+        if (grantKey(x) !== key) return x;
+        const current = x.sections.length === 0 ? available : x.sections;
         const next = current.includes(sectionKey)
           ? current.filter((k) => k !== sectionKey)
           : [...current, sectionKey];
-        return { ...g, sections: next };
+        return { ...x, sections: next };
       }),
     );
   }
@@ -145,8 +178,9 @@ export default function AccesTiersPage() {
         <p className="text-body-md text-on-surface-variant mb-6">
           Par défaut, seul le créateur peut consulter cette fiche — avoir accès au module
           Tiers ne donne pas accès à chaque client qui s&rsquo;y trouve. Ajoutez des personnes
-          ci-dessous, puis cliquez sur une personne pour limiter ce qu&rsquo;elle peut ouvrir
-          (informations générales, contacts…).
+          ou des groupes ci-dessous, puis cliquez sur une ligne pour limiter ce qu&rsquo;elle peut
+          ouvrir (informations générales, contacts…). Si une personne cumule plusieurs accès
+          (le sien, celui d&rsquo;un groupe), c&rsquo;est le plus large des deux qui s&rsquo;applique.
         </p>
 
         <div className="rounded-2xl border border-outline-soft bg-surface-container-lowest p-4 md:p-5 space-y-5">
@@ -164,37 +198,52 @@ export default function AccesTiersPage() {
             </span>
             <MultiSelect
               options={membreOptions}
-              selectedIds={grants.map((g) => g.user_id)}
-              onChange={onSelectionChange}
+              selectedIds={grants.filter((g) => g.user_id !== null).map((g) => g.user_id as number)}
+              onChange={onMembersChange}
               placeholder="Rechercher une personne du workspace…"
               emptyLabel="Aucun membre trouvé."
+            />
+          </div>
+
+          <div>
+            <span className="block text-label-sm uppercase text-outline mb-1.5">
+              Ajouter un groupe
+            </span>
+            <MultiSelect
+              options={groupeOptions}
+              selectedIds={grants.filter((g) => g.groupe_id !== null).map((g) => g.groupe_id as number)}
+              onChange={onGroupsChange}
+              placeholder="Rechercher un groupe du workspace…"
+              emptyLabel="Aucun groupe trouvé."
             />
           </div>
 
           {grants.length > 0 && (
             <div>
               <span className="block text-label-sm uppercase text-outline mb-1.5">
-                Personnes autorisées
+                Autorisés
               </span>
               <ul className="rounded-xl border border-outline-soft divide-y divide-hairline overflow-hidden">
                 {grants.map((g) => {
+                  const key = grantKey(g);
                   const isFull = g.sections.length === 0;
-                  const isOpen = expanded === g.user_id;
+                  const isOpen = expanded === key;
                   return (
-                    <li key={g.user_id} className="bg-surface-container-lowest">
+                    <li key={key} className="bg-surface-container-lowest">
                       <div className="flex items-center gap-2 px-3 py-2.5">
                         <button
                           type="button"
-                          onClick={() => setExpanded(isOpen ? null : g.user_id)}
+                          onClick={() => setExpanded(isOpen ? null : key)}
                           className="flex flex-1 items-center gap-2 min-w-0 text-left"
                         >
                           <ExpandMoreOutlined
                             style={{ fontSize: 18 }}
                             className={`shrink-0 text-outline transition-transform ${isOpen ? "rotate-180" : ""}`}
                           />
-                          <span className="text-body-md text-on-surface truncate">
-                            {memberLabel(g.user_id)}
-                          </span>
+                          {g.groupe_id !== null && (
+                            <GroupsOutlined style={{ fontSize: 15 }} className="shrink-0 text-outline" />
+                          )}
+                          <span className="text-body-md text-on-surface truncate">{grantLabel(g)}</span>
                           <span className="text-label-md text-outline shrink-0">
                             {isFull
                               ? "Accès complet"
@@ -203,7 +252,7 @@ export default function AccesTiersPage() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => removeGrant(g.user_id)}
+                          onClick={() => removeGrant(g)}
                           className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors"
                           aria-label="Retirer"
                         >
@@ -222,7 +271,7 @@ export default function AccesTiersPage() {
                                 <input
                                   type="checkbox"
                                   checked={checked}
-                                  onChange={() => toggleSection(g.user_id, s.key)}
+                                  onChange={() => toggleSection(g, s.key)}
                                   className="rounded border-outline-soft accent-primary"
                                 />
                                 {s.label}

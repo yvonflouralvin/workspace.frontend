@@ -187,7 +187,8 @@ export interface SectionInfo {
 }
 
 export interface Grant {
-  user_id: number;
+  user_id: number | null;
+  groupe_id: number | null;
   sections: string[];
 }
 
@@ -234,6 +235,18 @@ export async function listMembers(workspaceId: number, q = "", limit = 100): Pro
   if (!res.ok) return [];
   const data = await res.json();
   return data.members;
+}
+
+export interface WorkspaceGroup {
+  id: number;
+  name: string;
+}
+
+export async function listGroups(workspaceId: number): Promise<WorkspaceGroup[]> {
+  const res = await apiFetch(`/api/workspaces/${workspaceId}/groups`);
+  if (!res.ok) return [];
+  const data = await res.json();
+  return data.groups;
 }
 
 export async function logout(): Promise<void> {

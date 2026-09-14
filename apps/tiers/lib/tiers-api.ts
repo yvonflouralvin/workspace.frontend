@@ -133,6 +133,9 @@ export interface Contact {
   tiers_id: number;
   nom: string;
   fonction: string | null;
+  telephone: string | null;
+  email: string | null;
+  adresse_bureau: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -140,6 +143,9 @@ export interface Contact {
 export interface ContactInput {
   nom: string;
   fonction?: string;
+  telephone?: string;
+  email?: string;
+  adresse_bureau?: string;
 }
 
 export async function listContacts(tiersId: number): Promise<Contact[]> {

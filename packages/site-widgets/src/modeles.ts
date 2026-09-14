@@ -1,4 +1,5 @@
-import { creerNoeud, creerSectionDisposition } from "./catalogue";
+import { creerNoeud } from "./catalogue";
+import { bande, bouton, colonnes, espaceur, garnir, image, listeIcones, paragraphe, poser, titre } from "./dsl";
 import type { Noeud } from "./types";
 
 /** Des sections toutes faites — « héros », « tarifs », « équipe ».
@@ -50,71 +51,6 @@ export interface ModeleSection {
   categorie: string;
   apercu: ApercuModele;
   construire: () => Noeud;
-}
-
-function texte(contenu: string) {
-  // Le format de BlockNote, réduit à ce qu'un modèle a besoin de produire.
-  return [{ type: "paragraph", content: [{ type: "text", text: contenu }] }];
-}
-
-function poser(noeud: Noeud, props: Record<string, unknown>): Noeud {
-  return { ...noeud, props: { ...noeud.props, ...props } };
-}
-
-function titre(contenu: string, niveau = "h2", alignement = "left") {
-  return poser(creerNoeud("titre"), { texte: contenu, niveau, alignement });
-}
-
-function paragraphe(contenu: string, alignement = "left") {
-  return poser(creerNoeud("texte_riche"), { contenu: texte(contenu), alignement });
-}
-
-function bouton(libelle: string, alignement = "left") {
-  return poser(creerNoeud("bouton"), { libelle, alignement });
-}
-
-function image() {
-  return creerNoeud("image");
-}
-
-function espaceur(hauteur: number) {
-  return poser(creerNoeud("espaceur"), { hauteur });
-}
-
-interface ElementIcone {
-  icone: string;
-  texte: string;
-}
-
-function listeIcones(elements: ElementIcone[], disposition: "verticale" | "horizontale" = "verticale") {
-  return poser(creerNoeud("liste_icones"), { elements, disposition });
-}
-
-/** Remplit les colonnes d'une section, dans l'ordre. */
-function garnir(section: Noeud, contenus: Noeud[][]): Noeud {
-  return {
-    ...section,
-    enfants: (section.enfants ?? []).map((colonne, i) => ({
-      ...colonne,
-      enfants: contenus[i] ?? [],
-    })),
-  };
-}
-
-/** Une section 1 colonne, avec ses marges par défaut — le socle de la moitié
- *  des modèles ci-dessous. */
-function bande(espacementVertical = 64, props: Record<string, unknown> = {}) {
-  return poser(creerSectionDisposition("1"), {
-    espacement: { haut: espacementVertical, droite: 24, bas: espacementVertical, gauche: 24 },
-    ...props,
-  });
-}
-
-function colonnes(cle: string, espacementVertical = 56, props: Record<string, unknown> = {}) {
-  return poser(creerSectionDisposition(cle), {
-    espacement: { haut: espacementVertical, droite: 24, bas: espacementVertical, gauche: 24 },
-    ...props,
-  });
 }
 
 const FOND_SOMBRE = "#0f172a";

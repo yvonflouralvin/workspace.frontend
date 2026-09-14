@@ -8,7 +8,8 @@
     "./arbre": "./src/arbre.ts",
     "./theme": "./src/theme.ts",
     "./*": "./src/*.tsx",
-    "./modeles": "./src/modeles.ts"
+    "./modeles": "./src/modeles.ts",
+    "./themes": "./src/themes.ts"
   },
   "scripts": {
     "lint": "eslint . --max-warnings 0",

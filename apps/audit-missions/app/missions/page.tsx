@@ -5,13 +5,16 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
 import { RightDrawer } from "@repo/ui/RightDrawer";
+import { SearchSelect } from "@repo/ui/SearchSelect";
 import { DashboardShell } from "@/components/DashboardShell";
 import {
   listMissions,
   createMission,
+  searchTiers,
   STATUT_MISSION_LABELS,
   type MissionSummary,
   type StatutMission,
+  type TiersBrief,
 } from "@/lib/audit-api";
 import { AddOutlined, WorkOutlineOutlined, WarningAmberOutlined } from "@mui/icons-material";
 
@@ -137,7 +140,7 @@ function NouvelleMissionDrawer({
 }) {
   const [nom, setNom] = useState("");
   const [typeAudit, setTypeAudit] = useState("");
-  const [tiersId, setTiersId] = useState("");
+  const [tiersId, setTiersId] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -153,7 +156,7 @@ function NouvelleMissionDrawer({
       const m = await createMission({
         nom: nom.trim(),
         type_audit: typeAudit || undefined,
-        tiers_id: tiersId ? Number(tiersId) : undefined,
+        tiers_id: tiersId ?? undefined,
       });
       onCreated(m);
     } catch (err) {
@@ -212,12 +215,14 @@ function NouvelleMissionDrawer({
           />
         </div>
         <div>
-          <span className={LABEL}>ID client (Tiers, facultatif)</span>
-          <input
-            type="number"
+          <span className={LABEL}>Client (facultatif)</span>
+          <SearchSelect<TiersBrief>
             value={tiersId}
-            onChange={(e) => setTiersId(e.target.value)}
-            className={FIELD}
+            onChange={(v) => setTiersId(v === null ? null : Number(v))}
+            fetchOptions={searchTiers}
+            getOptionLabel={(t) => t.nom}
+            getOptionValue={(t) => t.id}
+            placeholder="Rechercher un client…"
           />
         </div>
       </form>

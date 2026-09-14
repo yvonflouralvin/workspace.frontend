@@ -249,7 +249,7 @@ export async function listGroups(workspaceId: number): Promise<WorkspaceGroup[]>
   return data.groups;
 }
 
-export interface MissionBrief {
+export interface ProjetBrief {
   id: number;
   name: string;
   key: string;
@@ -260,10 +260,22 @@ export interface MissionBrief {
   due_date: string | null;
 }
 
-export async function listMissionsDuTiers(tiersId: number): Promise<MissionBrief[]> {
+export async function listProjetsDuTiers(tiersId: number): Promise<ProjetBrief[]> {
   const qs = new URLSearchParams({ tiers_id: String(tiersId) });
   const res = await apiFetch(`/api/projects?${qs}`);
   if (!res.ok) return [];
+  return res.json();
+}
+
+export async function creerProjetPourTiers(tiersId: number, name: string): Promise<ProjetBrief> {
+  const res = await apiFetch("/api/projects", {
+    method: "POST",
+    body: { name, key: name, tiers_id: tiersId },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail ?? "Erreur lors de la création du projet");
+  }
   return res.json();
 }
 

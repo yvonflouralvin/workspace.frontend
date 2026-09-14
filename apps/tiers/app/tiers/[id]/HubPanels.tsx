@@ -1,21 +1,24 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSessionStore } from "@repo/auth/store/session.store";
+import { DataList, type DataListColumn } from "@repo/ui/DataList";
 import {
   listProjetsDuTiers,
   creerProjetPourTiers,
   listFacturesDuTiers,
   listDocumentsDuTiers,
+  listMembers,
   type ProjetBrief,
   type FactureBrief,
   type DocumentBrief,
+  type WorkspaceMember,
 } from "@/lib/tiers-api";
 import {
   AddOutlined,
   OpenInNewOutlined,
   DescriptionOutlined,
   ReceiptLongOutlined,
-  WorkOutlineOutlined,
 } from "@mui/icons-material";
 
 const WORKSPACE_APP_URL = process.env.NEXT_PUBLIC_WORKSPACE_DOMAIN ?? "";
@@ -55,7 +58,9 @@ function EmptyState({ icon, label }: { icon: React.ReactNode; label: string }) {
 }
 
 export function ProjetsPanel({ tiersId, canManage }: { tiersId: number; canManage: boolean }) {
+  const workspaceId = useSessionStore((s) => s.activeWorkspace?.id);
   const [projets, setProjets] = useState<ProjetBrief[] | null>(null);
+  const [membres, setMembres] = useState<WorkspaceMember[]>([]);
   const [ajout, setAjout] = useState(false);
   const [nom, setNom] = useState("");
   const [saving, setSaving] = useState(false);
@@ -69,6 +74,60 @@ export function ProjetsPanel({ tiersId, canManage }: { tiersId: number; canManag
     reload();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tiersId]);
+
+  useEffect(() => {
+    if (workspaceId) listMembers(workspaceId).then(setMembres);
+  }, [workspaceId]);
+
+  function nomCreateur(userId: number | null): string {
+    if (!userId) return "—";
+    const m = membres.find((mb) => mb.user.id === userId);
+    return m ? m.user.username || m.user.email : `#${userId}`;
+  }
+
+  const columns = useMemo<DataListColumn<ProjetBrief>[]>(
+    () => [
+      {
+        key: "titre",
+        header: "Titre",
+        render: (p) => <span className="font-medium text-on-surface">{p.name}</span>,
+      },
+      {
+        key: "created_at",
+        header: "Date de création",
+        render: (p) => new Date(p.created_at).toLocaleDateString("fr-FR"),
+      },
+      {
+        key: "created_by",
+        header: "Créé par",
+        render: (p) => nomCreateur(p.created_by),
+      },
+      {
+        key: "status",
+        header: "Statut",
+        render: (p) => PROJET_STATUT_LABEL[p.status] ?? p.status,
+      },
+      {
+        key: "actions",
+        header: "",
+        className: "w-10",
+        render: (p) =>
+          WORKSPACE_APP_URL ? (
+            <a
+              href={`${WORKSPACE_APP_URL}/projects/${p.id}`}
+              target="_blank"
+              rel="noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors"
+              aria-label="Ouvrir le projet"
+            >
+              <OpenInNewOutlined style={{ fontSize: 16 }} />
+            </a>
+          ) : null,
+      },
+    ],
+    [membres],
+  );
 
   async function creer(e: React.FormEvent) {
     e.preventDefault();
@@ -145,39 +204,19 @@ export function ProjetsPanel({ tiersId, canManage }: { tiersId: number; canManag
         </form>
       )}
 
-      {projets.length === 0 && !ajout && (
-        <EmptyState
-          icon={<WorkOutlineOutlined style={{ fontSize: 28 }} className="text-outline mx-auto" />}
-          label="Aucun projet lié à ce client."
+      {!ajout && (
+        <DataList
+          items={projets}
+          columns={columns}
+          getRowKey={(p) => p.id}
+          searchText={(p) => `${p.name} ${nomCreateur(p.created_by)}`}
+          searchPlaceholder="Rechercher un projet…"
+          pageSize={10}
+          emptyMessage="Aucun projet lié à ce client."
+          onRowClick={(p) => {
+            if (WORKSPACE_APP_URL) window.open(`${WORKSPACE_APP_URL}/projects/${p.id}`, "_blank");
+          }}
         />
-      )}
-
-      {projets.length > 0 && (
-        <ul className="rounded-2xl border border-outline-soft bg-surface-container-lowest divide-y divide-hairline">
-          {projets.map((m) => (
-            <li key={m.id} className="flex items-center gap-3 px-4 py-3">
-              <div className="min-w-0 flex-1">
-                <p className="text-body-md font-medium text-on-surface truncate">{m.name}</p>
-                <p className="text-label-md text-outline">
-                  {PROJET_STATUT_LABEL[m.status] ?? m.status}
-                  {m.budget != null ? ` · Budget ${formatMontant(m.budget)}` : ""}
-                  {m.heures_prevues != null ? ` · ${m.heures_prevues} h prévues` : ""}
-                </p>
-              </div>
-              {WORKSPACE_APP_URL && (
-                <a
-                  href={`${WORKSPACE_APP_URL}/projects/${m.id}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors"
-                  aria-label="Ouvrir le projet"
-                >
-                  <OpenInNewOutlined style={{ fontSize: 16 }} />
-                </a>
-              )}
-            </li>
-          ))}
-        </ul>
       )}
     </div>
   );

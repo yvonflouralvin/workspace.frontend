@@ -258,6 +258,8 @@ export interface ProjetBrief {
   heures_prevues: number | null;
   start_date: string | null;
   due_date: string | null;
+  created_by: number | null;
+  created_at: string;
 }
 
 export async function listProjetsDuTiers(tiersId: number): Promise<ProjetBrief[]> {

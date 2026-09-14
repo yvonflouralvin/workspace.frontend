@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
 import { ConfirmDialog } from "@repo/ui/ConfirmDialog";
 import { DashboardShell } from "@/components/DashboardShell";
+import { AideFlottante } from "@/components/AideFlottante";
+import { AIDE_EXERCICES } from "@/components/aide-contenu";
 import { listExercices, createExercice, cloturerExercice, type Exercice } from "@/lib/compta-api";
 import { AddOutlined, LockOutlined } from "@mui/icons-material";
 
@@ -147,6 +149,7 @@ export default function ExercicesPage() {
           />
         )}
       </div>
+      <AideFlottante titre={AIDE_EXERCICES.titre}>{AIDE_EXERCICES.contenu}</AideFlottante>
     </DashboardShell>
   );
 }

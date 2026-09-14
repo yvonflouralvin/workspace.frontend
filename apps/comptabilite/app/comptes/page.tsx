@@ -1,19 +1,25 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
 import { DataList, type DataListColumn } from "@repo/ui/DataList";
 import { DashboardShell } from "@/components/DashboardShell";
+import { AideFlottante } from "@/components/AideFlottante";
+import { AIDE_COMPTES } from "@/components/aide-contenu";
 import {
   listComptes,
   createCompte,
-  chargerOhada,
+  chargerReferentiel,
+  listReferentiels,
+  toggleCompteActif,
   TYPE_COMPTE_LABELS,
   type Compte,
   type TypeCompte,
   type SensNormal,
+  type Referentiel,
 } from "@/lib/compta-api";
-import { AddOutlined, DownloadOutlined } from "@mui/icons-material";
+import { AddOutlined, DownloadOutlined, TuneOutlined } from "@mui/icons-material";
 
 const FIELD =
   "rounded-lg border border-outline-soft bg-surface-container-lowest px-2.5 py-1.5 text-body-sm text-on-surface outline-none focus:border-primary transition-colors";
@@ -23,6 +29,8 @@ export default function ComptesPage() {
   const canManage = can("comptabilite.parametrage.manage");
 
   const [comptes, setComptes] = useState<Compte[] | null>(null);
+  const [referentiels, setReferentiels] = useState<Referentiel[]>([]);
+  const [referentielChoisi, setReferentielChoisi] = useState("");
   const [ajout, setAjout] = useState(false);
   const [chargement, setChargement] = useState(false);
   const [numero, setNumero] = useState("");
@@ -39,7 +47,18 @@ export default function ComptesPage() {
 
   useEffect(() => {
     reload();
+    listReferentiels().then((list) => {
+      setReferentiels(list);
+      const ohada = list.find((r) => r.code === "ohada");
+      if (ohada) setReferentielChoisi(String(ohada.id));
+      else if (list[0]) setReferentielChoisi(String(list[0].id));
+    });
   }, []);
+
+  async function basculerActif(c: Compte) {
+    await toggleCompteActif(c);
+    reload();
+  }
 
   async function ajouter(e: React.FormEvent) {
     e.preventDefault();
@@ -64,10 +83,11 @@ export default function ComptesPage() {
     }
   }
 
-  async function ohada() {
+  async function charger() {
+    if (!referentielChoisi) return;
     setChargement(true);
     try {
-      await chargerOhada();
+      await chargerReferentiel(Number(referentielChoisi));
       reload();
     } finally {
       setChargement(false);
@@ -82,8 +102,37 @@ export default function ComptesPage() {
       { key: "type", header: "Type", render: (c) => TYPE_COMPTE_LABELS[c.type_compte] },
       { key: "sens", header: "Sens normal", render: (c) => (c.sens_normal === "DEBIT" ? "Débit" : "Crédit") },
       { key: "lettrable", header: "Lettrable", render: (c) => (c.lettrable ? "Oui" : "—") },
+      {
+        key: "statut",
+        header: "Statut",
+        render: (c) => (
+          <span className={`rounded-md px-2 py-0.5 text-[11px] font-semibold ${c.actif ? "bg-member-active-container text-member-active" : "bg-surface-container text-on-surface-variant"}`}>
+            {c.actif ? "Actif" : "Désactivé"}
+          </span>
+        ),
+      },
+      ...(canManage
+        ? [
+            {
+              key: "actions",
+              header: "",
+              render: (c: Compte) => (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    basculerActif(c);
+                  }}
+                  className="text-label-sm font-semibold text-primary hover:text-primary-container transition-colors"
+                >
+                  {c.actif ? "Désactiver" : "Réactiver"}
+                </button>
+              ),
+            } satisfies DataListColumn<Compte>,
+          ]
+        : []),
     ],
-    [],
+    [canManage],
   );
 
   return (
@@ -93,20 +142,39 @@ export default function ComptesPage() {
           <div>
             <h1 className="font-display text-headline-lg text-on-surface">Plan comptable</h1>
             <p className="text-body-md text-on-surface-variant mt-0.5">
-              Référentiel OHADA chargeable en un clic, librement personnalisable ensuite.
+              Chargez un référentiel (OHADA, PCG français, personnalisé…), librement personnalisable ensuite.
             </p>
           </div>
           {canManage && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap justify-end">
+              <select
+                value={referentielChoisi}
+                onChange={(e) => setReferentielChoisi(e.target.value)}
+                className="rounded-lg border border-outline-soft bg-surface-container-lowest px-2.5 py-1.5 text-body-sm text-on-surface outline-none focus:border-primary transition-colors"
+              >
+                {referentiels.length === 0 && <option value="">Aucun référentiel</option>}
+                {referentiels.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.nom}{r.systeme ? "" : " (perso)"} — {r.nombre_comptes} comptes
+                  </option>
+                ))}
+              </select>
               <button
                 type="button"
-                onClick={ohada}
-                disabled={chargement}
+                onClick={charger}
+                disabled={chargement || !referentielChoisi}
                 className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg border border-outline-soft bg-surface-container-lowest text-body-sm font-semibold text-on-surface-variant hover:bg-surface-container-low transition-colors disabled:opacity-50"
               >
                 <DownloadOutlined style={{ fontSize: 16 }} />
-                {chargement ? "Chargement…" : "Charger le plan OHADA"}
+                {chargement ? "Chargement…" : "Charger"}
               </button>
+              <Link
+                href="/parametres/referentiels"
+                className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg border border-outline-soft bg-surface-container-lowest text-body-sm font-semibold text-on-surface-variant hover:bg-surface-container-low transition-colors"
+              >
+                <TuneOutlined style={{ fontSize: 16 }} />
+                Référentiels
+              </Link>
               {!ajout && (
                 <button
                   type="button"
@@ -177,10 +245,11 @@ export default function ComptesPage() {
             searchText={(c) => `${c.numero} ${c.libelle}`}
             searchPlaceholder="Rechercher un compte…"
             pageSize={20}
-            emptyMessage="Aucun compte — chargez le plan OHADA pour démarrer."
+            emptyMessage="Aucun compte — chargez un référentiel pour démarrer."
           />
         )}
       </div>
+      <AideFlottante titre={AIDE_COMPTES.titre}>{AIDE_COMPTES.contenu}</AideFlottante>
     </DashboardShell>
   );
 }

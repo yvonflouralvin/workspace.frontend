@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { SearchSelect } from "@repo/ui/SearchSelect";
 import { DashboardShell } from "@/components/DashboardShell";
+import { AideFlottante } from "@/components/AideFlottante";
+import { AIDE_GRAND_LIVRE } from "@/components/aide-contenu";
 import { listComptes, listExercices, grandLivre, type Compte, type Exercice, type MouvementGrandLivre } from "@/lib/compta-api";
 
 const FIELD =
@@ -115,6 +117,7 @@ export default function GrandLivrePage() {
           </div>
         )}
       </div>
+      <AideFlottante titre={AIDE_GRAND_LIVRE.titre}>{AIDE_GRAND_LIVRE.contenu}</AideFlottante>
     </DashboardShell>
   );
 }

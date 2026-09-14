@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
 import { DashboardShell } from "@/components/DashboardShell";
+import { AideFlottante } from "@/components/AideFlottante";
+import { AIDE_JOURNAUX } from "@/components/aide-contenu";
 import {
   listJournaux,
   createJournal,
@@ -136,6 +138,7 @@ export default function JournauxPage() {
           </ul>
         )}
       </div>
+      <AideFlottante titre={AIDE_JOURNAUX.titre}>{AIDE_JOURNAUX.contenu}</AideFlottante>
     </DashboardShell>
   );
 }

@@ -2,6 +2,8 @@
 
 import { Fragment, useEffect, useState } from "react";
 import { DashboardShell } from "@/components/DashboardShell";
+import { AideFlottante } from "@/components/AideFlottante";
+import { AIDE_ETATS } from "@/components/aide-contenu";
 import { listExercices, getBilan, getCompteResultat, type Exercice, type EtatFinancier } from "@/lib/compta-api";
 
 const FIELD =
@@ -129,6 +131,7 @@ export default function EtatsPage() {
           <TableEtat etat={resultat} totalLabel="Résultat (produits − charges)" />
         )}
       </div>
+      <AideFlottante titre={AIDE_ETATS.titre}>{AIDE_ETATS.contenu}</AideFlottante>
     </DashboardShell>
   );
 }

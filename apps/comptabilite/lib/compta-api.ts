@@ -62,10 +62,80 @@ export async function updateCompte(id: number, patch: Partial<CompteInput> & { a
   return res.json();
 }
 
-export async function chargerOhada(): Promise<Compte[]> {
-  const res = await apiFetch("/api/compta/comptes/charger-ohada", { method: "POST" });
-  if (!res.ok) throw new Error("Erreur lors du chargement du référentiel OHADA");
+export async function toggleCompteActif(compte: Compte): Promise<Compte> {
+  return updateCompte(compte.id, { actif: !compte.actif });
+}
+
+export async function chargerReferentiel(referentielId: number): Promise<Compte[]> {
+  const res = await apiFetch(`/api/compta/comptes/charger-referentiel/${referentielId}`, { method: "POST" });
+  if (!res.ok) throw new Error("Erreur lors du chargement du référentiel");
   return res.json();
+}
+
+// ───────────────────────── Référentiels ─────────────────────────
+
+export interface Referentiel {
+  id: number;
+  code: string;
+  nom: string;
+  description: string | null;
+  systeme: boolean;
+  base_referentiel_id: number | null;
+  nombre_comptes: number;
+}
+
+export interface ReferentielCompte {
+  id: number;
+  numero: string;
+  libelle: string;
+  classe: number;
+  type_compte: TypeCompte;
+  sens_normal: SensNormal;
+  lettrable: boolean;
+}
+
+export async function listReferentiels(): Promise<Referentiel[]> {
+  const res = await apiFetch("/api/compta/referentiels");
+  if (!res.ok) return [];
+  return res.json();
+}
+
+export async function createReferentiel(input: { nom: string; description?: string; base_referentiel_id?: number | null }): Promise<Referentiel> {
+  const res = await apiFetch("/api/compta/referentiels", { method: "POST", body: input });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail ?? "Erreur lors de la création du référentiel");
+  }
+  return res.json();
+}
+
+export async function deleteReferentiel(id: number): Promise<void> {
+  const res = await apiFetch(`/api/compta/referentiels/${id}`, { method: "DELETE" });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail ?? "Erreur lors de la suppression du référentiel");
+  }
+}
+
+export async function listReferentielComptes(id: number): Promise<ReferentielCompte[]> {
+  const res = await apiFetch(`/api/compta/referentiels/${id}/comptes`);
+  if (!res.ok) return [];
+  return res.json();
+}
+
+export interface ImportReferentielResult {
+  crees: number;
+  mis_a_jour: number;
+  total: number;
+}
+
+export async function importerReferentielExcel(id: number, fichier: File): Promise<ImportReferentielResult> {
+  const form = new FormData();
+  form.append("fichier", fichier);
+  const res = await fetch(`/api/compta/referentiels/${id}/comptes/import`, { method: "POST", body: form });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.detail ?? "Erreur lors de l'import");
+  return data;
 }
 
 // ───────────────────────── Journaux ─────────────────────────

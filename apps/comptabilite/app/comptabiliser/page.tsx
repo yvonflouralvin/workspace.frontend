@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
 import { SearchSelect } from "@repo/ui/SearchSelect";
 import { DashboardShell } from "@/components/DashboardShell";
+import { AideFlottante } from "@/components/AideFlottante";
+import { AIDE_COMPTABILISER } from "@/components/aide-contenu";
 import {
   listFacturesAComptabiliser,
   comptabiliserFacture,
@@ -210,6 +212,7 @@ export default function ComptabiliserPage() {
           </div>
         )}
       </div>
+      <AideFlottante titre={AIDE_COMPTABILISER.titre}>{AIDE_COMPTABILISER.contenu}</AideFlottante>
     </DashboardShell>
   );
 }

@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { DashboardShell } from "@/components/DashboardShell";
+import { AideFlottante } from "@/components/AideFlottante";
+import { AIDE_BALANCE } from "@/components/aide-contenu";
 import { listExercices, getBalance, type Exercice, type LigneBalance } from "@/lib/compta-api";
 
 const FIELD =
@@ -104,6 +106,7 @@ export default function BalancePage() {
           </div>
         )}
       </div>
+      <AideFlottante titre={AIDE_BALANCE.titre}>{AIDE_BALANCE.contenu}</AideFlottante>
     </DashboardShell>
   );
 }

@@ -4,6 +4,7 @@ import { BOUTON, LISTE_ICONES, TEXTE_RICHE, TITRE } from "./widgets/base";
 import { ABONNEMENT } from "./widgets/formulaire";
 import { IMAGE } from "./widgets/media";
 import { COLONNE, ESPACEUR, SECTION, SEPARATEUR } from "./widgets/miseEnPage";
+import { MENU } from "./widgets/navigation";
 
 /** Le catalogue vit côté FRONTEND, pas au backend.
  *
@@ -25,6 +26,7 @@ export const CATALOGUE: Record<string, DefinitionWidget> = {
   image: IMAGE,
   bouton: BOUTON,
   liste_icones: LISTE_ICONES,
+  menu: MENU,
   abonnement: ABONNEMENT,
   espaceur: ESPACEUR,
   separateur: SEPARATEUR,
@@ -39,6 +41,7 @@ export const WIDGETS_PALETTE: DefinitionWidget[] = [
   IMAGE,
   BOUTON,
   LISTE_ICONES,
+  MENU,
   ABONNEMENT,
   ESPACEUR,
   SEPARATEUR,

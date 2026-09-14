@@ -15,6 +15,13 @@ export const PROJECT_ROLE_HINTS: Record<ProjectRole, string> = {
 };
 export const PROJECT_ROLE_ORDER: ProjectRole[] = ["OWNER", "MEMBER", "VIEWER"];
 
+export interface TiersBrief {
+  id: number;
+  code: string;
+  nom: string;
+  type?: string;
+}
+
 export interface ProjectMember {
   id: number;
   project_id: number;
@@ -375,6 +382,10 @@ export const projectsApi = {
   createProject: (body: Partial<Project>) => apiFetch("/api/projects", { method: "POST", body }).then((r) => json<Project>(r)),
   updateProject: (id: number, body: Partial<Project>) => apiFetch(`/api/projects/${id}`, { method: "PATCH", body }).then((r) => json<Project>(r)),
   archiveProject: (id: number) => apiFetch(`/api/projects/${id}`, { method: "DELETE" }).then((r) => json<void>(r)),
+
+  searchTiers: (q: string) =>
+    apiFetch(`/api/tiers/search?q=${encodeURIComponent(q)}`).then((r) => json<TiersBrief[]>(r)),
+  getTiers: (id: number) => apiFetch(`/api/tiers/${id}`).then((r) => json<TiersBrief>(r)),
 
   mesuresFlux: (phaseId: number) =>
     apiFetch(`/api/phases/${phaseId}/metriques/flux`).then((r) => json<MesuresFlux>(r)),

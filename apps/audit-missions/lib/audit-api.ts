@@ -319,6 +319,12 @@ export interface TiersBrief {
   nom: string;
 }
 
+export async function getTiersBrief(id: number): Promise<TiersBrief | null> {
+  const res = await apiFetch(`/api/tiers/${id}`);
+  if (!res.ok) return null;
+  return res.json();
+}
+
 export async function searchTiers(q: string): Promise<TiersBrief[]> {
   const qs = new URLSearchParams({ q });
   const res = await apiFetch(`/api/tiers/search?${qs}`);

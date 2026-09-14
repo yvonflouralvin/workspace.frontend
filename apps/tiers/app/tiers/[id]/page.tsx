@@ -21,7 +21,7 @@ import {
 } from "@/lib/tiers-api";
 import { TiersAvatar, TypeBadge } from "../page";
 import { ContactsPanel } from "./ContactsPanel";
-import { MissionsPanel, FacturesPanel, DocumentsPanel } from "./HubPanels";
+import { ProjetsPanel, FacturesPanel, DocumentsPanel } from "./HubPanels";
 import {
   ArrowBackOutlined,
   EditOutlined,
@@ -304,8 +304,14 @@ export default function TiersDetailPage() {
                   },
                 ]
               : []),
-            ...(mesDroits.sections.includes("missions")
-              ? [{ key: "missions", label: "Missions", content: <MissionsPanel tiersId={tiers.id} /> }]
+            ...(mesDroits.sections.includes("projets")
+              ? [
+                  {
+                    key: "projets",
+                    label: "Projets",
+                    content: <ProjetsPanel tiersId={tiers.id} canManage={canEdit} />,
+                  },
+                ]
               : []),
             ...(mesDroits.sections.includes("factures")
               ? [{ key: "factures", label: "Factures", content: <FacturesPanel tiersId={tiers.id} /> }]

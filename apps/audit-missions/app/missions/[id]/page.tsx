@@ -12,6 +12,7 @@ import {
   getMission,
   updateMission,
   listMembers,
+  getTiersBrief,
   STATUT_MISSION_LABELS,
   type MissionDetail,
   type StatutMission,
@@ -37,6 +38,7 @@ export default function MissionDetailPage() {
 
   const [mission, setMission] = useState<MissionDetail | null>(null);
   const [members, setMembers] = useState<WorkspaceMember[]>([]);
+  const [tiersNom, setTiersNom] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -45,6 +47,14 @@ export default function MissionDetailPage() {
       .then(setMission)
       .catch(() => setError("Mission introuvable."));
   }, [missionId]);
+
+  useEffect(() => {
+    if (mission?.tiers_id) {
+      getTiersBrief(mission.tiers_id).then((t) => setTiersNom(t?.nom ?? null));
+    } else {
+      setTiersNom(null);
+    }
+  }, [mission?.tiers_id]);
 
   useEffect(() => {
     if (workspaceId) listMembers(workspaceId).then(setMembers);
@@ -104,7 +114,7 @@ export default function MissionDetailPage() {
             <p className="text-label-md text-outline mt-0.5">
               <span className="font-mono">{mission.code}</span>
               {mission.type_audit && ` · ${mission.type_audit}`}
-              {mission.tiers_id && ` · Client #${mission.tiers_id}`}
+              {mission.tiers_id && ` · Client ${tiersNom ?? `#${mission.tiers_id}`}`}
               {` · Responsable ${memberName(mission.responsable_user_id)}`}
             </p>
           </div>

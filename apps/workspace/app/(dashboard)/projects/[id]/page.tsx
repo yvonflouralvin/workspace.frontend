@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   CloudDoneOutlined,
@@ -13,6 +13,7 @@ import {
 } from "@mui/icons-material";
 import { Avatar } from "@repo/ui/Avatar";
 import { RichTextEditor } from "@repo/ui/RichTextEditor";
+import { SearchSelect } from "@repo/ui/SearchSelect";
 import {
   projectsApi,
   phasesVisible,
@@ -24,6 +25,7 @@ import {
   PROJECT_STATUS_ORDER,
   type Project,
   type ProjectIssue,
+  type TiersBrief,
 } from "@/app/lib/projects-api";
 import { useAutosave, type EtatSauvegarde } from "@/app/lib/autosave";
 import { EchecAutosave } from "@/components/projects/EchecAutosave";
@@ -47,6 +49,21 @@ export default function ProjectOverviewPage() {
   const done = useMemo(() => tasks.filter((t) => t.categorie === "termine").length, [tasks]);
   const pct = tasks.length ? Math.round((done / tasks.length) * 100) : 0;
   const lead = members.find((m) => m.id === project.lead_user_id);
+
+  // Le projet ne porte que tiers_id — le nom est résolu à part pour l'affichage
+  // (initialLabel du SearchSelect), best-effort : un 403/404 laisse juste le
+  // champ vide plutôt que de casser la page.
+  const [tiersNom, setTiersNom] = useState<string | null>(null);
+  useEffect(() => {
+    if (!project.tiers_id) {
+      setTiersNom(null);
+      return;
+    }
+    projectsApi.getTiers(project.tiers_id).then(
+      (t) => setTiersNom(t.nom),
+      () => setTiersNom(null),
+    );
+  }, [project.tiers_id]);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-6 items-start">
@@ -176,12 +193,26 @@ export default function ProjectOverviewPage() {
         </MetaRow>
 
         <MetaRow label="Client (Tiers)">
-          <NumberValue
-            value={project.tiers_id ?? null}
-            editable={canManage}
-            placeholder="ID tiers"
-            onChange={(v) => queue({ tiers_id: v })}
-          />
+          {canManage ? (
+            <span className="w-[190px]">
+              <SearchSelect<TiersBrief>
+                value={project.tiers_id ?? null}
+                initialLabel={tiersNom ?? undefined}
+                placeholder="Rechercher un client…"
+                fetchOptions={(q) => projectsApi.searchTiers(q)}
+                getOptionLabel={(t) => t.nom}
+                getOptionValue={(t) => t.id}
+                onChange={(v, record) => {
+                  queue({ tiers_id: v === null ? null : Number(v) });
+                  setTiersNom(record?.nom ?? null);
+                }}
+              />
+            </span>
+          ) : project.tiers_id ? (
+            <span className="text-body-sm text-on-surface">{tiersNom ?? `#${project.tiers_id}`}</span>
+          ) : (
+            <span className="text-body-sm text-outline">—</span>
+          )}
         </MetaRow>
 
         <MetaRow label="Budget">

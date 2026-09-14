@@ -249,6 +249,57 @@ export async function listGroups(workspaceId: number): Promise<WorkspaceGroup[]>
   return data.groups;
 }
 
+export interface MissionBrief {
+  id: number;
+  name: string;
+  key: string;
+  status: string;
+  budget: number | null;
+  heures_prevues: number | null;
+  start_date: string | null;
+  due_date: string | null;
+}
+
+export async function listMissionsDuTiers(tiersId: number): Promise<MissionBrief[]> {
+  const qs = new URLSearchParams({ tiers_id: String(tiersId) });
+  const res = await apiFetch(`/api/projects?${qs}`);
+  if (!res.ok) return [];
+  return res.json();
+}
+
+export interface FactureBrief {
+  id: number;
+  code: string;
+  statut: string;
+  date_facture: string | null;
+  date_echeance: string | null;
+  montant_total: number | string;
+  montant_paye: number | string;
+}
+
+export async function listFacturesDuTiers(tiersId: number): Promise<FactureBrief[]> {
+  const qs = new URLSearchParams({ crm_client_id: String(tiersId), page_size: "100" });
+  const res = await apiFetch(`/api/ventes-factures?${qs}`);
+  if (!res.ok) return [];
+  const data = await res.json();
+  return data.items ?? [];
+}
+
+export interface DocumentBrief {
+  id: number;
+  filename: string;
+  content_type: string;
+  size_bytes: number;
+  category: string | null;
+  created_at: string;
+}
+
+export async function listDocumentsDuTiers(tiersId: number): Promise<DocumentBrief[]> {
+  const res = await apiFetch(`/api/tiers/${tiersId}/documents`);
+  if (!res.ok) return [];
+  return res.json();
+}
+
 export async function logout(): Promise<void> {
   await apiFetch("/api/auth/logout", { method: "POST" });
 }

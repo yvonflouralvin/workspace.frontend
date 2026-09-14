@@ -238,7 +238,7 @@ export function ContactsPanel({
         <RightDrawer
           title={drawerFor === "new" ? "Ajouter un contact" : "Modifier le contact"}
           onClose={closeDrawer}
-          width="md:w-[440px] md:max-w-[92vw]"
+          width="md:w-[380px] md:max-w-[92vw]"
           footer={
             <div className="flex flex-1 items-center justify-end gap-2.5">
               <button

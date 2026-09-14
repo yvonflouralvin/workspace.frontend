@@ -261,6 +261,17 @@ export interface FactureLigneDetail {
   total: string | number;
 }
 
+export interface FacturePaiement {
+  id: number;
+  facture_id: number;
+  montant: string | number;
+  date_paiement: string | null;
+  mode: string | null;
+  reference: string | null;
+  notes: string | null;
+  created_at: string;
+}
+
 export interface FactureDetail {
   id: number;
   code: string;
@@ -276,6 +287,7 @@ export interface FactureDetail {
   devises_snapshot: { devise_base?: string; devises?: DeviseEntry[] } | null;
   client: { id: number; nom: string; email: string | null; telephone: string | null; adresse_ville: string | null } | null;
   lignes: FactureLigneDetail[];
+  paiements: FacturePaiement[];
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -286,6 +298,27 @@ export async function getFactureDetail(id: number): Promise<FactureDetail> {
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.detail ?? "Facture introuvable");
+  }
+  return res.json();
+}
+
+export async function addFacturePaiement(
+  factureId: number,
+  input: { montant: number; date_paiement?: string; mode?: string; reference?: string; notes?: string },
+): Promise<FactureDetail> {
+  const res = await apiFetch(`/api/factures/${factureId}/paiements`, { method: "POST", body: input });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail ?? "Erreur lors de l'enregistrement du paiement");
+  }
+  return res.json();
+}
+
+export async function deleteFacturePaiement(factureId: number, paiementId: number): Promise<FactureDetail> {
+  const res = await apiFetch(`/api/factures/${factureId}/paiements/${paiementId}`, { method: "DELETE" });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail ?? "Erreur lors de la suppression du paiement");
   }
   return res.json();
 }

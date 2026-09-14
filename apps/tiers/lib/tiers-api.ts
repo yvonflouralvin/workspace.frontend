@@ -128,6 +128,53 @@ export async function searchTiers(q: string, type?: TypeTiers): Promise<{ id: nu
   return res.json();
 }
 
+export interface Contact {
+  id: number;
+  tiers_id: number;
+  nom: string;
+  fonction: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ContactInput {
+  nom: string;
+  fonction?: string;
+}
+
+export async function listContacts(tiersId: number): Promise<Contact[]> {
+  const res = await apiFetch(`/api/tiers/${tiersId}/contacts`);
+  if (!res.ok) throw new Error("Erreur lors du chargement des contacts");
+  return res.json();
+}
+
+export async function createContact(tiersId: number, input: ContactInput): Promise<Contact> {
+  const res = await apiFetch(`/api/tiers/${tiersId}/contacts`, { method: "POST", body: input });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail ?? "Erreur lors de la création du contact");
+  }
+  return res.json();
+}
+
+export async function updateContact(
+  tiersId: number,
+  contactId: number,
+  input: Partial<ContactInput>,
+): Promise<Contact> {
+  const res = await apiFetch(`/api/tiers/${tiersId}/contacts/${contactId}`, { method: "PUT", body: input });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail ?? "Erreur lors de la mise à jour du contact");
+  }
+  return res.json();
+}
+
+export async function deleteContact(tiersId: number, contactId: number): Promise<void> {
+  const res = await apiFetch(`/api/tiers/${tiersId}/contacts/${contactId}`, { method: "DELETE" });
+  if (!res.ok) throw new Error("Erreur lors de la suppression du contact");
+}
+
 export async function logout(): Promise<void> {
   await apiFetch("/api/auth/logout", { method: "POST" });
 }

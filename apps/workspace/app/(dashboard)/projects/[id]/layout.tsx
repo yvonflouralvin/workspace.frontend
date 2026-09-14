@@ -6,7 +6,7 @@ import { useParams, usePathname } from "next/navigation";
 import { useSessionStore } from "@repo/auth/store/session.store";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
 import { apiFetch } from "@repo/network/client";
-import { ArrowBackOutlined } from "@mui/icons-material";
+import { ArrowBackOutlined, CloudDoneOutlined, CloudSyncOutlined } from "@mui/icons-material";
 import { AccountTreeOutlined, FlagOutlined, InventoryOutlined } from "@mui/icons-material";
 import { jalonsApi, type Jalon } from "@/app/lib/jalons-api";
 import {
@@ -20,6 +20,7 @@ import {
   type ProjectRole,
   type Task,
 } from "@/app/lib/projects-api";
+import { useAutosave } from "@/app/lib/autosave";
 import { ProjectProvider, type Member } from "./project-context";
 import {
   PROJECT_SECTIONS,
@@ -44,6 +45,19 @@ export default function ProjectLayout({ children }: { children: ReactNode }) {
   const [etats, setEtats] = useState<Etat[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Le titre s'édite ici, dans l'en-tête — plus dans l'onglet Aperçu, qui
+  // l'affichait en double avec celui-ci.
+  const [titre, setTitre] = useState("");
+  useEffect(() => {
+    if (project) setTitre(project.name);
+  }, [project?.id, project?.name]);
+  const { queue: queueTitre, etat: etatTitre } = useAutosave<Project>(
+    useCallback(
+      async (patch) => setProject(await projectsApi.updateProject(projectId, patch)),
+      [projectId]
+    )
+  );
 
   const reloadTasks = useCallback(
     () => projectsApi.listTasks(projectId).then(setTasks),
@@ -194,8 +208,28 @@ export default function ProjectLayout({ children }: { children: ReactNode }) {
             >
               {project.icon ?? project.key.slice(0, 2)}
             </span>
-            <div className="min-w-0">
-              <h1 className="font-display text-headline-sm text-on-surface truncate">{project.name}</h1>
+            <div className="min-w-0 flex-1">
+              {canManage ? (
+                <div className="flex items-center gap-2">
+                  <input
+                    value={titre}
+                    onChange={(e) => {
+                      setTitre(e.target.value);
+                      if (e.target.value.trim()) queueTitre({ name: e.target.value.trim() });
+                    }}
+                    placeholder="Nom du projet"
+                    className="min-w-0 flex-1 bg-transparent font-display text-headline-sm text-on-surface truncate outline-none border-b border-transparent hover:border-outline-soft focus:border-primary transition-colors"
+                  />
+                  {etatTitre === "saving" && (
+                    <CloudSyncOutlined style={{ fontSize: 16 }} className="text-on-surface-variant shrink-0" />
+                  )}
+                  {etatTitre === "saved" && (
+                    <CloudDoneOutlined style={{ fontSize: 16 }} className="text-secondary shrink-0" />
+                  )}
+                </div>
+              ) : (
+                <h1 className="font-display text-headline-sm text-on-surface truncate">{project.name}</h1>
+              )}
               <p className="font-mono text-label-md text-outline">
                 {project.key} · {tasks.length} tâche{tasks.length > 1 ? "s" : ""}
               </p>

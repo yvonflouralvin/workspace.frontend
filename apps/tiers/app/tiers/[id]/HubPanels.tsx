@@ -65,6 +65,7 @@ export function ProjetsPanel({ tiersId, canManage }: { tiersId: number; canManag
   const [nom, setNom] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [statutFiltre, setStatutFiltre] = useState("");
 
   function reload() {
     listProjetsDuTiers(tiersId).then(setProjets);
@@ -129,6 +130,11 @@ export function ProjetsPanel({ tiersId, canManage }: { tiersId: number; canManag
     [membres],
   );
 
+  const projetsFiltres = useMemo(
+    () => (statutFiltre ? (projets ?? []).filter((p) => p.status === statutFiltre) : projets ?? []),
+    [projets, statutFiltre],
+  );
+
   async function creer(e: React.FormEvent) {
     e.preventDefault();
     if (!nom.trim()) return;
@@ -152,23 +158,33 @@ export function ProjetsPanel({ tiersId, canManage }: { tiersId: number; canManag
 
   return (
     <div className="space-y-4">
-      {canManage && (
-        <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-2">
           <p className="text-label-md text-outline">
-            {projets.length} projet{projets.length > 1 ? "s" : ""}
+            {projetsFiltres.length} projet{projetsFiltres.length > 1 ? "s" : ""}
           </p>
-          {!ajout && (
-            <button
-              type="button"
-              onClick={() => setAjout(true)}
-              className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg bg-primary text-on-primary text-body-sm font-semibold shadow-button hover:bg-primary-container transition-colors"
-            >
-              <AddOutlined style={{ fontSize: 16 }} />
-              Nouveau projet
-            </button>
-          )}
+          <select
+            value={statutFiltre}
+            onChange={(e) => setStatutFiltre(e.target.value)}
+            className="h-8 rounded-lg border border-outline-soft bg-surface-container-lowest px-2 text-body-sm text-on-surface outline-none focus:border-primary"
+          >
+            <option value="">Tous les statuts</option>
+            {Object.entries(PROJET_STATUT_LABEL).map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </select>
         </div>
-      )}
+        {canManage && !ajout && (
+          <button
+            type="button"
+            onClick={() => setAjout(true)}
+            className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg bg-primary text-on-primary text-body-sm font-semibold shadow-button hover:bg-primary-container transition-colors"
+          >
+            <AddOutlined style={{ fontSize: 16 }} />
+            Nouveau projet
+          </button>
+        )}
+      </div>
 
       {ajout && (
         <form
@@ -206,7 +222,7 @@ export function ProjetsPanel({ tiersId, canManage }: { tiersId: number; canManag
 
       {!ajout && (
         <DataList
-          items={projets}
+          items={projetsFiltres}
           columns={columns}
           getRowKey={(p) => p.id}
           searchText={(p) => `${p.name} ${nomCreateur(p.created_by)}`}

@@ -181,9 +181,25 @@ export async function deleteContact(tiersId: number, contactId: number): Promise
   if (!res.ok) throw new Error("Erreur lors de la suppression du contact");
 }
 
+export interface SectionInfo {
+  key: string;
+  label: string;
+}
+
+export interface Grant {
+  user_id: number;
+  sections: string[];
+}
+
 export interface Acces {
   created_by: number | null;
-  visible_user_ids: number[];
+  available_sections: SectionInfo[];
+  grants: Grant[];
+}
+
+export interface MesDroits {
+  is_creator: boolean;
+  sections: string[];
 }
 
 export async function getAcces(tiersId: number): Promise<Acces> {
@@ -192,12 +208,18 @@ export async function getAcces(tiersId: number): Promise<Acces> {
   return res.json();
 }
 
-export async function setAcces(tiersId: number, visibleUserIds: number[]): Promise<Acces> {
+export async function setAcces(tiersId: number, grants: Grant[]): Promise<Acces> {
   const res = await apiFetch(`/api/tiers/${tiersId}/acces`, {
     method: "PUT",
-    body: { visible_user_ids: visibleUserIds },
+    body: { grants },
   });
   if (!res.ok) throw new Error("Impossible d'enregistrer les droits d'accès");
+  return res.json();
+}
+
+export async function getMesDroits(tiersId: number): Promise<MesDroits> {
+  const res = await apiFetch(`/api/tiers/${tiersId}/mes-droits`);
+  if (!res.ok) throw new Error("Impossible de charger vos droits");
   return res.json();
 }
 

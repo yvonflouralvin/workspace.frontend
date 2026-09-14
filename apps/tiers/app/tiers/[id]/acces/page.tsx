@@ -14,9 +14,10 @@ import {
   listMembers,
   type TiersDetail,
   type Acces,
+  type Grant,
   type WorkspaceMember,
 } from "@/lib/tiers-api";
-import { ArrowBackOutlined, LockOutlined } from "@mui/icons-material";
+import { ArrowBackOutlined, ExpandMoreOutlined, LockOutlined, CloseOutlined } from "@mui/icons-material";
 
 function displayName(m: WorkspaceMember): string {
   return m.user.username || m.user.email;
@@ -30,7 +31,8 @@ export default function AccesTiersPage() {
   const [tiers, setTiers] = useState<TiersDetail | null>(null);
   const [acces, setAccesState] = useState<Acces | null>(null);
   const [members, setMembers] = useState<WorkspaceMember[]>([]);
-  const [selected, setSelected] = useState<number[]>([]);
+  const [grants, setGrants] = useState<Grant[]>([]);
+  const [expanded, setExpanded] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -43,7 +45,7 @@ export default function AccesTiersPage() {
       .then(([t, a, m]) => {
         setTiers(t);
         setAccesState(a);
-        setSelected(a.visible_user_ids);
+        setGrants(a.grants);
         setMembers(m);
       })
       .catch(() => setError("Impossible de charger les droits d'accès."))
@@ -60,13 +62,46 @@ export default function AccesTiersPage() {
 
   const createur = members.find((m) => m.user.id === acces?.created_by);
 
+  function memberLabel(userId: number): string {
+    const m = members.find((mb) => mb.user.id === userId);
+    return m ? displayName(m) : `Utilisateur #${userId}`;
+  }
+
+  function onSelectionChange(ids: (string | number)[]) {
+    const idSet = new Set(ids as number[]);
+    const kept = grants.filter((g) => idSet.has(g.user_id));
+    const added = (ids as number[])
+      .filter((uid) => !grants.some((g) => g.user_id === uid))
+      .map((uid) => ({ user_id: uid, sections: [] as string[] }));
+    setGrants([...kept, ...added]);
+  }
+
+  function removeGrant(userId: number) {
+    setGrants((gs) => gs.filter((g) => g.user_id !== userId));
+    if (expanded === userId) setExpanded(null);
+  }
+
+  function toggleSection(userId: number, sectionKey: string) {
+    const available = acces?.available_sections.map((s) => s.key) ?? [];
+    setGrants((gs) =>
+      gs.map((g) => {
+        if (g.user_id !== userId) return g;
+        const current = g.sections.length === 0 ? available : g.sections;
+        const next = current.includes(sectionKey)
+          ? current.filter((k) => k !== sectionKey)
+          : [...current, sectionKey];
+        return { ...g, sections: next };
+      }),
+    );
+  }
+
   async function save() {
     setSaving(true);
     setSaveError(null);
     try {
-      const updated = await setAcces(Number(id), selected);
+      const updated = await setAcces(Number(id), grants);
       setAccesState(updated);
-      setSelected(updated.visible_user_ids);
+      setGrants(updated.grants);
       setToast("Droits d'accès enregistrés.");
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : "Erreur inattendue");
@@ -90,6 +125,8 @@ export default function AccesTiersPage() {
     );
   }
 
+  const availableSections = acces.available_sections;
+
   return (
     <DashboardShell>
       <div className="p-4 md:p-8 max-w-[640px] mx-auto">
@@ -108,37 +145,98 @@ export default function AccesTiersPage() {
         <p className="text-body-md text-on-surface-variant mb-6">
           Par défaut, seul le créateur peut consulter cette fiche — avoir accès au module
           Tiers ne donne pas accès à chaque client qui s&rsquo;y trouve. Ajoutez des personnes
-          ci-dessous pour leur <strong>donner accès</strong> à cette fiche.
+          ci-dessous, puis cliquez sur une personne pour limiter ce qu&rsquo;elle peut ouvrir
+          (informations générales, contacts…).
         </p>
 
         <div className="rounded-2xl border border-outline-soft bg-surface-container-lowest p-4 md:p-5 space-y-5">
           <div>
-            <span className="block text-label-sm uppercase text-outline mb-1.5">
-              Créé par
-            </span>
+            <span className="block text-label-sm uppercase text-outline mb-1.5">Créé par</span>
             <p className="text-body-md text-on-surface">
               {createur ? displayName(createur) : "Inconnu"}
-              <span className="ml-2 text-label-sm text-outline">Toujours autorisé</span>
+              <span className="ml-2 text-label-sm text-outline">Accès complet</span>
             </p>
           </div>
 
           <div>
             <span className="block text-label-sm uppercase text-outline mb-1.5">
-              Personnes autorisées en plus
+              Ajouter une personne
             </span>
             <MultiSelect
               options={membreOptions}
-              selectedIds={selected}
-              onChange={(ids) => setSelected(ids as number[])}
+              selectedIds={grants.map((g) => g.user_id)}
+              onChange={onSelectionChange}
               placeholder="Rechercher une personne du workspace…"
               emptyLabel="Aucun membre trouvé."
             />
-            <p className="text-label-md text-outline mt-1.5">
-              {selected.length === 0
-                ? "Personne d'autre : seul le créateur voit cette fiche."
-                : `${selected.length} personne${selected.length > 1 ? "s" : ""} autorisée${selected.length > 1 ? "s" : ""} en plus du créateur.`}
-            </p>
           </div>
+
+          {grants.length > 0 && (
+            <div>
+              <span className="block text-label-sm uppercase text-outline mb-1.5">
+                Personnes autorisées
+              </span>
+              <ul className="rounded-xl border border-outline-soft divide-y divide-hairline overflow-hidden">
+                {grants.map((g) => {
+                  const isFull = g.sections.length === 0;
+                  const isOpen = expanded === g.user_id;
+                  return (
+                    <li key={g.user_id} className="bg-surface-container-lowest">
+                      <div className="flex items-center gap-2 px-3 py-2.5">
+                        <button
+                          type="button"
+                          onClick={() => setExpanded(isOpen ? null : g.user_id)}
+                          className="flex flex-1 items-center gap-2 min-w-0 text-left"
+                        >
+                          <ExpandMoreOutlined
+                            style={{ fontSize: 18 }}
+                            className={`shrink-0 text-outline transition-transform ${isOpen ? "rotate-180" : ""}`}
+                          />
+                          <span className="text-body-md text-on-surface truncate">
+                            {memberLabel(g.user_id)}
+                          </span>
+                          <span className="text-label-md text-outline shrink-0">
+                            {isFull
+                              ? "Accès complet"
+                              : `${g.sections.length}/${availableSections.length} section${availableSections.length > 1 ? "s" : ""}`}
+                          </span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => removeGrant(g.user_id)}
+                          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors"
+                          aria-label="Retirer"
+                        >
+                          <CloseOutlined style={{ fontSize: 15 }} />
+                        </button>
+                      </div>
+                      {isOpen && (
+                        <div className="px-3 pb-3 pl-9 space-y-1.5">
+                          {availableSections.map((s) => {
+                            const checked = isFull || g.sections.includes(s.key);
+                            return (
+                              <label
+                                key={s.key}
+                                className="flex items-center gap-2 text-body-sm text-on-surface cursor-pointer"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={checked}
+                                  onChange={() => toggleSection(g.user_id, s.key)}
+                                  className="rounded border-outline-soft accent-primary"
+                                />
+                                {s.label}
+                              </label>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
         </div>
 
         {saveError && (

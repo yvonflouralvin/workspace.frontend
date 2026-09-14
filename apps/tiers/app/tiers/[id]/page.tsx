@@ -11,10 +11,12 @@ import { DropdownMenu } from "@repo/ui/DropdownMenu";
 import { DashboardShell } from "@/components/DashboardShell";
 import {
   getTiers,
+  getMesDroits,
   updateTiers,
   deactivateTiers,
   CATEGORIE_LABELS,
   type TiersDetail,
+  type MesDroits,
   type TiersUpdateInput,
 } from "@/lib/tiers-api";
 import { TiersAvatar, TypeBadge } from "../page";
@@ -66,6 +68,7 @@ export default function TiersDetailPage() {
   const canEdit = can("tiers.tiers.manage");
 
   const [tiers, setTiers] = useState<TiersDetail | null>(null);
+  const [mesDroits, setMesDroits] = useState<MesDroits | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
@@ -76,10 +79,11 @@ export default function TiersDetailPage() {
   const [toast, setToast] = useState<string | null>(null);
 
   useEffect(() => {
-    getTiers(Number(id))
-      .then((t) => {
+    Promise.all([getTiers(Number(id)), getMesDroits(Number(id))])
+      .then(([t, droits]) => {
         setTiers(t);
         setForm(toForm(t));
+        setMesDroits(droits);
       })
       .catch(() => setError("Tiers introuvable."))
       .finally(() => setLoading(false));
@@ -166,7 +170,7 @@ export default function TiersDetailPage() {
       </DashboardShell>
     );
   }
-  if (error || !tiers) {
+  if (error || !tiers || !mesDroits) {
     return (
       <DashboardShell>
         <div className="p-4 md:p-8 text-body-md text-error">{error ?? "Tiers introuvable."}</div>
@@ -247,37 +251,48 @@ export default function TiersDetailPage() {
           )}
         </div>
 
+        {mesDroits.sections.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-outline-soft p-8 text-center">
+            <p className="text-body-md text-on-surface-variant">
+              Vous n&rsquo;avez accès à aucune section de cette fiche.
+            </p>
+          </div>
+        ) : (
         <Tabs
           tabs={[
-            {
-              key: "info",
-              label: "Informations générales",
-              content: (
-                <>
-                  {saveError && (
-                    <p className="text-body-sm text-error bg-error-container/40 rounded-lg px-3 py-2 mb-4">
-                      {saveError}
-                    </p>
-                  )}
-                  <InformationsGeneralesForm
-                    f={f}
-                    entreprise={entreprise}
-                    nomLabel={nomLabel}
-                    editing={editing}
-                    saving={saving}
-                    set={set}
-                    save={save}
-                    onCancel={() => {
-                      setEditing(false);
-                      setForm(toForm(tiers));
-                      setSaveError(null);
-                    }}
-                    tiers={tiers}
-                  />
-                </>
-              ),
-            },
-            ...(entreprise
+            ...(mesDroits.sections.includes("informations_generales")
+              ? [
+                  {
+                    key: "info",
+                    label: "Informations générales",
+                    content: (
+                      <>
+                        {saveError && (
+                          <p className="text-body-sm text-error bg-error-container/40 rounded-lg px-3 py-2 mb-4">
+                            {saveError}
+                          </p>
+                        )}
+                        <InformationsGeneralesForm
+                          f={f}
+                          entreprise={entreprise}
+                          nomLabel={nomLabel}
+                          editing={editing}
+                          saving={saving}
+                          set={set}
+                          save={save}
+                          onCancel={() => {
+                            setEditing(false);
+                            setForm(toForm(tiers));
+                            setSaveError(null);
+                          }}
+                          tiers={tiers}
+                        />
+                      </>
+                    ),
+                  },
+                ]
+              : []),
+            ...(entreprise && mesDroits.sections.includes("contacts")
               ? [
                   {
                     key: "contacts",
@@ -290,6 +305,7 @@ export default function TiersDetailPage() {
               : []),
           ]}
         />
+        )}
 
         {confirmArchive && (
           <ConfirmDialog

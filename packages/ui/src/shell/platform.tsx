@@ -35,6 +35,9 @@ import {
   HomeWorkOutlined,
   LanguageOutlined,
   PhotoLibraryOutlined,
+  MenuBookOutlined,
+  AccountBalanceOutlined,
+  AssessmentOutlined,
 } from "@mui/icons-material";
 import type { AppDefinition } from "../types/shell";
 
@@ -167,6 +170,14 @@ export const PLATFORM_APPS: AppDefinition[] = [
     url: process.env.NEXT_PUBLIC_AUTH_API_AUDIT_MISSIONS_DOMAIN ?? "http://localhost:3019",
     color: "#78350f",
     description: "Missions d'audit — checklists de contrôle et anomalies",
+  },
+  {
+    id: "comptabilite",
+    name: "Comptabilité",
+    icon: "C",
+    url: process.env.NEXT_PUBLIC_AUTH_API_COMPTABILITE_DOMAIN ?? "http://localhost:3020",
+    color: "#1e3a8a",
+    description: "Comptabilité générale OHADA — écritures, grand livre, états financiers",
   },
 ];
 
@@ -359,6 +370,28 @@ export const AUDIT_MISSIONS_SHELL: AppShellConfig = {
   },
   routeIcons: {
     "/missions": <WorkOutlineOutlined style={s(15)} />,
+  },
+};
+
+export const COMPTABILITE_SHELL: AppShellConfig = {
+  appName: "Comptabilité",
+  appHref: "/ecritures",
+  appIcon: "C",
+  appColor: "#1e3a8a",
+  routeLabels: {
+    "/ecritures": "Écritures",
+    "/comptes": "Plan comptable",
+    "/journaux": "Journaux",
+    "/exercices": "Exercices",
+    "/grand-livre": "Grand livre",
+    "/balance": "Balance",
+    "/etats": "États financiers",
+    "/taxes": "Taxes",
+  },
+  routeIcons: {
+    "/ecritures": <MenuBookOutlined style={s(15)} />,
+    "/comptes": <AccountBalanceOutlined style={s(15)} />,
+    "/etats": <AssessmentOutlined style={s(15)} />,
   },
 };
 

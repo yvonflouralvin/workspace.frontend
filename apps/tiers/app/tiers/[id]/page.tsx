@@ -7,6 +7,7 @@ import { usePermissions } from "@repo/auth/hooks/usePermissions";
 import { ConfirmDialog } from "@repo/ui/ConfirmDialog";
 import { Toast } from "@repo/ui/Toast";
 import { Tabs } from "@repo/ui/Tabs";
+import { DropdownMenu } from "@repo/ui/DropdownMenu";
 import { DashboardShell } from "@/components/DashboardShell";
 import {
   getTiers,
@@ -23,6 +24,8 @@ import {
   EditOutlined,
   ArchiveOutlined,
   UnarchiveOutlined,
+  LockOutlined,
+  MoreHorizOutlined,
 } from "@mui/icons-material";
 
 const FIELD =
@@ -205,37 +208,42 @@ export default function TiersDetailPage() {
           </div>
 
           {canEdit && (
-            <div className="flex items-center gap-2.5">
-              {tiers.is_active ? (
-                <>
-                  {!editing && (
-                    <button
-                      onClick={() => setEditing(true)}
-                      className="inline-flex items-center gap-1.5 h-11 md:h-[38px] px-3.5 rounded-lg border border-outline-soft bg-surface-container-lowest text-body-sm font-semibold text-on-surface-variant hover:bg-surface-container-low transition-colors"
-                    >
-                      <EditOutlined style={{ fontSize: 16 }} />
-                      Modifier
-                    </button>
-                  )}
-                  <button
-                    onClick={() => setConfirmArchive(true)}
-                    className="inline-flex items-center gap-1.5 h-11 md:h-[38px] px-3.5 rounded-lg text-body-sm font-semibold text-error hover:bg-error-container transition-colors"
-                  >
-                    <ArchiveOutlined style={{ fontSize: 16 }} />
-                    Archiver
-                  </button>
-                </>
-              ) : (
-                <button
-                  onClick={restore}
-                  disabled={saving}
-                  className="inline-flex items-center gap-1.5 h-11 md:h-[38px] px-4 rounded-lg bg-primary text-on-primary text-body-sm font-semibold shadow-button hover:bg-primary-container transition-colors"
-                >
-                  <UnarchiveOutlined style={{ fontSize: 16 }} />
-                  Réactiver
-                </button>
-              )}
-            </div>
+            <DropdownMenu
+              label="Options"
+              icon={<MoreHorizOutlined style={{ fontSize: 18 }} />}
+              items={[
+                ...(tiers.is_active && !editing
+                  ? [
+                      {
+                        key: "modifier",
+                        label: "Modifier",
+                        icon: <EditOutlined style={{ fontSize: 16 }} />,
+                        onClick: () => setEditing(true),
+                      },
+                    ]
+                  : []),
+                {
+                  key: "acces",
+                  label: "Droits d'accès",
+                  icon: <LockOutlined style={{ fontSize: 16 }} />,
+                  onClick: () => router.push(`/tiers/${id}/acces`),
+                },
+                tiers.is_active
+                  ? {
+                      key: "archiver",
+                      label: "Archiver",
+                      icon: <ArchiveOutlined style={{ fontSize: 16 }} />,
+                      onClick: () => setConfirmArchive(true),
+                      danger: true,
+                    }
+                  : {
+                      key: "reactiver",
+                      label: "Réactiver",
+                      icon: <UnarchiveOutlined style={{ fontSize: 16 }} />,
+                      onClick: restore,
+                    },
+              ]}
+            />
           )}
         </div>
 

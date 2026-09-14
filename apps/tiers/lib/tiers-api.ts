@@ -181,6 +181,39 @@ export async function deleteContact(tiersId: number, contactId: number): Promise
   if (!res.ok) throw new Error("Erreur lors de la suppression du contact");
 }
 
+export interface Acces {
+  created_by: number | null;
+  visible_user_ids: number[];
+}
+
+export async function getAcces(tiersId: number): Promise<Acces> {
+  const res = await apiFetch(`/api/tiers/${tiersId}/acces`);
+  if (!res.ok) throw new Error("Impossible de charger les droits d'accès");
+  return res.json();
+}
+
+export async function setAcces(tiersId: number, visibleUserIds: number[]): Promise<Acces> {
+  const res = await apiFetch(`/api/tiers/${tiersId}/acces`, {
+    method: "PUT",
+    body: { visible_user_ids: visibleUserIds },
+  });
+  if (!res.ok) throw new Error("Impossible d'enregistrer les droits d'accès");
+  return res.json();
+}
+
+export interface WorkspaceMember {
+  id: number;
+  user: { id: number; email: string; username: string };
+}
+
+export async function listMembers(workspaceId: number, q = "", limit = 100): Promise<WorkspaceMember[]> {
+  const qs = new URLSearchParams({ q, limit: String(limit) });
+  const res = await apiFetch(`/api/workspaces/${workspaceId}/members?${qs}`);
+  if (!res.ok) return [];
+  const data = await res.json();
+  return data.members;
+}
+
 export async function logout(): Promise<void> {
   await apiFetch("/api/auth/logout", { method: "POST" });
 }

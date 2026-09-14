@@ -106,9 +106,9 @@ export default function AccesTiersPage() {
           <h1 className="font-display text-headline-md text-on-surface">Droits d&rsquo;accès</h1>
         </div>
         <p className="text-body-md text-on-surface-variant mb-6">
-          Par défaut, toute personne autorisée à voir les tiers peut consulter cette fiche.
-          Ajoutez des personnes ci-dessous pour <strong>restreindre</strong> l&rsquo;accès au
-          créateur et à cette liste uniquement.
+          Par défaut, seul le créateur peut consulter cette fiche — avoir accès au module
+          Tiers ne donne pas accès à chaque client qui s&rsquo;y trouve. Ajoutez des personnes
+          ci-dessous pour leur <strong>donner accès</strong> à cette fiche.
         </p>
 
         <div className="rounded-2xl border border-outline-soft bg-surface-container-lowest p-4 md:p-5 space-y-5">
@@ -135,7 +135,7 @@ export default function AccesTiersPage() {
             />
             <p className="text-label-md text-outline mt-1.5">
               {selected.length === 0
-                ? "Aucune restriction : tout le monde peut voir cette fiche."
+                ? "Personne d'autre : seul le créateur voit cette fiche."
                 : `${selected.length} personne${selected.length > 1 ? "s" : ""} autorisée${selected.length > 1 ? "s" : ""} en plus du créateur.`}
             </p>
           </div>

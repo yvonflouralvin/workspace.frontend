@@ -37,7 +37,6 @@ const LABEL = "block text-label-sm uppercase text-outline";
 export default function ProjectOverviewPage() {
   const { projectId, project, setProject, tasks, phases, jalons, members, canManage } = useProject();
   const showPhases = phasesVisible(phases);
-  const [name, setName] = useState(project.name);
 
   const { queue, etat, echec, oublierEchec } = useAutosave<Project>(
     useCallback(
@@ -68,31 +67,15 @@ export default function ProjectOverviewPage() {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-6 items-start">
       <div>
-        <div className="flex items-start justify-between gap-4">
-          <label className={LABEL} htmlFor="project-name">
-            Nom du projet
-          </label>
+        <div className="flex items-start justify-between gap-4 mb-2">
+          <p className={LABEL}>Description</p>
           <SaveIndicator state={etat} />
         </div>
-        <input
-          id="project-name"
-          value={name}
-          onChange={(e) => {
-            setName(e.target.value);
-            if (e.target.value.trim()) queue({ name: e.target.value.trim() });
-          }}
-          disabled={!canManage}
-          placeholder="Nom du projet"
-          className="mt-1 w-full bg-transparent font-display text-headline-md text-on-surface outline-none border-b border-transparent hover:border-outline-soft focus:border-primary transition-colors disabled:hover:border-transparent"
-        />
-        {!name.trim() && <p className="mt-1 text-label-md text-error">Le nom est requis.</p>}
         {echec && (
-          <div className="mt-3">
+          <div className="mb-3">
             <EchecAutosave echec={echec} projectId={projectId} onFermer={oublierEchec} />
           </div>
         )}
-
-        <p className={`${LABEL} mt-6 mb-2`}>Description</p>
         <div className="rounded-2xl border border-outline-soft bg-surface-container-lowest overflow-hidden">
           <RichTextEditor
             value={project.description_rich}

@@ -160,6 +160,14 @@ export const PLATFORM_APPS: AppDefinition[] = [
     color: "#0891b2",
     description: "Rapports temps réel agrégés des applications",
   },
+  {
+    id: "audit_missions",
+    name: "Audit",
+    icon: "A",
+    url: process.env.NEXT_PUBLIC_AUTH_API_AUDIT_MISSIONS_DOMAIN ?? "http://localhost:3019",
+    color: "#78350f",
+    description: "Missions d'audit — checklists de contrôle et anomalies",
+  },
 ];
 
 /** Le sélecteur d'apps de chaque écran : une permission `.access` ne suffit
@@ -338,6 +346,19 @@ export const TIERS_SHELL: AppShellConfig = {
   },
   routeIcons: {
     "/tiers": <GroupsOutlined style={s(15)} />,
+  },
+};
+
+export const AUDIT_MISSIONS_SHELL: AppShellConfig = {
+  appName: "Audit",
+  appHref: "/missions",
+  appIcon: "A",
+  appColor: "#78350f",
+  routeLabels: {
+    "/missions": "Missions",
+  },
+  routeIcons: {
+    "/missions": <WorkOutlineOutlined style={s(15)} />,
   },
 };
 

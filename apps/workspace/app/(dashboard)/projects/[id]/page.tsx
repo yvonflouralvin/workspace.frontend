@@ -175,6 +175,35 @@ export default function ProjectOverviewPage() {
           />
         </MetaRow>
 
+        <MetaRow label="Client (Tiers)">
+          <NumberValue
+            value={project.tiers_id ?? null}
+            editable={canManage}
+            placeholder="ID tiers"
+            onChange={(v) => queue({ tiers_id: v })}
+          />
+        </MetaRow>
+
+        <MetaRow label="Budget">
+          <NumberValue
+            value={project.budget ?? null}
+            editable={canManage}
+            placeholder="Montant"
+            step="0.01"
+            onChange={(v) => queue({ budget: v })}
+          />
+        </MetaRow>
+
+        <MetaRow label="Heures prévues">
+          <NumberValue
+            value={project.heures_prevues ?? null}
+            editable={canManage}
+            placeholder="Heures"
+            step="0.5"
+            onChange={(v) => queue({ heures_prevues: v })}
+          />
+        </MetaRow>
+
         <div className="px-4 py-3">
           <div className="flex items-center justify-between">
             <span className="text-body-sm text-on-surface-variant">Progression</span>
@@ -289,6 +318,34 @@ function MetaRow({ label, children }: { label: string; children: React.ReactNode
       <span className="text-body-sm text-on-surface-variant">{label}</span>
       {children}
     </div>
+  );
+}
+
+function NumberValue({
+  value,
+  editable,
+  onChange,
+  placeholder,
+  step,
+}: {
+  value: number | null;
+  editable: boolean;
+  onChange: (value: number | null) => void;
+  placeholder?: string;
+  step?: string;
+}) {
+  if (!editable) {
+    return <span className="text-body-sm text-on-surface">{value ?? "—"}</span>;
+  }
+  return (
+    <input
+      type="number"
+      step={step ?? "1"}
+      value={value ?? ""}
+      placeholder={placeholder}
+      onChange={(e) => onChange(e.target.value === "" ? null : Number(e.target.value))}
+      className="w-[110px] h-8 rounded-lg border border-outline-soft bg-surface-container-lowest px-2 text-body-sm text-on-surface outline-none focus:border-primary text-right"
+    />
   );
 }
 

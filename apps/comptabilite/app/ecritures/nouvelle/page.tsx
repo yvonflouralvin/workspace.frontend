@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { DashboardShell } from "@/components/DashboardShell";
+import { AideFlottante } from "@/components/AideFlottante";
+import { AIDE_ECRITURES } from "@/components/aide-contenu";
 import { EcritureEditor } from "@/components/EcritureEditor";
 import { listJournaux, listExercices, type Journal, type Exercice } from "@/lib/compta-api";
 
@@ -49,6 +51,7 @@ export default function NouvelleEcriturePage() {
           />
         )}
       </div>
+      <AideFlottante titre={AIDE_ECRITURES.titre}>{AIDE_ECRITURES.contenu}</AideFlottante>
     </DashboardShell>
   );
 }

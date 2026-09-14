@@ -6,6 +6,8 @@ import { usePermissions } from "@repo/auth/hooks/usePermissions";
 import { ConfirmDialog } from "@repo/ui/ConfirmDialog";
 import { DashboardShell } from "@/components/DashboardShell";
 import { EcritureEditor } from "@/components/EcritureEditor";
+import { AideFlottante } from "@/components/AideFlottante";
+import { AIDE_ECRITURES } from "@/components/aide-contenu";
 import {
   getEcriture,
   deleteEcriture,
@@ -205,6 +207,7 @@ export default function EcritureDetailPage() {
             />
           )}
         </div>
+        <AideFlottante titre={AIDE_ECRITURES.titre}>{AIDE_ECRITURES.contenu}</AideFlottante>
       </DashboardShell>
     );
   }
@@ -324,6 +327,7 @@ export default function EcritureDetailPage() {
           />
         )}
       </div>
+      <AideFlottante titre={AIDE_ECRITURES.titre}>{AIDE_ECRITURES.contenu}</AideFlottante>
     </DashboardShell>
   );
 }

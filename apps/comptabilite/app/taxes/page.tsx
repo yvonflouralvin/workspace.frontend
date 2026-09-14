@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
 import { DashboardShell } from "@/components/DashboardShell";
+import { AideFlottante } from "@/components/AideFlottante";
+import { AIDE_TAXES } from "@/components/aide-contenu";
 import { listTaxes, chargerTaxeDefaut, listComptes, createTaxe, type Taxe, type Compte } from "@/lib/compta-api";
 import { AddOutlined, DownloadOutlined } from "@mui/icons-material";
 
@@ -144,6 +146,7 @@ export default function TaxesPage() {
           </ul>
         )}
       </div>
+      <AideFlottante titre={AIDE_TAXES.titre}>{AIDE_TAXES.contenu}</AideFlottante>
     </DashboardShell>
   );
 }

@@ -5,6 +5,8 @@ import Link from "next/link";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
 import { DataList, type DataListColumn } from "@repo/ui/DataList";
 import { DashboardShell } from "@/components/DashboardShell";
+import { AideFlottante } from "@/components/AideFlottante";
+import { AIDE_ECRITURES } from "@/components/aide-contenu";
 import {
   listEcritures,
   listJournaux,
@@ -144,6 +146,7 @@ export default function EcrituresPage() {
           />
         )}
       </div>
+      <AideFlottante titre={AIDE_ECRITURES.titre}>{AIDE_ECRITURES.contenu}</AideFlottante>
     </DashboardShell>
   );
 }

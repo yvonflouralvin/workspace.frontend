@@ -119,7 +119,7 @@ export default function DeviseSettingsPage() {
                   Devise principale utilisée pour établir les factures.
                 </p>
               </div>
-              <div className="max-w-xs">
+              <div className="max-w-[20rem]">
                 <label className={labelCls}>Devise de base</label>
                 <input
                   className={inputCls}

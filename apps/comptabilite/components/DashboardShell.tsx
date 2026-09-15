@@ -24,10 +24,12 @@ import {
 import type { NavItem } from "@repo/ui/types/shell";
 import { menuDeSession } from "@repo/ui/shell/AccueilApp";
 
+const WORKSPACE_DOMAIN = process.env.NEXT_PUBLIC_WORKSPACE_DOMAIN ?? "http://localhost:3005";
+
 const NAV_ITEMS: NavItem[] = [
   {
     label: "Accueil",
-    href: process.env.NEXT_PUBLIC_WORKSPACE_DOMAIN ?? "http://localhost:3005",
+    href: WORKSPACE_DOMAIN,
     icon: <HomeOutlined style={{ fontSize: 20 }} />,
     exact: true,
     accueil: true,
@@ -69,9 +71,9 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       topBar={
         <TopBar
           apps={visibleApps}
-          allAppsUrl="/"
+          allAppsUrl={WORKSPACE_DOMAIN}
           user={userSummary}
-          preferencesUrl="/"
+          preferencesUrl={`${WORKSPACE_DOMAIN}/preferences`}
           onLogout={handleLogout}
           {...COMPTABILITE_SHELL}
         />

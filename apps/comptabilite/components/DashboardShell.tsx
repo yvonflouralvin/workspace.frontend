@@ -23,6 +23,7 @@ import {
 } from "@mui/icons-material";
 import type { NavItem } from "@repo/ui/types/shell";
 import { menuDeSession } from "@repo/ui/shell/AccueilApp";
+import { DeviseTenueGuard } from "@/components/DeviseTenueGuard";
 
 const WORKSPACE_DOMAIN = process.env.NEXT_PUBLIC_WORKSPACE_DOMAIN ?? "http://localhost:3005";
 
@@ -43,7 +44,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "États financiers", href: "/etats", icon: <AssessmentOutlined style={{ fontSize: 20 }} />, exact: true },
   { label: "Taxes", href: "/taxes", icon: <PercentOutlined style={{ fontSize: 20 }} />, exact: true },
   { label: "Factures à comptabiliser", href: "/comptabiliser", icon: <ReceiptLongOutlined style={{ fontSize: 20 }} />, exact: true },
-  { label: "Paramètres", href: "/parametres/referentiels", icon: <SettingsOutlined style={{ fontSize: 20 }} />, exact: true },
+  { label: "Paramètres", href: "/parametres", icon: <SettingsOutlined style={{ fontSize: 20 }} /> },
 ];
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
@@ -79,6 +80,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         />
       }
     >
+      <DeviseTenueGuard />
       {children}
     </AppShell>
   );

@@ -474,6 +474,43 @@ export async function comptabiliserFacture(
   return res.json();
 }
 
+// ───────────────────────── Configuration (devise de tenue) ─────────────────────────
+
+export interface Configuration {
+  devise_tenue: string | null;
+}
+
+export interface DeviseDisponible {
+  code: string;
+  libelle: string | null;
+  est_devise_base: boolean;
+}
+
+export async function getConfiguration(): Promise<Configuration> {
+  const res = await apiFetch("/api/compta/configuration");
+  if (!res.ok) return { devise_tenue: null };
+  return res.json();
+}
+
+export async function listDevisesDisponibles(): Promise<DeviseDisponible[]> {
+  const res = await apiFetch("/api/compta/configuration/devises-disponibles");
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail ?? "Erreur lors du chargement des devises");
+  }
+  const data = await res.json();
+  return data.devises;
+}
+
+export async function updateConfiguration(deviseTenue: string): Promise<Configuration> {
+  const res = await apiFetch("/api/compta/configuration", { method: "PUT", body: { devise_tenue: deviseTenue } });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail ?? "Erreur lors de l'enregistrement");
+  }
+  return res.json();
+}
+
 export async function logout(): Promise<void> {
   await apiFetch("/api/auth/logout", { method: "POST" });
 }

@@ -19,6 +19,7 @@ import {
   listClients,
   createClient,
   listProduits,
+  tauxInverse,
   type CommandeDetail,
   type StatutCommande,
   type Client,
@@ -68,7 +69,7 @@ function conversions(montant: number, devises: DeviseEntry[]): string {
 }
 
 function tauxNote(base: string, devises: DeviseEntry[]): string {
-  return devises.map((d) => `1 ${base} = ${d.taux} ${d.code}`).join(" · ");
+  return devises.map((d) => `1 ${d.code} = ${Number(tauxInverse(d.taux).toPrecision(8))} ${base}`).join(" · ");
 }
 
 function Meta({ icon, value }: { icon: React.ReactNode; value: string | null }) {

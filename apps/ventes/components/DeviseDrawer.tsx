@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { RightDrawer } from "@repo/ui/RightDrawer";
-import type { DeviseEntry } from "@/lib/ventes-api";
+import { tauxInverse, type DeviseEntry } from "@/lib/ventes-api";
 
 const inputCls =
   "w-full px-3 py-2 rounded-xl border border-outline-variant bg-surface-container-lowest text-body-md text-on-surface focus:outline-none focus:border-primary transition-colors";
@@ -24,7 +24,11 @@ export function DeviseDrawer({
   const editing = !!entry;
   const [code, setCode] = useState(entry?.code ?? "");
   const [libelle, setLibelle] = useState(entry?.libelle ?? "");
-  const [taux, setTaux] = useState(entry ? String(entry.taux) : "");
+  // Saisi et affiché dans le sens « 1 autre devise = ? devise de base » — plus
+  // naturel qu'une fraction quand l'autre devise est plus forte que la base.
+  // Reconverti vers le sens stocké (1 base = ? autre, utilisé par les calculs
+  // de montants) à l'enregistrement, via tauxInverse (symétrique).
+  const [tauxSaisi, setTauxSaisi] = useState(entry ? String(tauxInverse(entry.taux)) : "");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -36,13 +40,18 @@ export function DeviseDrawer({
       setError("Cette devise existe déjà.");
       return;
     }
+    const saisi = tauxSaisi.trim();
+    if (saisi !== "" && Number(saisi) <= 0) {
+      setError("Le taux doit être un nombre positif.");
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {
       await onSave({
         code: c,
         libelle: libelle.trim() || null,
-        taux: taux.trim() === "" ? 1 : Number(taux),
+        taux: saisi === "" ? 1 : tauxInverse(Number(saisi)),
       });
       onClose();
     } catch (err) {
@@ -83,14 +92,14 @@ export function DeviseDrawer({
           />
         </div>
         <div>
-          <label className={labelCls}>Taux — 1 {baseDevise || "base"} = ? {code.trim().toUpperCase() || "devise"}</label>
+          <label className={labelCls}>Taux — 1 {code.trim().toUpperCase() || "devise"} = ? {baseDevise || "base"}</label>
           <input
             className={inputCls}
             type="number"
             step="0.000001"
             min="0"
-            value={taux}
-            onChange={(e) => setTaux(e.target.value)}
+            value={tauxSaisi}
+            onChange={(e) => setTauxSaisi(e.target.value)}
             placeholder="1"
           />
         </div>

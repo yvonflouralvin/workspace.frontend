@@ -494,6 +494,15 @@ export interface DeviseValeur {
   devises: DeviseEntry[];
 }
 
+/* `taux` est stocké comme "1 base = taux autre" (utilisé par les calculs :
+   montant_base * taux = montant_autre). L'inverse — "1 autre = ? base" — est
+   ce qui se lit naturellement pour une devise plus forte que la base ; ne
+   sert qu'à l'affichage/la saisie, jamais stocké sous cette forme. */
+export function tauxInverse(taux: number | string): number {
+  const n = Number(taux);
+  return n > 0 ? 1 / n : 0;
+}
+
 export async function listParametres(): Promise<Parametre[]> {
   const res = await apiFetch("/api/parametres");
   if (!res.ok) throw new Error("Erreur lors du chargement des paramètres");

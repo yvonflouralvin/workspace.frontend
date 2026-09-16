@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
 import { ParametresLayout } from "@/components/ParametresLayout";
 import { DeviseDrawer } from "@/components/DeviseDrawer";
-import { getParametre, updateParametre, type DeviseEntry, type DeviseValeur } from "@/lib/ventes-api";
+import { getParametre, updateParametre, tauxInverse, type DeviseEntry, type DeviseValeur } from "@/lib/ventes-api";
 import {
   ArrowBackOutlined,
   AddOutlined,
@@ -175,7 +175,7 @@ export default function DeviseSettingsPage() {
                         {d.libelle || "—"}
                       </span>
                       <span className="text-body-sm text-on-surface tabular-nums">
-                        1 {baseDevise || "base"} = {d.taux} {d.code}
+                        1 {d.code} = {Number(tauxInverse(d.taux).toPrecision(8))} {baseDevise || "base"}
                       </span>
                       <div className="flex items-center gap-0.5 shrink-0">
                         <button

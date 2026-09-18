@@ -25,8 +25,8 @@ import {
   type Echange,
   type TypeEchange,
 } from "@/lib/tiers-api";
-import { listMissions, createMission, type Mission } from "@/lib/projects-api";
-import { AddOutlined, DeleteOutlineOutlined, OpenInNewOutlined } from "@mui/icons-material";
+import { listMissions, createMission, STATUT_MISSION_LABELS, type MissionSummary } from "@/lib/bfm-missions-api";
+import { AddOutlined, DeleteOutlineOutlined, ChevronRightOutlined } from "@mui/icons-material";
 
 const FIELD =
   "rounded-lg border border-outline-soft bg-surface-container-lowest px-2.5 py-1.5 text-body-sm text-on-surface outline-none focus:border-primary transition-colors";
@@ -219,10 +219,10 @@ export function ServicesPanel({ tiersId }: { tiersId: number }) {
   );
 }
 
-// ───────────────────────── Missions (projects) ─────────────────────────
+// ───────────────────────── Missions ─────────────────────────
 
 export function MissionsPanel({ tiersId }: { tiersId: number }) {
-  const [items, setItems] = useState<Mission[] | null>(null);
+  const [items, setItems] = useState<MissionSummary[] | null>(null);
   const [ajout, setAjout] = useState(false);
   const [nom, setNom] = useState("");
 
@@ -231,7 +231,7 @@ export function MissionsPanel({ tiersId }: { tiersId: number }) {
 
   async function ajouter(e: React.FormEvent) {
     e.preventDefault();
-    await createMission({ name: nom, key: nom.slice(0, 8).toUpperCase().replace(/[^A-Z0-9]/g, "") || "MIS", tiers_id: tiersId });
+    await createMission({ nom, tiers_id: tiersId });
     logActivite(tiersId, `Mission créée : ${nom}`);
     setNom(""); setAjout(false);
     reload();
@@ -260,11 +260,11 @@ export function MissionsPanel({ tiersId }: { tiersId: number }) {
           {items.map((m) => (
             <li key={m.id} className="flex items-center gap-3 px-3 py-2.5">
               <div className="flex-1 min-w-0">
-                <p className="text-body-sm font-medium text-on-surface">{m.name}</p>
-                <p className="text-label-md text-outline">{m.status} {m.type_mission ? `· ${m.type_mission}` : ""}</p>
+                <p className="text-body-sm font-medium text-on-surface">{m.nom}</p>
+                <p className="text-label-md text-outline">{STATUT_MISSION_LABELS[m.statut]} {m.type_mission ? `· ${m.type_mission}` : ""}</p>
               </div>
-              <a href={`${process.env.NEXT_PUBLIC_WORKSPACE_DOMAIN ?? "http://localhost:3005"}/projects/${m.id}`} target="_blank" rel="noreferrer" className="text-outline hover:text-primary transition-colors">
-                <OpenInNewOutlined style={{ fontSize: 16 }} />
+              <a href={`/missions/${m.id}`} className="text-outline hover:text-primary transition-colors">
+                <ChevronRightOutlined style={{ fontSize: 18 }} />
               </a>
             </li>
           ))}

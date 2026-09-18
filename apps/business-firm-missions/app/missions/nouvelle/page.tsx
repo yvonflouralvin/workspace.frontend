@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { SearchSelect } from "@repo/ui/SearchSelect";
 import { DashboardShell } from "@/components/DashboardShell";
-import { createMission } from "@/lib/projects-api";
+import { createMission } from "@/lib/bfm-missions-api";
 import { searchTiers } from "@/lib/tiers-api";
 
 const FIELD =
@@ -16,6 +16,7 @@ interface TiersBrief { id: number; code: string; nom: string }
 export default function NouvelleMissionPage() {
   const router = useRouter();
   const [nom, setNom] = useState("");
+  const [description, setDescription] = useState("");
   const [tiersId, setTiersId] = useState<number | null>(null);
   const [tiersLabel, setTiersLabel] = useState("");
   const [typeMission, setTypeMission] = useState("");
@@ -33,10 +34,9 @@ export default function NouvelleMissionPage() {
     setSaving(true);
     setError(null);
     try {
-      const key = nom.trim().slice(0, 8).toUpperCase().replace(/[^A-Z0-9]/g, "") || "MIS";
       const mission = await createMission({
-        name: nom.trim(),
-        key,
+        nom: nom.trim(),
+        description: description.trim() || undefined,
         tiers_id: tiersId ?? undefined,
         type_mission: typeMission.trim() || undefined,
         departement: departement.trim() || undefined,
@@ -45,7 +45,7 @@ export default function NouvelleMissionPage() {
         start_date: dateDebut || undefined,
         due_date: dateFin || undefined,
       });
-      router.push(`/missions?created=${mission.id}`);
+      router.push(`/missions/${mission.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur inattendue");
     } finally {
@@ -59,7 +59,7 @@ export default function NouvelleMissionPage() {
         <div>
           <h1 className="font-display text-headline-lg text-on-surface">Nouvelle mission</h1>
           <p className="text-body-md text-on-surface-variant mt-0.5">
-            Le suivi étape par étape (tâches, sous-tâches, jalons) se fait ensuite dans l&rsquo;app Workspace.
+            Les phases et les tâches se créent ensuite depuis la fiche de la mission.
           </p>
         </div>
 
@@ -68,6 +68,10 @@ export default function NouvelleMissionPage() {
           <div>
             <span className={LABEL}>Nom de la mission *</span>
             <input className={`${FIELD} w-full`} value={nom} onChange={(e) => setNom(e.target.value)} required autoFocus />
+          </div>
+          <div>
+            <span className={LABEL}>Objectif / description</span>
+            <textarea className={`${FIELD} w-full`} rows={3} value={description} onChange={(e) => setDescription(e.target.value)} />
           </div>
           <div>
             <span className={LABEL}>Client concerné</span>

@@ -4,41 +4,33 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { DataList, type DataListColumn } from "@repo/ui/DataList";
 import { DashboardShell } from "@/components/DashboardShell";
-import { listMissions, type Mission } from "@/lib/projects-api";
-import { AddOutlined, OpenInNewOutlined } from "@mui/icons-material";
-
-const WORKSPACE_DOMAIN = process.env.NEXT_PUBLIC_WORKSPACE_DOMAIN ?? "http://localhost:3005";
+import { listMissions, STATUT_MISSION_LABELS, type MissionSummary } from "@/lib/bfm-missions-api";
+import { AddOutlined } from "@mui/icons-material";
 
 export default function MissionsPage() {
-  const [missions, setMissions] = useState<Mission[] | null>(null);
+  const [missions, setMissions] = useState<MissionSummary[] | null>(null);
 
   useEffect(() => {
     listMissions().then(setMissions);
   }, []);
 
-  const columns = useMemo<DataListColumn<Mission>[]>(
+  const columns = useMemo<DataListColumn<MissionSummary>[]>(
     () => [
-      { key: "name", header: "Nom", render: (m) => m.name },
+      { key: "code", header: "Code", render: (m) => <span className="font-mono">{m.code}</span> },
+      { key: "nom", header: "Nom", render: (m) => m.nom },
       { key: "type", header: "Type de mission", render: (m) => m.type_mission ?? "—" },
       { key: "departement", header: "Département", render: (m) => m.departement ?? "—" },
-      { key: "status", header: "Statut", render: (m) => m.status },
-      { key: "budget", header: "Budget", render: (m) => m.budget ? m.budget.toLocaleString("fr-FR") : "—" },
-      { key: "avancement", header: "Tâches", render: (m) => `${m.done_count ?? 0}/${m.task_count ?? 0}` },
       {
-        key: "actions",
-        header: "",
+        key: "statut",
+        header: "Statut",
         render: (m) => (
-          <a
-            href={`${WORKSPACE_DOMAIN}/projects/${m.id}`}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1 text-body-sm font-semibold text-primary hover:underline"
-            onClick={(e) => e.stopPropagation()}
-          >
-            Ouvrir <OpenInNewOutlined style={{ fontSize: 14 }} />
-          </a>
+          <span className="rounded-md px-2 py-0.5 text-[11px] font-semibold bg-surface-container text-on-surface-variant">
+            {STATUT_MISSION_LABELS[m.statut]}
+          </span>
         ),
       },
+      { key: "budget", header: "Budget", render: (m) => m.budget ? m.budget.toLocaleString("fr-FR") : "—" },
+      { key: "avancement", header: "Tâches", render: (m) => `${m.taches_terminees}/${m.taches_total}` },
     ],
     [],
   );
@@ -50,7 +42,7 @@ export default function MissionsPage() {
           <div>
             <h1 className="font-display text-headline-lg text-on-surface">Missions</h1>
             <p className="text-body-md text-on-surface-variant mt-0.5">
-              Dossiers et missions génériques — le suivi détaillé (tâches, sous-tâches, jalons) se fait dans l&rsquo;app Workspace.
+              Dossiers et missions — chacune se découpe en phases, elles-mêmes en tâches.
             </p>
           </div>
           <Link
@@ -69,10 +61,11 @@ export default function MissionsPage() {
             items={missions}
             columns={columns}
             getRowKey={(m) => m.id}
-            searchText={(m) => `${m.name} ${m.type_mission ?? ""} ${m.departement ?? ""}`}
+            searchText={(m) => `${m.code} ${m.nom} ${m.type_mission ?? ""} ${m.departement ?? ""}`}
             searchPlaceholder="Rechercher une mission…"
             pageSize={20}
             emptyMessage="Aucune mission."
+            onRowClick={(m) => { window.location.href = `/missions/${m.id}`; }}
           />
         )}
       </div>

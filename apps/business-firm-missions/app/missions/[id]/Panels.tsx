@@ -261,7 +261,6 @@ function EquipeSection({ missionId }: { missionId: number }) {
 
 export function ParametresPanel({ mission, reload }: { mission: Mission; reload: () => void }) {
   const [form, setForm] = useState({
-    nom: mission.nom,
     description: mission.description ?? "",
     type_mission: mission.type_mission ?? "",
     departement: mission.departement ?? "",
@@ -281,7 +280,6 @@ export function ParametresPanel({ mission, reload }: { mission: Mission; reload:
     setSaved(false);
     try {
       await updateMission(mission.id, {
-        nom: form.nom,
         description: form.description || null,
         type_mission: form.type_mission || null,
         departement: form.departement || null,
@@ -302,10 +300,6 @@ export function ParametresPanel({ mission, reload }: { mission: Mission; reload:
   return (
     <div className="space-y-4">
       <form onSubmit={enregistrer} className="rounded-2xl border border-outline-soft bg-surface-container-lowest p-4 space-y-4">
-        <div>
-          <span className={LABEL}>Nom</span>
-          <input className={`${FIELD} w-full`} value={form.nom} onChange={(e) => setForm({ ...form, nom: e.target.value })} />
-        </div>
         <div>
           <span className={LABEL}>Objectif / description</span>
           <textarea className={`${FIELD} w-full`} rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />

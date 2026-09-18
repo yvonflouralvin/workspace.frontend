@@ -1,13 +1,24 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Tabs, type TabItem } from "@repo/ui/Tabs";
 import { DashboardShell } from "@/components/DashboardShell";
-import { getMission, listPhases, listTaches, STATUT_MISSION_LABELS, type Mission, type Phase, type Tache } from "@/lib/bfm-missions-api";
+import {
+  getMission,
+  updateMission,
+  listPhases,
+  listTaches,
+  STATUT_MISSION_LABELS,
+  type Mission,
+  type Phase,
+  type Tache,
+} from "@/lib/bfm-missions-api";
 import { ApercuPanel, PhasesPanel, ParametresPanel } from "./Panels";
-import { ArrowBackOutlined } from "@mui/icons-material";
+import { ArrowBackOutlined, CloudDoneOutlined, CloudSyncOutlined } from "@mui/icons-material";
+
+const COULEUR = "#7c2d12";
 
 export default function MissionDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -16,6 +27,8 @@ export default function MissionDetailPage() {
   const [phases, setPhases] = useState<Phase[] | null>(null);
   const [taches, setTaches] = useState<Tache[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [titre, setTitre] = useState("");
+  const [etatTitre, setEtatTitre] = useState<"idle" | "saving" | "saved">("idle");
 
   function reload() {
     getMission(missionId).then(setMission).catch((err) => setError(err instanceof Error ? err.message : "Erreur inattendue"));
@@ -23,6 +36,18 @@ export default function MissionDetailPage() {
     listTaches(missionId).then(setTaches);
   }
   useEffect(reload, [missionId]);
+  useEffect(() => {
+    if (mission) setTitre(mission.nom);
+  }, [mission?.id, mission?.nom]);
+
+  const enregistrerTitre = useCallback(async () => {
+    const nom = titre.trim();
+    if (!nom || nom === mission?.nom) return;
+    setEtatTitre("saving");
+    const updated = await updateMission(missionId, { nom });
+    setMission(updated);
+    setEtatTitre("saved");
+  }, [titre, mission?.nom, missionId]);
 
   if (error) {
     return (
@@ -47,21 +72,45 @@ export default function MissionDetailPage() {
 
   return (
     <DashboardShell>
-      <div className="p-4 md:p-8 max-w-[1000px] mx-auto space-y-5">
-        <div className="flex items-center gap-3">
-          <Link href="/missions" className="text-outline hover:text-on-surface transition-colors">
-            <ArrowBackOutlined style={{ fontSize: 20 }} />
-          </Link>
-          <div className="flex-1">
-            <h1 className="font-display text-headline-lg text-on-surface font-mono">{mission.code}</h1>
-            <p className="text-body-sm text-on-surface-variant">{mission.nom}</p>
-          </div>
-          <span className="rounded-md px-2.5 py-1 text-body-sm font-semibold bg-surface-container text-on-surface-variant">
-            {STATUT_MISSION_LABELS[mission.statut]}
+      <div className="p-4 md:p-8 max-w-[1152px] mx-auto">
+        <Link
+          href="/missions"
+          className="inline-flex items-center gap-1.5 text-body-sm font-medium text-on-surface-variant hover:text-primary transition-colors mb-4"
+        >
+          <ArrowBackOutlined style={{ fontSize: 15 }} />
+          Missions
+        </Link>
+
+        <div className="flex items-center gap-3.5">
+          <span
+            className="w-11 h-11 flex-none rounded-[11px] flex items-center justify-center font-display text-body-lg font-semibold"
+            style={{ background: `color-mix(in srgb, ${COULEUR} 10%, transparent)`, color: COULEUR }}
+          >
+            {mission.nom.slice(0, 2).toUpperCase()}
           </span>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <input
+                value={titre}
+                onChange={(e) => setTitre(e.target.value)}
+                onBlur={enregistrerTitre}
+                placeholder="Nom de la mission"
+                className="min-w-0 flex-1 bg-transparent font-display text-headline-sm text-on-surface truncate outline-none border-b border-transparent hover:border-outline-soft focus:border-primary transition-colors"
+              />
+              {etatTitre === "saving" && (
+                <CloudSyncOutlined style={{ fontSize: 16 }} className="text-on-surface-variant shrink-0" />
+              )}
+              {etatTitre === "saved" && (
+                <CloudDoneOutlined style={{ fontSize: 16 }} className="text-secondary shrink-0" />
+              )}
+            </div>
+            <p className="font-mono text-label-md text-outline">
+              {mission.code} · {STATUT_MISSION_LABELS[mission.statut]}
+            </p>
+          </div>
         </div>
 
-        <div className="rounded-2xl border border-outline-soft bg-surface-container-lowest p-4 md:p-5">
+        <div className="mt-5">
           <Tabs tabs={tabs} />
         </div>
       </div>

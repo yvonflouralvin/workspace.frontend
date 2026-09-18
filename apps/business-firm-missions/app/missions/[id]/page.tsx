@@ -65,9 +65,9 @@ export default function MissionDetailPage() {
   }
 
   const tabs: TabItem[] = [
-    { key: "apercu", label: "Aperçu", content: <ApercuPanel mission={mission} /> },
+    { key: "apercu", label: "Aperçu", content: <ApercuPanel mission={mission} reload={reload} /> },
     { key: "phases", label: "Phases", content: <PhasesPanel missionId={missionId} phases={phases} taches={taches} reload={reload} /> },
-    { key: "parametres", label: "Paramètres", content: <ParametresPanel mission={mission} reload={reload} /> },
+    { key: "parametres", label: "Paramètres", content: <ParametresPanel mission={mission} /> },
   ];
 
   return (

@@ -38,6 +38,7 @@ import {
   MenuBookOutlined,
   AccountBalanceOutlined,
   AssessmentOutlined,
+  GavelOutlined,
 } from "@mui/icons-material";
 import type { AppDefinition } from "../types/shell";
 
@@ -178,6 +179,14 @@ export const PLATFORM_APPS: AppDefinition[] = [
     url: process.env.NEXT_PUBLIC_AUTH_API_COMPTABILITE_DOMAIN ?? "http://localhost:3020",
     color: "#1e3a8a",
     description: "Comptabilité générale OHADA — écritures, grand livre, états financiers",
+  },
+  {
+    id: "business_firm_missions",
+    name: "Business Firm Mission",
+    icon: "B",
+    url: process.env.NEXT_PUBLIC_AUTH_API_BUSINESS_FIRM_MISSIONS_DOMAIN ?? "http://localhost:3021",
+    color: "#7c2d12",
+    description: "Suivi des missions et prestations pour les clients — clients, missions, audit, fiscal",
   },
 ];
 
@@ -392,6 +401,25 @@ export const COMPTABILITE_SHELL: AppShellConfig = {
     "/ecritures": <MenuBookOutlined style={s(15)} />,
     "/comptes": <AccountBalanceOutlined style={s(15)} />,
     "/etats": <AssessmentOutlined style={s(15)} />,
+  },
+};
+
+export const BUSINESS_FIRM_MISSIONS_SHELL: AppShellConfig = {
+  appName: "Business Firm Mission",
+  appHref: "/clients",
+  appIcon: "B",
+  appColor: "#7c2d12",
+  routeLabels: {
+    "/clients": "Clients",
+    "/missions": "Missions",
+    "/audit": "Audit",
+    "/fiscal": "Assistance fiscale",
+  },
+  routeIcons: {
+    "/clients": <PeopleAltOutlined style={s(15)} />,
+    "/missions": <AssignmentTurnedInOutlined style={s(15)} />,
+    "/audit": <GavelOutlined style={s(15)} />,
+    "/fiscal": <ReceiptLongOutlined style={s(15)} />,
   },
 };
 

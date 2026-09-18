@@ -163,9 +163,10 @@ export default function MissionDetailPage() {
   const [taches, setTaches] = useState<Tache[]>([]);
   const [ajoutPhase, setAjoutPhase] = useState(false);
   const [nomPhase, setNomPhase] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
   function reload() {
-    getMission(missionId).then(setMission);
+    getMission(missionId).then(setMission).catch((err) => setError(err instanceof Error ? err.message : "Erreur inattendue"));
     listPhases(missionId).then(setPhases);
     listTaches(missionId).then(setTaches);
   }
@@ -179,6 +180,13 @@ export default function MissionDetailPage() {
     reload();
   }
 
+  if (error) {
+    return (
+      <DashboardShell>
+        <div className="p-8"><p className="text-body-md text-error">{error}</p></div>
+      </DashboardShell>
+    );
+  }
   if (!mission || !phases) {
     return (
       <DashboardShell>

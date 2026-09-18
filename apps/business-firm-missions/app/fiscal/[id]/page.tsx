@@ -20,9 +20,19 @@ import { ArrowBackOutlined } from "@mui/icons-material";
 export default function DossierFiscalDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [dossier, setDossier] = useState<Dossier | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => { getDossier(Number(id)).then(setDossier); }, [id]);
+  useEffect(() => {
+    getDossier(Number(id)).then(setDossier).catch((err) => setError(err instanceof Error ? err.message : "Erreur inattendue"));
+  }, [id]);
 
+  if (error) {
+    return (
+      <DashboardShell>
+        <div className="p-8"><p className="text-body-md text-error">{error}</p></div>
+      </DashboardShell>
+    );
+  }
   if (!dossier) {
     return (
       <DashboardShell>

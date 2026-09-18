@@ -9,9 +9,12 @@ import { AddOutlined } from "@mui/icons-material";
 
 export default function ClientsPage() {
   const [clients, setClients] = useState<TiersSummary[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    listTiers({ page_size: 200 }).then((p) => setClients(p.items));
+    listTiers({ page_size: 100 })
+      .then((p) => setClients(p.items))
+      .catch((err) => setError(err instanceof Error ? err.message : "Erreur inattendue"));
   }, []);
 
   const columns = useMemo<DataListColumn<TiersSummary>[]>(
@@ -53,7 +56,9 @@ export default function ClientsPage() {
           </Link>
         </div>
 
-        {clients === null ? (
+        {error ? (
+          <p className="text-body-md text-error">{error}</p>
+        ) : clients === null ? (
           <p className="text-body-md text-on-surface-variant">Chargement…</p>
         ) : (
           <DataList

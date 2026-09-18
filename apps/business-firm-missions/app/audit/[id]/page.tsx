@@ -30,8 +30,11 @@ const FIELD =
 export default function MissionAuditDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [mission, setMission] = useState<MissionAudit | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  function reload() { getMissionAudit(Number(id)).then(setMission); }
+  function reload() {
+    getMissionAudit(Number(id)).then(setMission).catch((err) => setError(err instanceof Error ? err.message : "Erreur inattendue"));
+  }
   useEffect(reload, [id]);
 
   async function changerStatut(statut: StatutMissionAudit) {
@@ -39,6 +42,13 @@ export default function MissionAuditDetailPage() {
     reload();
   }
 
+  if (error) {
+    return (
+      <DashboardShell>
+        <div className="p-8"><p className="text-body-md text-error">{error}</p></div>
+      </DashboardShell>
+    );
+  }
   if (!mission) {
     return (
       <DashboardShell>

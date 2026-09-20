@@ -137,7 +137,8 @@ export async function addEquipeMission(missionId: number, userId: number): Promi
 }
 
 export async function removeEquipeMission(missionId: number, userId: number): Promise<void> {
-  await apiFetch(`/api/bfm/missions/${missionId}/equipe/${userId}`, { method: "DELETE" });
+  const res = await apiFetch(`/api/bfm/missions/${missionId}/equipe/${userId}`, { method: "DELETE" });
+  if (!res.ok) throw new Error("Erreur lors du retrait du collaborateur");
 }
 
 // ───────────────────────── Phases ─────────────────────────

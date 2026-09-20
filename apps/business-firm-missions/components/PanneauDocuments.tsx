@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ChatBubbleOutlineOutlined,
   DeleteOutlineOutlined,
   DownloadOutlined,
+  EditOutlined,
   ImageOutlined,
   InsertDriveFileOutlined,
   LockOutlined,
@@ -12,8 +13,11 @@ import {
   UploadFileOutlined,
 } from "@mui/icons-material";
 import { ConfirmDialog } from "@repo/ui/ConfirmDialog";
+import { FilCommentaires } from "@repo/ui/FilCommentaires";
+import { RightDrawer } from "@repo/ui/RightDrawer";
 import { poidsLisible } from "@repo/ui/ApercuFichier";
-import type { ApiDocumentsTache, PieceTache } from "@/lib/fil-tache-api";
+import type { Personne } from "@repo/ui/ZoneCommentaire";
+import { apiFilPiece, type ApiDocumentsTache, type Audience, type PieceTache } from "@/lib/fil-tache-api";
 
 function quand(iso: string | null): string {
   if (!iso) return "";
@@ -33,6 +37,55 @@ function Icone({ piece }: { piece: PieceTache }) {
   return <InsertDriveFileOutlined style={style} />;
 }
 
+/** La discussion d'UN document : le même fil que celui de la tâche, mais qui ne parle que de lui.
+ *  Les messages du fil général n'y figurent pas, et inversement. */
+function DiscussionDocument({
+  piece,
+  audience,
+  membres,
+  optionInterne,
+  url,
+  onClose,
+}: {
+  piece: PieceTache;
+  audience: Audience;
+  membres: Personne[];
+  optionInterne: boolean;
+  url: string;
+  onClose: () => void;
+}) {
+  const api = useMemo(() => apiFilPiece(audience, piece.id), [audience, piece.id]);
+  return (
+    <RightDrawer title="Discussion sur le document" onClose={onClose} width="md:w-[520px] md:max-w-[92vw]">
+      <div className="space-y-4">
+        <a
+          href={url}
+          target="_blank"
+          rel="noreferrer"
+          className="flex items-center gap-2 rounded-xl border border-outline-soft px-3 py-2.5 hover:bg-surface-container-low transition-colors"
+        >
+          <span className="text-outline">
+            <Icone piece={piece} />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-body-md font-medium text-on-surface">{piece.nom}</span>
+            <span className="block text-label-md text-outline">
+              {poidsLisible(piece.file_size)} · ouvrir le fichier
+            </span>
+          </span>
+        </a>
+        <FilCommentaires
+          api={api}
+          membres={membres}
+          canWrite
+          optionInterne={optionInterne}
+          titre="Messages"
+        />
+      </div>
+    </RightDrawer>
+  );
+}
+
 /** L'onglet Documents d'une tâche : tout ce qui a été déposé pour elle.
  *
  *  Deux origines, une seule liste : les fichiers joints à un commentaire, et ceux déposés
@@ -43,11 +96,19 @@ function Icone({ piece }: { piece: PieceTache }) {
  */
 export function PanneauDocuments({
   api,
+  audience,
+  membres,
   canWrite,
+  optionInterne = false,
   aide,
 }: {
   api: ApiDocumentsTache;
+  audience: Audience;
+  /** Les personnes qu'on peut nommer dans la discussion d'un document. */
+  membres: Personne[];
   canWrite: boolean;
+  /** Propose « Note interne » dans la discussion d'un document (équipe seulement). */
+  optionInterne?: boolean;
   /** Une phrase sous le titre — ce que l'on peut déposer, et qui le voit. */
   aide?: string;
 }) {
@@ -56,7 +117,17 @@ export function PanneauDocuments({
   const [envoi, setEnvoi] = useState(0);
   const [survol, setSurvol] = useState(false);
   const [aSupprimer, setASupprimer] = useState<PieceTache | null>(null);
+  const [edition, setEdition] = useState<{ id: number; nom: string } | null>(null);
+  const [discussion, setDiscussion] = useState<PieceTache | null>(null);
   const champ = useRef<HTMLInputElement>(null);
+  // Une édition se TERMINE une fois : Entrée puis le blur qui suit ne doivent pas envoyer deux fois,
+  // et Échap ne doit pas être défait par le blur de la fermeture du champ.
+  const editionTerminee = useRef(true);
+
+  function commencerEdition(piece: PieceTache) {
+    editionTerminee.current = false;
+    setEdition({ id: piece.id, nom: piece.nom });
+  }
 
   const charger = useCallback(async () => {
     try {
@@ -88,6 +159,23 @@ export function PanneauDocuments({
     }
     if (champ.current) champ.current.value = "";
     await charger();
+  }
+
+  async function renommer() {
+    if (!edition || editionTerminee.current) return;
+    editionTerminee.current = true;
+    const { id, nom } = edition;
+    setEdition(null);
+    const courant = pieces?.find((p) => p.id === id);
+    // Rien n'a changé : pas de requête, pas de « modifié ».
+    if (!courant || nom.trim() === courant.nom) return;
+    setErreur(null);
+    try {
+      await api.renommer(id, nom);
+      await charger();
+    } catch (e) {
+      setErreur(e instanceof Error ? e.message : "Renommage impossible.");
+    }
   }
 
   async function supprimer(piece: PieceTache) {
@@ -158,16 +246,48 @@ export function PanneauDocuments({
               <Icone piece={piece} />
             </span>
             <div className="min-w-0 flex-1">
-              <a
-                href={api.url(piece.id)}
-                target="_blank"
-                rel="noreferrer"
-                className="block truncate text-body-md font-medium text-on-surface hover:text-primary transition-colors"
-              >
-                {piece.file_name}
-              </a>
+              {edition?.id === piece.id ? (
+                <input
+                  autoFocus
+                  value={edition.nom}
+                  aria-label="Nom du document"
+                  onChange={(e) => setEdition({ id: piece.id, nom: e.target.value })}
+                  onBlur={() => void renommer()}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") void renommer();
+                    if (e.key === "Escape") {
+                      editionTerminee.current = true;
+                      setEdition(null);
+                    }
+                  }}
+                  className="w-full rounded-lg border border-primary bg-surface-container-lowest px-2 py-1 text-body-md font-medium text-on-surface outline-none"
+                />
+              ) : (
+                <span className="flex items-center gap-1.5">
+                  <a
+                    href={api.url(piece.id)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="min-w-0 truncate text-body-md font-medium text-on-surface hover:text-primary transition-colors"
+                  >
+                    {piece.nom}
+                  </a>
+                  {piece.peut_renommer && (
+                    <button
+                      type="button"
+                      onClick={() => commencerEdition(piece)}
+                      aria-label={`Renommer ${piece.nom}`}
+                      title="Renommer"
+                      className="flex-none text-outline hover:text-primary transition-colors"
+                    >
+                      <EditOutlined style={{ fontSize: 15 }} />
+                    </button>
+                  )}
+                </span>
+              )}
               <p className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-label-md text-outline">
                 <span>{poidsLisible(piece.file_size)}</span>
+                {piece.nom !== piece.file_name && <span title="Fichier d'origine">· {piece.file_name}</span>}
                 {piece.uploaded_by_name && <span>· {piece.uploaded_by_name}</span>}
                 {piece.created_at && <span>· {quand(piece.created_at)}</span>}
                 {piece.par_client && (
@@ -190,10 +310,24 @@ export function PanneauDocuments({
                 )}
               </p>
             </div>
+            <button
+              type="button"
+              onClick={() => setDiscussion(piece)}
+              aria-label={`Discussion sur ${piece.nom}`}
+              title="Discuter de ce document"
+              className={`h-8 flex-none inline-flex items-center gap-1 rounded-lg px-2 text-label-md font-semibold transition-colors ${
+                piece.nb_commentaires > 0
+                  ? "bg-primary/10 text-primary hover:bg-primary/15"
+                  : "text-on-surface-variant hover:bg-surface-container-low hover:text-primary"
+              }`}
+            >
+              <ChatBubbleOutlineOutlined style={{ fontSize: 16 }} />
+              {piece.nb_commentaires > 0 && piece.nb_commentaires}
+            </button>
             <a
               href={api.url(piece.id)}
-              download={piece.file_name}
-              aria-label={`Télécharger ${piece.file_name}`}
+              download={piece.nom}
+              aria-label={`Télécharger ${piece.nom}`}
               title="Télécharger"
               className="w-8 h-8 flex-none flex items-center justify-center rounded-lg text-on-surface-variant hover:bg-surface-container-low hover:text-primary transition-colors"
             >
@@ -203,7 +337,7 @@ export function PanneauDocuments({
               <button
                 type="button"
                 onClick={() => setASupprimer(piece)}
-                aria-label={`Supprimer ${piece.file_name}`}
+                aria-label={`Supprimer ${piece.nom}`}
                 title="Supprimer"
                 className="w-8 h-8 flex-none flex items-center justify-center rounded-lg text-on-surface-variant hover:bg-error-container hover:text-error transition-colors"
               >
@@ -214,10 +348,28 @@ export function PanneauDocuments({
         ))}
       </div>
 
+      {discussion && (
+        <DiscussionDocument
+          piece={discussion}
+          audience={audience}
+          membres={membres}
+          optionInterne={optionInterne}
+          url={api.url(discussion.id)}
+          onClose={() => {
+            setDiscussion(null);
+            void charger();
+          }}
+        />
+      )}
+
       {aSupprimer && (
         <ConfirmDialog
-          title={`Supprimer « ${aSupprimer.file_name} » ?`}
-          message="Le fichier sera retiré de la tâche. C'est définitif."
+          title={`Supprimer « ${aSupprimer.nom} » ?`}
+          message={
+            aSupprimer.nb_commentaires > 0
+              ? "Le fichier et sa discussion seront retirés de la tâche. C'est définitif."
+              : "Le fichier sera retiré de la tâche. C'est définitif."
+          }
           confirmLabel="Supprimer"
           onConfirm={() => supprimer(aSupprimer)}
           onCancel={() => setASupprimer(null)}

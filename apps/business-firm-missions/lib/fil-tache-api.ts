@@ -25,6 +25,9 @@ const BASES = {
 
 export interface PieceTache {
   id: number;
+  /** Le nom AFFICHÉ : celui qu'on lui a donné, sinon celui du fichier. */
+  nom: string;
+  /** Le fichier d'origine — il dit l'extension. */
   file_name: string;
   content_type: string;
   file_size: number;
@@ -38,6 +41,9 @@ export interface PieceTache {
   par_client: boolean;
   interne: boolean;
   peut_supprimer: boolean;
+  peut_renommer: boolean;
+  /** Messages de la discussion du document. */
+  nb_commentaires: number;
 }
 
 export interface CommentaireTache extends CommentaireFil {
@@ -52,21 +58,21 @@ export function urlPiece(audience: Audience, pieceId: number): string {
   return `${BASES[audience].piece(pieceId)}/content`;
 }
 
-export function apiFilTache(audience: Audience, tacheId: number): ApiFil<CommentaireTache> {
+/** Le fil parle à `racine` (`…/taches/12` ou `…/pieces/5`) : mêmes routes, mêmes règles — la
+ *  discussion d'un document EST un fil, elle n'a pas de composant à part. */
+function construireApiFil(audience: Audience, racine: string): ApiFil<CommentaireTache> {
   const base = BASES[audience];
   return {
     lister: (limite) =>
-      apiFetch(`${base.tache(tacheId)}/commentaires?limite=${limite}`).then((r) =>
-        lire<CommentaireTache[]>(r),
-      ),
+      apiFetch(`${racine}/commentaires?limite=${limite}`)
+        .then((r) => lire<CommentaireTache[]>(r))
+        // Le fil montre le nom donné au fichier : c'est celui qu'on a choisi de lire.
+        .then((liste) =>
+          liste.map((c) => ({ ...c, attachments: c.attachments.map((p) => ({ ...p, file_name: p.nom })) })),
+        ),
     publier: async (texte, fichier, options) => {
       if (!fichier) {
-        await lire(
-          await apiFetch(`${base.tache(tacheId)}/commentaires`, {
-            method: "POST",
-            body: { body: texte, ...options },
-          }),
-        );
+        await lire(await apiFetch(`${racine}/commentaires`, { method: "POST", body: { body: texte, ...options } }));
         return;
       }
       // Multipart : pas de chiffrement @repo/network, le BFF passe les octets bruts.
@@ -77,13 +83,23 @@ export function apiFilTache(audience: Audience, tacheId: number): ApiFil<Comment
       // Multipart n'a pas de listes : le serveur découpe sur la virgule.
       if (options.mention_user_ids.length) form.append("mention_user_ids", options.mention_user_ids.join(","));
       if (options.interne) form.append("interne", "true");
-      await lire(await fetch(`${base.tache(tacheId)}/commentaires/file`, { method: "POST", body: form }));
+      await lire(await fetch(`${racine}/commentaires/file`, { method: "POST", body: form }));
     },
     modifier: (id, texte) =>
       apiFetch(base.commentaire(id), { method: "PATCH", body: { body: texte } }).then((r) => lire(r)),
     supprimer: (id) => apiFetch(base.commentaire(id), { method: "DELETE" }).then((r) => lire(r)),
     urlPiece: (_commentaire, piece) => urlPiece(audience, piece.id),
   };
+}
+
+/** Le fil général d'une tâche. */
+export function apiFilTache(audience: Audience, tacheId: number): ApiFil<CommentaireTache> {
+  return construireApiFil(audience, BASES[audience].tache(tacheId));
+}
+
+/** La discussion d'UN document de la tâche. */
+export function apiFilPiece(audience: Audience, pieceId: number): ApiFil<CommentaireTache> {
+  return construireApiFil(audience, BASES[audience].piece(pieceId));
 }
 
 export function apiDocumentsTache(audience: Audience, tacheId: number) {
@@ -97,6 +113,9 @@ export function apiDocumentsTache(audience: Audience, tacheId: number) {
     },
     supprimer: (pieceId: number) =>
       apiFetch(base.piece(pieceId), { method: "DELETE" }).then((r) => lire<void>(r)),
+    /** Un nom vide rend au document le nom de son fichier. */
+    renommer: (pieceId: number, nom: string) =>
+      apiFetch(base.piece(pieceId), { method: "PATCH", body: { nom } }).then((r) => lire<PieceTache>(r)),
     url: (pieceId: number) => urlPiece(audience, pieceId),
   };
 }

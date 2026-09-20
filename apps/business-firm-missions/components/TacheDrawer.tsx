@@ -11,6 +11,7 @@ import {
   updateTache,
   PRIORITE_LABELS,
   STATUT_TACHE_LABELS,
+  type Phase,
   type PrioriteTache,
   type StatutTache,
   type Tache,
@@ -32,11 +33,15 @@ export function TacheDrawer({
   tache,
   membres,
   clientDisponible,
+  phases,
   onClose,
   onSaved,
 }: {
   missionId: number;
+  /** La phase de la tâche — ou celle proposée par défaut à la création. */
   phaseId: number;
+  /** Fournies, elles laissent choisir la phase à la création (vue de toute la mission). */
+  phases?: Phase[];
   /** null = création. */
   tache: Tache | null;
   membres: Membre[];
@@ -46,6 +51,7 @@ export function TacheDrawer({
   onSaved: () => Promise<void>;
 }) {
   const router = useRouter();
+  const [phase, setPhase] = useState(phaseId);
   const [titre, setTitre] = useState(tache?.titre ?? "");
   const [statut, setStatut] = useState<StatutTache>(tache?.statut ?? "A_FAIRE");
   const [priorite, setPriorite] = useState<PrioriteTache>(tache?.priorite ?? "AUCUNE");
@@ -74,7 +80,7 @@ export function TacheDrawer({
         ...(description !== null ? { description_rich: description } : {}),
       };
       if (tache) await updateTache(missionId, tache.id, { titre: titre.trim(), statut, ...commun });
-      else await createTache(missionId, phaseId, { titre: titre.trim(), ...commun });
+      else await createTache(missionId, phase, { titre: titre.trim(), ...commun });
       await onSaved();
       onClose();
     } catch (err) {
@@ -92,7 +98,7 @@ export function TacheDrawer({
         <div className="flex items-center gap-2 w-full">
           {tache && (
             <button
-              onClick={() => router.push(`/missions/${missionId}/phases/${phaseId}/taches/${tache.id}`)}
+              onClick={() => router.push(`/missions/${missionId}/phases/${tache.phase_id}/taches/${tache.id}`)}
               className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border border-outline-soft text-body-sm font-semibold text-on-surface-variant hover:bg-surface-container-low transition-colors"
             >
               <OpenInFullOutlined style={{ fontSize: 15 }} />
@@ -124,6 +130,15 @@ export function TacheDrawer({
             autoFocus={!tache}
           />
         </div>
+
+        {!tache && phases && phases.length > 1 && (
+          <div>
+            <label className={LABEL}>Phase</label>
+            <select className={`${FIELD} w-[240px]`} value={phase} onChange={(e) => setPhase(Number(e.target.value))}>
+              {phases.map((p) => <option key={p.id} value={p.id}>{p.nom}</option>)}
+            </select>
+          </div>
+        )}
 
         <div className="flex flex-wrap items-end gap-3">
           {tache && (

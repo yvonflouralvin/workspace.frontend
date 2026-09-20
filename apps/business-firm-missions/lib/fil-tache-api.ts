@@ -44,6 +44,11 @@ export interface PieceTache {
   peut_renommer: boolean;
   /** Messages de la discussion du document. */
   nb_commentaires: number;
+  /** D'où il vient — renseigné sur la liste de TOUTE la mission, pas sur l'écran d'une tâche. */
+  tache_id?: number | null;
+  tache_titre?: string | null;
+  phase_id?: number | null;
+  phase_nom?: string | null;
 }
 
 export interface CommentaireTache extends CommentaireFil {
@@ -121,6 +126,23 @@ export function apiDocumentsTache(audience: Audience, tacheId: number) {
 }
 
 export type ApiDocumentsTache = ReturnType<typeof apiDocumentsTache>;
+
+/** Les documents de TOUTE la mission. Lire, renommer, supprimer, discuter se font par document et
+ *  ne dépendent pas de la tâche ; seul le DÉPÔT en dépend, d'où `cible` : la tâche choisie à l'écran. */
+export function apiDocumentsMission(
+  missionId: number,
+  cible: { current: number | null },
+): ApiDocumentsTache {
+  const parDocument = apiDocumentsTache("equipe", 0);
+  return {
+    ...parDocument,
+    lister: () => apiFetch(`/api/bfm/missions/${missionId}/documents`).then((r) => lire<PieceTache[]>(r)),
+    deposer: async (fichier: File) => {
+      if (!cible.current) throw new Error("Choisissez d'abord la tâche concernée.");
+      return apiDocumentsTache("equipe", cible.current).deposer(fichier);
+    },
+  };
+}
 
 /** Les personnes que le CLIENT peut nommer — l'équipe de la mission, et elle seule. */
 export interface Mentionnable {

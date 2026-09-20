@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import Link from "next/link";
 import {
   ChatBubbleOutlineOutlined,
   DeleteOutlineOutlined,
@@ -101,6 +102,9 @@ export function PanneauDocuments({
   canWrite,
   optionInterne = false,
   aide,
+  entete,
+  depotBloque,
+  lienTache,
 }: {
   api: ApiDocumentsTache;
   audience: Audience;
@@ -111,6 +115,12 @@ export function PanneauDocuments({
   optionInterne?: boolean;
   /** Une phrase sous le titre — ce que l'on peut déposer, et qui le voit. */
   aide?: string;
+  /** Un contrôle posé au-dessus de la zone de dépôt (ex. le choix de la tâche, au niveau mission). */
+  entete?: ReactNode;
+  /** Un motif qui empêche de déposer pour l'instant : la zone se grise et le dit. */
+  depotBloque?: string | null;
+  /** Où mène « la tâche d'origine » d'un document — seulement quand on réunit plusieurs tâches. */
+  lienTache?: (piece: PieceTache) => { href: string; libelle: string } | null;
 }) {
   const [pieces, setPieces] = useState<PieceTache[] | null>(null);
   const [erreur, setErreur] = useState<string | null>(null);
@@ -195,9 +205,12 @@ export function PanneauDocuments({
 
       {erreur && <p className="rounded-lg bg-error-container/40 px-3 py-2 text-body-sm text-error">{erreur}</p>}
 
+      {entete}
+
       {canWrite && (
         <div
           onDragOver={(e) => {
+            if (depotBloque) return;
             e.preventDefault();
             setSurvol(true);
           }}
@@ -205,7 +218,7 @@ export function PanneauDocuments({
           onDrop={(e) => {
             e.preventDefault();
             setSurvol(false);
-            void deposer(e.dataTransfer.files);
+            if (!depotBloque) void deposer(e.dataTransfer.files);
           }}
           className={`flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed px-4 py-6 text-center transition-colors ${
             survol ? "border-primary bg-primary/5" : "border-outline-soft bg-surface-container-lowest"
@@ -223,13 +236,15 @@ export function PanneauDocuments({
           />
           <button
             type="button"
-            disabled={envoi > 0}
+            disabled={envoi > 0 || Boolean(depotBloque)}
             onClick={() => champ.current?.click()}
             className="h-9 px-4 rounded-lg bg-primary text-on-primary text-body-sm font-semibold hover:bg-primary-container disabled:opacity-50 transition-colors"
           >
             {envoi > 0 ? "Envoi en cours…" : "Choisir un fichier"}
           </button>
-          <p className="text-label-md text-outline">25 Mo au maximum par fichier.</p>
+          <p className="text-label-md text-outline">
+            {depotBloque ?? "25 Mo au maximum par fichier."}
+          </p>
         </div>
       )}
 
@@ -288,6 +303,14 @@ export function PanneauDocuments({
               <p className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-label-md text-outline">
                 <span>{poidsLisible(piece.file_size)}</span>
                 {piece.nom !== piece.file_name && <span title="Fichier d'origine">· {piece.file_name}</span>}
+                {(() => {
+                  const lien = lienTache?.(piece);
+                  return lien ? (
+                    <Link href={lien.href} className="text-on-surface-variant hover:text-primary hover:underline">
+                      · {lien.libelle}
+                    </Link>
+                  ) : null;
+                })()}
                 {piece.uploaded_by_name && <span>· {piece.uploaded_by_name}</span>}
                 {piece.created_at && <span>· {quand(piece.created_at)}</span>}
                 {piece.par_client && (

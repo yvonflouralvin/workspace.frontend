@@ -1,5 +1,11 @@
 import type { ReactNode } from "react";
-import { AccountTreeOutlined, NotesOutlined, SettingsOutlined } from "@mui/icons-material";
+import {
+  AccountTreeOutlined,
+  FolderOpenOutlined,
+  NotesOutlined,
+  SettingsOutlined,
+  ViewListOutlined,
+} from "@mui/icons-material";
 
 export interface MissionSection {
   key: string;
@@ -13,6 +19,9 @@ export interface MissionSection {
 export const MISSION_SECTIONS: MissionSection[] = [
   { key: "apercu", path: "", label: "Aperçu", icon: <NotesOutlined style={{ fontSize: 17 }} /> },
   { key: "phases", path: "/phases", label: "Phases", icon: <AccountTreeOutlined style={{ fontSize: 17 }} /> },
+  // Les tâches et les documents de TOUTES les phases, sans descendre phase par phase.
+  { key: "taches", path: "/taches", label: "Tâches", icon: <ViewListOutlined style={{ fontSize: 17 }} /> },
+  { key: "documents", path: "/documents", label: "Documents", icon: <FolderOpenOutlined style={{ fontSize: 17 }} /> },
   { key: "parametres", path: "/parametres", label: "Paramètres", icon: <SettingsOutlined style={{ fontSize: 17 }} /> },
 ];
 

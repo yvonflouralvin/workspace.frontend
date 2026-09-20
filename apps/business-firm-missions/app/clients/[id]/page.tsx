@@ -91,7 +91,7 @@ export default function ClientDetailPage() {
   }
 
   const tabs: TabItem[] = [
-    { key: "contacts", label: "Contacts", content: <ContactsPanel tiersId={tiers.id} /> },
+    { key: "contacts", label: "Contacts", content: <ContactsPanel tiersId={tiers.id} tiersNom={tiers.nom} /> },
     { key: "contrats", label: "Contrats", content: <ContratsPanel tiersId={tiers.id} /> },
     { key: "services", label: "Services souscrits", content: <ServicesPanel tiersId={tiers.id} /> },
     { key: "missions", label: "Missions", content: <MissionsPanel tiersId={tiers.id} /> },

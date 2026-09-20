@@ -664,3 +664,20 @@ cliquable.
 - Mettre `"use client"` uniquement sur les sous-composants interactifs (dropdowns, popovers).
 - Ne jamais importer `useSessionStore` dans ce package — les données session sont passées par props depuis les apps.
 - Les apps passent `user: UserSummary` au shell ; elles se chargent elles-mêmes de lire le store.
+
+## Fil de discussion — `FilCommentaires` et `ZoneCommentaire`
+
+Le fil d'une tâche (texte, fichiers joints, réponses à un niveau, mentions `@`) est partagé par le
+module Projets de Workspace et le module Missions de Business Firm Mission : deux fils qui divergent
+finissent par ne plus se ressembler.
+
+- `ZoneCommentaire` — saisie d'un message : texte, mention par clic (jamais devinée du texte),
+  pièce jointe. `optionInterne` propose « Note interne » (message que seule l'équipe lira) ; absent,
+  la case n'existe pas. `CorpsCommentaire` rend un message en surlignant les personnes nommées.
+- `FilCommentaires<C>` — le fil. Il ne connaît aucune route : l'appelant fournit un `api`
+  (`lister`, `publier`, `modifier`, `supprimer`, `urlPiece`) et la liste des `membres` nommables.
+  **`api` est à mémoïser** (`useMemo`) : un objet recréé à chaque rendu relancerait le chargement.
+  `interne` et `author_client` sont facultatifs et n'affichent une pastille que là où le module les porte.
+
+Côté Workspace, `components/projects/FilCommentaires.tsx` n'est plus qu'un adaptateur vers `projectsApi`.
+

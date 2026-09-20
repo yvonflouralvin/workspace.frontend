@@ -1,6 +1,7 @@
 "use client";
 
 import { apiFetch } from "@repo/network/client";
+import { lire } from "./http";
 
 export type StatutMission = "EN_COURS" | "EN_PAUSE" | "TERMINEE" | "ARCHIVEE";
 export type StatutPhase = "A_VENIR" | "EN_COURS" | "CLOTUREE";
@@ -148,6 +149,8 @@ export interface Phase {
   mission_id: number;
   nom: string;
   description: string | null;
+  /** Document BlockNote sérialisé ; `description` en est le texte brut. */
+  description_rich: string | null;
   position: number;
   statut: StatutPhase;
 }
@@ -158,16 +161,15 @@ export async function listPhases(missionId: number): Promise<Phase[]> {
   return res.json();
 }
 
-export async function createPhase(missionId: number, input: { nom: string; description?: string; position?: number }): Promise<Phase> {
-  const res = await apiFetch(`/api/bfm/missions/${missionId}/phases`, { method: "POST", body: input });
-  if (!res.ok) throw new Error("Erreur lors de la création de la phase");
-  return res.json();
+export async function createPhase(
+  missionId: number,
+  input: { nom: string; description?: string; description_rich?: string | null; position?: number },
+): Promise<Phase> {
+  return lire<Phase>(await apiFetch(`/api/bfm/missions/${missionId}/phases`, { method: "POST", body: input }));
 }
 
 export async function updatePhase(missionId: number, phaseId: number, input: Partial<Phase>): Promise<Phase> {
-  const res = await apiFetch(`/api/bfm/missions/${missionId}/phases/${phaseId}`, { method: "PUT", body: input });
-  if (!res.ok) throw new Error("Erreur lors de la mise à jour de la phase");
-  return res.json();
+  return lire<Phase>(await apiFetch(`/api/bfm/missions/${missionId}/phases/${phaseId}`, { method: "PUT", body: input }));
 }
 
 export async function deletePhase(missionId: number, phaseId: number): Promise<void> {
@@ -186,10 +188,13 @@ export interface Tache {
   phase_id: number;
   titre: string;
   description: string | null;
+  description_rich: string | null;
   statut: StatutTache;
   priorite: PrioriteTache;
   assignee_user_id: number | null;
   assignee_nom: string | null;
+  /** La tâche revient au client de la mission : il la voit, avec son fil et ses documents. */
+  assignee_client: boolean;
   position: number;
   due_date: string | null;
 }
@@ -203,17 +208,23 @@ export async function listTaches(missionId: number): Promise<Tache[]> {
 export async function createTache(
   missionId: number,
   phaseId: number,
-  input: { titre: string; description?: string; priorite?: PrioriteTache; assignee_user_id?: number; due_date?: string },
+  input: {
+    titre: string;
+    description?: string;
+    description_rich?: string | null;
+    priorite?: PrioriteTache;
+    assignee_user_id?: number | null;
+    assignee_client?: boolean;
+    due_date?: string | null;
+  },
 ): Promise<Tache> {
-  const res = await apiFetch(`/api/bfm/missions/${missionId}/phases/${phaseId}/taches`, { method: "POST", body: input });
-  if (!res.ok) throw new Error("Erreur lors de la création de la tâche");
-  return res.json();
+  return lire<Tache>(
+    await apiFetch(`/api/bfm/missions/${missionId}/phases/${phaseId}/taches`, { method: "POST", body: input }),
+  );
 }
 
 export async function updateTache(missionId: number, tacheId: number, input: Partial<Tache>): Promise<Tache> {
-  const res = await apiFetch(`/api/bfm/missions/${missionId}/taches/${tacheId}`, { method: "PUT", body: input });
-  if (!res.ok) throw new Error("Erreur lors de la mise à jour de la tâche");
-  return res.json();
+  return lire<Tache>(await apiFetch(`/api/bfm/missions/${missionId}/taches/${tacheId}`, { method: "PUT", body: input }));
 }
 
 export async function deleteTache(missionId: number, tacheId: number): Promise<void> {

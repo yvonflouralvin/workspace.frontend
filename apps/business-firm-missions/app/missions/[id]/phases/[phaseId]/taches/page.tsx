@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { AddOutlined, DeleteOutlineOutlined } from "@mui/icons-material";
+import { AddOutlined, DeleteOutlineOutlined, PersonOutlined } from "@mui/icons-material";
 import {
   createTache,
   updateTache,
@@ -11,14 +11,17 @@ import {
   type Tache,
 } from "@/lib/bfm-missions-api";
 import { ChampMembre } from "@/components/SelecteurMembre";
+import { TacheDrawer } from "@/components/TacheDrawer";
 import { useMission } from "../../../mission-context";
 import { FIELD } from "../../../ui";
 import { usePhase } from "../phase-context";
 
 export default function TachesPhasePage() {
-  const { missionId, membres, reload } = useMission();
+  const { missionId, mission, membres, reload } = useMission();
   const { phase, taches } = usePhase();
   const [error, setError] = useState<string | null>(null);
+  // drawer : Tache = aperçu, null = création, false = fermé.
+  const [drawer, setDrawer] = useState<Tache | null | false>(false);
   const [ajout, setAjout] = useState(false);
   const [titre, setTitre] = useState("");
 
@@ -57,7 +60,21 @@ export default function TachesPhasePage() {
             key={t.id}
             className="flex flex-wrap md:flex-nowrap items-center gap-x-4 gap-y-2 px-4 md:px-5 py-2.5 border-b border-hairline last:border-b-0"
           >
-            <span className="w-full md:flex-1 min-w-0 text-body-md text-on-surface truncate">{t.titre}</span>
+            <button
+              onClick={() => setDrawer(t)}
+              className="w-full md:flex-1 min-w-0 flex items-center gap-2 text-left text-body-md text-on-surface hover:text-primary transition-colors"
+            >
+              <span className="truncate">{t.titre}</span>
+              {t.assignee_client && (
+                <span
+                  className="flex-none inline-flex items-center gap-0.5 rounded-full bg-primary/10 px-1.5 py-px text-label-sm font-semibold text-primary"
+                  title="Assignée au client"
+                >
+                  <PersonOutlined style={{ fontSize: 12 }} />
+                  Client
+                </span>
+              )}
+            </button>
             <span className="md:w-[190px] flex-none">
               <ChampMembre
                 valeur={t.assignee_user_id}
@@ -127,16 +144,36 @@ export default function TachesPhasePage() {
               </button>
             </form>
           ) : (
-            <button
-              onClick={() => setAjout(true)}
-              className="inline-flex items-center gap-1.5 text-body-sm font-semibold text-primary hover:underline"
-            >
-              <AddOutlined style={{ fontSize: 16 }} />
-              Ajouter une tâche
-            </button>
+            <span className="inline-flex items-center gap-4">
+              <button
+                onClick={() => setAjout(true)}
+                className="inline-flex items-center gap-1.5 text-body-sm font-semibold text-primary hover:underline"
+              >
+                <AddOutlined style={{ fontSize: 16 }} />
+                Ajouter une tâche
+              </button>
+              <button
+                onClick={() => setDrawer(null)}
+                className="text-body-sm text-on-surface-variant hover:text-primary hover:underline transition-colors"
+              >
+                avec plus de détails
+              </button>
+            </span>
           )}
         </div>
       </div>
+
+      {drawer !== false && (
+        <TacheDrawer
+          missionId={missionId}
+          phaseId={phase.id}
+          tache={drawer}
+          membres={membres}
+          clientDisponible={mission.tiers_id !== null}
+          onClose={() => setDrawer(false)}
+          onSaved={reload}
+        />
+      )}
     </div>
   );
 }

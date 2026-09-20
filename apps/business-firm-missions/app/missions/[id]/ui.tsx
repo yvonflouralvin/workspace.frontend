@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import { STATUT_PHASE_LABELS, type Phase } from "@/lib/bfm-missions-api";
+import { STATUT_PHASE_LABELS, STATUT_TACHE_LABELS, type Phase, type StatutTache } from "@/lib/bfm-missions-api";
 
 export const FIELD =
   "rounded-lg border border-outline-soft bg-surface-container-lowest px-2.5 py-1.5 text-body-sm text-on-surface outline-none focus:border-primary transition-colors";
@@ -90,6 +90,22 @@ export function StatutPhasePill({ statut }: { statut: Phase["statut"] }) {
     <span className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-label-md font-semibold ${tone.chip}`}>
       <span className={`w-[6px] h-[6px] rounded-full ${tone.dot}`} />
       {STATUT_PHASE_LABELS[statut]}
+    </span>
+  );
+}
+
+export const STATUT_TACHE_TONES: Record<StatutTache, { dot: string; chip: string }> = {
+  A_FAIRE: { dot: "bg-status-todo", chip: "bg-status-todo-container text-status-todo" },
+  EN_COURS: { dot: "bg-status-doing", chip: "bg-status-doing-container text-status-doing" },
+  TERMINEE: { dot: "bg-status-done", chip: "bg-status-done-container text-status-done" },
+};
+
+export function StatutTachePill({ statut }: { statut: StatutTache }) {
+  const tone = STATUT_TACHE_TONES[statut];
+  return (
+    <span className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-label-md font-semibold ${tone.chip}`}>
+      <span className={`w-[6px] h-[6px] rounded-full ${tone.dot}`} />
+      {STATUT_TACHE_LABELS[statut]}
     </span>
   );
 }

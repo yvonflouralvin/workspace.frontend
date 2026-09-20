@@ -27,6 +27,8 @@ import {
 } from "@/lib/tiers-api";
 import { listMissions, createMission, STATUT_MISSION_LABELS, type MissionSummary } from "@/lib/bfm-missions-api";
 import { AddOutlined, DeleteOutlineOutlined, ChevronRightOutlined } from "@mui/icons-material";
+import { AccesPortailContact } from "@/components/AccesPortailContact";
+import { listAccesClient, retirerAcces, type AccesClient } from "@/lib/acces-client-api";
 
 const FIELD =
   "rounded-lg border border-outline-soft bg-surface-container-lowest px-2.5 py-1.5 text-body-sm text-on-surface outline-none focus:border-primary transition-colors";
@@ -38,8 +40,9 @@ function montant(n: number | null): string {
 
 // ───────────────────────── Contacts ─────────────────────────
 
-export function ContactsPanel({ tiersId }: { tiersId: number }) {
+export function ContactsPanel({ tiersId, tiersNom }: { tiersId: number; tiersNom: string }) {
   const [items, setItems] = useState<Contact[] | null>(null);
+  const [acces, setAcces] = useState<AccesClient[]>([]);
   const [ajout, setAjout] = useState(false);
   const [nom, setNom] = useState("");
   const [fonction, setFonction] = useState("");
@@ -48,8 +51,16 @@ export function ContactsPanel({ tiersId }: { tiersId: number }) {
 
   function reload() {
     listContacts(tiersId).then(setItems);
+    listAccesClient(tiersId).then(setAcces);
   }
   useEffect(reload, [tiersId]);
+
+  // L'accès d'un contact : le lien direct, sinon l'adresse — un accès donné avant que le contact
+  // ne soit rattaché se retrouve quand même.
+  const accesDe = (c: Contact) =>
+    acces.find((a) => a.actif && (a.contact_id === c.id || (c.email && a.email === c.email.toLowerCase())));
+
+  const orphelins = items === null ? [] : acces.filter((a) => a.actif && !items.some((c) => accesDe(c)?.id === a.id));
 
   async function ajouter(e: React.FormEvent) {
     e.preventDefault();
@@ -77,6 +88,22 @@ export function ContactsPanel({ tiersId }: { tiersId: number }) {
           <button type="submit" className="h-9 px-3 rounded-lg bg-primary text-on-primary text-body-sm font-semibold">Ajouter</button>
         </form>
       )}
+      {orphelins.length > 0 && (
+        <div className="rounded-xl border border-error/30 bg-error-container/20 p-3 space-y-1.5">
+          <p className="text-body-sm font-semibold text-error">Accès au portail sans contact</p>
+          {orphelins.map((a) => (
+            <div key={a.id} className="flex items-center justify-between gap-3 text-body-sm">
+              <span className="truncate text-on-surface">{a.nom || a.email} <span className="text-outline">— {a.email}</span></span>
+              <button
+                onClick={() => retirerAcces(a.id).then(reload)}
+                className="flex-none text-label-md font-semibold text-error hover:underline"
+              >
+                Retirer l&apos;accès
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
       {items === null ? <p className="text-body-sm text-on-surface-variant">Chargement…</p> : items.length === 0 ? (
         <p className="text-body-sm text-on-surface-variant">Aucun contact.</p>
       ) : (
@@ -87,7 +114,17 @@ export function ContactsPanel({ tiersId }: { tiersId: number }) {
                 <p className="text-body-sm font-medium text-on-surface">{c.nom} {c.fonction && <span className="text-outline">— {c.fonction}</span>}</p>
                 <p className="text-label-md text-outline">{[c.telephone, c.email].filter(Boolean).join(" · ") || "—"}</p>
               </div>
-              <button onClick={() => deleteContact(tiersId, c.id).then(reload)} className="text-outline hover:text-error transition-colors">
+              <AccesPortailContact contact={c} tiersId={tiersId} tiersNom={tiersNom} acces={accesDe(c)} onChange={reload} />
+              <button
+                onClick={async () => {
+                  // Supprimer un contact ne doit pas laisser son accès ouvert : on le retire d'abord.
+                  const a = accesDe(c);
+                  if (a) await retirerAcces(a.id).catch(() => undefined);
+                  await deleteContact(tiersId, c.id);
+                  reload();
+                }}
+                className="text-outline hover:text-error transition-colors"
+              >
                 <DeleteOutlineOutlined style={{ fontSize: 17 }} />
               </button>
             </li>

@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ChevronRightOutlined, ViewListOutlined } from "@mui/icons-material";
+import { RichTextEditor } from "@repo/ui/RichTextEditor";
 import { STATUT_PHASE_LABELS, type Phase } from "@/lib/bfm-missions-api";
+import { useDiffere } from "@/lib/differe";
 import { useMission } from "../../mission-context";
 import { LABEL, MetaRow } from "../../ui";
 import { usePhase } from "./phase-context";
@@ -11,15 +12,9 @@ import { usePhase } from "./phase-context";
 export default function ApercuPhasePage() {
   const { missionId } = useMission();
   const { phase, taches, enregistrer, erreur } = usePhase();
-  const [description, setDescription] = useState(phase.description ?? "");
-  useEffect(() => setDescription(phase.description ?? ""), [phase.id, phase.description]);
+  const pousserDescription = useDiffere((json: string) => enregistrer({ description_rich: json }));
 
   const terminees = taches.filter((t) => t.statut === "TERMINEE").length;
-
-  function enregistrerDescription() {
-    const nv = description.trim() || null;
-    if (nv !== (phase.description ?? null)) void enregistrer({ description: nv });
-  }
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-6 items-start">
@@ -29,12 +24,13 @@ export default function ApercuPhasePage() {
         )}
         <p className={`${LABEL} mb-2`}>Aperçu de la phase</p>
         <div className="rounded-2xl border border-outline-soft bg-surface-container-lowest overflow-hidden">
-          <textarea
-            className="w-full min-h-[16rem] p-4 bg-transparent text-body-md text-on-surface outline-none resize-y"
+          <RichTextEditor
+            key={phase.id}
+            value={phase.description_rich}
+            fallbackText={phase.description}
             placeholder="Objectif de la phase, ce qui change par rapport à la précédente…"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            onBlur={enregistrerDescription}
+            className="min-h-[16rem]"
+            onChange={pousserDescription}
           />
         </div>
       </div>

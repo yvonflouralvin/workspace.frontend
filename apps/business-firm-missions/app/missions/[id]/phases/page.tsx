@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { AddOutlined, DeleteOutlineOutlined, OpenInFullOutlined } from "@mui/icons-material";
 import { RightDrawer } from "@repo/ui/RightDrawer";
+import { RichTextEditor } from "@repo/ui/RichTextEditor";
 import {
   createPhase,
   updatePhase,
@@ -135,7 +136,9 @@ function PhaseDrawer({
 }) {
   const router = useRouter();
   const [nom, setNom] = useState(phase?.nom ?? "");
-  const [description, setDescription] = useState(phase?.description ?? "");
+  // Le riche n'est envoyé que s'il a été TOUCHÉ : renvoyer « rien » effacerait la description
+  // d'une phase qu'on n'a fait que renommer.
+  const [description, setDescription] = useState<string | null>(null);
   const [statut, setStatut] = useState<Phase["statut"]>(phase?.statut ?? "A_VENIR");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -149,10 +152,10 @@ function PhaseDrawer({
     }
     setSaving(true);
     setError(null);
-    const desc = description.trim() || undefined;
+    const riche = description !== null ? { description_rich: description } : {};
     try {
-      if (phase) await updatePhase(missionId, phase.id, { nom: nom.trim(), description: desc ?? null, statut });
-      else await createPhase(missionId, { nom: nom.trim(), description: desc });
+      if (phase) await updatePhase(missionId, phase.id, { nom: nom.trim(), statut, ...riche });
+      else await createPhase(missionId, { nom: nom.trim(), ...riche });
       await reload();
       onClose();
     } catch (err) {
@@ -221,13 +224,15 @@ function PhaseDrawer({
 
         <div>
           <label className={LABEL}>Description</label>
-          <textarea
-            className={`${FIELD} w-full`}
-            rows={3}
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Objectif de la phase…"
-          />
+          <div className="rounded-xl border border-outline-soft bg-surface-container-lowest overflow-hidden">
+            <RichTextEditor
+              value={phase?.description_rich ?? null}
+              fallbackText={phase?.description ?? null}
+              placeholder="Objectif de la phase, ce qui change…"
+              className="min-h-[9rem]"
+              onChange={(json) => setDescription(json)}
+            />
+          </div>
         </div>
 
         {error && <p className="text-body-sm text-error bg-error-container/40 rounded-lg px-3 py-2">{error}</p>}

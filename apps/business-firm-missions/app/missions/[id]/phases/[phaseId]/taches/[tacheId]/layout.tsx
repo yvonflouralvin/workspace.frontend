@@ -8,36 +8,38 @@ import {
   CloudDoneOutlined,
   CloudOffOutlined,
   CloudSyncOutlined,
+  PersonOutlined,
 } from "@mui/icons-material";
-import { updatePhase, type Phase } from "@/lib/bfm-missions-api";
-import { useMission } from "../../mission-context";
-import { StatutPhasePill } from "../../ui";
-import { PhaseProvider, type EtatSauvegarde } from "./phase-context";
-import { PHASE_SECTIONS, phaseSectionForPathname } from "./phase-sections";
+import { updateTache, type Tache } from "@/lib/bfm-missions-api";
+import { useMission } from "../../../../mission-context";
+import { StatutTachePill } from "../../../../ui";
+import { usePhase, type EtatSauvegarde } from "../../phase-context";
+import { TacheProvider } from "./tache-context";
+import { TACHE_SECTIONS, tacheSectionForPathname } from "./tache-sections";
 
-export default function PhaseLayout({ children }: { children: ReactNode }) {
-  const { phaseId } = useParams<{ phaseId: string }>();
+export default function TacheLayout({ children }: { children: ReactNode }) {
+  const { tacheId } = useParams<{ tacheId: string }>();
   const pathname = usePathname();
-  const { missionId, mission, phases, taches, reload } = useMission();
-  const phase = phases.find((p) => p.id === Number(phaseId)) ?? null;
+  const { missionId, mission, taches, reload } = useMission();
+  const { phase } = usePhase();
+  const tache = taches.find((t) => t.id === Number(tacheId) && t.phase_id === phase.id) ?? null;
 
-  const [nom, setNom] = useState(phase?.nom ?? "");
+  const [titre, setTitre] = useState(tache?.titre ?? "");
   const [etat, setEtat] = useState<EtatSauvegarde>("idle");
   const [erreur, setErreur] = useState<string | null>(null);
 
-  // Le nom local suit la phase résolue depuis le contexte (au chargement).
   useEffect(() => {
-    if (phase) setNom(phase.nom);
-  }, [phase?.id, phase?.nom]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (tache) setTitre(tache.titre);
+  }, [tache?.id, tache?.titre]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const phaseIdNum = phase?.id;
+  const tacheIdNum = tache?.id;
   const enregistrer = useCallback(
-    async (patch: Partial<Phase>) => {
-      if (!phaseIdNum) return;
+    async (patch: Partial<Tache>) => {
+      if (!tacheIdNum) return;
       setEtat("saving");
       setErreur(null);
       try {
-        await updatePhase(missionId, phaseIdNum, patch);
+        await updateTache(missionId, tacheIdNum, patch);
         await reload();
         setEtat("saved");
       } catch (err) {
@@ -45,73 +47,74 @@ export default function PhaseLayout({ children }: { children: ReactNode }) {
         setEtat("error");
       }
     },
-    [missionId, phaseIdNum, reload],
+    [missionId, tacheIdNum, reload],
   );
 
-  if (!phase) {
+  const retour = `/missions/${missionId}/phases/${phase.id}/taches`;
+
+  if (!tache) {
     return (
       <div className="space-y-4">
-        <RetourPhases missionId={missionId} />
-        <p className="text-body-md text-error">Phase introuvable.</p>
+        <RetourTaches href={retour} />
+        <p className="text-body-md text-error">Tâche introuvable.</p>
       </div>
     );
   }
 
-  const current = phaseSectionForPathname(pathname, missionId, phase.id);
-  const contexte = {
-    phase,
-    taches: taches.filter((t) => t.phase_id === phase.id),
-    enregistrer,
-    etat,
-    erreur,
-  };
-
-  // Le détail d'une tâche porte sa propre identité (mission et phase en surtitre, tâche en
-  // titre) et ses propres onglets : le layout de la phase s'efface, comme celui de la mission
-  // s'efface devant la phase. Le contexte de la phase reste servi — la tâche en a besoin.
-  if (/\/taches\/\d+/.test(pathname)) {
-    return <PhaseProvider value={contexte}>{children}</PhaseProvider>;
-  }
+  const base = `/missions/${missionId}/phases/${phase.id}/taches/${tache.id}`;
+  const current = tacheSectionForPathname(pathname, base);
 
   return (
     <div>
-      <RetourPhases missionId={missionId} />
+      <RetourTaches href={retour} />
 
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
-          <Link
-            href={`/missions/${missionId}`}
-            className="inline-block max-w-full truncate text-label-md font-medium text-outline hover:text-primary transition-colors"
-          >
-            {mission.nom}
-          </Link>
+          <span className="flex items-center gap-1.5 text-label-md font-medium text-outline">
+            <Link href={`/missions/${missionId}`} className="truncate hover:text-primary transition-colors">
+              {mission.nom}
+            </Link>
+            <span aria-hidden>·</span>
+            <Link href={`/missions/${missionId}/phases/${phase.id}`} className="truncate hover:text-primary transition-colors">
+              {phase.nom}
+            </Link>
+          </span>
           <input
-            aria-label="Nom de la phase"
-            value={nom}
-            onChange={(e) => setNom(e.target.value)}
+            aria-label="Titre de la tâche"
+            value={titre}
+            onChange={(e) => setTitre(e.target.value)}
             onBlur={() => {
-              const v = nom.trim();
-              if (!v) setNom(phase.nom);
-              else if (v !== phase.nom) void enregistrer({ nom: v });
+              const v = titre.trim();
+              if (!v) setTitre(tache.titre);
+              else if (v !== tache.titre) void enregistrer({ titre: v });
             }}
-            placeholder="Nom de la phase"
+            placeholder="Titre de la tâche"
             className="mt-0.5 w-full bg-transparent font-display text-headline-md text-on-surface outline-none border-b border-transparent hover:border-outline-soft focus:border-primary transition-colors"
           />
         </div>
 
         <div className="flex-none flex items-center gap-3 pt-4">
           <IndicateurSauvegarde etat={etat} />
-          <StatutPhasePill statut={phase.statut} />
+          {tache.assignee_client && (
+            <span
+              className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-label-md font-semibold text-primary"
+              title="Le client voit cette tâche"
+            >
+              <PersonOutlined style={{ fontSize: 13 }} />
+              Client
+            </span>
+          )}
+          <StatutTachePill statut={tache.statut} />
         </div>
       </div>
 
       <nav className="flex items-center gap-1 border-b border-outline-soft mt-5 mb-5 overflow-x-auto">
-        {PHASE_SECTIONS.map((section) => {
+        {TACHE_SECTIONS.map((section) => {
           const active = section.key === current.key;
           return (
             <Link
               key={section.key}
-              href={`/missions/${missionId}/phases/${phase.id}${section.path}`}
+              href={`${base}${section.path}`}
               className={`inline-flex items-center gap-1.5 px-3 py-2.5 -mb-px border-b-2 whitespace-nowrap text-body-sm font-medium transition-colors ${
                 active
                   ? "border-primary text-primary"
@@ -125,18 +128,18 @@ export default function PhaseLayout({ children }: { children: ReactNode }) {
         })}
       </nav>
 
-      <PhaseProvider value={contexte}>{children}</PhaseProvider>
+      <TacheProvider value={{ tache, phase, enregistrer, etat, erreur }}>{children}</TacheProvider>
     </div>
   );
 }
 
-function RetourPhases({ missionId }: { missionId: number }) {
+function RetourTaches({ href }: { href: string }) {
   return (
     <Link
-      href={`/missions/${missionId}/phases`}
+      href={href}
       className="inline-flex items-center gap-1.5 text-body-sm font-medium text-on-surface-variant hover:text-primary transition-colors mb-4"
     >
-      <ArrowBackOutlined style={{ fontSize: 15 }} /> Phases
+      <ArrowBackOutlined style={{ fontSize: 15 }} /> Tâches
     </Link>
   );
 }

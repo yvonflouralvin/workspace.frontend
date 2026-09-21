@@ -4,50 +4,98 @@ import { useEffect, useState } from "react";
 import {
   listContacts,
   createContact,
+  updateContact,
   deleteContact,
   listContrats,
   createContrat,
   deleteContrat,
-  listServicesSouscrits,
-  createServiceSouscrit,
-  deleteServiceSouscrit,
-  listEchanges,
-  createEchange,
-  deleteEchange,
-  listActivites,
   logActivite,
-  listTiersDocuments,
   listFacturesDuClient,
-  TYPE_ECHANGE_LABELS,
   type Contact,
   type Contrat,
-  type ServiceSouscrit,
-  type Echange,
-  type TypeEchange,
 } from "@/lib/tiers-api";
 import { listMissions, createMission, STATUT_MISSION_LABELS, type MissionSummary } from "@/lib/bfm-missions-api";
-import { AddOutlined, DeleteOutlineOutlined, ChevronRightOutlined } from "@mui/icons-material";
+import { AddOutlined, DeleteOutlineOutlined, EditOutlined, ChevronRightOutlined } from "@mui/icons-material";
+import { useConfirmSuppression } from "@repo/ui/hooks/useConfirmSuppression";
+import { FormDrawer } from "@repo/ui/FormDrawer";
 import { AccesPortailContact } from "@/components/AccesPortailContact";
 import { listAccesClient, retirerAcces, type AccesClient } from "@/lib/acces-client-api";
 
 const FIELD =
-  "rounded-lg border border-outline-soft bg-surface-container-lowest px-2.5 py-1.5 text-body-sm text-on-surface outline-none focus:border-primary transition-colors";
+  "w-full rounded-lg border border-outline-soft bg-surface-container-lowest px-3 py-2 text-body-md text-on-surface outline-none focus:border-primary transition-colors";
+const LABEL = "block text-label-sm uppercase text-outline mb-1.5";
+const BOUTON_AJOUT =
+  "inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-primary text-on-primary text-body-sm font-semibold hover:bg-primary-container transition-colors";
 
 function montant(n: number | null): string {
   if (n === null) return "—";
   return n.toLocaleString("fr-FR");
 }
 
+function Champ({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <span className={LABEL}>{label}</span>
+      {children}
+    </div>
+  );
+}
+
 // ───────────────────────── Contacts ─────────────────────────
+
+type ContactValeurs = Omit<Contact, "id" | "tiers_id">;
+
+function ContactTiroir({
+  initial,
+  onSubmit,
+  onClose,
+}: {
+  initial?: Contact;
+  onSubmit: (v: ContactValeurs) => Promise<void>;
+  onClose: () => void;
+}) {
+  const [nom, setNom] = useState(initial?.nom ?? "");
+  const [fonction, setFonction] = useState(initial?.fonction ?? "");
+  const [telephone, setTelephone] = useState(initial?.telephone ?? "");
+  const [email, setEmail] = useState(initial?.email ?? "");
+
+  return (
+    <FormDrawer
+      title={initial ? "Modifier le contact" : "Nouveau contact"}
+      submitLabel={initial ? "Enregistrer" : "Ajouter"}
+      onClose={onClose}
+      onSubmit={() =>
+        onSubmit({
+          nom: nom.trim(),
+          fonction: fonction.trim() || null,
+          telephone: telephone.trim() || null,
+          email: email.trim() || null,
+          adresse_bureau: initial?.adresse_bureau ?? null,
+        })
+      }
+    >
+      <Champ label="Nom *">
+        <input className={FIELD} value={nom} onChange={(e) => setNom(e.target.value)} required autoFocus />
+      </Champ>
+      <Champ label="Fonction">
+        <input className={FIELD} value={fonction} onChange={(e) => setFonction(e.target.value)} />
+      </Champ>
+      <Champ label="Téléphone">
+        <input className={FIELD} value={telephone} onChange={(e) => setTelephone(e.target.value)} />
+      </Champ>
+      <Champ label="E-mail">
+        <input className={FIELD} type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+      </Champ>
+    </FormDrawer>
+  );
+}
 
 export function ContactsPanel({ tiersId, tiersNom }: { tiersId: number; tiersNom: string }) {
   const [items, setItems] = useState<Contact[] | null>(null);
   const [acces, setAcces] = useState<AccesClient[]>([]);
-  const [ajout, setAjout] = useState(false);
-  const [nom, setNom] = useState("");
-  const [fonction, setFonction] = useState("");
-  const [telephone, setTelephone] = useState("");
-  const [email, setEmail] = useState("");
+  // `null` : rien d'ouvert · `"nouveau"` : ajout · un contact : sa modification.
+  const [tiroir, setTiroir] = useState<Contact | "nouveau" | null>(null);
+  const { confirmer, dialogue } = useConfirmSuppression();
 
   function reload() {
     listContacts(tiersId).then(setItems);
@@ -62,32 +110,39 @@ export function ContactsPanel({ tiersId, tiersNom }: { tiersId: number; tiersNom
 
   const orphelins = items === null ? [] : acces.filter((a) => a.actif && !items.some((c) => accesDe(c)?.id === a.id));
 
-  async function ajouter(e: React.FormEvent) {
-    e.preventDefault();
-    await createContact(tiersId, { nom, fonction: fonction || null, telephone: telephone || null, email: email || null, adresse_bureau: null });
-    setNom(""); setFonction(""); setTelephone(""); setEmail(""); setAjout(false);
+  async function enregistrer(v: ContactValeurs) {
+    if (tiroir === "nouveau") await createContact(tiersId, v);
+    else if (tiroir) await updateContact(tiersId, tiroir.id, v);
+    setTiroir(null);
     reload();
+  }
+
+  function demanderSuppression(c: Contact) {
+    confirmer({
+      title: "Supprimer ce contact ?",
+      message: (
+        <>
+          <strong className="text-on-surface">{c.nom}</strong> sera supprimé
+          {accesDe(c) ? " et son accès au portail sera retiré" : ""}. Cette action est irréversible.
+        </>
+      ),
+      action: async () => {
+        // Supprimer un contact ne doit pas laisser son accès ouvert : on le retire d'abord.
+        const a = accesDe(c);
+        if (a) await retirerAcces(a.id).catch(() => undefined);
+        await deleteContact(tiersId, c.id);
+        reload();
+      },
+    });
   }
 
   return (
     <div className="space-y-3">
       <div className="flex justify-end">
-        {!ajout && (
-          <button onClick={() => setAjout(true)} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-primary text-on-primary text-body-sm font-semibold hover:bg-primary-container transition-colors">
-            <AddOutlined style={{ fontSize: 15 }} /> Ajouter
-          </button>
-        )}
+        <button onClick={() => setTiroir("nouveau")} className={BOUTON_AJOUT}>
+          <AddOutlined style={{ fontSize: 15 }} /> Ajouter
+        </button>
       </div>
-      {ajout && (
-        <form onSubmit={ajouter} className="flex flex-wrap items-end gap-2 rounded-xl border border-outline-soft p-3">
-          <input className={FIELD} placeholder="Nom *" value={nom} onChange={(e) => setNom(e.target.value)} required autoFocus />
-          <input className={FIELD} placeholder="Fonction" value={fonction} onChange={(e) => setFonction(e.target.value)} />
-          <input className={FIELD} placeholder="Téléphone" value={telephone} onChange={(e) => setTelephone(e.target.value)} />
-          <input className={FIELD} placeholder="E-mail" value={email} onChange={(e) => setEmail(e.target.value)} />
-          <button type="button" onClick={() => setAjout(false)} className="h-9 px-3 rounded-lg text-body-sm text-on-surface-variant hover:bg-surface-container transition-colors">Annuler</button>
-          <button type="submit" className="h-9 px-3 rounded-lg bg-primary text-on-primary text-body-sm font-semibold">Ajouter</button>
-        </form>
-      )}
       {orphelins.length > 0 && (
         <div className="rounded-xl border border-error/30 bg-error-container/20 p-3 space-y-1.5">
           <p className="text-body-sm font-semibold text-error">Accès au portail sans contact</p>
@@ -95,7 +150,14 @@ export function ContactsPanel({ tiersId, tiersNom }: { tiersId: number; tiersNom
             <div key={a.id} className="flex items-center justify-between gap-3 text-body-sm">
               <span className="truncate text-on-surface">{a.nom || a.email} <span className="text-outline">— {a.email}</span></span>
               <button
-                onClick={() => retirerAcces(a.id).then(reload)}
+                onClick={() =>
+                  confirmer({
+                    title: "Retirer cet accès ?",
+                    message: <><strong className="text-on-surface">{a.nom || a.email}</strong> ne pourra plus se connecter au portail.</>,
+                    confirmLabel: "Retirer",
+                    action: () => retirerAcces(a.id).then(reload),
+                  })
+                }
                 className="flex-none text-label-md font-semibold text-error hover:underline"
               >
                 Retirer l&apos;accès
@@ -116,13 +178,15 @@ export function ContactsPanel({ tiersId, tiersNom }: { tiersId: number; tiersNom
               </div>
               <AccesPortailContact contact={c} tiersId={tiersId} tiersNom={tiersNom} acces={accesDe(c)} onChange={reload} />
               <button
-                onClick={async () => {
-                  // Supprimer un contact ne doit pas laisser son accès ouvert : on le retire d'abord.
-                  const a = accesDe(c);
-                  if (a) await retirerAcces(a.id).catch(() => undefined);
-                  await deleteContact(tiersId, c.id);
-                  reload();
-                }}
+                onClick={() => setTiroir(c)}
+                aria-label={`Modifier ${c.nom}`}
+                className="text-outline hover:text-primary transition-colors"
+              >
+                <EditOutlined style={{ fontSize: 17 }} />
+              </button>
+              <button
+                onClick={() => demanderSuppression(c)}
+                aria-label={`Supprimer ${c.nom}`}
                 className="text-outline hover:text-error transition-colors"
               >
                 <DeleteOutlineOutlined style={{ fontSize: 17 }} />
@@ -131,53 +195,80 @@ export function ContactsPanel({ tiersId, tiersNom }: { tiersId: number; tiersNom
           ))}
         </ul>
       )}
+      {tiroir && (
+        <ContactTiroir
+          key={tiroir === "nouveau" ? "nouveau" : tiroir.id}
+          initial={tiroir === "nouveau" ? undefined : tiroir}
+          onSubmit={enregistrer}
+          onClose={() => setTiroir(null)}
+        />
+      )}
+      {dialogue}
     </div>
   );
 }
 
 // ───────────────────────── Contrats ─────────────────────────
 
-export function ContratsPanel({ tiersId }: { tiersId: number }) {
-  const [items, setItems] = useState<Contrat[] | null>(null);
-  const [ajout, setAjout] = useState(false);
+function ContratTiroir({
+  onSubmit,
+  onClose,
+}: {
+  onSubmit: (v: { nom: string; montant?: number; date_debut?: string; date_fin?: string }) => Promise<void>;
+  onClose: () => void;
+}) {
   const [nom, setNom] = useState("");
   const [montantVal, setMontantVal] = useState("");
   const [dateDebut, setDateDebut] = useState("");
   const [dateFin, setDateFin] = useState("");
 
+  return (
+    <FormDrawer
+      title="Nouveau contrat"
+      submitLabel="Créer"
+      onClose={onClose}
+      onSubmit={() =>
+        onSubmit({
+          nom: nom.trim(),
+          montant: montantVal ? Number(montantVal) : undefined,
+          date_debut: dateDebut || undefined,
+          date_fin: dateFin || undefined,
+        })
+      }
+    >
+      <Champ label="Nom du contrat *">
+        <input className={FIELD} value={nom} onChange={(e) => setNom(e.target.value)} required autoFocus />
+      </Champ>
+      <Champ label="Montant">
+        <input className={FIELD} type="number" value={montantVal} onChange={(e) => setMontantVal(e.target.value)} />
+      </Champ>
+      <div className="grid sm:grid-cols-2 gap-4">
+        <Champ label="Date de début">
+          <input className={FIELD} type="date" value={dateDebut} onChange={(e) => setDateDebut(e.target.value)} />
+        </Champ>
+        <Champ label="Date de fin">
+          <input className={FIELD} type="date" value={dateFin} onChange={(e) => setDateFin(e.target.value)} />
+        </Champ>
+      </div>
+    </FormDrawer>
+  );
+}
+
+export function ContratsPanel({ tiersId }: { tiersId: number }) {
+  const [items, setItems] = useState<Contrat[] | null>(null);
+  const [ajout, setAjout] = useState(false);
+  const { confirmer, dialogue } = useConfirmSuppression();
+
   function reload() { listContrats(tiersId).then(setItems); }
   useEffect(reload, [tiersId]);
-
-  async function ajouter(e: React.FormEvent) {
-    e.preventDefault();
-    await createContrat(tiersId, {
-      nom, montant: montantVal ? Number(montantVal) : undefined,
-      date_debut: dateDebut || undefined, date_fin: dateFin || undefined,
-    });
-    logActivite(tiersId, `Contrat créé : ${nom}`);
-    setNom(""); setMontantVal(""); setDateDebut(""); setDateFin(""); setAjout(false);
-    reload();
-  }
 
   return (
     <div className="space-y-3">
       <div className="flex justify-end">
-        {!ajout && (
-          <button onClick={() => setAjout(true)} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-primary text-on-primary text-body-sm font-semibold hover:bg-primary-container transition-colors">
-            <AddOutlined style={{ fontSize: 15 }} /> Nouveau contrat
-          </button>
-        )}
+        <button onClick={() => setAjout(true)} className={BOUTON_AJOUT}>
+          <AddOutlined style={{ fontSize: 15 }} /> Nouveau contrat
+        </button>
       </div>
-      {ajout && (
-        <form onSubmit={ajouter} className="flex flex-wrap items-end gap-2 rounded-xl border border-outline-soft p-3">
-          <input className={FIELD} placeholder="Nom du contrat *" value={nom} onChange={(e) => setNom(e.target.value)} required autoFocus />
-          <input className={`${FIELD} w-32`} type="number" placeholder="Montant" value={montantVal} onChange={(e) => setMontantVal(e.target.value)} />
-          <input className={FIELD} type="date" value={dateDebut} onChange={(e) => setDateDebut(e.target.value)} />
-          <input className={FIELD} type="date" value={dateFin} onChange={(e) => setDateFin(e.target.value)} />
-          <button type="button" onClick={() => setAjout(false)} className="h-9 px-3 rounded-lg text-body-sm text-on-surface-variant hover:bg-surface-container transition-colors">Annuler</button>
-          <button type="submit" className="h-9 px-3 rounded-lg bg-primary text-on-primary text-body-sm font-semibold">Créer</button>
-        </form>
-      )}
       {items === null ? <p className="text-body-sm text-on-surface-variant">Chargement…</p> : items.length === 0 ? (
         <p className="text-body-sm text-on-surface-variant">Aucun contrat.</p>
       ) : (
@@ -190,67 +281,34 @@ export function ContratsPanel({ tiersId }: { tiersId: number }) {
                   {c.date_debut?.slice(0, 10) ?? "—"} → {c.date_fin?.slice(0, 10) ?? "—"} · {montant(c.montant)} · {c.statut}
                 </p>
               </div>
-              <button onClick={() => deleteContrat(tiersId, c.id).then(reload)} className="text-outline hover:text-error transition-colors">
+              <button
+                onClick={() =>
+                  confirmer({
+                    title: "Supprimer ce contrat ?",
+                    message: <><strong className="text-on-surface">{c.nom}</strong> sera supprimé. Cette action est irréversible.</>,
+                    action: () => deleteContrat(tiersId, c.id).then(reload),
+                  })
+                }
+                aria-label={`Supprimer ${c.nom}`}
+                className="text-outline hover:text-error transition-colors"
+              >
                 <DeleteOutlineOutlined style={{ fontSize: 17 }} />
               </button>
             </li>
           ))}
         </ul>
       )}
-    </div>
-  );
-}
-
-// ───────────────────────── Services souscrits ─────────────────────────
-
-export function ServicesPanel({ tiersId }: { tiersId: number }) {
-  const [items, setItems] = useState<ServiceSouscrit[] | null>(null);
-  const [ajout, setAjout] = useState(false);
-  const [nom, setNom] = useState("");
-
-  function reload() { listServicesSouscrits(tiersId).then(setItems); }
-  useEffect(reload, [tiersId]);
-
-  async function ajouter(e: React.FormEvent) {
-    e.preventDefault();
-    await createServiceSouscrit(tiersId, { nom });
-    logActivite(tiersId, `Service souscrit ajouté : ${nom}`);
-    setNom(""); setAjout(false);
-    reload();
-  }
-
-  return (
-    <div className="space-y-3">
-      <div className="flex justify-end">
-        {!ajout && (
-          <button onClick={() => setAjout(true)} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-primary text-on-primary text-body-sm font-semibold hover:bg-primary-container transition-colors">
-            <AddOutlined style={{ fontSize: 15 }} /> Ajouter
-          </button>
-        )}
-      </div>
+      {dialogue}
       {ajout && (
-        <form onSubmit={ajouter} className="flex flex-wrap items-end gap-2 rounded-xl border border-outline-soft p-3">
-          <input className={`${FIELD} flex-1`} placeholder="Ex. Tenue de comptabilité mensuelle" value={nom} onChange={(e) => setNom(e.target.value)} required autoFocus />
-          <button type="button" onClick={() => setAjout(false)} className="h-9 px-3 rounded-lg text-body-sm text-on-surface-variant hover:bg-surface-container transition-colors">Annuler</button>
-          <button type="submit" className="h-9 px-3 rounded-lg bg-primary text-on-primary text-body-sm font-semibold">Ajouter</button>
-        </form>
-      )}
-      {items === null ? <p className="text-body-sm text-on-surface-variant">Chargement…</p> : items.length === 0 ? (
-        <p className="text-body-sm text-on-surface-variant">Aucun service souscrit.</p>
-      ) : (
-        <ul className="rounded-xl border border-outline-soft divide-y divide-hairline">
-          {items.map((s) => (
-            <li key={s.id} className="flex items-center gap-3 px-3 py-2.5">
-              <div className="flex-1 min-w-0">
-                <p className="text-body-sm font-medium text-on-surface">{s.nom}</p>
-                <p className="text-label-md text-outline">{s.statut}</p>
-              </div>
-              <button onClick={() => deleteServiceSouscrit(tiersId, s.id).then(reload)} className="text-outline hover:text-error transition-colors">
-                <DeleteOutlineOutlined style={{ fontSize: 17 }} />
-              </button>
-            </li>
-          ))}
-        </ul>
+        <ContratTiroir
+          onClose={() => setAjout(false)}
+          onSubmit={async (v) => {
+            await createContrat(tiersId, v);
+            logActivite(tiersId, `Contrat créé : ${v.nom}`);
+            setAjout(false);
+            reload();
+          }}
+        />
       )}
     </div>
   );
@@ -258,38 +316,31 @@ export function ServicesPanel({ tiersId }: { tiersId: number }) {
 
 // ───────────────────────── Missions ─────────────────────────
 
+function MissionTiroir({ onSubmit, onClose }: { onSubmit: (nom: string) => Promise<void>; onClose: () => void }) {
+  const [nom, setNom] = useState("");
+  return (
+    <FormDrawer title="Nouvelle mission" submitLabel="Créer" onClose={onClose} onSubmit={() => onSubmit(nom.trim())}>
+      <Champ label="Nom de la mission *">
+        <input className={FIELD} value={nom} onChange={(e) => setNom(e.target.value)} required autoFocus />
+      </Champ>
+    </FormDrawer>
+  );
+}
+
 export function MissionsPanel({ tiersId }: { tiersId: number }) {
   const [items, setItems] = useState<MissionSummary[] | null>(null);
   const [ajout, setAjout] = useState(false);
-  const [nom, setNom] = useState("");
 
   function reload() { listMissions({ tiers_id: tiersId }).then(setItems); }
   useEffect(reload, [tiersId]);
 
-  async function ajouter(e: React.FormEvent) {
-    e.preventDefault();
-    await createMission({ nom, tiers_id: tiersId });
-    logActivite(tiersId, `Mission créée : ${nom}`);
-    setNom(""); setAjout(false);
-    reload();
-  }
-
   return (
     <div className="space-y-3">
       <div className="flex justify-end">
-        {!ajout && (
-          <button onClick={() => setAjout(true)} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-primary text-on-primary text-body-sm font-semibold hover:bg-primary-container transition-colors">
-            <AddOutlined style={{ fontSize: 15 }} /> Nouvelle mission
-          </button>
-        )}
+        <button onClick={() => setAjout(true)} className={BOUTON_AJOUT}>
+          <AddOutlined style={{ fontSize: 15 }} /> Nouvelle mission
+        </button>
       </div>
-      {ajout && (
-        <form onSubmit={ajouter} className="flex flex-wrap items-end gap-2 rounded-xl border border-outline-soft p-3">
-          <input className={`${FIELD} flex-1`} placeholder="Nom de la mission" value={nom} onChange={(e) => setNom(e.target.value)} required autoFocus />
-          <button type="button" onClick={() => setAjout(false)} className="h-9 px-3 rounded-lg text-body-sm text-on-surface-variant hover:bg-surface-container transition-colors">Annuler</button>
-          <button type="submit" className="h-9 px-3 rounded-lg bg-primary text-on-primary text-body-sm font-semibold">Créer</button>
-        </form>
-      )}
       {items === null ? <p className="text-body-sm text-on-surface-variant">Chargement…</p> : items.length === 0 ? (
         <p className="text-body-sm text-on-surface-variant">Aucune mission.</p>
       ) : (
@@ -306,6 +357,17 @@ export function MissionsPanel({ tiersId }: { tiersId: number }) {
             </li>
           ))}
         </ul>
+      )}
+      {ajout && (
+        <MissionTiroir
+          onClose={() => setAjout(false)}
+          onSubmit={async (nom) => {
+            await createMission({ nom, tiers_id: tiersId });
+            logActivite(tiersId, `Mission créée : ${nom}`);
+            setAjout(false);
+            reload();
+          }}
+        />
       )}
     </div>
   );
@@ -326,108 +388,6 @@ export function FacturesPanel({ tiersId }: { tiersId: number }) {
           <span className="font-mono text-body-sm">{f.code}</span>
           <span className="flex-1 text-label-md text-outline">{f.statut}</span>
           <span className="text-body-sm tabular-nums">{Number(f.montant_paye).toLocaleString("fr-FR")} / {Number(f.montant_total).toLocaleString("fr-FR")}</span>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-// ───────────────────────── Documents ─────────────────────────
-
-export function DocumentsPanel({ tiersId }: { tiersId: number }) {
-  const [items, setItems] = useState<Awaited<ReturnType<typeof listTiersDocuments>> | null>(null);
-  useEffect(() => { listTiersDocuments(tiersId).then(setItems); }, [tiersId]);
-
-  if (items === null) return <p className="text-body-sm text-on-surface-variant">Chargement…</p>;
-  if (items.length === 0) return <p className="text-body-sm text-on-surface-variant">Aucun document.</p>;
-  return (
-    <ul className="rounded-xl border border-outline-soft divide-y divide-hairline">
-      {items.map((d) => (
-        <li key={d.id} className="flex items-center gap-3 px-3 py-2.5">
-          <span className="flex-1 text-body-sm truncate">{d.filename}</span>
-          <span className="text-label-md text-outline">{d.category ?? "—"}</span>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-// ───────────────────────── Échanges ─────────────────────────
-
-export function EchangesPanel({ tiersId }: { tiersId: number }) {
-  const [items, setItems] = useState<Echange[] | null>(null);
-  const [ajout, setAjout] = useState(false);
-  const [type, setType] = useState<TypeEchange>("APPEL");
-  const [sujet, setSujet] = useState("");
-  const [notes, setNotes] = useState("");
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
-
-  function reload() { listEchanges(tiersId).then(setItems); }
-  useEffect(reload, [tiersId]);
-
-  async function ajouter(e: React.FormEvent) {
-    e.preventDefault();
-    await createEchange(tiersId, { type, sujet, notes: notes || undefined, date_echange: date });
-    setSujet(""); setNotes(""); setAjout(false);
-    reload();
-  }
-
-  return (
-    <div className="space-y-3">
-      <div className="flex justify-end">
-        {!ajout && (
-          <button onClick={() => setAjout(true)} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-primary text-on-primary text-body-sm font-semibold hover:bg-primary-container transition-colors">
-            <AddOutlined style={{ fontSize: 15 }} /> Nouvel échange
-          </button>
-        )}
-      </div>
-      {ajout && (
-        <form onSubmit={ajouter} className="flex flex-wrap items-end gap-2 rounded-xl border border-outline-soft p-3">
-          <select className={FIELD} value={type} onChange={(e) => setType(e.target.value as TypeEchange)}>
-            {Object.entries(TYPE_ECHANGE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-          </select>
-          <input className={FIELD} type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
-          <input className={`${FIELD} flex-1`} placeholder="Sujet *" value={sujet} onChange={(e) => setSujet(e.target.value)} required />
-          <input className={`${FIELD} flex-1`} placeholder="Notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
-          <button type="button" onClick={() => setAjout(false)} className="h-9 px-3 rounded-lg text-body-sm text-on-surface-variant hover:bg-surface-container transition-colors">Annuler</button>
-          <button type="submit" className="h-9 px-3 rounded-lg bg-primary text-on-primary text-body-sm font-semibold">Ajouter</button>
-        </form>
-      )}
-      {items === null ? <p className="text-body-sm text-on-surface-variant">Chargement…</p> : items.length === 0 ? (
-        <p className="text-body-sm text-on-surface-variant">Aucun échange enregistré.</p>
-      ) : (
-        <ul className="rounded-xl border border-outline-soft divide-y divide-hairline">
-          {items.map((e) => (
-            <li key={e.id} className="flex items-center gap-3 px-3 py-2.5">
-              <div className="flex-1 min-w-0">
-                <p className="text-body-sm font-medium text-on-surface">{TYPE_ECHANGE_LABELS[e.type]} — {e.sujet}</p>
-                <p className="text-label-md text-outline">{e.date_echange.slice(0, 10)} {e.notes ? `· ${e.notes}` : ""}</p>
-              </div>
-              <button onClick={() => deleteEchange(tiersId, e.id).then(reload)} className="text-outline hover:text-error transition-colors">
-                <DeleteOutlineOutlined style={{ fontSize: 17 }} />
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
-}
-
-// ───────────────────────── Actions réalisées ─────────────────────────
-
-export function ActivitesPanel({ tiersId }: { tiersId: number }) {
-  const [items, setItems] = useState<Awaited<ReturnType<typeof listActivites>> | null>(null);
-  useEffect(() => { listActivites(tiersId).then(setItems); }, [tiersId]);
-
-  if (items === null) return <p className="text-body-sm text-on-surface-variant">Chargement…</p>;
-  if (items.length === 0) return <p className="text-body-sm text-on-surface-variant">Aucune action enregistrée.</p>;
-  return (
-    <ul className="rounded-xl border border-outline-soft divide-y divide-hairline">
-      {items.map((a) => (
-        <li key={a.id} className="px-3 py-2.5">
-          <p className="text-body-sm text-on-surface">{a.action}</p>
-          <p className="text-label-md text-outline">{new Date(a.created_at).toLocaleString("fr-FR")}</p>
         </li>
       ))}
     </ul>

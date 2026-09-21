@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import {
   AccountTreeOutlined,
   FolderOpenOutlined,
+  HistoryOutlined,
   NotesOutlined,
   SettingsOutlined,
   ViewListOutlined,
@@ -22,6 +23,8 @@ export const MISSION_SECTIONS: MissionSection[] = [
   // Les tâches et les documents de TOUTES les phases, sans descendre phase par phase.
   { key: "taches", path: "/taches", label: "Tâches", icon: <ViewListOutlined style={{ fontSize: 17 }} /> },
   { key: "documents", path: "/documents", label: "Documents", icon: <FolderOpenOutlined style={{ fontSize: 17 }} /> },
+  // Le journal de TOUTES les tâches de la mission : qui a fait quoi, tâche par tâche.
+  { key: "historique", path: "/historique", label: "Historique", icon: <HistoryOutlined style={{ fontSize: 17 }} /> },
   { key: "parametres", path: "/parametres", label: "Paramètres", icon: <SettingsOutlined style={{ fontSize: 17 }} /> },
 ];
 

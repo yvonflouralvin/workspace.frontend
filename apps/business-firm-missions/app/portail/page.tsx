@@ -10,6 +10,7 @@ import {
   type PortailTache,
 } from "@/lib/bfm-portail-api";
 import { usePortail } from "./portail-context";
+import { estTerminee } from "@/app/missions/[id]/ui";
 
 export default function AccueilPortailPage() {
   const moi = usePortail();
@@ -21,8 +22,9 @@ export default function AccueilPortailPage() {
     listMissionsPortail().then(setMissions).catch(() => setMissions([]));
   }, []);
 
-  const afaire = (taches ?? []).filter((t) => t.statut !== "TERMINEE");
-  const faites = (taches ?? []).filter((t) => t.statut === "TERMINEE");
+  // Pour le client, « fait » : il a terminé (le cabinet valide ensuite) ou le cabinet a validé.
+  const afaire = (taches ?? []).filter((t) => !estTerminee(t.statut));
+  const faites = (taches ?? []).filter((t) => estTerminee(t.statut));
 
   return (
     <div className="space-y-8">

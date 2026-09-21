@@ -9,7 +9,7 @@ import {
   CloudOffOutlined,
   CloudSyncOutlined,
 } from "@mui/icons-material";
-import { updatePhase, type Phase } from "@/lib/bfm-missions-api";
+import { peut, updatePhase, type Phase } from "@/lib/bfm-missions-api";
 import { useMission } from "../../mission-context";
 import { StatutPhasePill } from "../../ui";
 import { PhaseProvider, type EtatSauvegarde } from "./phase-context";
@@ -95,6 +95,7 @@ export default function PhaseLayout({ children }: { children: ReactNode }) {
               else if (v !== phase.nom) void enregistrer({ nom: v });
             }}
             placeholder="Nom de la phase"
+            readOnly={!peut(mission, "phase.modifier")}
             className="mt-0.5 w-full bg-transparent font-display text-headline-md text-on-surface outline-none border-b border-transparent hover:border-outline-soft focus:border-primary transition-colors"
           />
         </div>

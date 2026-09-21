@@ -18,7 +18,7 @@ export default function DocumentsTachePage() {
       audience="equipe"
       membres={personnes}
       optionInterne
-      canWrite
+      canWrite={tache.peut_commenter}
       aide={
         tache.assignee_client
           ? "Tous les fichiers de cette tâche : ceux joints à un commentaire et ceux déposés ici. Le client les voit, hors ceux joints à une note interne."

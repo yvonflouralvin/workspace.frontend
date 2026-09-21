@@ -3,18 +3,19 @@
 import Link from "next/link";
 import { ChevronRightOutlined, ViewListOutlined } from "@mui/icons-material";
 import { RichTextEditor } from "@repo/ui/RichTextEditor";
-import { STATUT_PHASE_LABELS, type Phase } from "@/lib/bfm-missions-api";
+import { STATUT_PHASE_LABELS, peut, type Phase } from "@/lib/bfm-missions-api";
 import { useDiffere } from "@/lib/differe";
 import { useMission } from "../../mission-context";
-import { LABEL, MetaRow } from "../../ui";
+import { LABEL, MetaRow, estTerminee } from "../../ui";
 import { usePhase } from "./phase-context";
 
 export default function ApercuPhasePage() {
-  const { missionId } = useMission();
+  const { missionId, mission } = useMission();
   const { phase, taches, enregistrer, erreur } = usePhase();
+  const modifiable = peut(mission, "phase.modifier");
   const pousserDescription = useDiffere((json: string) => enregistrer({ description_rich: json }));
 
-  const terminees = taches.filter((t) => t.statut === "TERMINEE").length;
+  const terminees = taches.filter((t) => estTerminee(t.statut)).length;
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-6 items-start">
@@ -23,7 +24,7 @@ export default function ApercuPhasePage() {
           <p className="mb-3 text-body-sm text-error bg-error-container/40 rounded-lg px-3 py-2">{erreur}</p>
         )}
         <p className={`${LABEL} mb-2`}>Aperçu de la phase</p>
-        <div className="rounded-2xl border border-outline-soft bg-surface-container-lowest overflow-hidden">
+        <div className={`rounded-2xl border border-outline-soft bg-surface-container-lowest overflow-hidden ${modifiable ? "" : "pointer-events-none opacity-80"}`}>
           <RichTextEditor
             key={phase.id}
             value={phase.description_rich}
@@ -39,8 +40,9 @@ export default function ApercuPhasePage() {
         <MetaRow label="Statut">
           <select
             value={phase.statut}
+            disabled={!modifiable}
             onChange={(e) => void enregistrer({ statut: e.target.value as Phase["statut"] })}
-            className="h-8 rounded-lg border border-outline-soft bg-surface-container-lowest px-2 text-body-sm font-semibold text-on-surface outline-none focus:border-primary"
+            className="h-8 rounded-lg border border-outline-soft bg-surface-container-lowest px-2 text-body-sm font-semibold text-on-surface outline-none focus:border-primary disabled:opacity-60"
           >
             {Object.entries(STATUT_PHASE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
           </select>

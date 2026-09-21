@@ -5,6 +5,7 @@ import {
   updateMission,
   STATUT_MISSION_LABELS,
   PRIORITE_LABELS,
+  peut,
 } from "@/lib/bfm-missions-api";
 import { ChampMembre } from "@/components/SelecteurMembre";
 import { useMission } from "./mission-context";
@@ -12,6 +13,10 @@ import { DateValue, LABEL, MetaRow, NumberValue, TextValue } from "./ui";
 
 export default function ApercuMissionPage() {
   const { mission, setMission, membres } = useMission();
+  // Les informations générales ne se modifient qu'avec le droit qui va avec ; le responsable, lui, ne se
+  // change que par le responsable.
+  const modifiable = peut(mission, "mission.modifier");
+  const complet = mission.mes_droits?.complet ?? false;
   const [description, setDescription] = useState(mission.description ?? "");
   const [etatDesc, setEtatDesc] = useState<"idle" | "saving" | "saved">("idle");
   const [error, setError] = useState<string | null>(null);
@@ -51,6 +56,7 @@ export default function ApercuMissionPage() {
             className="w-full min-h-[16rem] p-4 bg-transparent text-body-md text-on-surface outline-none resize-y"
             placeholder="Décrivez l'objectif de la mission…"
             value={description}
+            readOnly={!modifiable}
             onChange={(e) => setDescription(e.target.value)}
             onBlur={enregistrerDescription}
           />
@@ -61,23 +67,25 @@ export default function ApercuMissionPage() {
         <MetaRow label="Statut">
           <select
             value={mission.statut}
+            disabled={!modifiable}
             onChange={(e) => patch({ statut: e.target.value })}
-            className="h-8 rounded-lg border border-outline-soft bg-surface-container-lowest px-2 text-body-sm font-semibold text-on-surface outline-none focus:border-primary"
+            className="h-8 rounded-lg border border-outline-soft bg-surface-container-lowest px-2 text-body-sm font-semibold text-on-surface outline-none focus:border-primary disabled:opacity-60"
           >
             {Object.entries(STATUT_MISSION_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
           </select>
         </MetaRow>
         <MetaRow label="Type de mission">
-          <TextValue value={mission.type_mission} onSave={(v) => patch({ type_mission: v })} placeholder="Conseil, fiscal…" />
+          <TextValue value={mission.type_mission} onSave={(v) => patch({ type_mission: v })} placeholder="Conseil, fiscal…" disabled={!modifiable} />
         </MetaRow>
         <MetaRow label="Département">
-          <TextValue value={mission.departement} onSave={(v) => patch({ departement: v })} />
+          <TextValue value={mission.departement} onSave={(v) => patch({ departement: v })} disabled={!modifiable} />
         </MetaRow>
         <MetaRow label="Priorité">
           <select
             value={mission.priorite}
+            disabled={!modifiable}
             onChange={(e) => patch({ priorite: e.target.value })}
-            className="h-8 rounded-lg border border-outline-soft bg-surface-container-lowest px-2 text-body-sm text-on-surface outline-none focus:border-primary"
+            className="h-8 rounded-lg border border-outline-soft bg-surface-container-lowest px-2 text-body-sm text-on-surface outline-none focus:border-primary disabled:opacity-60"
           >
             {Object.entries(PRIORITE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
           </select>
@@ -87,20 +95,21 @@ export default function ApercuMissionPage() {
             valeur={mission.responsable_user_id}
             membres={membres}
             placeholder="Choisir…"
+            disabled={!complet}
             onChange={(id) => patch({ responsable_user_id: id })}
           />
         </MetaRow>
         <MetaRow label="Début">
-          <DateValue value={mission.start_date} onSave={(v) => patch({ start_date: v })} />
+          <DateValue value={mission.start_date} onSave={(v) => patch({ start_date: v })} disabled={!modifiable} />
         </MetaRow>
         <MetaRow label="Échéance">
-          <DateValue value={mission.due_date} onSave={(v) => patch({ due_date: v })} />
+          <DateValue value={mission.due_date} onSave={(v) => patch({ due_date: v })} disabled={!modifiable} />
         </MetaRow>
         <MetaRow label="Budget">
-          <NumberValue value={mission.budget} onSave={(v) => patch({ budget: v })} />
+          <NumberValue value={mission.budget} onSave={(v) => patch({ budget: v })} disabled={!modifiable} />
         </MetaRow>
         <MetaRow label="Heures prévues">
-          <NumberValue value={mission.heures_prevues} onSave={(v) => patch({ heures_prevues: v })} step="0.5" />
+          <NumberValue value={mission.heures_prevues} onSave={(v) => patch({ heures_prevues: v })} step="0.5" disabled={!modifiable} />
         </MetaRow>
         <MetaRow label="Code">
           <span className="font-mono text-body-sm text-on-surface" title="Non modifiable">{mission.code}</span>

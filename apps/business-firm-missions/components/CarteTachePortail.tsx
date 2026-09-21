@@ -4,11 +4,11 @@ import Link from "next/link";
 import { ChevronRightOutlined } from "@mui/icons-material";
 import { dateFr, enRetard } from "@/lib/format";
 import type { PortailTache } from "@/lib/bfm-portail-api";
-import { StatutTachePill } from "@/app/missions/[id]/ui";
+import { StatutTachePill, estTerminee } from "@/app/missions/[id]/ui";
 
 /** Une tâche que le cabinet attend du client — une ligne, un lien. */
 export function LigneTachePortail({ tache }: { tache: PortailTache }) {
-  const retard = enRetard(tache.due_date, tache.statut === "TERMINEE");
+  const retard = enRetard(tache.due_date, estTerminee(tache.statut));
   return (
     <Link
       href={`/portail/taches/${tache.id}`}
@@ -17,7 +17,7 @@ export function LigneTachePortail({ tache }: { tache: PortailTache }) {
       <span className="min-w-0 flex-1">
         <span
           className={`block truncate text-body-md font-medium ${
-            tache.statut === "TERMINEE" ? "text-outline line-through" : "text-on-surface"
+            estTerminee(tache.statut) ? "text-outline line-through" : "text-on-surface"
           }`}
         >
           {tache.titre}

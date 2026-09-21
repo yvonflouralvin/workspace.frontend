@@ -3,12 +3,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { RichTextEditor } from "@repo/ui/RichTextEditor";
 import { FilCommentaires } from "@repo/ui/FilCommentaires";
-import { STATUT_TACHE_LABELS, type StatutTache } from "@/lib/bfm-missions-api";
+import { STATUT_TACHE_LABELS } from "@/lib/bfm-missions-api";
+import type { StatutClient } from "@/lib/bfm-portail-api";
+import { estTerminee } from "@/app/missions/[id]/ui";
 import { apiFilTache, listMentionnablesPortail } from "@/lib/fil-tache-api";
 import { dateFr, enRetard } from "@/lib/format";
 import { usePortailTache } from "./tache-context";
 
-const STATUTS: StatutTache[] = ["A_FAIRE", "EN_COURS", "TERMINEE"];
+const STATUTS: StatutClient[] = ["A_FAIRE", "EN_COURS", "TERMINEE"];
 
 export default function ApercuTachePortailPage() {
   const { tache, avancer, erreur } = usePortailTache();
@@ -19,7 +21,7 @@ export default function ApercuTachePortailPage() {
   }, [tache.id]);
 
   const api = useMemo(() => apiFilTache("portail", tache.id), [tache.id]);
-  const retard = enRetard(tache.due_date, tache.statut === "TERMINEE");
+  const retard = enRetard(tache.due_date, estTerminee(tache.statut));
   const aDescription = Boolean(tache.description_rich || tache.description);
 
   return (
@@ -53,8 +55,19 @@ export default function ApercuTachePortailPage() {
       <aside className="rounded-2xl border border-outline-soft bg-surface-container-lowest divide-y divide-hairline">
         <div className="px-4 py-3">
           <p className="mb-2 text-body-sm text-on-surface-variant">Avancement</p>
+          {tache.statut === "VALIDEE" && (
+            <p className="text-body-sm text-status-done">Cette tâche a été validée par Business Firm.</p>
+          )}
+          {tache.statut === "A_REVOIR" && (
+            <p className="mb-2 rounded-lg bg-error-container/40 px-3 py-2 text-body-sm text-error">
+              Business Firm vous demande de revoir cette tâche : consultez la discussion, puis reprenez-la.
+            </p>
+          )}
+          {tache.statut === "TERMINEE" && (
+            <p className="mb-2 text-body-sm text-on-surface-variant">Terminée — en attente de validation par Business Firm.</p>
+          )}
           <div className="flex flex-col gap-1.5">
-            {STATUTS.map((s) => (
+            {tache.statut !== "VALIDEE" && (tache.statut === "A_REVOIR" ? (["EN_COURS"] as StatutClient[]) : STATUTS).map((s) => (
               <button
                 key={s}
                 type="button"
@@ -65,7 +78,7 @@ export default function ApercuTachePortailPage() {
                     : "border-outline-soft text-on-surface-variant hover:bg-surface-container-low"
                 }`}
               >
-                {STATUT_TACHE_LABELS[s]}
+                {tache.statut === "A_REVOIR" ? "Reprendre" : STATUT_TACHE_LABELS[s]}
               </button>
             ))}
           </div>

@@ -12,10 +12,10 @@ import {
 } from "@mui/icons-material";
 import { updateTache, type Tache } from "@/lib/bfm-missions-api";
 import { useMission } from "../../../../mission-context";
-import { StatutTachePill } from "../../../../ui";
+import { StatutTachePill, TypeTachePuce } from "../../../../ui";
 import { usePhase, type EtatSauvegarde } from "../../phase-context";
 import { TacheProvider } from "./tache-context";
-import { TACHE_SECTIONS, tacheSectionForPathname } from "./tache-sections";
+import { tacheSectionForPathname, tacheSections } from "./tache-sections";
 
 export default function TacheLayout({ children }: { children: ReactNode }) {
   const { tacheId } = useParams<{ tacheId: string }>();
@@ -62,7 +62,8 @@ export default function TacheLayout({ children }: { children: ReactNode }) {
   }
 
   const base = `/missions/${missionId}/phases/${phase.id}/taches/${tache.id}`;
-  const current = tacheSectionForPathname(pathname, base);
+  const sections = tacheSections(tache.type_tache);
+  const current = tacheSectionForPathname(sections, pathname, base);
 
   return (
     <div>
@@ -89,12 +90,14 @@ export default function TacheLayout({ children }: { children: ReactNode }) {
               else if (v !== tache.titre) void enregistrer({ titre: v });
             }}
             placeholder="Titre de la tâche"
+            readOnly={!tache.peut_modifier}
             className="mt-0.5 w-full bg-transparent font-display text-headline-md text-on-surface outline-none border-b border-transparent hover:border-outline-soft focus:border-primary transition-colors"
           />
         </div>
 
         <div className="flex-none flex items-center gap-3 pt-4">
           <IndicateurSauvegarde etat={etat} />
+          <TypeTachePuce type={tache.type_tache} />
           {tache.assignee_client && (
             <span
               className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-label-md font-semibold text-primary"
@@ -109,7 +112,7 @@ export default function TacheLayout({ children }: { children: ReactNode }) {
       </div>
 
       <nav className="flex items-center gap-1 border-b border-outline-soft mt-5 mb-5 overflow-x-auto">
-        {TACHE_SECTIONS.map((section) => {
+        {sections.map((section) => {
           const active = section.key === current.key;
           return (
             <Link

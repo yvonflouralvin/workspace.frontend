@@ -4,46 +4,60 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { AddOutlined, DeleteOutlineOutlined, OpenInFullOutlined } from "@mui/icons-material";
 import { RightDrawer } from "@repo/ui/RightDrawer";
+import { useConfirmSuppression } from "@repo/ui/hooks/useConfirmSuppression";
 import { RichTextEditor } from "@repo/ui/RichTextEditor";
 import {
   createPhase,
   updatePhase,
   deletePhase,
   createTache,
-  updateTache,
   deleteTache,
+  peut,
   STATUT_PHASE_LABELS,
-  STATUT_TACHE_LABELS,
   type Phase,
   type Tache,
-  type StatutTache,
 } from "@/lib/bfm-missions-api";
 import { useMission } from "../mission-context";
-import { FIELD, LABEL, StatutPhasePill } from "../ui";
+import { FIELD, LABEL, StatutPhasePill, StatutTachePill } from "../ui";
 
 // Même présentation que la liste des phases du module Projets : tableau à
 // en-tête, pastille de statut, décompte des tâches. Un clic ouvre l'aperçu en
 // tiroir ; « Ouvrir la page » mène à la page de la phase.
 
 export default function PhasesPage() {
-  const { missionId, phases, taches, reload } = useMission();
+  const { missionId, mission, phases, taches, reload } = useMission();
   const [error, setError] = useState<string | null>(null);
+  const { confirmer, dialogue } = useConfirmSuppression();
+  const peutAjouter = peut(mission, "phase.ajouter");
+  const peutModifier = peut(mission, "phase.modifier");
   // drawer : Phase = édition, null = création, false = fermé.
   const [drawer, setDrawer] = useState<Phase | null | false>(false);
 
   const ordered = [...phases].sort((a, b) => a.position - b.position || a.id - b.id);
 
-  async function supprimerPhase(phase: Phase) {
+  function supprimerPhase(phase: Phase) {
     if (phases.length <= 1) {
       setError("Une mission doit garder au moins une phase.");
       return;
     }
-    try {
-      await deletePhase(missionId, phase.id);
-      await reload();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Erreur lors de la suppression.");
-    }
+    const n = taches.filter((t) => t.phase_id === phase.id).length;
+    confirmer({
+      title: "Supprimer cette phase ?",
+      message: (
+        <>
+          <strong className="text-on-surface">{phase.nom}</strong> sera supprimée
+          {n > 0 ? ` avec ses ${n} tâche${n > 1 ? "s" : ""}` : ""}. Cette action est irréversible.
+        </>
+      ),
+      action: async () => {
+        try {
+          await deletePhase(missionId, phase.id);
+          await reload();
+        } catch (err) {
+          setError(err instanceof Error ? err.message : "Erreur lors de la suppression.");
+        }
+      },
+    });
   }
 
   return (
@@ -81,32 +95,38 @@ export default function PhasesPage() {
                 {n}
               </span>
               <span className="md:w-[40px] flex-none flex md:justify-end">
-                <button
-                  onClick={() => supprimerPhase(phase)}
-                  title="Supprimer"
-                  className="p-1.5 rounded-lg text-on-surface-variant hover:text-error hover:bg-error/8 transition-colors"
-                >
-                  <DeleteOutlineOutlined style={{ fontSize: 16 }} />
-                </button>
+                {peutModifier && (
+                  <button
+                    onClick={() => supprimerPhase(phase)}
+                    title="Supprimer"
+                    className="p-1.5 rounded-lg text-on-surface-variant hover:text-error hover:bg-error/8 transition-colors"
+                  >
+                    <DeleteOutlineOutlined style={{ fontSize: 16 }} />
+                  </button>
+                )}
               </span>
             </div>
           );
         })}
 
-        <div className="px-4 md:px-5 py-3 border-t border-hairline">
-          <button
-            onClick={() => setDrawer(null)}
-            className="inline-flex items-center gap-1.5 text-body-sm font-semibold text-primary hover:underline"
-          >
-            <AddOutlined style={{ fontSize: 16 }} />
-            Ajouter une phase
-          </button>
-        </div>
+        {peutAjouter && (
+          <div className="px-4 md:px-5 py-3 border-t border-hairline">
+            <button
+              onClick={() => setDrawer(null)}
+              className="inline-flex items-center gap-1.5 text-body-sm font-semibold text-primary hover:underline"
+            >
+              <AddOutlined style={{ fontSize: 16 }} />
+              Ajouter une phase
+            </button>
+          </div>
+        )}
       </div>
 
-      {phases.length > 1 && (
+      {phases.length > 1 && peutModifier && (
         <p className="text-label-md text-outline">Supprimer une phase supprime aussi ses tâches.</p>
       )}
+
+      {dialogue}
 
       {drawer !== false && (
         <PhaseDrawer
@@ -135,6 +155,10 @@ function PhaseDrawer({
   reload: () => Promise<void>;
 }) {
   const router = useRouter();
+  const { mission } = useMission();
+  const { confirmer, dialogue } = useConfirmSuppression();
+  // Une phase que l'on ne peut pas modifier s'ouvre pour être lue, sans rien laisser éditer.
+  const lecture = phase !== null && !peut(mission, "phase.modifier");
   const [nom, setNom] = useState(phase?.nom ?? "");
   // Le riche n'est envoyé que s'il a été TOUCHÉ : renvoyer « rien » effacerait la description
   // d'une phase qu'on n'a fait que renommer.
@@ -195,7 +219,7 @@ function PhaseDrawer({
           </button>
           <button
             onClick={save}
-            disabled={saving || !nom.trim()}
+            disabled={saving || !nom.trim() || lecture}
             className="h-9 px-4 rounded-lg bg-primary text-on-primary text-body-sm font-semibold hover:bg-primary-container transition-colors disabled:opacity-50"
           >
             {saving ? "Enregistrement…" : phase ? "Enregistrer" : "Créer"}
@@ -212,19 +236,20 @@ function PhaseDrawer({
             onChange={(e) => setNom(e.target.value)}
             placeholder="Nom de la phase (ex. Cadrage, Terrain…)"
             autoFocus={!phase}
+            readOnly={lecture}
           />
         </div>
 
         <div>
           <label className={LABEL}>Statut</label>
-          <select className={`${FIELD} w-[180px]`} value={statut} onChange={(e) => setStatut(e.target.value as Phase["statut"])}>
+          <select className={`${FIELD} w-[180px]`} value={statut} disabled={lecture} onChange={(e) => setStatut(e.target.value as Phase["statut"])}>
             {Object.entries(STATUT_PHASE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
           </select>
         </div>
 
         <div>
           <label className={LABEL}>Description</label>
-          <div className="rounded-xl border border-outline-soft bg-surface-container-lowest overflow-hidden">
+          <div className={`rounded-xl border border-outline-soft bg-surface-container-lowest overflow-hidden ${lecture ? "pointer-events-none opacity-70" : ""}`}>
             <RichTextEditor
               value={phase?.description_rich ?? null}
               fallbackText={phase?.description ?? null}
@@ -248,22 +273,28 @@ function PhaseDrawer({
                   <li key={t.id} className="flex items-center gap-3 px-3 py-2">
                     <span className="flex-1 text-body-sm text-on-surface">{t.titre}</span>
                     {t.assignee_nom && <span className="text-label-md text-outline">{t.assignee_nom}</span>}
-                    <select
-                      className={FIELD}
-                      value={t.statut}
-                      onChange={(e) => updateTache(missionId, t.id, { statut: e.target.value as StatutTache }).then(reload)}
+                    <StatutTachePill statut={t.statut} />
+                    {t.peut_modifier && (
+                    <button
+                      onClick={() =>
+                        confirmer({
+                          title: "Supprimer cette tâche ?",
+                          message: <><strong className="text-on-surface">{t.titre}</strong> sera supprimée. Cette action est irréversible.</>,
+                          action: () => deleteTache(missionId, t.id).then(reload),
+                        })
+                      }
+                      aria-label={`Supprimer ${t.titre}`}
+                      className="text-outline hover:text-error transition-colors"
                     >
-                      {Object.entries(STATUT_TACHE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                    </select>
-                    <button onClick={() => deleteTache(missionId, t.id).then(reload)} className="text-outline hover:text-error transition-colors">
                       <DeleteOutlineOutlined style={{ fontSize: 16 }} />
                     </button>
+                    )}
                   </li>
                 ))}
               </ul>
             )}
 
-            {ajout ? (
+            {!peut(mission, "tache.ajouter") ? null : ajout ? (
               <form onSubmit={ajouterTache} className="flex items-end gap-2">
                 <input className={`${FIELD} flex-1`} placeholder="Nouvelle tâche" value={titreTache} onChange={(e) => setTitreTache(e.target.value)} required autoFocus />
                 <button type="button" onClick={() => setAjout(false)} className="h-9 px-3 rounded-lg text-body-sm text-on-surface-variant hover:bg-surface-container transition-colors">Annuler</button>
@@ -277,6 +308,7 @@ function PhaseDrawer({
           </div>
         )}
       </div>
+      {dialogue}
     </RightDrawer>
   );
 }

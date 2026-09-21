@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
 import { ArrowBackOutlined, FolderOpenOutlined, NotesOutlined } from "@mui/icons-material";
-import { avancerTachePortail, getTachePortail, type PortailTache } from "@/lib/bfm-portail-api";
+import { avancerTachePortail, getTachePortail, type PortailTache, type StatutClient } from "@/lib/bfm-portail-api";
 import { StatutTachePill } from "@/app/missions/[id]/ui";
 import { PortailTacheProvider } from "./tache-context";
 
@@ -22,7 +22,7 @@ export default function TachePortailLayout({ children }: { children: ReactNode }
   }, [id]);
 
   const avancer = useCallback(
-    async (statut: PortailTache["statut"]) => {
+    async (statut: StatutClient) => {
       setErreur(null);
       try {
         setTache(await avancerTachePortail(Number(id), statut));

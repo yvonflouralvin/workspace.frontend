@@ -11,6 +11,7 @@ import {
   updateMission,
   listPhases,
   listTaches,
+  peut,
   STATUT_MISSION_LABELS,
   type Mission,
   type Phase,
@@ -127,6 +128,7 @@ export default function MissionLayout({ children }: { children: ReactNode }) {
                     value={titre}
                     onChange={(e) => setTitre(e.target.value)}
                     onBlur={enregistrerTitre}
+                    readOnly={!peut(mission, "mission.modifier")}
                     placeholder="Nom de la mission"
                     className="min-w-0 flex-1 bg-transparent font-display text-headline-sm text-on-surface truncate outline-none border-b border-transparent hover:border-outline-soft focus:border-primary transition-colors"
                   />

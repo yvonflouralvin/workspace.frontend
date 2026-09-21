@@ -15,7 +15,7 @@ import {
   HomeOutlined,
   PeopleAltOutlined,
   AssignmentTurnedInOutlined,
-  GavelOutlined,
+  TaskAltOutlined,
   ReceiptLongOutlined,
 } from "@mui/icons-material";
 import type { NavItem } from "@repo/ui/types/shell";
@@ -34,7 +34,7 @@ const NAV_ITEMS: NavItem[] = [
   },
   { label: "Clients", href: "/clients", icon: <PeopleAltOutlined style={{ fontSize: 20 }} /> },
   { label: "Missions", href: "/missions", icon: <AssignmentTurnedInOutlined style={{ fontSize: 20 }} /> },
-  { label: "Audit", href: "/audit", icon: <GavelOutlined style={{ fontSize: 20 }} /> },
+  { label: "Tâches", href: "/taches", icon: <TaskAltOutlined style={{ fontSize: 20 }} /> },
   { label: "Assistance fiscale", href: "/fiscal", icon: <ReceiptLongOutlined style={{ fontSize: 20 }} /> },
 ];
 

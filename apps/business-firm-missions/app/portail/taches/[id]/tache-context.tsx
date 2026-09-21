@@ -1,11 +1,11 @@
 "use client";
 
 import { createContext, useContext } from "react";
-import type { PortailTache } from "@/lib/bfm-portail-api";
+import type { PortailTache, StatutClient } from "@/lib/bfm-portail-api";
 
 export interface PortailTacheContextValue {
   tache: PortailTache;
-  avancer: (statut: PortailTache["statut"]) => Promise<void>;
+  avancer: (statut: StatutClient) => Promise<void>;
   erreur: string | null;
 }
 

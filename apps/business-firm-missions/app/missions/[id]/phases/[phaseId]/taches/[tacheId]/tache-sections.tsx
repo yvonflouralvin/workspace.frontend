@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
-import { FolderOpenOutlined, NotesOutlined } from "@mui/icons-material";
+import { FolderOpenOutlined, HistoryOutlined, NotesOutlined } from "@mui/icons-material";
+import type { TypeTache } from "@/lib/bfm-missions-api";
 
 export interface TacheSection {
   key: string;
@@ -9,15 +10,23 @@ export interface TacheSection {
   icon: ReactNode;
 }
 
-export const TACHE_SECTIONS: TacheSection[] = [
-  { key: "apercu", path: "", label: "Aperçu", icon: <NotesOutlined style={{ fontSize: 17 }} /> },
-  { key: "documents", path: "/documents", label: "Documents", icon: <FolderOpenOutlined style={{ fontSize: 17 }} /> },
-];
+/** Les onglets d'une tâche. Un contrôle n'a pas d'onglet à lui — il est un type de tâche, son contenu
+ *  est dans l'aperçu — mais ses documents y sont des pièces justificatives. */
+export function tacheSections(type: TypeTache): TacheSection[] {
+  const controle = type === "CONTROLE";
+  return [
+    { key: "apercu", path: "", label: "Aperçu", icon: <NotesOutlined style={{ fontSize: 17 }} /> },
+    {
+      key: "documents",
+      path: "/documents",
+      label: controle ? "Pièces justificatives" : "Documents",
+      icon: <FolderOpenOutlined style={{ fontSize: 17 }} />,
+    },
+    { key: "historique", path: "/historique", label: "Historique", icon: <HistoryOutlined style={{ fontSize: 17 }} /> },
+  ];
+}
 
-export function tacheSectionForPathname(
-  pathname: string,
-  base: string,
-): TacheSection {
+export function tacheSectionForPathname(sections: TacheSection[], pathname: string, base: string): TacheSection {
   const suffix = pathname.replace(base, "").replace(/\/$/, "");
-  return TACHE_SECTIONS.find((s) => s.path === suffix) ?? TACHE_SECTIONS[0]!;
+  return sections.find((s) => s.path === suffix) ?? sections[0]!;
 }

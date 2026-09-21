@@ -2,6 +2,7 @@
 
 import { apiFetch } from "@repo/network/client";
 import { lire } from "./http";
+import type { StatutTache } from "./bfm-missions-api";
 
 // Ce que le portail montre à un client. Des types SÉPARÉS de ceux de l'équipe : ni budget, ni
 // heures, ni responsable — ils n'existent pas ici, donc aucun écran ne peut les afficher.
@@ -43,7 +44,7 @@ export interface PortailTache {
   titre: string;
   description_rich: string | null;
   description: string | null;
-  statut: "A_FAIRE" | "EN_COURS" | "TERMINEE";
+  statut: StatutTache;
   priorite: string;
   due_date: string | null;
 }
@@ -63,5 +64,8 @@ export const listTachesPortail = async () =>
   lire<PortailTache[]>(await apiFetch("/api/bfm/portail/taches"));
 export const getTachePortail = async (id: number) =>
   lire<PortailTache>(await apiFetch(`/api/bfm/portail/taches/${id}`));
-export const avancerTachePortail = async (id: number, statut: PortailTache["statut"]) =>
+/** Ce que le CLIENT peut poser lui-même : valider et renvoyer à revoir restent au cabinet. */
+export type StatutClient = "A_FAIRE" | "EN_COURS" | "TERMINEE";
+
+export const avancerTachePortail = async (id: number, statut: StatutClient) =>
   lire<PortailTache>(await apiFetch(`/api/bfm/portail/taches/${id}`, { method: "PATCH", body: { statut } }));

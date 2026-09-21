@@ -10,11 +10,14 @@ import {
   type Tache,
 } from "@/lib/bfm-missions-api";
 import { dateCourte, enRetard } from "@/lib/format";
-import { STATUT_TACHE_TONES } from "@/app/missions/[id]/ui";
+import { STATUT_TACHE_TONES, estTerminee } from "@/app/missions/[id]/ui";
 
-const COLONNES: StatutTache[] = ["A_FAIRE", "EN_COURS", "TERMINEE"];
+// Dans l'ordre du cycle ; « À revoir » est la boucle de retour, entre le travail et la fin.
+const COLONNES: StatutTache[] = ["A_FAIRE", "EN_COURS", "A_REVOIR", "TERMINEE", "VALIDEE"];
 
-/** Les tâches en colonnes, une par statut. Glisser une carte change son statut.
+/** Les tâches en colonnes, une par statut. Glisser une carte change son statut — là où le serveur
+ *  l'autorise pour CETTE personne (`statuts_possibles`) : on ne dépose pas une tâche dans « Validée »
+ *  si l'on n'en est pas le validateur.
  *
  *  Le glisser-déposer n'existe pas au toucher : chaque carte s'ouvre, et le statut s'y change
  *  aussi. Le kanban est une commodité, jamais la seule porte. */
@@ -32,6 +35,7 @@ export function KanbanTaches({
 }) {
   const [glisse, setGlisse] = useState<Tache | null>(null);
   const [survol, setSurvol] = useState<StatutTache | null>(null);
+  const permis = (statut: StatutTache) => glisse !== null && glisse.statuts_possibles.includes(statut);
 
   return (
     <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory md:snap-none -mx-4 px-4 md:mx-0 md:px-0">
@@ -42,19 +46,19 @@ export function KanbanTaches({
           <div
             key={statut}
             onDragOver={(e) => {
-              if (glisse) {
+              if (permis(statut)) {
                 e.preventDefault();
                 setSurvol(statut);
               }
             }}
             onDragLeave={() => setSurvol((c) => (c === statut ? null : c))}
             onDrop={() => {
-              if (glisse && glisse.statut !== statut) onDeplacer(glisse, statut);
+              if (glisse && permis(statut)) onDeplacer(glisse, statut);
               setGlisse(null);
               setSurvol(null);
             }}
-            className={`w-[85vw] max-w-[320px] md:w-80 md:max-w-none shrink-0 snap-center md:snap-align-none rounded-2xl p-3 bg-surface-container/50 transition-colors ${
-              survol === statut ? "ring-2 ring-primary/40" : ""
+            className={`w-[85vw] max-w-[320px] md:w-72 md:max-w-none shrink-0 snap-center md:snap-align-none rounded-2xl p-3 bg-surface-container/50 transition-colors ${
+              survol === statut ? "ring-2 ring-primary/40" : permis(statut) ? "ring-1 ring-primary/20" : ""
             }`}
           >
             <div className="flex items-center gap-2 px-1 pb-2.5">
@@ -70,12 +74,12 @@ export function KanbanTaches({
                 <p className="px-1 py-2 text-label-md text-outline">Aucune tâche.</p>
               )}
               {colonne.map((t) => {
-                const retard = enRetard(t.due_date, t.statut === "TERMINEE");
+                const retard = enRetard(t.due_date, estTerminee(t.statut));
                 const phase = phaseDe?.(t);
                 return (
                   <div
                     key={t.id}
-                    draggable
+                    draggable={t.statuts_possibles.length > 0}
                     onDragStart={() => setGlisse(t)}
                     onDragEnd={() => {
                       setGlisse(null);
@@ -86,7 +90,7 @@ export function KanbanTaches({
                   >
                     <p
                       className={`text-body-md font-medium ${
-                        t.statut === "TERMINEE" ? "text-outline line-through" : "text-on-surface"
+                        t.statut === "VALIDEE" ? "text-outline line-through" : "text-on-surface"
                       }`}
                     >
                       {t.titre}

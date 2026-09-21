@@ -20,6 +20,7 @@ import {
   CategoryOutlined,
   GroupsOutlined,
   AssignmentTurnedInOutlined,
+  TaskAltOutlined,
   AccountTreeOutlined,
   OutboxOutlined,
   DescriptionOutlined,
@@ -412,12 +413,14 @@ export const BUSINESS_FIRM_MISSIONS_SHELL: AppShellConfig = {
   routeLabels: {
     "/clients": "Clients",
     "/missions": "Missions",
+    "/taches": "Tâches",
     "/audit": "Audit",
     "/fiscal": "Assistance fiscale",
   },
   routeIcons: {
     "/clients": <PeopleAltOutlined style={s(15)} />,
     "/missions": <AssignmentTurnedInOutlined style={s(15)} />,
+    "/taches": <TaskAltOutlined style={s(15)} />,
     "/audit": <GavelOutlined style={s(15)} />,
     "/fiscal": <ReceiptLongOutlined style={s(15)} />,
   },

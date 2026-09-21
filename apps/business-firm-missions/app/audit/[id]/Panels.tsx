@@ -15,6 +15,7 @@ import {
   type StatutControle, type StatutRisque, type StatutAnomalie, type TypeRapport,
 } from "@/lib/bfm-audit-api";
 import { AddOutlined, DeleteOutlineOutlined } from "@mui/icons-material";
+import { useConfirmSuppression } from "@repo/ui/hooks/useConfirmSuppression";
 
 const FIELD =
   "rounded-lg border border-outline-soft bg-surface-container-lowest px-2.5 py-1.5 text-body-sm text-on-surface outline-none focus:border-primary transition-colors";
@@ -22,6 +23,7 @@ const FIELD =
 // ───────────────────────── Équipe ─────────────────────────
 
 export function EquipePanel({ missionId }: { missionId: number }) {
+  const { confirmer, dialogue } = useConfirmSuppression();
   const [items, setItems] = useState<Awaited<ReturnType<typeof listEquipe>> | null>(null);
   const [userId, setUserId] = useState("");
 
@@ -49,13 +51,24 @@ export function EquipePanel({ missionId }: { missionId: number }) {
           {items.map((m) => (
             <li key={m.id} className="flex items-center gap-3 px-3 py-2.5">
               <span className="flex-1 text-body-sm">{m.user_name ?? `Utilisateur #${m.user_id}`}</span>
-              <button onClick={() => removeEquipe(missionId, m.user_id).then(reload)} className="text-outline hover:text-error transition-colors">
+              <button
+                onClick={() =>
+                  confirmer({
+                    title: "Retirer ce membre ?",
+                    message: <><strong className="text-on-surface">{m.user_name ?? `Utilisateur #${m.user_id}`}</strong> sera retiré de la mission.</>,
+                    confirmLabel: "Retirer",
+                    action: () => removeEquipe(missionId, m.user_id).then(reload),
+                  })
+                }
+                className="text-outline hover:text-error transition-colors"
+              >
                 <DeleteOutlineOutlined style={{ fontSize: 17 }} />
               </button>
             </li>
           ))}
         </ul>
       )}
+      {dialogue}
     </div>
   );
 }
@@ -63,6 +76,7 @@ export function EquipePanel({ missionId }: { missionId: number }) {
 // ───────────────────────── Étapes (planning) ─────────────────────────
 
 export function EtapesPanel({ missionId }: { missionId: number }) {
+  const { confirmer, dialogue } = useConfirmSuppression();
   const [items, setItems] = useState<Etape[] | null>(null);
   const [nom, setNom] = useState("");
   const [datePrevue, setDatePrevue] = useState("");
@@ -101,13 +115,23 @@ export function EtapesPanel({ missionId }: { missionId: number }) {
                 <option value="EN_COURS">En cours</option>
                 <option value="TERMINEE">Terminée</option>
               </select>
-              <button onClick={() => deleteEtape(missionId, e.id).then(reload)} className="text-outline hover:text-error transition-colors">
+              <button
+                onClick={() =>
+                  confirmer({
+                    title: "Supprimer cette étape ?",
+                    message: <><strong className="text-on-surface">{e.nom}</strong> sera supprimée. Cette action est irréversible.</>,
+                    action: () => deleteEtape(missionId, e.id).then(reload),
+                  })
+                }
+                className="text-outline hover:text-error transition-colors"
+              >
                 <DeleteOutlineOutlined style={{ fontSize: 17 }} />
               </button>
             </li>
           ))}
         </ul>
       )}
+      {dialogue}
     </div>
   );
 }
@@ -115,6 +139,7 @@ export function EtapesPanel({ missionId }: { missionId: number }) {
 // ───────────────────────── Documents demandés/reçus/manquants ─────────────────────────
 
 export function DocumentsDemandesPanel({ missionId }: { missionId: number }) {
+  const { confirmer, dialogue } = useConfirmSuppression();
   const [items, setItems] = useState<DocumentDemande[] | null>(null);
   const [nom, setNom] = useState("");
 
@@ -150,13 +175,23 @@ export function DocumentsDemandesPanel({ missionId }: { missionId: number }) {
                 <option value="RECU">Reçu</option>
                 <option value="MANQUANT">Manquant</option>
               </select>
-              <button onClick={() => deleteDocumentDemande(missionId, d.id).then(reload)} className="text-outline hover:text-error transition-colors">
+              <button
+                onClick={() =>
+                  confirmer({
+                    title: "Supprimer ce document demandé ?",
+                    message: <><strong className="text-on-surface">{d.nom}</strong> sera supprimé. Cette action est irréversible.</>,
+                    action: () => deleteDocumentDemande(missionId, d.id).then(reload),
+                  })
+                }
+                className="text-outline hover:text-error transition-colors"
+              >
                 <DeleteOutlineOutlined style={{ fontSize: 17 }} />
               </button>
             </li>
           ))}
         </ul>
       )}
+      {dialogue}
     </div>
   );
 }
@@ -164,6 +199,7 @@ export function DocumentsDemandesPanel({ missionId }: { missionId: number }) {
 // ───────────────────────── Checklist (contrôles) ─────────────────────────
 
 export function ChecklistPanel({ missionId }: { missionId: number }) {
+  const { confirmer, dialogue } = useConfirmSuppression();
   const [items, setItems] = useState<Controle[] | null>(null);
   const [libelle, setLibelle] = useState("");
 
@@ -200,13 +236,23 @@ export function ChecklistPanel({ missionId }: { missionId: number }) {
               >
                 {Object.entries(STATUT_CONTROLE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
               </select>
-              <button onClick={() => deleteControle(missionId, c.id).then(reload)} className="text-outline hover:text-error transition-colors">
+              <button
+                onClick={() =>
+                  confirmer({
+                    title: "Supprimer ce contrôle ?",
+                    message: <><strong className="text-on-surface">{c.libelle}</strong> sera supprimé. Cette action est irréversible.</>,
+                    action: () => deleteControle(missionId, c.id).then(reload),
+                  })
+                }
+                className="text-outline hover:text-error transition-colors"
+              >
                 <DeleteOutlineOutlined style={{ fontSize: 17 }} />
               </button>
             </li>
           ))}
         </ul>
       )}
+      {dialogue}
     </div>
   );
 }

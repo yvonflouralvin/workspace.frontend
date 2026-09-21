@@ -31,6 +31,28 @@ export const STATUT_DECLARATION_LABELS: Record<StatutDeclaration, string> = {
   EN_RETARD: "En retard",
 };
 
+export const TYPE_ECHEANCE_LABELS: Record<TypeEcheance, string> = {
+  DECLARATION: "Déclaration",
+  PAIEMENT: "Paiement",
+  AUTRE: "Autre",
+};
+
+export const TYPE_CORRESPONDANCE_LABELS: Record<TypeCorrespondance, string> = {
+  CLIENT: "Client",
+  ADMINISTRATION: "Administration",
+};
+
+export const STATUT_PENALITE_LABELS: Record<StatutPenalite, string> = {
+  EN_ATTENTE: "En attente",
+  PAYEE: "Payée",
+};
+
+export const STATUT_CONTROLE_LABELS: Record<StatutControleFiscal, string> = {
+  ANNONCE: "Annoncé",
+  EN_COURS: "En cours",
+  CLOTURE: "Clôturé",
+};
+
 export interface Dossier {
   id: number;
   workspace_id: number;
@@ -188,7 +210,7 @@ export async function createDeclaration(
 export async function updateDeclaration(
   dossierId: number,
   declarationId: number,
-  input: Partial<{ statut: StatutDeclaration; date_depot: string; document_id: number }>,
+  input: Partial<{ statut: StatutDeclaration; date_depot: string | null; document_id: number }>,
 ): Promise<Declaration> {
   const res = await apiFetch(`/api/bfm/fiscal/dossiers/${dossierId}/declarations/${declarationId}`, {
     method: "PUT",
@@ -225,6 +247,19 @@ export async function createCorrespondance(
   return res.json();
 }
 
+export async function updateCorrespondance(
+  dossierId: number,
+  correspondanceId: number,
+  input: Partial<{ avec: TypeCorrespondance; sujet: string; notes: string | null; date: string }>,
+): Promise<Correspondance> {
+  const res = await apiFetch(`/api/bfm/fiscal/dossiers/${dossierId}/correspondances/${correspondanceId}`, {
+    method: "PUT",
+    body: input,
+  });
+  if (!res.ok) throw new Error("Erreur lors de la mise à jour de la correspondance");
+  return res.json();
+}
+
 // ───────────────────────── Paiements ─────────────────────────
 
 export interface PaiementFiscal {
@@ -248,6 +283,19 @@ export async function createPaiementFiscal(
 ): Promise<PaiementFiscal> {
   const res = await apiFetch(`/api/bfm/fiscal/dossiers/${dossierId}/paiements`, { method: "POST", body: input });
   if (!res.ok) throw new Error("Erreur lors de la création du paiement");
+  return res.json();
+}
+
+export async function updatePaiementFiscal(
+  dossierId: number,
+  paiementId: number,
+  input: Partial<{ montant: number; date_paiement: string; mode: string | null }>,
+): Promise<PaiementFiscal> {
+  const res = await apiFetch(`/api/bfm/fiscal/dossiers/${dossierId}/paiements/${paiementId}`, {
+    method: "PUT",
+    body: input,
+  });
+  if (!res.ok) throw new Error("Erreur lors de la mise à jour du paiement");
   return res.json();
 }
 
@@ -278,10 +326,14 @@ export async function createPenalite(
   return res.json();
 }
 
-export async function updatePenalite(dossierId: number, penaliteId: number, statut: StatutPenalite): Promise<Penalite> {
+export async function updatePenalite(
+  dossierId: number,
+  penaliteId: number,
+  input: Partial<{ motif: string; montant: number; date: string; statut: StatutPenalite }>,
+): Promise<Penalite> {
   const res = await apiFetch(`/api/bfm/fiscal/dossiers/${dossierId}/penalites/${penaliteId}`, {
     method: "PUT",
-    body: { statut },
+    body: input,
   });
   if (!res.ok) throw new Error("Erreur lors de la mise à jour de la pénalité");
   return res.json();

@@ -132,6 +132,16 @@ export async function createContact(tiersId: number, input: Omit<Contact, "id" |
   return res.json();
 }
 
+export async function updateContact(
+  tiersId: number,
+  contactId: number,
+  input: Omit<Contact, "id" | "tiers_id">,
+): Promise<Contact> {
+  const res = await apiFetch(`/api/tiers/${tiersId}/contacts/${contactId}`, { method: "PUT", body: input });
+  if (!res.ok) throw new Error("Erreur lors de la mise à jour du contact");
+  return res.json();
+}
+
 export async function deleteContact(tiersId: number, contactId: number): Promise<void> {
   await apiFetch(`/api/tiers/${tiersId}/contacts/${contactId}`, { method: "DELETE" });
 }

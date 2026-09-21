@@ -49,6 +49,48 @@ dans le cadre et une double marge).
 Utilisé par `apps/hr` : `CreateEmployeeDrawer` (formulaire de création) et la liste des
 employés d'un groupe dans `GroupFolderView` (voir `docs/apps/hr/HR.md`).
 
+### `useConfirmSuppression` (`src/hooks/useConfirmSuppression.tsx`)
+
+**Toute suppression demande une confirmation** — un clic sur une corbeille ne doit jamais
+détruire seul. Le hook porte l'état du `ConfirmDialog` : `confirmer({ title, message, confirmLabel?, action })`
+ouvre le dialogue, `action` ne s'exécute qu'après « Supprimer », et `dialogue` est à rendre
+une fois dans le composant. Le dialogue est monté sur `document.body` (portail) : rendu dans
+un `RightDrawer`, un `fixed` resterait prisonnier de la transformation du panneau. `action`
+gère elle-même ses erreurs ; le dialogue se ferme dans tous les cas. Le message nomme
+l'élément et dit ce qui disparaît avec lui (cascade comprise).
+
+```tsx
+const { confirmer, dialogue } = useConfirmSuppression();
+<button onClick={() => confirmer({
+  title: "Supprimer ce contrat ?",
+  message: <><strong>{c.nom}</strong> sera supprimé. Cette action est irréversible.</>,
+  action: () => deleteContrat(id, c.id).then(reload),
+})}>…</button>
+{dialogue}
+```
+
+### `FormField` (`src/FormField.tsx`)
+
+Un champ de formulaire : libellé en petites capitales au-dessus, contrôle dessous. `FORM_CONTROL` est le
+style commun d'un champ, d'une liste ou d'une zone de texte pleine largeur. À utiliser dans le corps d'un
+`FormDrawer`. Utilisé par `apps/business-firm-missions` (Assistance fiscale).
+
+### `FormDrawer` (`src/FormDrawer.tsx`)
+
+Un `RightDrawer` prêt pour un formulaire d'ajout ou de modification : champs dans le
+corps, « Annuler » et le bouton d'envoi dans le pied (rattaché au `<form>` par l'attribut
+`form`, donc toujours visible). `onSubmit` est asynchrone ; s'il lève, le message s'affiche
+sous les champs et le tiroir reste ouvert ; s'il réussit, l'appelant ferme le tiroir. À
+préférer à un formulaire inséré dans la liste : la liste ne bouge pas.
+
+```tsx
+<FormDrawer title="Nouveau contact" submitLabel="Ajouter" onClose={fermer} onSubmit={enregistrer}>
+  <input ... />
+</FormDrawer>
+```
+
+Utilisé par `apps/business-firm-missions` (fiche client : contacts, contrats, missions ; dossier fiscal : les sept onglets, ajout comme modification).
+
 ### `Tabs` (`src/Tabs.tsx`)
 
 Liste d'onglets + panneau de contenu, Tailwind pur, pas d'animation, pas de dépendance

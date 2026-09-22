@@ -15,10 +15,10 @@ import {
 
 import Image from 'next/image'
 import Link from "next/link"
-import { Suspense, useState, FormEvent } from "react"
+import { Suspense, useEffect, useState, FormEvent } from "react"
 import { useSearchParams } from "next/navigation"
 
-import { checkEmail, register, login, requestOtp, verifyOtp, ApiError } from "../lib/api"
+import { checkEmail, getPublicConfig, register, login, requestOtp, verifyOtp, ApiError } from "../lib/api"
 
 
 type Step = "email" | "name" | "password" | "workspace" | "otp";
@@ -83,6 +83,14 @@ function RegisterForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // null = pas encore su : évite d'afficher le formulaire une fraction de seconde sur une
+  // instance qui va le refuser.
+  const [selfHosted, setSelfHosted] = useState<boolean | null>(null);
+  useEffect(() => {
+    getPublicConfig()
+      .then((c) => setSelfHosted(c.selfHostedInstance))
+      .catch(() => setSelfHosted(false));
+  }, []);
 
   const steps = STEPS_BY_METHOD[signupMethod];
   const stepIndex = steps.indexOf(step);
@@ -225,6 +233,24 @@ function RegisterForm() {
     setError(null);
     const previous = steps[stepIndex - 1];
     if (previous) setStep(previous);
+  }
+
+  if (selfHosted === null) {
+    return <div className="min-h-screen bg-surface" />;
+  }
+
+  if (selfHosted) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-xl bg-surface">
+        <div className="max-w-md text-center space-y-md">
+          <h1 className="font-display text-headline-lg text-on-surface">Inscription fermée</h1>
+          <p className="font-body-md text-body-md text-on-surface-variant">
+            Cette instance ne permet pas la création de compte en ligne. Contactez votre administrateur.
+          </p>
+          <Link className="text-primary font-semibold hover:underline" href="/">Retour à la connexion</Link>
+        </div>
+      </div>
+    );
   }
 
   return (<div className="bg-primary">

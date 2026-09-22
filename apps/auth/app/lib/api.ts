@@ -20,6 +20,12 @@ async function parseResponse(response: Response) {
   return data;
 }
 
+/** Ce qu'une page anonyme (connexion, inscription) doit savoir avant toute session. */
+export async function getPublicConfig(): Promise<{ selfHostedInstance: boolean }> {
+  const response = await apiFetch(`/api/public-config`);
+  return parseResponse(response);
+}
+
 export async function checkEmail(email: string): Promise<{ exists: boolean }> {
   const response = await apiFetch(`/api/check-email`, {
     method: "POST",

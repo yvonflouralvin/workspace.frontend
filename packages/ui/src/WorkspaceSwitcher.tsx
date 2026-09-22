@@ -20,6 +20,7 @@ export function WorkspaceSwitcher({
   subtitle?: string;
 }) {
   const { activeWorkspace, workspaces, switchWorkspace } = useSessionStore();
+  const creationDesactivee = useSessionStore((s) => s.platform?.workspace_creation_disabled ?? false);
   const expanded = useSidebarMode() === "expanded";
   // Sur le rail (tablette), il ne reste que la pastille du workspace.
   const detailClass = expanded ? "" : "hidden lg:block";
@@ -133,16 +134,18 @@ export function WorkspaceSwitcher({
               </button>
             ))}
           </div>
-          <div className="border-t border-outline-variant p-1.5">
-            <Link
-              href={`${workspaceDomain}/onboarding/new-workspace`}
-              onClick={() => setOpen(false)}
-              className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm text-on-surface-variant hover:bg-surface-container transition-colors"
-            >
-              <AddOutlined style={{ fontSize: 18 }} />
-              Créer un workspace
-            </Link>
-          </div>
+          {!creationDesactivee && (
+            <div className="border-t border-outline-variant p-1.5">
+              <Link
+                href={`${workspaceDomain}/onboarding/new-workspace`}
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm text-on-surface-variant hover:bg-surface-container transition-colors"
+              >
+                <AddOutlined style={{ fontSize: 18 }} />
+                Créer un workspace
+              </Link>
+            </div>
+          )}
         </div>
       )}
     </div>

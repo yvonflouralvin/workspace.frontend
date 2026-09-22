@@ -64,6 +64,16 @@ navigation "Retour", dont le nombre d'étapes dépend de la méthode choisie :
 À la soumission finale (chemin mot de passe) : `register()` → `login()` → redirect vers
 `NEXT_PUBLIC_WORKSPACE_DOMAIN`. Chemin OTP : `verifyOtp(...)` fait les deux d'un coup.
 
+**Instance dédiée à un client (`SELF_HOSTED_INSTANCE=true` côté backend)** : `/register` et
+`/` (login) appellent `getPublicConfig()` au montage (`/api/public-config`, non authentifié —
+la seule voie possible avant toute session) et, tant que la réponse n'est pas connue, rendent
+un écran vide plutôt que le formulaire, pour éviter un flash avant de savoir. Si
+`selfHostedInstance` est vrai : `/register` affiche un message de fermeture au lieu du wizard,
+et `/` (login) retire ses deux liens "Créer un compte" (celui du pied de page et celui affiché
+sous l'erreur "Aucun compte"). Le backend refuse déjà `POST /register` et `/auth/otp/*`
+(`purpose=signup`) dans ce cas (403) — masquer les liens évite seulement de proposer un
+formulaire qui échouerait, ce n'est pas la protection elle-même.
+
 ---
 
 ## Couche API (`app/lib/api.ts` + `app/api/*/route.ts`)
@@ -94,6 +104,7 @@ register(email, password, fullName, workspaceName, workspaceType) // → void
 getLoginMethods(email)                          // → { exists, methods: string[], enforced_provider }
 requestOtp(email, purpose)                      // → { sent: true, dev_code? } — dev_code seulement si MAIL_DEV_MODE
 verifyOtp({ email, code, purpose, fullName?, workspaceName?, workspaceType? }) // → void (cookies set via proxy)
+getPublicConfig()                                // → { selfHostedInstance: boolean } — non authentifié, lit l'env server-side (pas de session à ce stade)
 ```
 
 ---

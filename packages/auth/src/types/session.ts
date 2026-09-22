@@ -58,4 +58,12 @@ export interface SessionResponse {
   };
 
   permissions: string[];
+
+  /** Réglages de l'INSTANCE elle-même, pas d'un workspace — distinct de
+   *  `active_workspace.restrict_members_to_workspace`, qui ne vaut que pour un seul. */
+  platform?: {
+    /** Une instance dédiée à un client n'en a qu'un : personne, pas même le
+     *  propriétaire, n'y voit la fonctionnalité "créer un autre workspace". */
+    workspace_creation_disabled: boolean;
+  };
 }

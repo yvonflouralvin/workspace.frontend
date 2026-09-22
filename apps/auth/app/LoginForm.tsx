@@ -10,10 +10,10 @@ import {
 } from "@mui/icons-material"
 
 import Image from 'next/image'
-import { useState, FormEvent } from "react"
+import { useEffect, useState, FormEvent } from "react"
 import Link from "next/link"
 
-import { checkEmail, getLoginMethods, login, requestOtp, verifyOtp, ApiError } from "./lib/api"
+import { checkEmail, getLoginMethods, getPublicConfig, login, requestOtp, verifyOtp, ApiError } from "./lib/api"
 import { destinationApresConnexion } from "./lib/accueil"
 
 const PROVIDER_LABELS: Record<string, string> = {
@@ -35,6 +35,10 @@ export function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selfHosted, setSelfHosted] = useState(false);
+  useEffect(() => {
+    getPublicConfig().then((c) => setSelfHosted(c.selfHostedInstance)).catch(() => {});
+  }, []);
 
   async function handleEmailSubmit(event: FormEvent) {
     event.preventDefault();
@@ -228,7 +232,7 @@ export function LoginForm() {
           {error && (
             <div className="px-4 py-3 rounded-lg bg-error-container text-on-error-container font-body-sm text-body-sm">
               {error}
-              {step === "email" && error.includes("Aucun compte") && (
+              {step === "email" && error.includes("Aucun compte") && !selfHosted && (
                 <>
                   {" "}
                   <Link className="font-semibold underline" href={`/register?email=${encodeURIComponent(email)}`}>
@@ -470,10 +474,12 @@ export function LoginForm() {
           )}
 
           {/* <!-- Footer Link --> */}
-          <p className="text-center font-body-sm text-body-sm text-on-surface-variant">
-            Pas encore de compte ?{" "}
-            <Link className="text-primary font-semibold hover:underline" href="/register">Créer un compte</Link>
-          </p>
+          {!selfHosted && (
+            <p className="text-center font-body-sm text-body-sm text-on-surface-variant">
+              Pas encore de compte ?{" "}
+              <Link className="text-primary font-semibold hover:underline" href="/register">Créer un compte</Link>
+            </p>
+          )}
         </div>
         {/* <!-- Bottom Legal for Right Side (Mobile) --> */}
         <div className="absolute bottom-md text-center w-full lg:hidden">

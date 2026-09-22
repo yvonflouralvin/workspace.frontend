@@ -16,6 +16,7 @@ export interface SessionState {
   /** Écran d'accueil résolu depuis les groupes. Absent = comportement par défaut. */
   accueil?: SessionResponse["accueil"];
   permissions: string[];
+  platform?: SessionResponse["platform"];
 
   hydrate: (session: SessionResponse) => void;
   loadSession: () => Promise<void>;
@@ -33,6 +34,7 @@ export function createSessionStore(initialSession?: SessionResponse) {
     groups: initialSession?.groups ?? [],
     accueil: initialSession?.accueil,
     permissions: initialSession?.permissions ?? [],
+    platform: initialSession?.platform,
     hydrate(session: SessionResponse) {
       if (!session.authenticated) {
         set({ loading: false, authenticated: false });
@@ -48,6 +50,7 @@ export function createSessionStore(initialSession?: SessionResponse) {
         groups: session.groups,
         accueil: session.accueil,
         permissions: session.permissions,
+        platform: session.platform,
       });
     },
     async loadSession() {
@@ -73,6 +76,7 @@ export function createSessionStore(initialSession?: SessionResponse) {
           groups: session.groups,
         accueil: session.accueil,
           permissions: session.permissions,
+          platform: session.platform,
         });
 
       } catch {
@@ -106,6 +110,7 @@ export function createSessionStore(initialSession?: SessionResponse) {
         groups: [],
         accueil: undefined,
         permissions: [],
+        platform: undefined,
       });
     },
   }));

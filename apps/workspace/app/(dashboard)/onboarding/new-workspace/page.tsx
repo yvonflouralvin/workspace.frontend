@@ -23,6 +23,7 @@ const TYPE_OPTIONS: { value: WorkspaceType; label: string; description: string; 
 
 export default function NewWorkspacePage() {
   const activeWorkspace = useSessionStore((s) => s.activeWorkspace);
+  const creationDesactivee = useSessionStore((s) => s.platform?.workspace_creation_disabled ?? false);
 
   const [name, setName] = useState("");
   const [type, setType] = useState<WorkspaceType>("individual");
@@ -30,6 +31,17 @@ export default function NewWorkspacePage() {
   const [error, setError] = useState<string | null>(null);
 
   const restricted = !!activeWorkspace?.restrict_members_to_workspace && !activeWorkspace.is_owner;
+
+  if (creationDesactivee) {
+    return (
+      <div className="p-8 max-w-[32rem] mx-auto">
+        <h1 className="text-2xl font-bold text-on-surface">Créer un workspace</h1>
+        <p className="text-sm text-on-surface-variant mt-1">
+          Cette instance ne permet pas de créer un autre workspace.
+        </p>
+      </div>
+    );
+  }
 
   if (restricted) {
     return (

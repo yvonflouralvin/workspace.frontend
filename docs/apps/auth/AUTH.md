@@ -161,6 +161,22 @@ entre `localhost:3001` et `localhost:3005`.
 
 ---
 
+## Image Docker (pilote CI/CD)
+
+`apps/auth/Dockerfile` (build depuis la racine du monorepo) + `.github/workflows/docker-publish-auth.yml`
+publient `ghcr.io/<org>/wd-ft-auth` à chaque tag `auth-v*.*.*` (+ `latest`) — pilote de
+la bascule vers des images déjà construites (cf. `infra/README.md`), avant extension aux
+autres apps.
+
+**Pas de `output: "standalone"`** (retiré partout du monorepo, cf. commentaire dans
+`next.config.ts` de chaque app — tentative abandonnée mi-2026 après plusieurs incidents
+de prod, `ChunkLoadError`/`MODULE_NOT_FOUND`, le tracing de fichiers de Next ratant des
+modules internes). Le `Dockerfile` reproduit donc `turbo prune --docker` → `npm install`
+(sur les `package.json` seuls, `--ignore-scripts` — sinon le `prepare` de `@repo/auth`
+`tsc` casse faute de source) → copie des sources complètes → `turbo run build` → l'image
+finale embarque tout l'arbre construit (node_modules compris) et lance `next start`,
+comme en dev/prod.
+
 ## Limite connue (0.5.0) — OAuth non testé en live
 
 Les boutons Google/Microsoft et les routes `/api/oauth/*` sont fonctionnels de bout en bout

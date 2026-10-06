@@ -12,7 +12,9 @@ export async function POST(request: NextRequest) {
   });
 
   const response = await encryptResponseBody({ ok: true });
-  response.cookies.delete("access_token");
-  response.cookies.delete("refresh_token");
+  // Sous leur nom par défaut, ces deux delete emporteraient le cookie de
+  // l'autre instance du même domaine (voir apps/auth/app/lib/cookies.ts).
+  response.cookies.delete(process.env.ACCESS_TOKEN_COOKIE_NAME ?? "access_token");
+  response.cookies.delete(process.env.REFRESH_TOKEN_COOKIE_NAME ?? "refresh_token");
   return response;
 }

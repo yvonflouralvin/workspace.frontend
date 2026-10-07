@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { AUTH_COOKIE_OPTIONS } from "@/app/lib/cookies";
+import { ACCESS_TOKEN_COOKIE, AUTH_COOKIE_OPTIONS, REFRESH_TOKEN_COOKIE } from "@/app/lib/cookies";
 
 const AUTH_API = process.env.AUTH_API_URL!;
 const WORKSPACE_DOMAIN = process.env.WORKSPACE_APP_URL!;
@@ -22,8 +22,8 @@ export async function GET(
 
   const response = NextResponse.redirect(WORKSPACE_DOMAIN);
 
-  response.cookies.set("access_token", data.user.access_token, AUTH_COOKIE_OPTIONS);
-  response.cookies.set("refresh_token", data.user.refresh_token, AUTH_COOKIE_OPTIONS);
+  response.cookies.set(ACCESS_TOKEN_COOKIE, data.user.access_token, AUTH_COOKIE_OPTIONS);
+  response.cookies.set(REFRESH_TOKEN_COOKIE, data.user.refresh_token, AUTH_COOKIE_OPTIONS);
 
   return response;
 }

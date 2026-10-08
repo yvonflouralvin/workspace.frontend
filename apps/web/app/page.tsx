@@ -1,102 +1,131 @@
-import Image, { type ImageProps } from "next/image";
-import { Button } from "@repo/ui/button";
-import styles from "./page.module.css";
+import Link from "next/link";
+import {
+  ArrowForward,
+  BoltOutlined,
+  HubOutlined,
+  SecurityOutlined,
+  TrendingUpOutlined,
+} from "@mui/icons-material";
+import { produits } from "../lib/produits";
+import { ProductCard } from "../components/ProductCard";
+import { AUTH_APP_URL } from "../components/nav-links";
 
-type Props = Omit<ImageProps, "src"> & {
-  srcLight: string;
-  srcDark: string;
-};
+const atouts = [
+  {
+    icone: HubOutlined,
+    titre: "Un seul socle, tous les modules",
+    texte:
+      "Facturation, comptabilité, RH, missions, site web : les modules partagent les mêmes clients, les mêmes membres, les mêmes permissions.",
+  },
+  {
+    icone: BoltOutlined,
+    titre: "Actif dès l'activation",
+    texte:
+      "Chaque module que vous activez se configure lui-même — pas de mise en place technique, pas de formulaire à remplir à la main.",
+  },
+  {
+    icone: SecurityOutlined,
+    titre: "Vos données, chez vous ou chez nous",
+    texte:
+      "Instance mutualisée ou serveur dédié à votre entreprise : le même produit, la même expérience, deux façons de l'héberger.",
+  },
+  {
+    icone: TrendingUpOutlined,
+    titre: "Conçu pour grandir",
+    texte:
+      "D'une petite équipe à plusieurs dizaines de collaborateurs, la plateforme suit votre activité sans qu'il faille en changer.",
+  },
+];
 
-const ThemeImage = (props: Props) => {
-  const { srcLight, srcDark, ...rest } = props;
+const vitrine = produits.slice(0, 8);
 
+export default function HomePage() {
   return (
     <>
-      <Image {...rest} src={srcLight} className="imgLight" />
-      <Image {...rest} src={srcDark} className="imgDark" />
-    </>
-  );
-};
+      <section className="relative overflow-hidden">
+        <div className="mx-auto max-w-6xl px-gutter pb-16 pt-24 text-center">
+          <span className="inline-flex items-center rounded-full bg-primary-container px-md py-xs text-label-md font-medium text-on-primary">
+            Solution As A Service
+          </span>
+          <h1 className="mx-auto mt-lg max-w-3xl font-display text-display font-bold tracking-tight text-on-surface">
+            Toute votre entreprise, dans une seule plateforme
+          </h1>
+          <p className="mx-auto mt-md max-w-2xl text-body-lg text-on-surface-variant">
+            Facturation, comptabilité, ressources humaines, missions, site web et boutique en
+            ligne — des modules pensés pour fonctionner ensemble, pas les uns à côté des autres.
+          </p>
+          <div className="mt-xl flex flex-col items-center justify-center gap-sm sm:flex-row">
+            <a
+              href={`${AUTH_APP_URL}/register`}
+              className="w-full rounded-lg bg-primary px-xl py-md text-body-lg font-medium text-on-primary shadow-button transition-opacity hover:opacity-90 sm:w-auto"
+            >
+              Essayer gratuitement
+            </a>
+            <Link
+              href="/produits"
+              className="w-full rounded-lg border border-outline-soft px-xl py-md text-body-lg font-medium text-on-surface transition-colors hover:bg-surface-container-low sm:w-auto"
+            >
+              Découvrir les produits
+            </Link>
+          </div>
+        </div>
+      </section>
 
-export default function Home() {
-  return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <ThemeImage
-          className={styles.logo}
-          srcLight="turborepo-dark.svg"
-          srcDark="turborepo-light.svg"
-          alt="Turborepo logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol>
-          <li>
-            Get started by editing <code>apps/web/app/page.tsx</code>
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+      <section className="border-y border-outline-soft bg-surface-container-low">
+        <div className="mx-auto grid max-w-6xl gap-lg px-gutter py-16 sm:grid-cols-2 lg:grid-cols-4">
+          {atouts.map((atout) => (
+            <div key={atout.titre} className="flex flex-col gap-sm">
+              <atout.icone className="!text-[28px] text-primary" />
+              <h3 className="text-headline-sm font-display text-on-surface">{atout.titre}</h3>
+              <p className="text-body-md text-on-surface-variant">{atout.texte}</p>
+            </div>
+          ))}
+        </div>
+      </section>
 
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new/clone?demo-description=Learn+to+implement+a+monorepo+with+a+two+Next.js+sites+that+has+installed+three+local+packages.&demo-image=%2F%2Fimages.ctfassets.net%2Fe5382hct74si%2F4K8ZISWAzJ8X1504ca0zmC%2F0b21a1c6246add355e55816278ef54bc%2FBasic.png&demo-title=Monorepo+with+Turborepo&demo-url=https%3A%2F%2Fexamples-basic-web.vercel.sh%2F&from=templates&project-name=Monorepo+with+Turborepo&repository-name=monorepo-turborepo&repository-url=https%3A%2F%2Fgithub.com%2Fvercel%2Fturborepo%2Ftree%2Fmain%2Fexamples%2Fbasic&root-directory=apps%2Fdocs&skippable-integrations=1&teamSlug=vercel&utm_source=create-turbo"
-            target="_blank"
-            rel="noopener noreferrer"
+      <section className="mx-auto max-w-6xl px-gutter py-24">
+        <div className="flex flex-col items-start justify-between gap-md sm:flex-row sm:items-end">
+          <div>
+            <h2 className="font-display text-headline-lg font-bold text-on-surface">
+              Un module pour chaque métier de l&apos;entreprise
+            </h2>
+            <p className="mt-sm max-w-2xl text-body-lg text-on-surface-variant">
+              Activez uniquement ce dont vous avez besoin aujourd&apos;hui — chaque nouveau
+              module s&apos;ajoute sans rien casser de ce qui tourne déjà.
+            </p>
+          </div>
+          <Link
+            href="/produits"
+            className="flex shrink-0 items-center gap-xs text-body-md font-medium text-primary"
           >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
+            Voir tous les produits
+            <ArrowForward className="!text-[18px]" />
+          </Link>
+        </div>
+
+        <div className="mt-xl grid gap-lg sm:grid-cols-2 lg:grid-cols-4">
+          {vitrine.map((produit) => (
+            <ProductCard key={produit.slug} produit={produit} />
+          ))}
+        </div>
+      </section>
+
+      <section className="bg-primary">
+        <div className="mx-auto flex max-w-6xl flex-col items-center gap-md px-gutter py-16 text-center">
+          <h2 className="font-display text-headline-lg font-bold text-on-primary">
+            Prêt à réunir vos outils en un seul endroit ?
+          </h2>
+          <p className="max-w-2xl text-body-lg text-on-primary/85">
+            Créez votre espace de travail en quelques minutes, sans engagement.
+          </p>
           <a
-            href="https://turborepo.dev/docs?utm_source"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.secondary}
+            href={`${AUTH_APP_URL}/register`}
+            className="mt-sm rounded-lg bg-on-primary px-xl py-md text-body-lg font-medium text-primary shadow-button transition-opacity hover:opacity-90"
           >
-            Read our docs
+            Essayer gratuitement
           </a>
         </div>
-        <Button appName="web" className={styles.secondary}>
-          Open alert
-        </Button>
-      </main>
-      <footer className={styles.footer}>
-        <a
-          href="https://vercel.com/templates?search=turborepo&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          href="https://turborepo.dev?utm_source=create-turbo"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to turborepo.dev →
-        </a>
-      </footer>
-    </div>
+      </section>
+    </>
   );
 }

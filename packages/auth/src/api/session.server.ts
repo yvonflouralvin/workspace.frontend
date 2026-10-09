@@ -2,6 +2,8 @@
 
 import { cookies, headers } from "next/headers.js";
 import { redirect } from "next/navigation.js";
+import { configReseauDepuisEnv } from "@repo/network/config";
+
 import { SessionResponse } from "../types/session.js";
 
 const EMPTY_SESSION: SessionResponse = {
@@ -14,12 +16,28 @@ const EMPTY_SESSION: SessionResponse = {
 };
 
 export async function getServerSession(): Promise<SessionResponse> {
-  const AUTH_API_URL = process.env.AUTH_API_URL;
-  if (!AUTH_API_URL) return EMPTY_SESSION;
+  // Posée sur TOUS les chemins de retour, y compris les sessions vides : un
+  // écran anonyme chiffre lui aussi ses appels, et c'est justement là que la
+  // clé manquante se voyait — à la connexion.
+  const config_reseau = configReseauDepuisEnv();
+  const vide = { ...EMPTY_SESSION, config_reseau };
 
+  // LIRE LES COOKIES EN PREMIER, avant tout retour anticipé.
+  //
+  // Ce n'est pas un détail de style : c'est cet accès qui dit à Next que la
+  // page dépend de la requête. Derrière un `if (!AUTH_API_URL)`, il ne se
+  // produisait pas à la construction — où la variable est absente, puisque
+  // turbo filtre l'environnement des tâches — et Next PRÉRENDAIT alors des
+  // écrans par utilisateur. Vérifié sur `tiers` : /tiers, /tiers/new et
+  // /parametres étaient servis depuis la construction (`x-nextjs-prerender: 1`),
+  // cookie ou pas. Le layout ne se rejouait jamais, donc rien de ce qu'il lit
+  // dans son environnement n'atteignait le navigateur.
   const cookieStore = await cookies();
   const cookieHeader = cookieStore.toString();
-  if (!cookieHeader) return EMPTY_SESSION;
+
+  const AUTH_API_URL = process.env.AUTH_API_URL;
+  if (!AUTH_API_URL) return vide;
+  if (!cookieHeader) return vide;
 
   try {
     const response = await fetch(`${AUTH_API_URL}/auth/session`, {
@@ -27,11 +45,11 @@ export async function getServerSession(): Promise<SessionResponse> {
       cache: "no-store",
     });
 
-    if (!response.ok) return EMPTY_SESSION;
+    if (!response.ok) return vide;
 
-    return await response.json();
+    return { ...(await response.json()), config_reseau };
   } catch {
-    return EMPTY_SESSION;
+    return vide;
   }
 }
 

@@ -541,6 +541,20 @@ Trois propriétés à ne pas casser :
   rend la migration app par app sûre — les 18 non migrées se comportent à l'identique.
 - **Sans clé, l'appel échoue** ; il ne retombe pas en clair. Un repli silencieux
   enverrait des identifiants en clair sans que personne le voie.
+- **Les 17 apps qui montent `SessionProvider` n'ont RIEN à changer** : `getServerSession`
+  pose la configuration dans la charge de session, et le fournisseur la dépose. Une copie
+  dans chaque layout serait une occasion de divergence par app. `auth` fait exception
+  (son écran de connexion ne monte pas le fournisseur) et porte un `<ConfigReseau>`
+  explicite ; `docs`, `site` et `web` n'utilisent `apiFetch` dans aucun fichier.
+- **`getServerSession` lit les cookies AVANT tout retour anticipé — ne pas réordonner.**
+  Cet accès est le signal par lequel Next sait qu'une page dépend de la requête. Derrière
+  le `if (!AUTH_API_URL)`, il ne se produisait pas à la construction — où la variable est
+  absente, turbo filtrant l'environnement des tâches — et Next **prérendait des écrans par
+  utilisateur** : mesuré sur `tiers`, 6 pages figées dont `/tiers` et `/parametres`,
+  servies depuis la construction avec cookie ou sans. Le layout ne se rejouant jamais,
+  rien de ce qu'il lit dans son environnement n'atteignait le navigateur. Après
+  correction : une seule page prérendue, interne à Next. Gardé par
+  `packages/auth/src/__tests__/session.server.test.ts`.
 - **La page doit être rendue à la REQUÊTE** (`export const dynamic = "force-dynamic"`
   dans le layout). Une page prérendue exécute le layout *au build*, où l'environnement
   du conteneur n'existe pas : la connexion et l'inscription étaient servies en HTML figé,

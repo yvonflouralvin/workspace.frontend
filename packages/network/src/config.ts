@@ -87,6 +87,18 @@ export function getServerKey(): string {
   return key;
 }
 
+/** La configuration à déposer, lue dans l'environnement du CONTENEUR.
+ *
+ *  Appelée côté serveur (layout racine, ou `getServerSession` qui le fait pour
+ *  les 17 apps qui montent `SessionProvider`). Vit ici plutôt que dans chaque
+ *  appelant : une copie par app serait une occasion de divergence par app. */
+export function configReseauDepuisEnv(): ConfigReseauClient {
+  return {
+    mode: process.env.NETWORK_ENCRYPTION,
+    cle: process.env.NETWORK_ENCRYPTION_KEY,
+  };
+}
+
 export function isClientEncrypted(): boolean {
   const mode =
     (deposee?.mode || undefined) ?? envPublicMode() ?? envServeurMode();

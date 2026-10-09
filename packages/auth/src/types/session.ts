@@ -32,6 +32,17 @@ export interface SessionGroup {
 }
 
 export interface SessionResponse {
+  /** Configuration que le NAVIGATEUR ne peut pas lire lui-même : une variable
+   *  `NEXT_PUBLIC_*` est figée dans le bundle à la compilation, donc absente
+   *  d'une image construite une fois pour tous les clients.
+   *
+   *  N'arrive PAS du backend `auth` : posée par `getServerSession`, côté
+   *  serveur de l'app, depuis l'environnement de son propre conteneur. Elle
+   *  voyage avec la session parce que c'est la seule charge que les 17 apps
+   *  chargent déjà à la racine — et qu'une copie par layout serait une
+   *  occasion de divergence par app. */
+  config_reseau?: { mode?: string; cle?: string };
+
   authenticated: boolean;
 
   user: User | null;

@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import {
   configReseauDepuisEnv,
+  domaineDepose,
   configurerReseauClient,
   getClientKey,
   getServerKey,
@@ -119,14 +120,22 @@ describe("configReseauDepuisEnv — lecture de l'environnement du conteneur", ()
   it("rend les valeurs serveur", () => {
     process.env.NETWORK_ENCRYPTION = "encrypted";
     process.env.NETWORK_ENCRYPTION_KEY = CLE_SERVEUR;
-    expect(configReseauDepuisEnv()).toEqual({
-      mode: "encrypted",
-      cle: CLE_SERVEUR,
-    });
+    const c = configReseauDepuisEnv();
+    expect(c.mode).toBe("encrypted");
+    expect(c.cle).toBe(CLE_SERVEUR);
   });
 
   it("rend des champs vides quand l'environnement est muet", () => {
-    expect(configReseauDepuisEnv()).toEqual({ mode: undefined, cle: undefined });
+    const c = configReseauDepuisEnv();
+    expect(c.mode).toBeUndefined();
+    expect(c.cle).toBeUndefined();
+  });
+
+  it("porte les domaines des applications", () => {
+    process.env.HOSTO_APP_URL = "https://hosto.client.test";
+    const c = configReseauDepuisEnv();
+    expect(c.domaines?.hosto).toBe("https://hosto.client.test");
+    delete process.env.HOSTO_APP_URL;
   });
 
   // La propriété qui rend le déploiement progressif sûr : une app dont le
@@ -146,6 +155,53 @@ describe("configReseauDepuisEnv — lecture de l'environnement du conteneur", ()
     process.env.NETWORK_ENCRYPTION_KEY = CLE_SERVEUR;
     configurerReseauClient(configReseauDepuisEnv());
     expect(getClientKey()).toBe(CLE_SERVEUR);
+  });
+});
+
+// Les coquilles d'application déclarent leurs liens dans des constantes de
+// MODULE, évaluées au chargement du chunk — avant tout rendu React. Le dépôt au
+// rendu arrive trop tard pour elles, d'où la variable globale posée par un
+// script à l'analyse du document.
+describe("domaineDepose — le domaine public d'une application", () => {
+  const G = globalThis as { __WD_CONFIG__?: unknown };
+
+  afterEach(() => {
+    delete G.__WD_CONFIG__;
+  });
+
+  it("lit la configuration déposée au rendu", () => {
+    configurerReseauClient({ domaines: { hosto: "https://h.test" } });
+    expect(domaineDepose("hosto")).toBe("https://h.test");
+  });
+
+  it("lit la variable globale quand rien n'a été déposé", () => {
+    G.__WD_CONFIG__ = { domaines: { hosto: "https://global.test" } };
+    expect(domaineDepose("hosto")).toBe("https://global.test");
+  });
+
+  it("le dépôt au rendu l'emporte sur la globale", () => {
+    G.__WD_CONFIG__ = { domaines: { hosto: "https://global.test" } };
+    configurerReseauClient({ domaines: { hosto: "https://rendu.test" } });
+    expect(domaineDepose("hosto")).toBe("https://rendu.test");
+  });
+
+  it("rend undefined pour une app inconnue — l'appelant garde son repli", () => {
+    G.__WD_CONFIG__ = { domaines: { hosto: "https://h.test" } };
+    expect(domaineDepose("inexistante")).toBeUndefined();
+  });
+
+  // Un domaine déposé VIDE ne doit pas remplacer un lien qui marchait par un
+  // lien mort : c'est ce qui rend le déploiement progressif sûr.
+  it("un domaine vide ne masque rien", () => {
+    G.__WD_CONFIG__ = { domaines: { hosto: "https://global.test" } };
+    configurerReseauClient({ domaines: { hosto: "" } });
+    expect(domaineDepose("hosto")).toBe("https://global.test");
+  });
+
+  it("la clé aussi peut venir de la globale", () => {
+    G.__WD_CONFIG__ = { mode: "encrypted", cle: CLE_SERVEUR };
+    expect(getClientKey()).toBe(CLE_SERVEUR);
+    expect(isClientEncrypted()).toBe(true);
   });
 });
 

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ConfigReseau } from "@repo/network/ConfigReseau";
 import "./globals.css";
+import { ConfigGlobale } from "@repo/network/ConfigGlobale";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -38,6 +39,7 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full w-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
+        <ConfigGlobale />
         {/* Le navigateur ne peut pas lire l'environnement du conteneur, et une
             variable NEXT_PUBLIC_* est figée dans le bundle à la compilation —
             donc absente d'une image construite une fois pour tous les clients.

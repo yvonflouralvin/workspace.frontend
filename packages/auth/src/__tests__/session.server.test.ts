@@ -81,14 +81,16 @@ describe("la configuration réseau voyage sur tous les chemins de retour", () =>
 
   it("sans AUTH_API_URL", async () => {
     const s = await getServerSession();
-    expect(s.config_reseau).toEqual({ mode: "encrypted", cle: "cle-de-test" });
+    expect(s.config_reseau?.mode).toBe("encrypted");
+    expect(s.config_reseau?.cle).toBe("cle-de-test");
     expect(s.authenticated).toBe(false);
   });
 
   it("sans cookie", async () => {
     process.env.AUTH_API_URL = "http://auth.test";
     const s = await getServerSession();
-    expect(s.config_reseau).toEqual({ mode: "encrypted", cle: "cle-de-test" });
+    expect(s.config_reseau?.mode).toBe("encrypted");
+    expect(s.config_reseau?.cle).toBe("cle-de-test");
   });
 
   it("quand auth répond une erreur", async () => {
@@ -98,7 +100,8 @@ describe("la configuration réseau voyage sur tous les chemins de retour", () =>
       async () => new Response("non", { status: 500 }),
     ) as unknown as typeof globalThis.fetch;
     const s = await getServerSession();
-    expect(s.config_reseau).toEqual({ mode: "encrypted", cle: "cle-de-test" });
+    expect(s.config_reseau?.mode).toBe("encrypted");
+    expect(s.config_reseau?.cle).toBe("cle-de-test");
   });
 
   it("quand le réseau tombe", async () => {
@@ -108,7 +111,15 @@ describe("la configuration réseau voyage sur tous les chemins de retour", () =>
       throw new Error("injoignable");
     }) as unknown as typeof globalThis.fetch;
     const s = await getServerSession();
-    expect(s.config_reseau).toEqual({ mode: "encrypted", cle: "cle-de-test" });
+    expect(s.config_reseau?.mode).toBe("encrypted");
+    expect(s.config_reseau?.cle).toBe("cle-de-test");
+  });
+
+  it("porte aussi les domaines des applications", async () => {
+    process.env.HOSTO_APP_URL = "https://hosto.client.test";
+    const s = await getServerSession();
+    expect(s.config_reseau?.domaines?.hosto).toBe("https://hosto.client.test");
+    delete process.env.HOSTO_APP_URL;
   });
 
   it("et quand tout va bien, sans écraser la charge d'auth", async () => {
@@ -125,6 +136,7 @@ describe("la configuration réseau voyage sur tous les chemins de retour", () =>
     expect(s.authenticated).toBe(true);
     expect(s.user).toEqual({ id: 7 });
     expect(s.permissions).toEqual(["a"]);
-    expect(s.config_reseau).toEqual({ mode: "encrypted", cle: "cle-de-test" });
+    expect(s.config_reseau?.mode).toBe("encrypted");
+    expect(s.config_reseau?.cle).toBe("cle-de-test");
   });
 });

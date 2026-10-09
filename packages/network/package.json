@@ -24,6 +24,10 @@
     "./ConfigReseau": {
       "types": "./src/ConfigReseau.tsx",
       "default": "./dist/ConfigReseau.js"
+    },
+    "./ConfigGlobale": {
+      "types": "./src/ConfigGlobale.tsx",
+      "default": "./dist/ConfigGlobale.js"
     }
   },
   "devDependencies": {

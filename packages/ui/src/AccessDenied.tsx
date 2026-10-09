@@ -2,6 +2,7 @@
 
 import { LockOutlined, LogoutOutlined } from "@mui/icons-material";
 import { apiFetch } from "@repo/network/client";
+import { domaineDepose } from "@repo/network/config";
 
 export function AccessDenied({
   appName,
@@ -14,7 +15,7 @@ export function AccessDenied({
 }) {
   async function handleLogout() {
     await apiFetch("/api/logout", { method: "POST" });
-    window.location.href = process.env.NEXT_PUBLIC_AUTH_API_AUTH_DOMAIN ?? "/";
+    window.location.href = domaineDepose("auth") ?? process.env.NEXT_PUBLIC_AUTH_API_AUTH_DOMAIN ?? "/";
   }
 
   return (

@@ -1,9 +1,10 @@
 import { apiFetch } from "@repo/network/client";
 import { PLATFORM_APPS } from "@repo/ui/shell/platform";
+import { domaineDepose } from "@repo/network/config";
 
 const WORKSPACE_DOMAIN =
   process.env.WORKSPACE_APP_URL ??
-  process.env.NEXT_PUBLIC_WORKSPACE_DOMAIN ??
+  domaineDepose("workspace") ?? process.env.NEXT_PUBLIC_WORKSPACE_DOMAIN ??
   "http://localhost:3005";
 
 interface SessionLue {

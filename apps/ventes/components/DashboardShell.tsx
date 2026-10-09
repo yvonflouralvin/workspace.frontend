@@ -22,6 +22,7 @@ import {
 } from "@mui/icons-material";
 import type { NavItem } from "@repo/ui/types/shell";
 import { menuDeSession } from "@repo/ui/shell/AccueilApp";
+import { domaineDepose } from "@repo/network/config";
 
 // Chaque entrée porte la permission qui l'ouvre. Sans elle, le menu affiche des
 // portes verrouillées : l'utilisateur clique, prend un 403, et croit que son
@@ -30,7 +31,7 @@ import { menuDeSession } from "@repo/ui/shell/AccueilApp";
 export const NAV_ITEMS: NavItem[] = [
   {
     label: "Accueil",
-    href: process.env.NEXT_PUBLIC_WORKSPACE_DOMAIN ?? "http://localhost:3005",
+    href: domaineDepose("workspace") ?? process.env.NEXT_PUBLIC_WORKSPACE_DOMAIN ?? "http://localhost:3005",
     icon: <HomeOutlined style={{ fontSize: 20 }} />,
     exact: true,
     accueil: true,

@@ -1,5 +1,6 @@
 "use client";
 
+import { domaineDepose } from "@repo/network/config";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
@@ -27,7 +28,7 @@ import {
   Inventory2Outlined,
 } from "@mui/icons-material";
 
-const STOCK_DOMAIN = process.env.NEXT_PUBLIC_AUTH_API_STOCK_DOMAIN ?? "http://localhost:3010";
+const STOCK_DOMAIN = domaineDepose("stock") ?? process.env.NEXT_PUBLIC_AUTH_API_STOCK_DOMAIN ?? "http://localhost:3010";
 
 const PRIX_INFO =
   "Le prix de vente est maintenu dans l'application Ventes. Les prix dans les autres devises sont " +

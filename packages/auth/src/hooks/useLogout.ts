@@ -1,5 +1,6 @@
 import { apiFetch } from "@repo/network/client";
 import { useSessionStore } from "../store/session.store.js";
+import { domaineDepose } from "@repo/network/config";
 
 export function useLogout(logoutPath = "/api/logout") {
   const { logout } = useSessionStore();
@@ -11,6 +12,6 @@ export function useLogout(logoutPath = "/api/logout") {
       // redirect regardless
     }
     window.location.href =
-      process.env.NEXT_PUBLIC_AUTH_API_AUTH_DOMAIN ?? "http://localhost:3001";
+      domaineDepose("auth") ?? process.env.NEXT_PUBLIC_AUTH_API_AUTH_DOMAIN ?? "http://localhost:3001";
   };
 }

@@ -7,6 +7,7 @@ import { LockOutlined } from "@mui/icons-material";
 import type { NavItem } from "../types/shell";
 import { PLATFORM_APPS } from "./platform";
 import { AccueilRaccourcis } from "./AccueilRaccourcis";
+import { domaineDepose } from "@repo/network/config";
 
 /** Un raccourci configuré sur un groupe : une carte vers un écran précis. */
 export interface LienRapide {
@@ -27,7 +28,7 @@ export interface AccueilResolu {
   groupe: { id: number; name: string } | null;
 }
 
-const WORKSPACE_URL = process.env.NEXT_PUBLIC_WORKSPACE_DOMAIN ?? "http://localhost:3005";
+const WORKSPACE_URL = domaineDepose("workspace") ?? process.env.NEXT_PUBLIC_WORKSPACE_DOMAIN ?? "http://localhost:3005";
 
 /** Où mène « Accueil » POUR CETTE PERSONNE.
  *

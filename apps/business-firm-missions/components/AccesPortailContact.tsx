@@ -16,8 +16,9 @@ import {
   type AccesClient,
 } from "@/lib/acces-client-api";
 import type { Contact } from "@/lib/tiers-api";
+import { domaineDepose } from "@repo/network/config";
 
-const CONNEXION = process.env.NEXT_PUBLIC_AUTH_API_AUTH_DOMAIN ?? "";
+const CONNEXION = domaineDepose("auth") ?? process.env.NEXT_PUBLIC_AUTH_API_AUTH_DOMAIN ?? "";
 
 interface Identifiants {
   email: string;

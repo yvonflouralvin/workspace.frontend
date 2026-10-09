@@ -7,9 +7,10 @@ import { surSessionExpiree } from "@repo/network/client";
 import { configurerReseauClient } from "@repo/network/config";
 import { createSessionStore, SessionStoreContext } from "../store/session.store.js";
 import type { SessionResponse } from "../types/session.js";
+import { domaineDepose } from "@repo/network/config";
 
 const DOMAINE_AUTH =
-  process.env.NEXT_PUBLIC_AUTH_API_AUTH_DOMAIN ?? "http://localhost:3001";
+  domaineDepose("auth") ?? process.env.NEXT_PUBLIC_AUTH_API_AUTH_DOMAIN ?? "http://localhost:3001";
 
 // À quelle fréquence, au plus, on redemande la session pendant qu'un onglet
 // reste ouvert. C'est ce battement qui fait GLISSER la fenêtre d'expiration :

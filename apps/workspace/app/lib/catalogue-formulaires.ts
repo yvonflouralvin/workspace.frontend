@@ -1,5 +1,6 @@
 import { formsApi, type FormulaireResume } from "@/app/lib/forms-api";
 import { listerCircuits } from "@/app/lib/circuits-api";
+import { domaineDepose } from "@repo/network/config";
 
 /** Le catalogue des formulaires à remplir.
  *
@@ -45,7 +46,7 @@ async function circuits(): Promise<EntreeCatalogue[]> {
         source: "APPROBATION" as const,
         titre: f.title,
         description: null,
-        href: `${process.env.NEXT_PUBLIC_AUTH_API_APPROVAL_FLOWS_DOMAIN ?? ""}/submit/${encodeURIComponent(f.id)}`,
+        href: `${domaineDepose("approval_flows") ?? process.env.NEXT_PUBLIC_AUTH_API_APPROVAL_FLOWS_DOMAIN ?? ""}/submit/${encodeURIComponent(f.id)}`,
         apres: "Passe par un circuit d'approbation",
       }))
   );

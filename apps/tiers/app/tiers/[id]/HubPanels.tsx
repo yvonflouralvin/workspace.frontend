@@ -1,5 +1,6 @@
 "use client";
 
+import { domaineDepose } from "@repo/network/config";
 import { useEffect, useMemo, useState } from "react";
 import { useSessionStore } from "@repo/auth/store/session.store";
 import { DataList, type DataListColumn } from "@repo/ui/DataList";
@@ -21,8 +22,8 @@ import {
   ReceiptLongOutlined,
 } from "@mui/icons-material";
 
-const WORKSPACE_APP_URL = process.env.NEXT_PUBLIC_WORKSPACE_DOMAIN ?? "";
-const VENTES_APP_URL = process.env.NEXT_PUBLIC_AUTH_API_VENTES_DOMAIN ?? "";
+const WORKSPACE_APP_URL = domaineDepose("workspace") ?? process.env.NEXT_PUBLIC_WORKSPACE_DOMAIN ?? "";
+const VENTES_APP_URL = domaineDepose("ventes") ?? process.env.NEXT_PUBLIC_AUTH_API_VENTES_DOMAIN ?? "";
 
 const PROJET_STATUT_LABEL: Record<string, string> = {
   ACTIF: "Actif",

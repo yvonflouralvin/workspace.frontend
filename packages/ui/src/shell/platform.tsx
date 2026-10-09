@@ -41,6 +41,8 @@ import {
   AssessmentOutlined,
   GavelOutlined,
 } from "@mui/icons-material";
+import { domaineDepose } from "@repo/network/config";
+
 import type { AppDefinition } from "../types/shell";
 
 export interface AppShellConfig {
@@ -57,7 +59,9 @@ export const PLATFORM_APPS: AppDefinition[] = [
     id: "workspace",
     name: "Workspace",
     icon: "W",
-    url: process.env.NEXT_PUBLIC_WORKSPACE_DOMAIN ?? "http://localhost:3005",
+    get url() {
+      return domaineDepose("workspace") ?? process.env.NEXT_PUBLIC_WORKSPACE_DOMAIN ?? "http://localhost:3005";
+    },
     color: "#3525cd",
     description: "Tableau de bord principal",
   },
@@ -65,7 +69,9 @@ export const PLATFORM_APPS: AppDefinition[] = [
     id: "operations",
     name: "Operations",
     icon: "O",
-    url: process.env.NEXT_PUBLIC_AUTH_API_OPERATIONS_DOMAIN ?? "http://localhost:3013",
+    get url() {
+      return domaineDepose("operations") ?? process.env.NEXT_PUBLIC_AUTH_API_OPERATIONS_DOMAIN ?? "http://localhost:3013";
+    },
     color: "#0f766e",
     description: "Planification des prestations, espaces, matériels et véhicules",
   },
@@ -73,7 +79,9 @@ export const PLATFORM_APPS: AppDefinition[] = [
     id: "academique",
     name: "Academia",
     icon: "A",
-    url: process.env.NEXT_PUBLIC_AUTH_API_ACADEMIQUE_DOMAIN ?? "http://localhost:3015",
+    get url() {
+      return domaineDepose("academique") ?? process.env.NEXT_PUBLIC_AUTH_API_ACADEMIQUE_DOMAIN ?? "http://localhost:3015";
+    },
     color: "#1d4ed8",
     description: "Structure académique, années, étudiants et inscriptions",
   },
@@ -81,7 +89,9 @@ export const PLATFORM_APPS: AppDefinition[] = [
     id: "isp",
     name: "ISP",
     icon: "I",
-    url: process.env.NEXT_PUBLIC_AUTH_API_ISP_DOMAIN ?? "http://localhost:3016",
+    get url() {
+      return domaineDepose("isp") ?? process.env.NEXT_PUBLIC_AUTH_API_ISP_DOMAIN ?? "http://localhost:3016";
+    },
     color: "#0e7490",
     description: "Stages, mémoires et projets tutorés",
   },
@@ -89,7 +99,9 @@ export const PLATFORM_APPS: AppDefinition[] = [
     id: "website",
     name: "Website",
     icon: "W",
-    url: process.env.NEXT_PUBLIC_AUTH_API_WEBSITE_DOMAIN ?? "http://localhost:3017",
+    get url() {
+      return domaineDepose("website") ?? process.env.NEXT_PUBLIC_AUTH_API_WEBSITE_DOMAIN ?? "http://localhost:3017";
+    },
     color: "#0d9488",
     description: "Construire et publier le site web de l'organisation",
   },
@@ -97,7 +109,9 @@ export const PLATFORM_APPS: AppDefinition[] = [
     id: "sgr",
     name: "SGR",
     icon: "S",
-    url: process.env.NEXT_PUBLIC_AUTH_API_SGR_DOMAIN ?? "http://localhost:3014",
+    get url() {
+      return domaineDepose("sgr") ?? process.env.NEXT_PUBLIC_AUTH_API_SGR_DOMAIN ?? "http://localhost:3014";
+    },
     color: "#7c2d12",
     description: "Secrétariat Général à la Recherche — dossiers de troisième cycle",
   },
@@ -105,7 +119,9 @@ export const PLATFORM_APPS: AppDefinition[] = [
     id: "hr",
     name: "RH",
     icon: "H",
-    url: process.env.NEXT_PUBLIC_AUTH_API_HR_DOMAIN ?? "http://localhost:3003",
+    get url() {
+      return domaineDepose("hr") ?? process.env.NEXT_PUBLIC_AUTH_API_HR_DOMAIN ?? "http://localhost:3003";
+    },
     color: "#006c49",
     description: "Ressources humaines",
   },
@@ -113,7 +129,9 @@ export const PLATFORM_APPS: AppDefinition[] = [
     id: "approval_flows",
     name: "Workflows d'approbation",
     icon: "A",
-    url: process.env.NEXT_PUBLIC_AUTH_API_APPROVAL_FLOWS_DOMAIN ?? "http://localhost:3006",
+    get url() {
+      return domaineDepose("approval_flows") ?? process.env.NEXT_PUBLIC_AUTH_API_APPROVAL_FLOWS_DOMAIN ?? "http://localhost:3006";
+    },
     color: "#004598",
     description: "Création et gestion de workflows d'approbation",
   },
@@ -121,7 +139,9 @@ export const PLATFORM_APPS: AppDefinition[] = [
     id: "hosto",
     name: "Patient",
     icon: "P",
-    url: process.env.NEXT_PUBLIC_AUTH_API_HOSTO_DOMAIN ?? "http://localhost:3007",
+    get url() {
+      return domaineDepose("hosto") ?? process.env.NEXT_PUBLIC_AUTH_API_HOSTO_DOMAIN ?? "http://localhost:3007";
+    },
     color: "#0e7490",
     description: "Gestion des dossiers des patients",
   },
@@ -129,7 +149,9 @@ export const PLATFORM_APPS: AppDefinition[] = [
     id: "tiers",
     name: "Tiers",
     icon: "T",
-    url: process.env.NEXT_PUBLIC_AUTH_API_TIERS_DOMAIN ?? "http://localhost:3009",
+    get url() {
+      return domaineDepose("tiers") ?? process.env.NEXT_PUBLIC_AUTH_API_TIERS_DOMAIN ?? "http://localhost:3009";
+    },
     color: "#b45309",
     description: "Clients et fournisseurs",
   },
@@ -137,7 +159,9 @@ export const PLATFORM_APPS: AppDefinition[] = [
     id: "stock",
     name: "Stock",
     icon: "S",
-    url: process.env.NEXT_PUBLIC_AUTH_API_STOCK_DOMAIN ?? "http://localhost:3010",
+    get url() {
+      return domaineDepose("stock") ?? process.env.NEXT_PUBLIC_AUTH_API_STOCK_DOMAIN ?? "http://localhost:3010";
+    },
     color: "#006c49",
     description: "Gestion des stocks et inventaires",
   },
@@ -145,7 +169,9 @@ export const PLATFORM_APPS: AppDefinition[] = [
     id: "documents",
     name: "Documents",
     icon: "D",
-    url: process.env.NEXT_PUBLIC_AUTH_API_DOCUMENTS_DOMAIN ?? "http://localhost:3008",
+    get url() {
+      return domaineDepose("documents") ?? process.env.NEXT_PUBLIC_AUTH_API_DOCUMENTS_DOMAIN ?? "http://localhost:3008";
+    },
     color: "#7c3aed",
     description: "Modèles et génération de documents PDF",
   },
@@ -153,7 +179,9 @@ export const PLATFORM_APPS: AppDefinition[] = [
     id: "ventes",
     name: "Facturation",
     icon: "F",
-    url: process.env.NEXT_PUBLIC_AUTH_API_VENTES_DOMAIN ?? "http://localhost:3011",
+    get url() {
+      return domaineDepose("ventes") ?? process.env.NEXT_PUBLIC_AUTH_API_VENTES_DOMAIN ?? "http://localhost:3011";
+    },
     color: "#e11d48",
     description: "Facturation",
   },
@@ -161,7 +189,9 @@ export const PLATFORM_APPS: AppDefinition[] = [
     id: "dashboard",
     name: "Tableau de bord",
     icon: "R",
-    url: process.env.NEXT_PUBLIC_AUTH_API_DASHBOARD_DOMAIN ?? "http://localhost:3012",
+    get url() {
+      return domaineDepose("dashboard") ?? process.env.NEXT_PUBLIC_AUTH_API_DASHBOARD_DOMAIN ?? "http://localhost:3012";
+    },
     color: "#0891b2",
     description: "Rapports temps réel agrégés des applications",
   },
@@ -169,7 +199,9 @@ export const PLATFORM_APPS: AppDefinition[] = [
     id: "audit_missions",
     name: "Audit",
     icon: "A",
-    url: process.env.NEXT_PUBLIC_AUTH_API_AUDIT_MISSIONS_DOMAIN ?? "http://localhost:3019",
+    get url() {
+      return domaineDepose("audit_missions") ?? process.env.NEXT_PUBLIC_AUTH_API_AUDIT_MISSIONS_DOMAIN ?? "http://localhost:3019";
+    },
     color: "#78350f",
     description: "Missions d'audit — checklists de contrôle et anomalies",
   },
@@ -177,7 +209,9 @@ export const PLATFORM_APPS: AppDefinition[] = [
     id: "comptabilite",
     name: "Comptabilité",
     icon: "C",
-    url: process.env.NEXT_PUBLIC_AUTH_API_COMPTABILITE_DOMAIN ?? "http://localhost:3020",
+    get url() {
+      return domaineDepose("comptabilite") ?? process.env.NEXT_PUBLIC_AUTH_API_COMPTABILITE_DOMAIN ?? "http://localhost:3020";
+    },
     color: "#1e3a8a",
     description: "Comptabilité générale OHADA — écritures, grand livre, états financiers",
   },
@@ -185,7 +219,9 @@ export const PLATFORM_APPS: AppDefinition[] = [
     id: "business_firm_missions",
     name: "Business Firm Mission",
     icon: "B",
-    url: process.env.NEXT_PUBLIC_AUTH_API_BUSINESS_FIRM_MISSIONS_DOMAIN ?? "http://localhost:3021",
+    get url() {
+      return domaineDepose("business_firm_missions") ?? process.env.NEXT_PUBLIC_AUTH_API_BUSINESS_FIRM_MISSIONS_DOMAIN ?? "http://localhost:3021";
+    },
     color: "#7c2d12",
     description: "Suivi des missions et prestations pour les clients — clients, missions, audit, fiscal",
   },

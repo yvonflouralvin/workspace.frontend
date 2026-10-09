@@ -566,6 +566,35 @@ Trois propriétés à ne pas casser :
 `packages/network/src/__tests__/` garde ces propriétés (18 tests, dont 5 qui tombent
 sur l'implémentation d'avant — vérifié).
 
+#### Les domaines publics suivent le même chemin
+
+Les 17 domaines inter-apps (`NEXT_PUBLIC_AUTH_API_*_DOMAIN`, `NEXT_PUBLIC_WORKSPACE_DOMAIN`)
+étaient figés au build comme la clé : dans une image, les liens entre apps pointaient vers
+`http://localhost:3005`.
+
+**La source existait déjà** : `<APP>_APP_URL`, 19 variables présentes dans le `.env` de
+chaque instance (vérifié sur la recette ET la production) et engendrées par
+`render-client.sh` depuis `--domain`. Rien à ajouter côté infra — c'est le navigateur qui
+ne pouvait pas les atteindre. Ne pas confondre avec `WORKSPACE_DOMAIN`, **sans schéma**
+(cookie et proxy) : s'en servir comme lien produirait une adresse sans `https://`.
+
+Un lien se lit avec `domaineDepose("<app>")` (`@repo/network/config`), **jamais** avec
+`process.env.NEXT_PUBLIC_*`. Trois sources, du plus précis au plus fiable :
+
+1. la configuration déposée au rendu (`SessionProvider`) ;
+2. `window.__WD_CONFIG__`, posé par **`<ConfigGlobale />`** dans le layout racine ;
+3. l'environnement du conteneur (`<APP>_APP_URL`), côté serveur.
+
+**Pourquoi un script et pas seulement le dépôt au rendu** : les coquilles d'application
+déclarent leurs liens dans des constantes de MODULE (`NAV_ITEMS`), évaluées au chargement
+du chunk — donc avant tout rendu React. Un dépôt au rendu arrive trop tard pour elles.
+`<ConfigGlobale />` s'exécute à l'analyse du document ; c'est pour ça qu'il est dans les
+18 layouts. `docs`, `site` et `web` ne l'ont pas : aucune lecture de domaine, aucun
+`apiFetch`.
+
+Un domaine déposé **vide ne l'emporte pas** : un dépôt incomplet ne peut jamais remplacer
+un lien qui marchait par un lien mort.
+
 **La clé reste lisible par qui lit la page** — elle passe du bundle JS au HTML. L'exposition
 est équivalente, et c'est la limite déjà documentée ci-dessus, pas une régression : le
 navigateur doit avoir la clé pour chiffrer. Ce changement corrige le *déploiement*, pas la

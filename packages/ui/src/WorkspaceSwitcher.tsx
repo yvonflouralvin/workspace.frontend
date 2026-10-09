@@ -5,6 +5,7 @@ import { CheckOutlined, UnfoldMoreOutlined, AddOutlined } from "@mui/icons-mater
 import Link from "next/link";
 import { useSessionStore } from "@repo/auth/store/session.store";
 import { useSidebarMode } from "./shell/AppShell";
+import { domaineDepose } from "@repo/network/config";
 const COLORS = ["#3525cd", "#006c49", "#004598", "#b91c1c", "#a16207", "#7c3aed"];
 
 function workspaceColor(id: number): string {
@@ -28,7 +29,7 @@ export function WorkspaceSwitcher({
     ? "px-2 py-1.5 border border-outline-soft"
     : "justify-center py-1.5 lg:justify-start lg:px-2 lg:border lg:border-outline-soft";
   const [open, setOpen] = useState(false);
-  const workspaceDomain = process.env.NEXT_PUBLIC_WORKSPACE_DOMAIN ?? "http://localhost:3005";
+  const workspaceDomain = domaineDepose("workspace") ?? process.env.NEXT_PUBLIC_WORKSPACE_DOMAIN ?? "http://localhost:3005";
   const [switching, setSwitching] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 

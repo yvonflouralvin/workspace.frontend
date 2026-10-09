@@ -7,6 +7,7 @@ import { SessionProvider } from '@repo/auth/SessionProvider'
 import { getServerSession } from '@repo/auth/api/session.server'
 import { AccessDenied } from '@repo/ui/AccessDenied'
 import { WorkspaceSwitcher } from '@repo/ui/WorkspaceSwitcher'
+import { ConfigGlobale } from "@repo/network/ConfigGlobale";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -63,6 +64,7 @@ export default async function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} ${inter.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
+        <ConfigGlobale />
         <SessionProvider initialSession={session}>
           {accessDenied ? (
             <AccessDenied

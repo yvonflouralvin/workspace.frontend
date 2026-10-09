@@ -20,13 +20,14 @@ import {
 } from "@mui/icons-material";
 import type { NavItem } from "@repo/ui/types/shell";
 import { menuDeSession } from "@repo/ui/shell/AccueilApp";
+import { domaineDepose } from "@repo/network/config";
 
 // Chaque entrée porte la permission qui l'ouvre. Sans elle, le menu affiche des
 // portes verrouillées : l'utilisateur clique, prend un 403, et croit que son
 // compte est cassé. L'ORDRE compte aussi — c'est celui dans lequel la porte
 // d'entrée de l'app cherche où atterrir (cf. `AccueilApp`).
 export const NAV_ITEMS: NavItem[] = [
-  { label: "Accueil", href: process.env.NEXT_PUBLIC_WORKSPACE_DOMAIN ?? "http://localhost:3005", icon: <HomeOutlined style={{ fontSize: 20 }} />, exact: true, accueil: true },
+  { label: "Accueil", href: domaineDepose("workspace") ?? process.env.NEXT_PUBLIC_WORKSPACE_DOMAIN ?? "http://localhost:3005", icon: <HomeOutlined style={{ fontSize: 20 }} />, exact: true, accueil: true },
   { label: "Départements", href: "/", icon: <CorporateFareOutlined style={{ fontSize: 20 }} />, exact: true, permission: "hr.departments.view" },
   { label: "Organigramme", href: "/groups", icon: <AccountTreeOutlined style={{ fontSize: 20 }} />, permission: "hr.departments.view" },
   { label: "Employés", href: "/employees", icon: <PeopleAltOutlined style={{ fontSize: 20 }} />, permission: "hr.employees.view" },

@@ -19,6 +19,7 @@ import {
 } from "@mui/icons-material";
 import type { NavItem } from "@repo/ui/types/shell";
 import { menuDeSession } from "@repo/ui/shell/AccueilApp";
+import { domaineDepose } from "@repo/network/config";
 
 // Un menu = un SUJET d'opérations, pas un écran. Ce qu'on regarde d'un sujet se
 // choisit dans la page, par un sélecteur — sans quoi cette barre s'allongerait
@@ -31,7 +32,7 @@ import { menuDeSession } from "@repo/ui/shell/AccueilApp";
 export const NAV_ITEMS: NavItem[] = [
   {
     label: "Accueil",
-    href: process.env.NEXT_PUBLIC_WORKSPACE_DOMAIN ?? "http://localhost:3005",
+    href: domaineDepose("workspace") ?? process.env.NEXT_PUBLIC_WORKSPACE_DOMAIN ?? "http://localhost:3005",
     icon: <HomeOutlined style={{ fontSize: 20 }} />,
     exact: true,
     accueil: true,

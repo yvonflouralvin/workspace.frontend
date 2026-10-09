@@ -19,6 +19,7 @@ import {
 } from "@mui/icons-material";
 import type { NavItem } from "@repo/ui/types/shell";
 import { menuDeSession } from "@repo/ui/shell/AccueilApp";
+import { domaineDepose } from "@repo/network/config";
 
 /** Deux publics, un seul menu — filtré par les droits.
  *
@@ -38,7 +39,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const navItems: NavItem[] = [
     {
       label: "Accueil",
-      href: process.env.NEXT_PUBLIC_WORKSPACE_DOMAIN ?? "http://localhost:3005",
+      href: domaineDepose("workspace") ?? process.env.NEXT_PUBLIC_WORKSPACE_DOMAIN ?? "http://localhost:3005",
       icon: <HomeOutlined style={{ fontSize: 20 }} />,
       exact: true,
       accueil: true,

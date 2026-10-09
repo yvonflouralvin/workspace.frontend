@@ -13,8 +13,12 @@ import { appsAutorisees, DOCUMENTS_SHELL } from "@repo/ui/shell/platform";
 import { DescriptionOutlined, HomeOutlined } from "@mui/icons-material";
 import type { NavItem, UserSummary } from "@repo/ui/types/shell";
 import { menuDeSession } from "@repo/ui/shell/AccueilApp";
+import { domaineDepose } from "@repo/network/config";
 
-const WORKSPACE_DOMAIN = process.env.NEXT_PUBLIC_WORKSPACE_DOMAIN ?? "http://localhost:3005";
+const WORKSPACE_DOMAIN =
+  domaineDepose("workspace") ??
+  domaineDepose("workspace") ?? process.env.NEXT_PUBLIC_WORKSPACE_DOMAIN ??
+  "http://localhost:3005";
 
 // Chaque entrée porte la permission qui l'ouvre. Sans elle, le menu affiche des
 // portes verrouillées : l'utilisateur clique, prend un 403, et croit que son

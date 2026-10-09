@@ -24,8 +24,9 @@ import {
 import type { NavItem } from "@repo/ui/types/shell";
 import { menuDeSession } from "@repo/ui/shell/AccueilApp";
 import { DeviseTenueGuard } from "@/components/DeviseTenueGuard";
+import { domaineDepose } from "@repo/network/config";
 
-const WORKSPACE_DOMAIN = process.env.NEXT_PUBLIC_WORKSPACE_DOMAIN ?? "http://localhost:3005";
+const WORKSPACE_DOMAIN = domaineDepose("workspace") ?? process.env.NEXT_PUBLIC_WORKSPACE_DOMAIN ?? "http://localhost:3005";
 
 const NAV_ITEMS: NavItem[] = [
   {

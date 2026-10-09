@@ -1,5 +1,6 @@
 "use client";
 
+import { domaineDepose } from "@repo/network/config";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
@@ -28,7 +29,7 @@ import {
   PlaceOutlined,
 } from "@mui/icons-material";
 
-const TIERS_DOMAIN = process.env.NEXT_PUBLIC_AUTH_API_TIERS_DOMAIN ?? "http://localhost:3009";
+const TIERS_DOMAIN = domaineDepose("tiers") ?? process.env.NEXT_PUBLIC_AUTH_API_TIERS_DOMAIN ?? "http://localhost:3009";
 
 function formatMontant(v: string | number): string {
   const n = typeof v === "number" ? v : Number(v);

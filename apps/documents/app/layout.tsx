@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { SessionProvider } from "@repo/auth/SessionProvider";
+import { ConfigGlobale } from "@repo/network/ConfigGlobale";
 import { exigerSession } from "@repo/auth/api/session.server";
 import { AccessDenied } from "@repo/ui/AccessDenied";
 import { WorkspaceSwitcher } from "@repo/ui/WorkspaceSwitcher";
@@ -41,6 +42,7 @@ export default async function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
+        <ConfigGlobale />
         <SessionProvider initialSession={session}>
           {accessDenied ? (
             <AccessDenied

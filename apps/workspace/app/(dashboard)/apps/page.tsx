@@ -14,6 +14,7 @@ import { Toast } from "@repo/ui/Toast";
 import { usePermissions } from "@repo/auth/hooks/usePermissions";
 import { useSessionStore } from "@repo/auth/store/session.store";
 import { MODE_LABELS, appsApi, type AppEntree } from "@/app/lib/apps-api";
+import { domaineDepose } from "@repo/network/config";
 
 const CHAMP =
   "h-9 px-3 rounded-lg border border-outline-soft bg-surface-container-lowest text-body-sm text-on-surface outline-none focus:border-primary transition-colors";
@@ -22,15 +23,15 @@ const CHAMP =
  *  de l'environnement — une application servie sur un autre domaine ne doit pas
  *  dépendre d'une valeur écrite en dur. */
 const META: Record<string, { color: string; url?: string }> = {
-  workspace: { color: "#3525cd", url: process.env.NEXT_PUBLIC_WORKSPACE_DOMAIN },
-  hr: { color: "#006c49", url: process.env.NEXT_PUBLIC_AUTH_API_HR_DOMAIN },
-  approval_flows: { color: "#004598", url: process.env.NEXT_PUBLIC_AUTH_API_APPROVAL_FLOWS_DOMAIN },
-  hosto: { color: "#0e7490", url: process.env.NEXT_PUBLIC_AUTH_API_HOSTO_DOMAIN },
-  documents: { color: "#7c3aed", url: process.env.NEXT_PUBLIC_AUTH_API_DOCUMENTS_DOMAIN },
-  tiers: { color: "#b45309", url: process.env.NEXT_PUBLIC_AUTH_API_TIERS_DOMAIN },
-  stock: { color: "#006c49", url: process.env.NEXT_PUBLIC_AUTH_API_STOCK_DOMAIN },
-  ventes: { color: "#e11d48", url: process.env.NEXT_PUBLIC_AUTH_API_VENTES_DOMAIN },
-  dashboard: { color: "#0f766e", url: process.env.NEXT_PUBLIC_AUTH_API_DASHBOARD_DOMAIN },
+  workspace: { color: "#3525cd", url: domaineDepose("workspace") ?? process.env.NEXT_PUBLIC_WORKSPACE_DOMAIN },
+  hr: { color: "#006c49", url: domaineDepose("hr") ?? process.env.NEXT_PUBLIC_AUTH_API_HR_DOMAIN },
+  approval_flows: { color: "#004598", url: domaineDepose("approval_flows") ?? process.env.NEXT_PUBLIC_AUTH_API_APPROVAL_FLOWS_DOMAIN },
+  hosto: { color: "#0e7490", url: domaineDepose("hosto") ?? process.env.NEXT_PUBLIC_AUTH_API_HOSTO_DOMAIN },
+  documents: { color: "#7c3aed", url: domaineDepose("documents") ?? process.env.NEXT_PUBLIC_AUTH_API_DOCUMENTS_DOMAIN },
+  tiers: { color: "#b45309", url: domaineDepose("tiers") ?? process.env.NEXT_PUBLIC_AUTH_API_TIERS_DOMAIN },
+  stock: { color: "#006c49", url: domaineDepose("stock") ?? process.env.NEXT_PUBLIC_AUTH_API_STOCK_DOMAIN },
+  ventes: { color: "#e11d48", url: domaineDepose("ventes") ?? process.env.NEXT_PUBLIC_AUTH_API_VENTES_DOMAIN },
+  dashboard: { color: "#0f766e", url: domaineDepose("dashboard") ?? process.env.NEXT_PUBLIC_AUTH_API_DASHBOARD_DOMAIN },
   saas_monitoring: { color: "#0b1c30", url: "/admin" },
 };
 

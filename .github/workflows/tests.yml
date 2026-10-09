@@ -1,0 +1,30 @@
+name: Tests
+
+# Avant ce fichier, les tests du dépôt ne tournaient NULLE PART : `turbo.json`
+# n'avait pas de tâche `test`, et le seul workflow existant publiait les images.
+# Les 51 tests de `apps/hosto` étaient donc écrits, lançables à la main, et
+# jamais lancés — ce qui en fait une documentation, pas un filet.
+on:
+  pull_request:
+  push:
+    branches: [claude]
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # Même version que l'image des applications (node:24-alpine).
+          node-version: 24
+          cache: npm
+
+      # `npm ci` et non `npm install` : la CI doit échouer si le verrou et les
+      # manifestes divergent, pas résoudre silencieusement autre chose que ce
+      # qui tourne chez nous.
+      - run: npm ci
+
+      - run: npx turbo run test

@@ -508,6 +508,55 @@ binaire) dans `apps/hr` — premier upload/téléchargement de fichier du monore
 réponse non-JSON, pass-through brut des octets + du cookie de session (voir
 `docs/apps/hr/HR.md`).
 
+#### Configuration déposée au démarrage (`ConfigReseau`)
+
+**Une variable `NEXT_PUBLIC_*` est figée dans le bundle à la compilation.** Une image
+construite une seule fois pour tous les clients ne peut donc pas porter une clé ni des
+domaines par instance : le 9 octobre 2026, les 19 images publiées embarquaient le
+*message d'erreur* à la place de la clé, et la recette est tombée côté navigateur alors
+que le serveur allait bien.
+
+Le layout racine — **composant serveur**, qui lit `process.env` à chaque rendu — dépose
+donc la configuration pour le code client :
+
+```tsx
+import { ConfigReseau } from "@repo/network/ConfigReseau";
+
+<ConfigReseau
+  mode={process.env.NETWORK_ENCRYPTION}
+  cle={process.env.NETWORK_ENCRYPTION_KEY}
+>
+  {children}
+</ConfigReseau>
+```
+
+Trois propriétés à ne pas casser :
+
+- **Le dépôt se fait pendant le RENDU, pas dans un effet.** Le corps d'un parent
+  s'exécute avant celui de ses enfants, donc avant tout `apiFetch` déclenché à leur
+  montage ; un `useEffect` passerait après, et le premier appel chiffré partirait sans
+  clé. D'où l'enveloppement des enfants plutôt qu'un rendu à côté d'eux.
+- **Une valeur déposée vide ne l'emporte pas** sur celle figée à la compilation : un
+  dépôt incomplet ne peut qu'améliorer, jamais casser une app qui marchait. C'est ce qui
+  rend la migration app par app sûre — les 18 non migrées se comportent à l'identique.
+- **Sans clé, l'appel échoue** ; il ne retombe pas en clair. Un repli silencieux
+  enverrait des identifiants en clair sans que personne le voie.
+- **La page doit être rendue à la REQUÊTE** (`export const dynamic = "force-dynamic"`
+  dans le layout). Une page prérendue exécute le layout *au build*, où l'environnement
+  du conteneur n'existe pas : la connexion et l'inscription étaient servies en HTML figé,
+  sans clé — le mécanisme échouait exactement là où il compte. Le coût est nul pour une
+  app derrière une authentification, dont rien n'est mutualisable entre utilisateurs.
+  **`apps/site` est l'exception** : renderer public et cacheable, il devra être traité à
+  part.
+
+`packages/network/src/__tests__/` garde ces propriétés (18 tests, dont 5 qui tombent
+sur l'implémentation d'avant — vérifié).
+
+**La clé reste lisible par qui lit la page** — elle passe du bundle JS au HTML. L'exposition
+est équivalente, et c'est la limite déjà documentée ci-dessus, pas une régression : le
+navigateur doit avoir la clé pour chiffrer. Ce changement corrige le *déploiement*, pas la
+confidentialité.
+
 **Troubleshooting :** mettre `NETWORK_ENCRYPTION=clear` et
 `NEXT_PUBLIC_NETWORK_ENCRYPTION=clear` dans le `.env` de l'app concernée pour
 revenir à du JSON en clair (comportement historique), sans rien déchiffrer à la
@@ -568,6 +617,12 @@ Résumé :
 
 Avant tout commit touchant une app : **`tsc --noEmit` doit passer à zéro**.
 Avant toute PR : **`next build` doit réussir** + smoke test de la route modifiée.
+
+**`npm test` à la racine lance toutes les suites** (`turbo run test`), et la CI les lance
+à chaque PR et à chaque push sur `claude` (`.github/workflows/tests.yml`). Un paquet ou
+une app qui se dote de tests ajoute simplement un script `test` à son `package.json` —
+turbo le découvre. Avant ce branchement, les 51 tests de `apps/hosto` existaient sans que
+rien ne les exécute.
 
 Voir **`docs/TESTING.md`** pour la stratégie complète (niveaux 1→5, Vitest et Playwright à venir).
 

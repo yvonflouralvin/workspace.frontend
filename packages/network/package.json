@@ -4,7 +4,9 @@
   "scripts": {
     "dev": "tsc --watch",
     "build": "tsc",
-    "prepare": "tsc"
+    "prepare": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "exports": {
     "./client": {
@@ -14,12 +16,21 @@
     "./server": {
       "types": "./src/server.ts",
       "default": "./dist/server.js"
+    },
+    "./config": {
+      "types": "./src/config.ts",
+      "default": "./dist/config.js"
+    },
+    "./ConfigReseau": {
+      "types": "./src/ConfigReseau.tsx",
+      "default": "./dist/ConfigReseau.js"
     }
   },
   "devDependencies": {
     "@repo/typescript-config": "*",
     "@types/node": "^22",
-    "typescript": "latest"
+    "typescript": "latest",
+    "vitest": "^3.2.6"
   },
   "peerDependencies": {
     "next": ">=15"

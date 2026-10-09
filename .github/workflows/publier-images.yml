@@ -1,0 +1,93 @@
+name: Publier les images des applications
+
+# Une VERSION DE PLATEFORME, pas une version par application : une étiquette
+# `v2026.10.1` construit les 19 images d'un coup, et le serveur client n'a qu'un
+# seul numéro à connaître. Le retour arrière redevient atomique — on repointe une
+# étiquette, pas dix-neuf.
+#
+# Le coût est de reconstruire les 19 à chaque livraison, même celles qui n'ont pas
+# changé. Il est payé par l'intégration continue, jamais par le client : c'est
+# précisément le déplacement qu'on cherche, puisque aujourd'hui ce sont les
+# machines des clients qui compilent.
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  # Permet d'éprouver la chaîne sans poser d'étiquette : les 19 images sont
+  # construites, et RIEN n'est publié (voir la condition `push:` plus bas).
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  images:
+    runs-on: ubuntu-latest
+
+    strategy:
+      # Une application qui échoue ne doit pas empêcher les autres de publier :
+      # on veut voir TOUS les échecs d'une livraison, pas seulement le premier.
+      fail-fast: false
+      matrix:
+        include:
+          # `app` = dossier ET nom de paquet npm (identiques pour les 19, vérifié).
+          # `image` = suffixe de l'image, aligné sur le nom du service dans le
+          # compose. Une seule divergence : le dossier `stock-inventaire` est
+          # servi par le service `wd_ft_stock`.
+          - { app: auth,                   image: auth }
+          - { app: workspace,              image: workspace }
+          - { app: hr,                     image: hr }
+          - { app: approval-flows,         image: approval-flows }
+          - { app: hosto,                  image: hosto }
+          - { app: isp,                    image: isp }
+          - { app: academique,             image: academique }
+          - { app: sgr,                    image: sgr }
+          - { app: tiers,                  image: tiers }
+          - { app: audit-missions,         image: audit-missions }
+          - { app: comptabilite,           image: comptabilite }
+          - { app: business-firm-missions, image: business-firm-missions }
+          - { app: operations,             image: operations }
+          - { app: stock-inventaire,       image: stock }
+          - { app: documents,              image: documents }
+          - { app: ventes,                 image: ventes }
+          - { app: dashboard,              image: dashboard }
+          - { app: website,                image: website }
+          - { app: site,                   image: site }
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Se connecter au registre
+        if: github.event_name == 'push'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/wd-ft-${{ matrix.image }}
+          tags: |
+            type=match,pattern=v(.*),group=1
+            type=raw,value=latest,enable=${{ github.event_name == 'push' }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          # Contexte = racine du monorepo : `turbo prune` a besoin de tout l'arbre
+          # pour résoudre les paquets partagés dont l'application dépend.
+          context: .
+          file: Dockerfile
+          build-args: APP=${{ matrix.app }}
+          push: ${{ github.event_name == 'push' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          # Le cache de couches entre livraisons : sans lui, chaque construction
+          # réinstalle toutes les dépendances. Avec, seule la couche de code est
+          # refaite quand aucune dépendance n'a changé.
+          cache-from: type=gha,scope=ft-${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=ft-${{ matrix.image }}

@@ -4,7 +4,9 @@
   "scripts": {
     "dev": "tsc --watch",
     "build": "tsc",
-    "prepare": "tsc"
+    "prepare": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "exports": {
     "./SessionProvider": {
@@ -36,7 +38,8 @@
     "@repo/typescript-config": "*",
     "postcss": "^8.4.31",
     "tailwind-config": "^0.1.2",
-    "typescript": "latest"
+    "typescript": "latest",
+    "vitest": "^3.2.6"
   },
   "peerDependencies": {
     "next": ">=15"

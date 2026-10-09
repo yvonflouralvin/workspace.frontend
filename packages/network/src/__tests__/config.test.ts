@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import {
+  configReseauDepuisEnv,
   configurerReseauClient,
   getClientKey,
   getServerKey,
@@ -109,6 +110,42 @@ describe("régression : image construite sans les variables publiques", () => {
     }
     expect(message).toContain("ConfigReseau");
     expect(message).toContain("NEXT_PUBLIC_NETWORK_ENCRYPTION_KEY");
+  });
+});
+
+// C'est ce que `getServerSession` appelle pour les 17 apps qui montent
+// SessionProvider : un seul point de lecture, au lieu d'une copie par layout.
+describe("configReseauDepuisEnv — lecture de l'environnement du conteneur", () => {
+  it("rend les valeurs serveur", () => {
+    process.env.NETWORK_ENCRYPTION = "encrypted";
+    process.env.NETWORK_ENCRYPTION_KEY = CLE_SERVEUR;
+    expect(configReseauDepuisEnv()).toEqual({
+      mode: "encrypted",
+      cle: CLE_SERVEUR,
+    });
+  });
+
+  it("rend des champs vides quand l'environnement est muet", () => {
+    expect(configReseauDepuisEnv()).toEqual({ mode: undefined, cle: undefined });
+  });
+
+  // La propriété qui rend le déploiement progressif sûr : une app dont le
+  // conteneur n'a pas encore la variable SERVEUR continue de marcher sur la clé
+  // figée à la compilation. Sans ça, déployer ce mécanisme casserait toute app
+  // dont le .env n'a pas été mis à jour — c'est-à-dire tous les clients
+  // existants.
+  it("déposer un environnement muet ne casse pas une app qui marchait", () => {
+    process.env.NEXT_PUBLIC_NETWORK_ENCRYPTION_KEY = CLE_INLINEE;
+    configurerReseauClient(configReseauDepuisEnv());
+    expect(getClientKey()).toBe(CLE_INLINEE);
+    expect(isClientEncrypted()).toBe(true);
+  });
+
+  it("et un environnement renseigné l'emporte bien", () => {
+    process.env.NEXT_PUBLIC_NETWORK_ENCRYPTION_KEY = CLE_INLINEE;
+    process.env.NETWORK_ENCRYPTION_KEY = CLE_SERVEUR;
+    configurerReseauClient(configReseauDepuisEnv());
+    expect(getClientKey()).toBe(CLE_SERVEUR);
   });
 });
 

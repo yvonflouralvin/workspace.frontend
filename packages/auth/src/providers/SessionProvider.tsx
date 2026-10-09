@@ -4,6 +4,7 @@
 
 import { useEffect, useState } from "react";
 import { surSessionExpiree } from "@repo/network/client";
+import { configurerReseauClient } from "@repo/network/config";
 import { createSessionStore, SessionStoreContext } from "../store/session.store.js";
 import type { SessionResponse } from "../types/session.js";
 
@@ -24,6 +25,17 @@ export function SessionProvider({
   children: React.ReactNode;
   initialSession?: SessionResponse;
 }) {
+  // Déposer la configuration réseau AVANT toute autre chose dans ce corps de
+  // composant : les enfants rendent après lui, donc leurs premiers appels
+  // chiffrés trouveront la clé. Dans un `useEffect`, on passerait après les
+  // effets des enfants — et le premier appel partirait sans clé.
+  //
+  // Une variable `NEXT_PUBLIC_*` est figée dans le bundle à la compilation : une
+  // image construite une fois pour tous les clients ne peut pas la porter. Ce
+  // dépôt est ce qui rend les images utilisables, pour les 17 apps qui montent
+  // ce fournisseur — sans toucher à leurs layouts.
+  configurerReseauClient(initialSession?.config_reseau ?? {});
+
   const [store] = useState(() => createSessionStore(initialSession));
 
   useEffect(() => {

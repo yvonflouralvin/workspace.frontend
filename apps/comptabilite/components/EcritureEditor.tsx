@@ -6,6 +6,7 @@ import {
   listComptes,
   createEcriture,
   updateEcriture,
+  corrigerEcriture,
   type Compte,
   type Journal,
   type Exercice,
@@ -39,11 +40,15 @@ interface EcritureEditorProps {
   journaux: Journal[];
   exercices: Exercice[];
   ecriture?: Ecriture;
+  /** Corriger une écriture DÉJÀ VALIDÉE : un motif devient obligatoire, le
+   *  journal et l'exercice se figent (le numéro de pièce les porte), et
+   *  l'enregistrement passe par la route tracée. */
+  correction?: boolean;
   onSaved: (ec: Ecriture) => void;
   onCancel?: () => void;
 }
 
-export function EcritureEditor({ journaux, exercices, ecriture, onSaved, onCancel }: EcritureEditorProps) {
+export function EcritureEditor({ journaux, exercices, ecriture, correction = false, onSaved, onCancel }: EcritureEditorProps) {
   const ouvert = exercices.find((e) => e.statut === "OUVERT");
   const [journalId, setJournalId] = useState(ecriture ? String(ecriture.journal_id) : journaux[0] ? String(journaux[0].id) : "");
   const [exerciceId, setExerciceId] = useState(ecriture ? String(ecriture.exercice_id) : ouvert ? String(ouvert.id) : "");
@@ -65,6 +70,7 @@ export function EcritureEditor({ journaux, exercices, ecriture, onSaved, onCance
     return [ligneVide(0), ligneVide(1)];
   });
   const [nextKey, setNextKey] = useState(lignes.length);
+  const [motif, setMotif] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -95,6 +101,10 @@ export function EcritureEditor({ journaux, exercices, ecriture, onSaved, onCance
       setError("L'écriture doit être équilibrée (débit = crédit, total > 0) pour être enregistrée.");
       return;
     }
+    if (correction && motif.trim().length < 5) {
+      setError("Le motif est obligatoire : c'est lui qu'on relira pour comprendre pourquoi une écriture validée a changé.");
+      return;
+    }
     const lignesInput: LigneEcritureInput[] = [];
     for (const l of lignes) {
       const debit = Number(l.debit) || 0;
@@ -122,7 +132,12 @@ export function EcritureEditor({ journaux, exercices, ecriture, onSaved, onCance
         reference: reference.trim() || null,
         lignes: lignesInput,
       };
-      const saved = ecriture ? await updateEcriture(ecriture.id, input) : await createEcriture(input);
+      const saved =
+        correction && ecriture
+          ? await corrigerEcriture(ecriture.id, { ...input, motif: motif.trim() })
+          : ecriture
+            ? await updateEcriture(ecriture.id, input)
+            : await createEcriture(input);
       onSaved(saved);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur inattendue");
@@ -142,14 +157,16 @@ export function EcritureEditor({ journaux, exercices, ecriture, onSaved, onCance
       <div className="flex flex-wrap items-end gap-2 rounded-2xl border border-outline-soft bg-surface-container-lowest p-4">
         <div>
           <span className="block text-label-sm uppercase text-outline mb-1">Journal</span>
-          <select value={journalId} onChange={(e) => setJournalId(e.target.value)} className={FIELD}>
+          <select value={journalId} onChange={(e) => setJournalId(e.target.value)} disabled={correction} className={`${FIELD} disabled:opacity-60`}>
             {journaux.map((j) => <option key={j.id} value={j.id}>{j.code} — {j.libelle}</option>)}
           </select>
         </div>
         <div>
           <span className="block text-label-sm uppercase text-outline mb-1">Exercice</span>
-          <select value={exerciceId} onChange={(e) => setExerciceId(e.target.value)} className={FIELD}>
-            {exercices.filter((ex) => ex.statut === "OUVERT").map((ex) => (
+          <select value={exerciceId} onChange={(e) => setExerciceId(e.target.value)} disabled={correction} className={`${FIELD} disabled:opacity-60`}>
+            {exercices
+              .filter((ex) => ex.statut === "OUVERT" || (correction && String(ex.id) === exerciceId))
+              .map((ex) => (
               <option key={ex.id} value={ex.id}>{ex.libelle}</option>
             ))}
           </select>
@@ -167,6 +184,23 @@ export function EcritureEditor({ journaux, exercices, ecriture, onSaved, onCance
           <input value={reference} onChange={(e) => setReference(e.target.value)} className={FIELD} placeholder="Optionnel" />
         </div>
       </div>
+
+      {correction && (
+        <div className="rounded-2xl border border-error-container bg-error-container/20 p-4">
+          <span className="block text-label-sm uppercase text-error mb-1">Motif de la correction — obligatoire</span>
+          <input
+            value={motif}
+            onChange={(e) => setMotif(e.target.value)}
+            className={`${FIELD} w-full`}
+            placeholder="Pourquoi cette écriture validée change — cinq caractères au minimum"
+            maxLength={500}
+          />
+          <p className="text-body-sm text-on-surface-variant mt-1.5">
+            L&rsquo;état actuel de l&rsquo;écriture sera conservé dans son historique, avec votre nom et ce motif.
+            Le journal et l&rsquo;exercice ne changent pas : le numéro de pièce les porte.
+          </p>
+        </div>
+      )}
 
       <div className="rounded-2xl border border-outline-soft bg-surface-container-lowest overflow-hidden">
         <div className="overflow-x-auto">
@@ -271,7 +305,7 @@ export function EcritureEditor({ journaux, exercices, ecriture, onSaved, onCance
           disabled={saving}
           className="h-9 px-4 rounded-lg bg-primary text-on-primary text-body-sm font-semibold shadow-button hover:bg-primary-container disabled:opacity-50 transition-colors"
         >
-          {saving ? "Enregistrement…" : "Enregistrer en brouillon"}
+          {saving ? "Enregistrement…" : correction ? "Enregistrer la correction" : "Enregistrer en brouillon"}
         </button>
         {!equilibree && <span className="text-body-sm text-on-surface-variant">Non équilibrée</span>}
       </div>

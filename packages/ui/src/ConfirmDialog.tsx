@@ -11,6 +11,9 @@ export interface ConfirmDialogProps {
   /** `danger` (défaut) pour une action destructive, `primary` sinon. */
   tone?: "danger" | "primary";
   busy?: boolean;
+  /** Interdit la confirmation sans annoncer un travail en cours — pour un
+   *  dialogue qui demande une saisie (un motif, par exemple) encore invalide. */
+  confirmDisabled?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -23,6 +26,7 @@ export function ConfirmDialog({
   cancelLabel = "Annuler",
   tone = "danger",
   busy = false,
+  confirmDisabled = false,
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
@@ -70,7 +74,7 @@ export function ConfirmDialog({
           </button>
           <button
             onClick={onConfirm}
-            disabled={busy}
+            disabled={busy || confirmDisabled}
             className={`h-[38px] px-5 rounded-lg text-body-sm font-semibold shadow-button disabled:opacity-50 transition-colors ${
               tone === "danger"
                 ? "bg-error text-on-error"

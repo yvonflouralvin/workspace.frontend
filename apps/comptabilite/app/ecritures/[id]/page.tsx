@@ -13,12 +13,15 @@ import {
   deleteEcriture,
   validerEcriture,
   contrePasserEcriture,
+  annulerEcriture,
+  getHistoriqueEcriture,
   lettrerLignes,
   delettrerLigne,
   listJournaux,
   listExercices,
   STATUT_ECRITURE_LABELS,
   type Ecriture,
+  type HistoriqueEcriture,
   type Journal,
   type Exercice,
 } from "@/lib/compta-api";
@@ -31,7 +34,69 @@ const STATUT_BADGE: Record<string, string> = {
   BROUILLON: "bg-surface-container text-on-surface-variant",
   VALIDEE: "bg-member-active-container text-member-active",
   CONTREPASSEE: "bg-error-container text-error",
+  ANNULEE: "bg-error-container text-error",
 };
+
+const ACTION_LABELS: Record<string, string> = {
+  MODIFICATION: "Corrigée",
+  ANNULATION: "Annulée",
+};
+
+/** L'historique dit QUOI a changé, pas seulement QUE quelque chose a changé. */
+function PanneauHistorique({ lignes }: { lignes: HistoriqueEcriture[] }) {
+  if (lignes.length === 0) return null;
+  return (
+    <div className="rounded-2xl border border-outline-soft bg-surface-container-lowest overflow-hidden">
+      <div className="px-4 py-2.5 border-b border-hairline bg-surface-row-alt">
+        <p className="text-label-sm uppercase text-outline">Historique des corrections</p>
+      </div>
+      <ul className="divide-y divide-hairline">
+        {lignes.map((h) => (
+          <li key={h.id} className="px-4 py-3">
+            <div className="flex items-baseline gap-2 flex-wrap">
+              <span className="text-body-sm font-semibold text-on-surface">{ACTION_LABELS[h.action] ?? h.action}</span>
+              <span className="text-label-md text-outline">
+                {new Date(h.cree_le).toLocaleString("fr-FR")}
+                {h.auteur_id != null && ` · utilisateur #${h.auteur_id}`}
+              </span>
+            </div>
+            <p className="text-body-sm text-on-surface-variant mt-0.5">{h.motif}</p>
+            <details className="mt-1.5">
+              <summary className="text-label-md text-primary cursor-pointer select-none">
+                État avant — {h.etat_avant.lignes.length} ligne{h.etat_avant.lignes.length > 1 ? "s" : ""}
+              </summary>
+              <div className="mt-1.5 rounded-lg border border-hairline overflow-x-auto">
+                <table className="w-full text-body-sm">
+                  <thead>
+                    <tr className="bg-surface-row-alt text-label-sm uppercase text-outline">
+                      <th className="text-left px-3 py-1.5">Libellé</th>
+                      <th className="text-right px-3 py-1.5 w-32">Débit</th>
+                      <th className="text-right px-3 py-1.5 w-32">Crédit</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-hairline">
+                    <tr>
+                      <td className="px-3 py-1.5 text-on-surface-variant" colSpan={3}>
+                        {h.etat_avant.date_ecriture} · {h.etat_avant.libelle}
+                      </td>
+                    </tr>
+                    {h.etat_avant.lignes.map((l, i) => (
+                      <tr key={i}>
+                        <td className="px-3 py-1.5">{l.libelle ?? "—"}</td>
+                        <td className="px-3 py-1.5 text-right font-mono">{montant(Number(l.debit))}</td>
+                        <td className="px-3 py-1.5 text-right font-mono">{montant(Number(l.credit))}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </details>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 export default function EcritureDetailPage() {
   const params = useParams<{ id: string }>();
@@ -39,6 +104,10 @@ export default function EcritureDetailPage() {
   const { can } = usePermissions();
   const canSaisir = can("comptabilite.ecritures.saisir");
   const canValider = can("comptabilite.ecritures.valider");
+  // Distinctes de `valider` à dessein : valider une pièce ne donne pas le
+  // droit de la réécrire ni de la faire disparaître des états.
+  const canCorriger = can("comptabilite.ecritures.modifier_validee");
+  const canAnnuler = can("comptabilite.ecritures.annuler_validee");
 
   const [ecriture, setEcriture] = useState<Ecriture | null>(null);
   const [journaux, setJournaux] = useState<Journal[]>([]);
@@ -48,10 +117,15 @@ export default function EcritureDetailPage() {
   const [aSupprimer, setASupprimer] = useState(false);
   const [aValider, setAValider] = useState(false);
   const [aContrepasser, setAContrepasser] = useState(false);
+  const [aAnnuler, setAAnnuler] = useState(false);
+  const [motifAnnulation, setMotifAnnulation] = useState("");
+  const [enCorrection, setEnCorrection] = useState(false);
+  const [historique, setHistorique] = useState<HistoriqueEcriture[]>([]);
   const [selection, setSelection] = useState<number[]>([]);
 
   function reload() {
     getEcriture(Number(params.id)).then(setEcriture).catch((err) => setError(err.message));
+    getHistoriqueEcriture(Number(params.id)).then(setHistorique);
   }
 
   useEffect(() => {
@@ -105,6 +179,22 @@ export default function EcritureDetailPage() {
     } finally {
       setBusy(false);
       setAContrepasser(false);
+    }
+  }
+
+  async function confirmerAnnulation() {
+    if (!ecriture) return;
+    setError(null);
+    setBusy(true);
+    try {
+      await annulerEcriture(ecriture.id, motifAnnulation.trim());
+      setAAnnuler(false);
+      setMotifAnnulation("");
+      reload();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erreur inattendue");
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -212,6 +302,35 @@ export default function EcritureDetailPage() {
     );
   }
 
+  if (enCorrection && ecriture.statut === "VALIDEE" && canCorriger) {
+    return (
+      <DashboardShell>
+        <div className="p-4 md:p-8 max-w-[1200px] mx-auto space-y-5">
+          <div>
+            <h1 className="font-display text-headline-lg text-on-surface font-mono">{ecriture.numero}</h1>
+            <p className="text-body-md text-on-surface-variant mt-0.5">
+              Correction d&rsquo;une écriture validée. Le numéro ne change pas, et l&rsquo;état actuel sera conservé.
+            </p>
+          </div>
+
+          <EcritureEditor
+            journaux={journaux}
+            exercices={exercices}
+            ecriture={ecriture}
+            correction
+            onSaved={(ec) => {
+              setEcriture(ec);
+              setEnCorrection(false);
+              reload();
+            }}
+            onCancel={() => setEnCorrection(false)}
+          />
+        </div>
+        <AideFlottante titre={AIDE_ECRITURES.titre}>{AIDE_ECRITURES.contenu}</AideFlottante>
+      </DashboardShell>
+    );
+  }
+
   const lignesLettrables = ecriture.lignes.filter((l) => !l.lettrage);
 
   return (
@@ -231,6 +350,16 @@ export default function EcritureDetailPage() {
             {ecriture.statut === "VALIDEE" && canValider && (
               <button type="button" onClick={() => setAContrepasser(true)} className="h-9 px-3.5 rounded-lg border border-outline-soft bg-surface-container-lowest text-body-sm font-semibold text-error hover:bg-error-container transition-colors">
                 Contre-passer
+              </button>
+            )}
+            {ecriture.statut === "VALIDEE" && canCorriger && (
+              <button type="button" onClick={() => setEnCorrection(true)} className="h-9 px-3.5 rounded-lg border border-outline-soft bg-surface-container-lowest text-body-sm font-semibold text-on-surface hover:bg-surface-container-low transition-colors">
+                Corriger
+              </button>
+            )}
+            {ecriture.statut === "VALIDEE" && canAnnuler && (
+              <button type="button" onClick={() => setAAnnuler(true)} className="h-9 px-3.5 rounded-lg border border-outline-soft bg-surface-container-lowest text-body-sm font-semibold text-error hover:bg-error-container transition-colors">
+                Annuler l&rsquo;écriture
               </button>
             )}
           </div>
@@ -315,6 +444,43 @@ export default function EcritureDetailPage() {
             </div>
           )}
         </div>
+
+        <PanneauHistorique lignes={historique} />
+
+        {aAnnuler && (
+          <ConfirmDialog
+            title="Annuler cette écriture validée ?"
+            message={
+              <div className="space-y-2">
+                <p>
+                  L&rsquo;écriture sortira de la balance, du grand livre et des états financiers. Sa ligne reste
+                  en base et son numéro n&rsquo;est jamais réattribué — une séquence à trous se voit, une séquence
+                  réutilisée ment.
+                </p>
+                <input
+                  autoFocus
+                  value={motifAnnulation}
+                  onChange={(e) => setMotifAnnulation(e.target.value)}
+                  maxLength={500}
+                  placeholder="Motif — obligatoire, cinq caractères au minimum"
+                  className="w-full rounded-lg border border-outline-soft bg-surface-container-lowest px-2.5 py-1.5 text-body-sm text-on-surface outline-none focus:border-primary transition-colors"
+                />
+                <p className="text-label-md text-outline">
+                  Ce motif, votre nom et l&rsquo;état actuel de l&rsquo;écriture resteront dans son historique.
+                </p>
+              </div>
+            }
+            confirmLabel="Annuler l'écriture"
+            cancelLabel="Revenir"
+            busy={busy}
+            confirmDisabled={motifAnnulation.trim().length < 5}
+            onConfirm={confirmerAnnulation}
+            onCancel={() => {
+              setAAnnuler(false);
+              setMotifAnnulation("");
+            }}
+          />
+        )}
 
         {aContrepasser && (
           <ConfirmDialog

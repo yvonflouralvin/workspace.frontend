@@ -30,6 +30,7 @@ const STATUT_BADGE: Record<StatutEcriture, string> = {
   BROUILLON: "bg-surface-container text-on-surface-variant",
   VALIDEE: "bg-member-active-container text-member-active",
   CONTREPASSEE: "bg-error-container text-error",
+  ANNULEE: "bg-error-container text-error",
 };
 
 export default function EcrituresPage() {

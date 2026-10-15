@@ -216,12 +216,13 @@ export async function cloturerExercice(id: number): Promise<Exercice> {
 
 // ───────────────────────── Écritures ─────────────────────────
 
-export type StatutEcriture = "BROUILLON" | "VALIDEE" | "CONTREPASSEE";
+export type StatutEcriture = "BROUILLON" | "VALIDEE" | "CONTREPASSEE" | "ANNULEE";
 
 export const STATUT_ECRITURE_LABELS: Record<StatutEcriture, string> = {
   BROUILLON: "Brouillon",
   VALIDEE: "Validée",
   CONTREPASSEE: "Contre-passée",
+  ANNULEE: "Annulée",
 };
 
 export interface LigneEcritureInput {
@@ -332,6 +333,61 @@ export async function contrePasserEcriture(id: number): Promise<Ecriture> {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.detail ?? "Erreur lors de la contre-passation");
   }
+  return res.json();
+}
+
+// ─────────────── Corriger / annuler une écriture DÉJÀ VALIDÉE ───────────────
+//
+// La voie normale reste la contre-passation. Celle-ci existe parce que les
+// comptables refusaient de produire une écriture miroir pour une faute de
+// frappe — et elle n'est ouverte qu'à qui porte la permission dédiée, exige un
+// motif, et laisse l'état d'avant dans l'historique.
+
+export type ActionHistorique = "MODIFICATION" | "ANNULATION";
+
+export interface HistoriqueEcriture {
+  id: number;
+  action: ActionHistorique;
+  motif: string;
+  auteur_id: number | null;
+  cree_le: string;
+  /** L'écriture ENTIÈRE telle qu'elle était avant — lignes et montants compris. */
+  etat_avant: {
+    numero: string;
+    date_ecriture: string | null;
+    libelle: string;
+    reference: string | null;
+    statut: string;
+    lignes: {
+      compte_id: number;
+      libelle: string | null;
+      debit: string;
+      credit: string;
+    }[];
+  };
+}
+
+export async function corrigerEcriture(id: number, input: EcritureInput & { motif: string }): Promise<Ecriture> {
+  const res = await apiFetch(`/api/compta/ecritures/${id}/corriger`, { method: "PUT", body: input });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail ?? "Erreur lors de la correction");
+  }
+  return res.json();
+}
+
+export async function annulerEcriture(id: number, motif: string): Promise<Ecriture> {
+  const res = await apiFetch(`/api/compta/ecritures/${id}/annuler`, { method: "POST", body: { motif } });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail ?? "Erreur lors de l'annulation");
+  }
+  return res.json();
+}
+
+export async function getHistoriqueEcriture(id: number): Promise<HistoriqueEcriture[]> {
+  const res = await apiFetch(`/api/compta/ecritures/${id}/historique`);
+  if (!res.ok) return [];
   return res.json();
 }
 

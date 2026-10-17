@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { DashboardShell } from "@/components/DashboardShell";
-import { AccountBalanceOutlined, PaidOutlined, ChevronRightOutlined } from "@mui/icons-material";
+import { AccountBalanceOutlined, PaidOutlined, ReceiptLongOutlined, ChevronRightOutlined } from "@mui/icons-material";
 
 const SECTIONS = [
   {
@@ -10,6 +10,13 @@ const SECTIONS = [
     icon: <PaidOutlined style={{ fontSize: 22 }} />,
     titre: "Devise",
     description: "Devise de tenue de la comptabilité, choisie parmi celles déclarées côté Facturation.",
+  },
+  {
+    href: "/parametres/types-depense",
+    icon: <ReceiptLongOutlined style={{ fontSize: 22 }} />,
+    titre: "Types de dépense",
+    description:
+      "Ce que choisit celui qui monte une note de frais, et le compte de charge correspondant — il n'a pas à connaître le plan comptable.",
   },
   {
     href: "/parametres/referentiels",

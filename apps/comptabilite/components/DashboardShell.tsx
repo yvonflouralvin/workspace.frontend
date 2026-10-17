@@ -44,6 +44,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Balance", href: "/balance", icon: <AssessmentOutlined style={{ fontSize: 20 }} />, exact: true },
   { label: "États financiers", href: "/etats", icon: <AssessmentOutlined style={{ fontSize: 20 }} />, exact: true },
   { label: "Taxes", href: "/taxes", icon: <PercentOutlined style={{ fontSize: 20 }} />, exact: true },
+  { label: "Notes de frais", href: "/notes-frais", icon: <ReceiptLongOutlined style={{ fontSize: 20 }} />, permission: "comptabilite.notes_frais.view" },
   { label: "Factures à comptabiliser", href: "/comptabiliser", icon: <ReceiptLongOutlined style={{ fontSize: 20 }} />, exact: true },
   { label: "Paramètres", href: "/parametres", icon: <SettingsOutlined style={{ fontSize: 20 }} /> },
 ];

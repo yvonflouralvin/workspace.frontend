@@ -598,3 +598,164 @@ export async function updateConfiguration(deviseTenue: string): Promise<Configur
 export async function logout(): Promise<void> {
   await apiFetch("/api/auth/logout", { method: "POST" });
 }
+
+
+// ───────────────────────── Notes de frais ───────────────────────────────────
+//
+// Le circuit de validation n'est pas ici : chaque organisation le définit dans
+// `approval-flows`, comme pour les congés. L'écran affiche l'état, il ne le
+// décide pas.
+
+export type TypeNoteFrais = "AVANCE" | "REMBOURSEMENT";
+export type StatutNoteFrais =
+  | "BROUILLON" | "SOUMISE" | "APPROUVEE" | "REFUSEE" | "PAYEE" | "ANNULEE";
+
+export const TYPE_NOTE_LABELS: Record<TypeNoteFrais, string> = {
+  AVANCE: "Demande d'avance",
+  REMBOURSEMENT: "Remboursement",
+};
+
+export const STATUT_NOTE_LABELS: Record<StatutNoteFrais, string> = {
+  BROUILLON: "Brouillon",
+  SOUMISE: "En validation",
+  APPROUVEE: "Approuvée",
+  REFUSEE: "Refusée",
+  PAYEE: "Payée",
+  ANNULEE: "Annulée",
+};
+
+export interface LigneNoteFraisInput {
+  date_depense: string;
+  compte_id: number;
+  libelle: string;
+  montant: number;
+  document_id?: number | null;
+}
+
+export interface LigneNoteFrais extends LigneNoteFraisInput {
+  id: number;
+  compte_numero: string | null;
+  compte_libelle: string | null;
+  document_id: number | null;
+  position: number;
+}
+
+export interface NoteFraisInput {
+  type_note: TypeNoteFrais;
+  objet: string;
+  date_demande: string;
+  exercice_id: number;
+  demandeur_id?: number | null;
+  lignes: LigneNoteFraisInput[];
+}
+
+export interface NoteFrais {
+  id: number;
+  numero: string;
+  type_note: TypeNoteFrais;
+  statut: StatutNoteFrais;
+  demandeur_id: number;
+  cree_par: number;
+  objet: string;
+  date_demande: string;
+  exercice_id: number;
+  montant_total: number;
+  approval_request_id: string | null;
+  motif_decision: string | null;
+  decide_le: string | null;
+  ecriture_id: number | null;
+  paye_le: string | null;
+  cree_le: string;
+  lignes: LigneNoteFrais[];
+}
+
+export interface NoteFraisSummary {
+  id: number;
+  numero: string;
+  type_note: TypeNoteFrais;
+  statut: StatutNoteFrais;
+  demandeur_id: number;
+  objet: string;
+  date_demande: string;
+  montant_total: number;
+  ecriture_id: number | null;
+}
+
+async function lireErreur(res: Response, defaut: string): Promise<never> {
+  const err = await res.json().catch(() => ({}));
+  throw new Error(err.detail ?? defaut);
+}
+
+export async function listNotesFrais(params?: {
+  statut?: StatutNoteFrais;
+  type_note?: TypeNoteFrais;
+}): Promise<NoteFraisSummary[]> {
+  const qs = new URLSearchParams();
+  if (params?.statut) qs.set("statut", params.statut);
+  if (params?.type_note) qs.set("type_note", params.type_note);
+  const res = await apiFetch(`/api/compta/notes-frais?${qs}`);
+  if (!res.ok) return [];
+  return res.json();
+}
+
+export async function getNoteFrais(id: number): Promise<NoteFrais> {
+  const res = await apiFetch(`/api/compta/notes-frais/${id}`);
+  if (!res.ok) await lireErreur(res, "Note de frais introuvable");
+  return res.json();
+}
+
+export async function createNoteFrais(input: NoteFraisInput): Promise<NoteFrais> {
+  const res = await apiFetch("/api/compta/notes-frais", { method: "POST", body: input });
+  if (!res.ok) await lireErreur(res, "Erreur lors de la création de la note");
+  return res.json();
+}
+
+export async function updateNoteFrais(id: number, input: NoteFraisInput): Promise<NoteFrais> {
+  const res = await apiFetch(`/api/compta/notes-frais/${id}`, { method: "PUT", body: input });
+  if (!res.ok) await lireErreur(res, "Erreur lors de la mise à jour de la note");
+  return res.json();
+}
+
+export async function soumettreNoteFrais(id: number): Promise<NoteFrais> {
+  const res = await apiFetch(`/api/compta/notes-frais/${id}/soumettre`, { method: "POST" });
+  if (!res.ok) await lireErreur(res, "Erreur lors de la soumission");
+  return res.json();
+}
+
+export async function annulerNoteFrais(id: number): Promise<NoteFrais> {
+  const res = await apiFetch(`/api/compta/notes-frais/${id}/annuler`, { method: "POST" });
+  if (!res.ok) await lireErreur(res, "Erreur lors de l'annulation");
+  return res.json();
+}
+
+export async function payerNoteFrais(
+  id: number,
+  body: { date_paiement: string; compte_tresorerie_id: number },
+): Promise<NoteFrais> {
+  const res = await apiFetch(`/api/compta/notes-frais/${id}/payer`, { method: "POST", body });
+  if (!res.ok) await lireErreur(res, "Erreur lors de l'enregistrement du paiement");
+  return res.json();
+}
+
+/** Le justificatif passe par un `FormData`, pas par `apiFetch` qui pose un
+ *  Content-Type JSON : le navigateur doit écrire lui-même la frontière
+ *  multipart. */
+export async function joindreJustificatif(
+  noteId: number,
+  ligneId: number,
+  fichier: File,
+): Promise<{ document_id: number }> {
+  const corps = new FormData();
+  corps.append("ligne_id", String(ligneId));
+  corps.append("file", fichier);
+  const res = await fetch(`/api/compta/notes-frais/${noteId}/justificatif`, {
+    method: "POST",
+    body: corps,
+  });
+  if (!res.ok) await lireErreur(res, "Dépôt du justificatif impossible");
+  return res.json();
+}
+
+export function urlJustificatif(noteId: number, documentId: number): string {
+  return `/api/compta/notes-frais/${noteId}/justificatif/${documentId}`;
+}

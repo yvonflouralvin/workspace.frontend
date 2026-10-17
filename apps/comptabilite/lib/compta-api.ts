@@ -624,9 +624,65 @@ export const STATUT_NOTE_LABELS: Record<StatutNoteFrais, string> = {
   ANNULEE: "Annulée",
 };
 
+async function lireErreur(res: Response, defaut: string): Promise<never> {
+  const err = await res.json().catch(() => ({}));
+  throw new Error(err.detail ?? defaut);
+}
+
+// Ce que le demandeur sait dire. Une note de frais n'est presque jamais
+// montée par un comptable : « Carburant » plutôt que « 605000 ».
+export interface CategorieFrais {
+  id: number;
+  libelle: string;
+  aide: string | null;
+  compte_id: number | null;
+  compte_numero: string | null;
+  compte_libelle: string | null;
+  actif: boolean;
+  position: number;
+}
+
+export interface CategorieFraisInput {
+  libelle: string;
+  aide?: string | null;
+  compte_id?: number | null;
+  actif: boolean;
+  position: number;
+}
+
+export async function listCategoriesFrais(toutes = false): Promise<CategorieFrais[]> {
+  const res = await apiFetch(`/api/compta/categories-frais${toutes ? "?toutes=true" : ""}`);
+  if (!res.ok) return [];
+  return res.json();
+}
+
+export async function chargerCategoriesFraisDefaut(): Promise<CategorieFrais[]> {
+  const res = await apiFetch("/api/compta/categories-frais/charger-defaut", { method: "POST" });
+  if (!res.ok) await lireErreur(res, "Chargement des catégories impossible");
+  return res.json();
+}
+
+export async function updateCategorieFrais(
+  id: number,
+  input: CategorieFraisInput,
+): Promise<CategorieFrais> {
+  const res = await apiFetch(`/api/compta/categories-frais/${id}`, { method: "PUT", body: input });
+  if (!res.ok) await lireErreur(res, "Erreur lors de l'enregistrement de la catégorie");
+  return res.json();
+}
+
+export async function createCategorieFrais(input: CategorieFraisInput): Promise<CategorieFrais> {
+  const res = await apiFetch("/api/compta/categories-frais", { method: "POST", body: input });
+  if (!res.ok) await lireErreur(res, "Erreur lors de la création de la catégorie");
+  return res.json();
+}
+
 export interface LigneNoteFraisInput {
   date_depense: string;
-  compte_id: number;
+  /** Ce que choisit le demandeur. */
+  categorie_id?: number | null;
+  /** Ce que le comptable peut imposer, et qui l'emporte. */
+  compte_id?: number | null;
   libelle: string;
   montant: number;
   document_id?: number | null;
@@ -634,6 +690,9 @@ export interface LigneNoteFraisInput {
 
 export interface LigneNoteFrais extends LigneNoteFraisInput {
   id: number;
+  categorie_id: number | null;
+  categorie_libelle: string | null;
+  compte_id: number | null;
   compte_numero: string | null;
   compte_libelle: string | null;
   document_id: number | null;
@@ -679,11 +738,6 @@ export interface NoteFraisSummary {
   date_demande: string;
   montant_total: number;
   ecriture_id: number | null;
-}
-
-async function lireErreur(res: Response, defaut: string): Promise<never> {
-  const err = await res.json().catch(() => ({}));
-  throw new Error(err.detail ?? defaut);
 }
 
 export async function listNotesFrais(params?: {

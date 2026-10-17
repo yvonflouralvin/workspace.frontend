@@ -49,13 +49,28 @@ function Puce({ children }: { children: ReactNode }) {
 
 /** L'état d'un onglet : sa liste, le tiroir ouvert (`"nouveau"` pour un ajout, un élément pour sa modification),
  *  et l'enregistrement qui referme le tiroir et recharge. */
-function usePanneau<T extends { id: number }>(dossierId: number, lister: (id: number) => Promise<T[]>) {
+function usePanneau<T extends { id: number }>(
+  dossierId: number,
+  lister: (id: number) => Promise<T[]>,
+  // La création ne part plus d'un bouton par section mais du menu « Ajouter »
+  // en tête de page : une seule porte d'entrée, comme demandé. Le panneau
+  // reçoit donc le signal du dehors, et le rend aussitôt pour que rouvrir le
+  // menu redéclenche bien l'ouverture.
+  demandeNouveau = false,
+  onNouveauPris?: () => void,
+) {
   const [items, setItems] = useState<T[] | null>(null);
   const [tiroir, setTiroir] = useState<T | "nouveau" | null>(null);
   const reload = useCallback(() => lister(dossierId).then(setItems), [dossierId, lister]);
   useEffect(() => {
     void reload();
   }, [reload]);
+  useEffect(() => {
+    if (!demandeNouveau) return;
+    setTiroir("nouveau");
+    onNouveauPris?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [demandeNouveau]);
 
   async function enregistrer(creer: () => Promise<unknown>, modifier: (t: T) => Promise<unknown>) {
     if (tiroir === "nouveau") await creer();
@@ -76,18 +91,22 @@ function Liste<T extends { id: number }>({
 }: {
   items: T[] | null;
   vide: string;
-  ajout: string;
-  onAjouter: () => void;
+  /** Omis : la section n'a pas de bouton propre, le menu « Ajouter » de la
+   *  page s'en charge. */
+  ajout?: string;
+  onAjouter?: () => void;
   onOuvrir: (t: T) => void;
   ligne: (t: T) => ReactNode;
 }) {
   return (
     <div className="space-y-3">
-      <div className="flex justify-end">
-        <button type="button" onClick={onAjouter} className={BOUTON_AJOUT}>
-          <AddOutlined style={{ fontSize: 15 }} /> {ajout}
-        </button>
-      </div>
+      {ajout && onAjouter && (
+        <div className="flex justify-end">
+          <button type="button" onClick={onAjouter} className={BOUTON_AJOUT}>
+            <AddOutlined style={{ fontSize: 15 }} /> {ajout}
+          </button>
+        </div>
+      )}
       {items === null ? (
         <p className="text-body-sm text-on-surface-variant">Chargement…</p>
       ) : items.length === 0 ? (
@@ -109,6 +128,13 @@ function Liste<T extends { id: number }>({
       )}
     </div>
   );
+}
+
+/** Ce que chaque section reçoit de la page. */
+export interface PanelProps {
+  dossierId: number;
+  demandeNouveau?: boolean;
+  onNouveauPris?: () => void;
 }
 
 const cleTiroir = (t: { id: number } | "nouveau") => (t === "nouveau" ? "nouveau" : t.id);
@@ -151,13 +177,12 @@ function ObligationTiroir({
   );
 }
 
-export function ObligationsPanel({ dossierId }: { dossierId: number }) {
-  const { items, tiroir, setTiroir, enregistrer } = usePanneau<Obligation>(dossierId, listObligations);
+export function ObligationsPanel({ dossierId, demandeNouveau, onNouveauPris }: PanelProps) {
+  const { items, tiroir, setTiroir, enregistrer } = usePanneau<Obligation>(dossierId, listObligations, demandeNouveau, onNouveauPris);
   return (
     <>
       <Liste
-        items={items} vide="Aucune obligation." ajout="Nouvelle obligation"
-        onAjouter={() => setTiroir("nouveau")} onOuvrir={setTiroir}
+        items={items} vide="Aucune obligation." onOuvrir={setTiroir}
         ligne={(o) => (
           <>
             <span className="flex-1 min-w-0 truncate text-body-sm text-on-surface">{o.nom}</span>
@@ -224,13 +249,12 @@ function EcheanceTiroir({
   );
 }
 
-export function EcheancesPanel({ dossierId }: { dossierId: number }) {
-  const { items, tiroir, setTiroir, enregistrer } = usePanneau<Echeance>(dossierId, listEcheances);
+export function EcheancesPanel({ dossierId, demandeNouveau, onNouveauPris }: PanelProps) {
+  const { items, tiroir, setTiroir, enregistrer } = usePanneau<Echeance>(dossierId, listEcheances, demandeNouveau, onNouveauPris);
   return (
     <>
       <Liste
-        items={items} vide="Aucune échéance." ajout="Nouvelle échéance"
-        onAjouter={() => setTiroir("nouveau")} onOuvrir={setTiroir}
+        items={items} vide="Aucune échéance." onOuvrir={setTiroir}
         ligne={(e) => (
           <>
             <div className="flex-1 min-w-0">
@@ -305,8 +329,8 @@ function DeclarationTiroir({
   );
 }
 
-export function DeclarationsPanel({ dossierId }: { dossierId: number }) {
-  const { items, tiroir, setTiroir, enregistrer } = usePanneau<Declaration>(dossierId, listDeclarations);
+export function DeclarationsPanel({ dossierId, demandeNouveau, onNouveauPris }: PanelProps) {
+  const { items, tiroir, setTiroir, enregistrer } = usePanneau<Declaration>(dossierId, listDeclarations, demandeNouveau, onNouveauPris);
   const [obligations, setObligations] = useState<Obligation[]>([]);
   useEffect(() => {
     listObligations(dossierId).then(setObligations);
@@ -316,8 +340,7 @@ export function DeclarationsPanel({ dossierId }: { dossierId: number }) {
   return (
     <>
       <Liste
-        items={items} vide="Aucune déclaration." ajout="Nouvelle déclaration"
-        onAjouter={() => setTiroir("nouveau")} onOuvrir={setTiroir}
+        items={items} vide="Aucune déclaration." onOuvrir={setTiroir}
         ligne={(d) => (
           <>
             <div className="flex-1 min-w-0">
@@ -384,13 +407,12 @@ function CorrespondanceTiroir({
   );
 }
 
-export function CorrespondancesPanel({ dossierId }: { dossierId: number }) {
-  const { items, tiroir, setTiroir, enregistrer } = usePanneau<Correspondance>(dossierId, listCorrespondances);
+export function CorrespondancesPanel({ dossierId, demandeNouveau, onNouveauPris }: PanelProps) {
+  const { items, tiroir, setTiroir, enregistrer } = usePanneau<Correspondance>(dossierId, listCorrespondances, demandeNouveau, onNouveauPris);
   return (
     <>
       <Liste
-        items={items} vide="Aucune correspondance." ajout="Nouvelle correspondance"
-        onAjouter={() => setTiroir("nouveau")} onOuvrir={setTiroir}
+        items={items} vide="Aucune correspondance." onOuvrir={setTiroir}
         ligne={(c) => (
           <div className="flex-1 min-w-0">
             <p className="truncate text-body-sm text-on-surface">{TYPE_CORRESPONDANCE_LABELS[c.avec]} — {c.sujet}</p>
@@ -446,13 +468,12 @@ function PaiementTiroir({
   );
 }
 
-export function PaiementsFiscauxPanel({ dossierId }: { dossierId: number }) {
-  const { items, tiroir, setTiroir, enregistrer } = usePanneau<PaiementFiscal>(dossierId, listPaiementsFiscaux);
+export function PaiementsFiscauxPanel({ dossierId, demandeNouveau, onNouveauPris }: PanelProps) {
+  const { items, tiroir, setTiroir, enregistrer } = usePanneau<PaiementFiscal>(dossierId, listPaiementsFiscaux, demandeNouveau, onNouveauPris);
   return (
     <>
       <Liste
-        items={items} vide="Aucun paiement." ajout="Nouveau paiement"
-        onAjouter={() => setTiroir("nouveau")} onOuvrir={setTiroir}
+        items={items} vide="Aucun paiement." onOuvrir={setTiroir}
         ligne={(p) => (
           <>
             <div className="flex-1 min-w-0">
@@ -519,13 +540,12 @@ function PenaliteTiroir({
   );
 }
 
-export function PenalitesPanel({ dossierId }: { dossierId: number }) {
-  const { items, tiroir, setTiroir, enregistrer } = usePanneau<Penalite>(dossierId, listPenalites);
+export function PenalitesPanel({ dossierId, demandeNouveau, onNouveauPris }: PanelProps) {
+  const { items, tiroir, setTiroir, enregistrer } = usePanneau<Penalite>(dossierId, listPenalites, demandeNouveau, onNouveauPris);
   return (
     <>
       <Liste
-        items={items} vide="Aucune pénalité." ajout="Nouvelle pénalité"
-        onAjouter={() => setTiroir("nouveau")} onOuvrir={setTiroir}
+        items={items} vide="Aucune pénalité." onOuvrir={setTiroir}
         ligne={(p) => (
           <>
             <div className="flex-1 min-w-0">
@@ -616,13 +636,12 @@ function ControleTiroir({
   );
 }
 
-export function ControlesFiscauxPanel({ dossierId }: { dossierId: number }) {
-  const { items, tiroir, setTiroir, enregistrer } = usePanneau<ControleFiscal>(dossierId, listControlesFiscaux);
+export function ControlesFiscauxPanel({ dossierId, demandeNouveau, onNouveauPris }: PanelProps) {
+  const { items, tiroir, setTiroir, enregistrer } = usePanneau<ControleFiscal>(dossierId, listControlesFiscaux, demandeNouveau, onNouveauPris);
   return (
     <>
       <Liste
-        items={items} vide="Aucun contrôle fiscal." ajout="Nouveau contrôle"
-        onAjouter={() => setTiroir("nouveau")} onOuvrir={setTiroir}
+        items={items} vide="Aucun contrôle fiscal." onOuvrir={setTiroir}
         ligne={(c) => (
           <>
             <div className="flex-1 min-w-0">

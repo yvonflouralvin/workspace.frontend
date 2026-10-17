@@ -225,6 +225,34 @@ export const STATUT_ECRITURE_LABELS: Record<StatutEcriture, string> = {
   ANNULEE: "Annulée",
 };
 
+// ───────────────────────── Tiers (lus chez le service Tiers) ─────────────────
+//
+// Comptabilité ne tient pas de registre de tiers : une ligne d'écriture ne
+// garde qu'un `tiers_id`, et le nom se lit à la volée. Une copie locale
+// divergerait au premier changement de raison sociale.
+
+export interface TiersSummary {
+  id: number;
+  code: string;
+  nom: string;
+  type: string | null;
+  adresse_ville: string | null;
+}
+
+export async function listTiers(q: string): Promise<TiersSummary[]> {
+  const res = await apiFetch(`/api/compta/tiers?q=${encodeURIComponent(q)}`);
+  if (!res.ok) return [];
+  return res.json();
+}
+
+/** Le nom d'un tiers déjà lié à une écriture. `null` si le tiers a disparu —
+ *  l'écriture reste modifiable, elle ne dépend pas de lui. */
+export async function getTiers(id: number): Promise<TiersSummary | null> {
+  const res = await apiFetch(`/api/compta/tiers/${id}`);
+  if (!res.ok) return null;
+  return res.json();
+}
+
 export interface LigneEcritureInput {
   compte_id: number;
   tiers_id?: number | null;

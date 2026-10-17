@@ -1,13 +1,16 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { SearchSelect } from "@repo/ui/SearchSelect";
 import {
   listComptes,
+  listTiers,
+  getTiers,
   createEcriture,
   updateEcriture,
   corrigerEcriture,
   type Compte,
+  type TiersSummary,
   type Journal,
   type Exercice,
   type Ecriture,
@@ -22,14 +25,17 @@ interface LigneEdit {
   key: number;
   compteId: number | null;
   compteLabel: string;
-  tiersId: string;
+  tiersId: number | null;
+  /** Gardé à côté de l'identifiant pour que le champ réaffiche un nom à la
+   *  réouverture : l'écriture ne stocke qu'un `tiers_id`. */
+  tiersLabel: string;
   libelle: string;
   debit: string;
   credit: string;
 }
 
 function ligneVide(key: number): LigneEdit {
-  return { key, compteId: null, compteLabel: "", tiersId: "", libelle: "", debit: "", credit: "" };
+  return { key, compteId: null, compteLabel: "", tiersId: null, tiersLabel: "", libelle: "", debit: "", credit: "" };
 }
 
 function montant(n: number): string {
@@ -61,7 +67,8 @@ export function EcritureEditor({ journaux, exercices, ecriture, correction = fal
         key: i,
         compteId: l.compte_id,
         compteLabel: l.compte_numero ? `${l.compte_numero} — ${l.compte_libelle}` : "",
-        tiersId: l.tiers_id != null ? String(l.tiers_id) : "",
+        tiersId: l.tiers_id ?? null,
+        tiersLabel: "",
         libelle: l.libelle ?? "",
         debit: l.debit ? String(l.debit) : "",
         credit: l.credit ? String(l.credit) : "",
@@ -70,6 +77,30 @@ export function EcritureEditor({ journaux, exercices, ecriture, correction = fal
     return [ligneVide(0), ligneVide(1)];
   });
   const [nextKey, setNextKey] = useState(lignes.length);
+  // Une écriture enregistrée ne garde qu'un `tiers_id`. Sans cette relecture,
+  // la rouvrir afficherait un champ tiers VIDE alors qu'elle en porte un — et
+  // l'enregistrer effacerait le lien sans que personne l'ait demandé.
+  useEffect(() => {
+    const aResoudre = lignes.filter((l) => l.tiersId != null && !l.tiersLabel);
+    if (aResoudre.length === 0) return;
+    let vivant = true;
+    Promise.all(
+      aResoudre.map(async (l) => ({ key: l.key, tiers: await getTiers(l.tiersId as number) })),
+    ).then((resolus) => {
+      if (!vivant) return;
+      setLignes((prev) =>
+        prev.map((l) => {
+          const r = resolus.find((x) => x.key === l.key);
+          return r?.tiers ? { ...l, tiersLabel: `${r.tiers.code} — ${r.tiers.nom}` } : l;
+        }),
+      );
+    });
+    return () => {
+      vivant = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const [motif, setMotif] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -112,7 +143,7 @@ export function EcritureEditor({ journaux, exercices, ecriture, correction = fal
       if (!l.compteId || (debit === 0 && credit === 0)) continue;
       lignesInput.push({
         compte_id: l.compteId,
-        tiers_id: l.tiersId ? Number(l.tiersId) : null,
+        tiers_id: l.tiersId,
         libelle: l.libelle.trim() || null,
         debit,
         credit,
@@ -209,7 +240,7 @@ export function EcritureEditor({ journaux, exercices, ecriture, correction = fal
               <tr className="bg-surface-row-alt text-label-sm uppercase text-outline">
                 <th className="text-left px-3 py-2 min-w-[260px]">Compte</th>
                 <th className="text-left px-3 py-2 min-w-[160px]">Libellé de ligne</th>
-                <th className="text-left px-3 py-2 w-24">Tiers (id)</th>
+                <th className="text-left px-3 py-2 min-w-[200px]">Tiers</th>
                 <th className="text-right px-3 py-2 w-32">Débit</th>
                 <th className="text-right px-3 py-2 w-32">Crédit</th>
                 <th className="w-10" />
@@ -242,11 +273,21 @@ export function EcritureEditor({ journaux, exercices, ecriture, correction = fal
                     />
                   </td>
                   <td className="px-3 py-2">
-                    <input
+                    {/* Un identifiant tapé à la main n'est vérifié par rien : une
+                        faute de frappe lettrait la pièce sur le mauvais tiers,
+                        en silence. */}
+                    <SearchSelect<TiersSummary>
+                      fetchOptions={(q) => listTiers(q)}
                       value={l.tiersId}
-                      onChange={(e) => patchLigne(l.key, { tiersId: e.target.value.replace(/\D/g, "") })}
-                      className={`${FIELD} w-full`}
-                      placeholder="—"
+                      onChange={(value, record) =>
+                        patchLigne(l.key, {
+                          tiersId: value as number | null,
+                          tiersLabel: record ? `${record.code} — ${record.nom}` : "",
+                        })
+                      }
+                      getOptionLabel={(t) => `${t.code} — ${t.nom}`}
+                      initialLabel={l.tiersLabel}
+                      placeholder="Aucun tiers"
                     />
                   </td>
                   <td className="px-3 py-2">

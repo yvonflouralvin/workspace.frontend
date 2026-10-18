@@ -1,14 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { SearchSelect } from "@repo/ui/SearchSelect";
+import { useEffect, useMemo, useState } from "react";
 import { AddOutlined, DeleteOutlined } from "@mui/icons-material";
 import {
-  listComptes,
+  listCategoriesFrais,
   createNoteFrais,
   updateNoteFrais,
   joindreJustificatif,
-  type Compte,
+  type CategorieFrais,
   type Exercice,
   type NoteFrais,
   type TypeNoteFrais,
@@ -21,8 +20,7 @@ interface LigneEdit {
   key: number;
   id: number | null;
   dateDepense: string;
-  compteId: number | null;
-  compteLabel: string;
+  categorieId: number | null;
   libelle: string;
   montant: string;
   documentId: number | null;
@@ -34,7 +32,7 @@ interface LigneEdit {
 function ligneVide(key: number): LigneEdit {
   return {
     key, id: null, dateDepense: new Date().toISOString().slice(0, 10),
-    compteId: null, compteLabel: "", libelle: "", montant: "",
+    categorieId: null, libelle: "", montant: "",
     documentId: null, fichier: null,
   };
 }
@@ -63,16 +61,22 @@ export function NoteFraisEditor({ exercices, note, onSaved, onCancel }: Props) {
   const [lignes, setLignes] = useState<LigneEdit[]>(() =>
     note
       ? note.lignes.map((l, i) => ({
-          key: i, id: l.id, dateDepense: l.date_depense, compteId: l.compte_id,
-          compteLabel: l.compte_numero ? `${l.compte_numero} — ${l.compte_libelle}` : "",
+          key: i, id: l.id, dateDepense: l.date_depense, categorieId: l.categorie_id,
           libelle: l.libelle, montant: String(l.montant),
           documentId: l.document_id, fichier: null,
         }))
       : [ligneVide(0)],
   );
   const [nextKey, setNextKey] = useState(lignes.length);
+  const [categories, setCategories] = useState<CategorieFrais[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // On ne propose QUE les catégories actives : une note de frais n'est presque
+  // jamais montée par un comptable, et le plan comptable ne lui dit rien.
+  useEffect(() => {
+    listCategoriesFrais().then(setCategories);
+  }, []);
 
   const total = useMemo(
     () => lignes.reduce((s, l) => s + (Number(l.montant) || 0), 0),
@@ -93,9 +97,9 @@ export function NoteFraisEditor({ exercices, note, onSaved, onCancel }: Props) {
       setError("Aucun exercice ouvert : une note de frais s'y rattache.");
       return;
     }
-    const valides = lignes.filter((l) => l.compteId && Number(l.montant) > 0 && l.libelle.trim());
+    const valides = lignes.filter((l) => l.categorieId && Number(l.montant) > 0 && l.libelle.trim());
     if (valides.length === 0) {
-      setError("Au moins une dépense : un compte, un libellé et un montant supérieur à zéro.");
+      setError("Au moins une dépense : une catégorie, un libellé et un montant supérieur à zéro.");
       return;
     }
 
@@ -108,7 +112,7 @@ export function NoteFraisEditor({ exercices, note, onSaved, onCancel }: Props) {
         exercice_id: Number(exerciceId),
         lignes: valides.map((l) => ({
           date_depense: l.dateDepense,
-          compte_id: l.compteId as number,
+          categorie_id: l.categorieId as number,
           libelle: l.libelle.trim(),
           montant: Number(l.montant),
           document_id: l.documentId,
@@ -186,7 +190,7 @@ export function NoteFraisEditor({ exercices, note, onSaved, onCancel }: Props) {
             <thead>
               <tr className="bg-surface-row-alt text-label-sm uppercase text-outline">
                 <th className="text-left px-3 py-2 w-36">Date</th>
-                <th className="text-left px-3 py-2 min-w-[240px]">Compte de charge</th>
+                <th className="text-left px-3 py-2 min-w-[220px]">Type de dépense</th>
                 <th className="text-left px-3 py-2 min-w-[160px]">Dépense</th>
                 <th className="text-right px-3 py-2 w-32">Montant</th>
                 <th className="text-left px-3 py-2 w-48">Justificatif</th>
@@ -205,19 +209,27 @@ export function NoteFraisEditor({ exercices, note, onSaved, onCancel }: Props) {
                     />
                   </td>
                   <td className="px-3 py-2">
-                    <SearchSelect<Compte>
-                      fetchOptions={(q) => listComptes({ q })}
-                      value={l.compteId}
-                      onChange={(value, record) =>
-                        patch(l.key, {
-                          compteId: value as number | null,
-                          compteLabel: record ? `${record.numero} — ${record.libelle}` : "",
-                        })
+                    {/* Une liste courte en langage courant, pas le plan
+                        comptable : celui qui rentre de mission ne sait pas ce
+                        qu'est un 605000. Le comptable fait la correspondance
+                        une fois, dans les paramètres. */}
+                    <select
+                      value={l.categorieId ?? ""}
+                      onChange={(e) =>
+                        patch(l.key, { categorieId: e.target.value ? Number(e.target.value) : null })
                       }
-                      getOptionLabel={(c) => `${c.numero} — ${c.libelle}`}
-                      initialLabel={l.compteLabel}
-                      placeholder="Rechercher un compte…"
-                    />
+                      className={`${FIELD} w-full`}
+                    >
+                      <option value="">Choisir…</option>
+                      {categories.map((c) => (
+                        <option key={c.id} value={c.id}>{c.libelle}</option>
+                      ))}
+                    </select>
+                    {l.categorieId != null && (
+                      <span className="block text-label-md text-outline mt-0.5">
+                        {categories.find((c) => c.id === l.categorieId)?.aide ?? ""}
+                      </span>
+                    )}
                   </td>
                   <td className="px-3 py-2">
                     <input
@@ -302,6 +314,13 @@ export function NoteFraisEditor({ exercices, note, onSaved, onCancel }: Props) {
           La note part en validation quand vous la soumettez, pas à l&rsquo;enregistrement.
         </span>
       </div>
+
+      {categories.length === 0 && (
+        <p className="rounded-lg border border-outline-soft bg-surface-container-low px-3 py-2 text-body-sm text-on-surface-variant">
+          Aucun type de dépense n&rsquo;est encore configuré. Un responsable de la comptabilité
+          peut en charger une liste de départ depuis Paramètres → Types de dépense.
+        </p>
+      )}
     </div>
   );
 }

@@ -59,6 +59,9 @@ export interface Dossier {
   tiers_id: number | null;
   nom: string;
   notes: string | null;
+  /** Document BlockNote sérialisé — même éditeur que les phases de projet.
+   *  `notes` reste le repli des dossiers écrits avant. */
+  description_rich: string | null;
   created_at: string;
 }
 
@@ -84,7 +87,7 @@ export async function getDossier(id: number): Promise<Dossier> {
   return res.json();
 }
 
-export async function createDossier(input: { nom: string; tiers_id?: number; notes?: string }): Promise<Dossier> {
+export async function createDossier(input: { nom: string; tiers_id?: number; notes?: string; description_rich?: string }): Promise<Dossier> {
   const res = await apiFetch("/api/bfm/fiscal/dossiers", { method: "POST", body: input });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -93,7 +96,10 @@ export async function createDossier(input: { nom: string; tiers_id?: number; not
   return res.json();
 }
 
-export async function updateDossier(id: number, input: Partial<{ nom: string; notes: string }>): Promise<Dossier> {
+export async function updateDossier(
+  id: number,
+  input: Partial<{ nom: string; notes: string; description_rich: string; tiers_id: number | null }>,
+): Promise<Dossier> {
   const res = await apiFetch(`/api/bfm/fiscal/dossiers/${id}`, { method: "PUT", body: input });
   if (!res.ok) throw new Error("Erreur lors de la mise à jour du dossier fiscal");
   return res.json();

@@ -5,7 +5,7 @@ import { CheckCircle, ArrowForward } from "@mui/icons-material";
 import { produits, getProduit } from "../../../lib/produits";
 import { ProduitIcon } from "../../../components/icon-map";
 import { ProductCard } from "../../../components/ProductCard";
-import { AUTH_APP_URL } from "../../../components/nav-links";
+import { lienAuth } from "../../../components/nav-links";
 
 export function generateStaticParams() {
   return produits.map((p) => ({ slug: p.slug }));
@@ -79,7 +79,7 @@ export default async function ProduitPage({
             ))}
           </ul>
           <a
-            href={`${AUTH_APP_URL}/register`}
+            href={lienAuth("/register")}
             className="mt-lg flex items-center justify-center gap-xs rounded-lg bg-primary px-md py-sm text-body-md font-medium text-on-primary shadow-button transition-opacity hover:opacity-90"
           >
             Essayer gratuitement

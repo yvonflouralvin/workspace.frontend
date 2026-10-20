@@ -31,7 +31,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # `app` = dossier ET nom de paquet npm (identiques pour les 19, vérifié).
+          # `app` = dossier ET nom de paquet npm (identiques pour les 20, vérifié).
           # `image` = suffixe de l'image, aligné sur le nom du service dans le
           # compose. Une seule divergence : le dossier `stock-inventaire` est
           # servi par le service `wd_ft_stock`.
@@ -54,6 +54,12 @@ jobs:
           - { app: dashboard,              image: dashboard }
           - { app: website,                image: website }
           - { app: site,                   image: site }
+          # Le site vitrine de l'éditeur, pas une application vendue : il n'est
+          # déployé que sur notre propre serveur. Il est quand même construit
+          # ici — son Dockerfile a été supprimé le 9 octobre sans qu'il rentre
+          # dans cette matrice, et il est resté six semaines sans moyen d'être
+          # publié.
+          - { app: web,                    image: web }
 
     steps:
       - uses: actions/checkout@v4

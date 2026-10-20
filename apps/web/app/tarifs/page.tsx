@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { CheckCircle } from "@mui/icons-material";
-import { AUTH_APP_URL } from "../../components/nav-links";
+import { lienAuth } from "../../components/nav-links";
 
 export const metadata: Metadata = {
   title: "Tarifs — Solution As A Service",
@@ -115,7 +115,7 @@ export default function TarifsPage() {
             </ul>
 
             <a
-              href={formule.nom === "Sur mesure" ? "/contact" : `${AUTH_APP_URL}/register`}
+              href={formule.nom === "Sur mesure" ? "/contact" : lienAuth("/register")}
               className={`mt-auto rounded-lg px-md py-sm text-center text-body-md font-medium shadow-button transition-opacity hover:opacity-90 ${
                 formule.mise_en_avant
                   ? "bg-on-primary text-primary"

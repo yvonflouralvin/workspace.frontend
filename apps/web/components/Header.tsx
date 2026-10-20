@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { MenuOutlined, CloseOutlined } from "@mui/icons-material";
-import { navLinks, AUTH_APP_URL } from "./nav-links";
+import { navLinks, lienAuth } from "./nav-links";
 
 export function Header() {
   const [open, setOpen] = useState(false);
@@ -34,13 +34,13 @@ export function Header() {
 
         <div className="hidden items-center gap-sm md:flex">
           <a
-            href={AUTH_APP_URL}
+            href={lienAuth()}
             className="rounded-lg px-md py-sm text-body-md text-on-surface-variant transition-colors hover:text-primary"
           >
             Se connecter
           </a>
           <a
-            href={`${AUTH_APP_URL}/register`}
+            href={lienAuth("/register")}
             className="rounded-lg bg-primary px-md py-sm text-body-md font-medium text-on-primary shadow-button transition-opacity hover:opacity-90"
           >
             Essayer gratuitement
@@ -72,13 +72,13 @@ export function Header() {
             ))}
             <div className="mt-sm flex flex-col gap-sm border-t border-outline-soft pt-sm">
               <a
-                href={AUTH_APP_URL}
+                href={lienAuth()}
                 className="rounded-lg px-sm py-sm text-center text-body-md text-on-surface-variant hover:bg-surface-container-low"
               >
                 Se connecter
               </a>
               <a
-                href={`${AUTH_APP_URL}/register`}
+                href={lienAuth("/register")}
                 className="rounded-lg bg-primary px-sm py-sm text-center text-body-md font-medium text-on-primary"
               >
                 Essayer gratuitement

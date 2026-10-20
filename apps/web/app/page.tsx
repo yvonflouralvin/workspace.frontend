@@ -8,7 +8,7 @@ import {
 } from "@mui/icons-material";
 import { produits } from "../lib/produits";
 import { ProductCard } from "../components/ProductCard";
-import { AUTH_APP_URL } from "../components/nav-links";
+import { lienAuth } from "../components/nav-links";
 
 const atouts = [
   {
@@ -56,7 +56,7 @@ export default function HomePage() {
           </p>
           <div className="mt-xl flex flex-col items-center justify-center gap-sm sm:flex-row">
             <a
-              href={`${AUTH_APP_URL}/register`}
+              href={lienAuth("/register")}
               className="w-full rounded-lg bg-primary px-xl py-md text-body-lg font-medium text-on-primary shadow-button transition-opacity hover:opacity-90 sm:w-auto"
             >
               Essayer gratuitement
@@ -119,7 +119,7 @@ export default function HomePage() {
             Créez votre espace de travail en quelques minutes, sans engagement.
           </p>
           <a
-            href={`${AUTH_APP_URL}/register`}
+            href={lienAuth("/register")}
             className="mt-sm rounded-lg bg-on-primary px-xl py-md text-body-lg font-medium text-primary shadow-button transition-opacity hover:opacity-90"
           >
             Essayer gratuitement

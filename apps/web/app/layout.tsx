@@ -3,6 +3,7 @@ import { Geist, Geist_Mono, Inter } from "next/font/google";
 import "./globals.css";
 import { Header } from "../components/Header";
 import { Footer } from "../components/Footer";
+import { ConfigGlobale } from "@repo/network/ConfigGlobale";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -25,6 +26,12 @@ export const metadata: Metadata = {
     "Solution As A Service — une seule plateforme, tous les modules dont votre entreprise a besoin : facturation, comptabilité, RH, missions, site web et boutique en ligne.",
 };
 
+// Rendu à la REQUÊTE : prérendue, la page exécuterait ce layout au build, où
+// l'environnement du conteneur n'existe pas — `<ConfigGlobale>` déposerait
+// alors des domaines vides et les boutons « Se connecter » pointeraient dans
+// le vide. Le coût est nul : rien ici ne demande une base.
+export const dynamic = "force-dynamic";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -36,6 +43,7 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} ${inter.variable} h-full w-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-background text-on-surface font-body-md">
+        <ConfigGlobale />
         <Header />
         <main className="flex-1">{children}</main>
         <Footer />

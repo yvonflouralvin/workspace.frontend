@@ -16,6 +16,19 @@ export interface PieceEnAttente {
   fichier: File;
 }
 
+/** Une écriture que l'agent veut faire, et qui attend la décision du membre.
+ *
+ *  Le tour est SUSPENDU tant qu'elle n'a pas de réponse : côté serveur, l'appel
+ *  de l'outil est bloqué à l'attendre. Sans réponse au bout de deux minutes,
+ *  c'est non — le silence ne vaut pas accord. */
+export interface DemandeConfirmation {
+  demande_id: string;
+  outil: string;
+  /** « Facturation › Créer une facture » — jamais le nom technique. */
+  libelle: string;
+  arguments: Record<string, unknown>;
+}
+
 export interface MessageAssistant {
   id: number;
   role: "MEMBRE" | "AGENT" | "SYSTEME";

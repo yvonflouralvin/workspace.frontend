@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 
-import { poidsLisible } from "../components/PanneauAssistant";
+import { Confirmation, poidsLisible } from "../components/PanneauAssistant";
 import { urlPiece } from "../api/client";
 import { Markdown, schemaSur } from "../lib/markdown";
 
@@ -46,5 +46,41 @@ describe("Markdown — les liens que le modèle écrit", () => {
     const html = renderToStaticMarkup(<Markdown texte="[clic](javascript:alert(1))" />);
     expect(html).not.toContain("<a");
     expect(html).toContain("clic");
+  });
+});
+
+describe("La carte de confirmation", () => {
+  it("montre les arguments tels qu'ils partiront", () => {
+    // C'est sur EUX qu'on s'engage, pas sur le nom de l'outil. Une carte qui
+    // dirait « créer une facture » sans le montant ferait approuver à
+    // l'aveugle.
+    const html = renderToStaticMarkup(
+      <Confirmation
+        demande={{
+          demande_id: "d1",
+          outil: "mcp__plateforme__ventes__creer_facture",
+          libelle: "Facturation › Créer une facture",
+          arguments: { client: "Kalala", montant_cdf: 1200000 },
+        }}
+        onTrancher={async () => {}}
+      />,
+    );
+    expect(html).toContain("Facturation › Créer une facture");
+    expect(html).toContain("Kalala");
+    expect(html).toContain("1200000");
+    // Le nom technique n'a rien à faire sous les yeux du membre.
+    expect(html).not.toContain("mcp__plateforme");
+  });
+
+  it("dit ce qui se passe si on ne répond pas", () => {
+    // Le silence vaut non, côté serveur. L'écran doit le dire, sinon on croit
+    // qu'ignorer la carte laisse l'action en suspens.
+    const html = renderToStaticMarkup(
+      <Confirmation
+        demande={{ demande_id: "d1", outil: "x", libelle: "X", arguments: {} }}
+        onTrancher={async () => {}}
+      />,
+    );
+    expect(html).toContain("ne se fera pas");
   });
 });

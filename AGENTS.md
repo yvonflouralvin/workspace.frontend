@@ -350,6 +350,9 @@ raisons différentes :
 | `pieces` (POST) | Corps **multipart** : `@repo/network` chiffre un objet JSON, pas des octets. Même exception que l'upload de documents de `hr`. |
 | `pieces/[documentId]` (GET) | Réponse **binaire** : l'emballer en enveloppe JSON ferait télécharger du base64. |
 
+Les autres passent par `forwardToBackend` comme partout, y compris
+`confirmations/[demandeId]`.
+
 **Les pièces jointes** demandent `agent.fichiers`, passé au panneau via
 `fichiersAutorises` — sans lui le trombone n'apparaît pas. Le téléversement a
 lieu **à l'envoi**, pas au choix du fichier : il lui faut un identifiant de
@@ -363,6 +366,15 @@ d'un modèle : React bloque `javascript:` aujourd'hui, mais c'est un filet du
 framework annoncé comme amovible, et il ne couvre pas `data:`. Un lien refusé
 s'affiche **en texte** — on ne masque pas ce que le modèle a écrit, on refuse
 seulement de le rendre cliquable.
+
+**Les écritures passent par une confirmation.** Quand l'agent veut appeler un
+outil qui modifie des données, le flux émet un évènement `confirmation` et le
+panneau affiche une carte : le libellé de l'outil et **tous ses arguments, tels
+qu'ils partiront** — c'est sur eux qu'on s'engage, pas sur le nom de l'outil.
+La décision part par une requête À PART (`conversations/[id]/confirmations/[demandeId]`),
+et il ne peut pas en être autrement : côté serveur le tour est **suspendu**
+dans un autre appel, à attendre précisément celle-ci. Sans réponse, l'action ne
+se fait pas — le silence ne vaut pas accord.
 
 `ConnexionAssistant` est l'écran d'administration (permission `agent.manage`) —
 le jeton produit par `claude setup-token` sur la machine de l'administrateur, à

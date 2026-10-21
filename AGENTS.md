@@ -33,6 +33,7 @@ frontends/
     ui/                        (@repo/ui — inclut src/charts/ : LineChart, BarChart, Sparkline SVG)
     reporting-widgets/         (@repo/reporting-widgets — KpiCard, ReportWidget, TableWidget…)
     site-widgets/              (@repo/site-widgets — catalogue de widgets + rendu partagé builder/public)
+    agent-chat/                (@repo/agent-chat — assistant conversationnel, panneau + écran d'abonnement)
     auth/                      (@repo/auth)
     network/                   (@repo/network)
     design-system/             (@repo/design-system)
@@ -313,6 +314,38 @@ L'app consommatrice ajoute ses routes BFF sous `/api/notifications/*`
 dans `hosto` (cloche + section Paramètres › Notifications). Détail du hub et du contrat :
 `AGENTS.md` racine.
 
+### `@repo/agent-chat`
+
+Assistant conversationnel adossé au service `agent` — panneau de discussion et
+écran d'administration de l'abonnement. Modèle source (`transpilePackages` +
+`@source`), même esprit que `@repo/notifications`.
+
+```ts
+import { PanneauAssistant } from '@repo/agent-chat/PanneauAssistant'
+import { ConnexionAssistant } from '@repo/agent-chat/ConnexionAssistant'
+```
+
+**Le panneau se passe à `AppShell`, pas à `TopBar`.** `<AppShell assistant={…}>`
+fait deux choses d'un coup : il allume le bouton ✨ de la barre du haut (à
+gauche du sélecteur d'applications, raccourci ⌘J) et loge le panneau à DROITE
+du contenu, pas par-dessus. Le choix est délibéré : on parle à l'assistant de
+ce qu'on a sous les yeux, et un tiroir flottant couvrirait précisément l'écran
+dont il est question. En dessous de 1280 px il n'y a plus la place de tenir les
+deux et le panneau redevient un tiroir — **une seule instance est montée**,
+jamais deux rendus que le CSS masquerait tour à tour : le panneau tient une
+conversation et un flux ouvert.
+
+L'app consommatrice fournit ses routes BFF sous `/api/agent/*`
+(`conversations`, `conversations/[id]`, `conversations/[id]/messages`,
+`connexion`) relayant vers `AGENT_API_URL`, et monte le panneau derrière
+`agent.access`. La route des messages est la seule du monorepo à relayer un
+FLUX : elle appelle `forwardStreamToBackend` et non `forwardToBackend`, qui
+lirait la réponse en entier avant de la rendre.
+
+`ConnexionAssistant` est l'écran d'administration (permission `agent.manage`) —
+le jeton produit par `claude setup-token` sur la machine de l'administrateur, à
+coller une fois. Dans `workspace` : Paramètres › Assistant.
+
 ### `@repo/approval-flows`
 
 Composants/hooks/client API pour intégrer le service `approval_flows` (port 5005)
@@ -478,6 +511,7 @@ les 3 `.env` par app synchronisés pour les variables communes.
 | `NEXT_PUBLIC_AUTH_API_APPROVAL_FLOWS_DOMAIN` | `http://localhost:3006` | Browser — utilisé par le sélecteur d'apps (`workspace`, `hr`) pour pointer vers `approval-flows` |
 | `HOSTO_API_URL`                   | `http://127.0.0.1:5007`| Server only — app `hosto`, proxy vers le backend FastAPI `hosto` |
 | `NOTIFICATIONS_API_URL`           | `http://wd_bk_notifications:5000`| Server only — proxy BFF vers le hub `notifications` (cloche in-app + config). Docker uniquement (pas de port localhost exposé) |
+| `AGENT_API_URL`                   | `http://wd_bk_agent:5000`| Server only — proxy BFF vers le service `agent` (assistant). Docker uniquement |
 | `NEXT_PUBLIC_WORKSPACE_DOMAIN`    | `http://localhost:3005` | Browser (auth) |
 | `AUTH_API_URL`                    | `http://127.0.0.1:5000`| Server only    |
 | `HR_API_URL`                      | `http://127.0.0.1:5001`| Server only — app `hr`, proxy vers le backend FastAPI `hr` |

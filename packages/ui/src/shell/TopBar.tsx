@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   SearchOutlined,
   AppsOutlined,
+  AutoAwesomeOutlined,
   MenuOutlined,
   NotificationsOutlined,
   SettingsOutlined,
@@ -222,12 +223,21 @@ export function TopBar({
   const [searchOpen, setSearchOpen] = useState(false);
   const [appSelectorOpen, setAppSelectorOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  // L'écouteur clavier n'est posé qu'une fois ; passer la bascule par une
+  // référence évite de le reposer à chaque ouverture du panneau.
+  const basculerAssistant = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
         setSearchOpen(true);
+      }
+      // ⌘J plutôt qu'une seconde lettre près de K : le raccourci de l'assistant
+      // ne doit pas se déclencher sur une faute de frappe de la recherche.
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "j") {
+        e.preventDefault();
+        basculerAssistant.current?.();
       }
       if (e.key === "Escape") {
         setSearchOpen(false);
@@ -240,7 +250,7 @@ export function TopBar({
   }, []);
 
   const searchFirst = variant === "search-first";
-  const { setMobileNavOpen } = useShell();
+  const { setMobileNavOpen, assistantDisponible, assistantOuvert, setAssistantOuvert } = useShell();
   const pathname = usePathname();
   // Sur mobile la barre se réduit à : hamburger + titre de page + cloche.
   // On remonte le chemin jusqu'au libellé connu le plus proche : /projects/12/board
@@ -275,9 +285,30 @@ export function TopBar({
     </button>
   );
 
+  basculerAssistant.current = assistantDisponible
+    ? () => setAssistantOuvert(!assistantOuvert)
+    : null;
+
   const actions = (
     <div className="flex items-center gap-0.5 md:gap-1.5 shrink-0">
       {extraActions}
+
+      {assistantDisponible && (
+        <button
+          onClick={() => setAssistantOuvert(!assistantOuvert)}
+          aria-pressed={assistantOuvert}
+          className={`w-9 h-9 flex items-center justify-center rounded-lg transition-colors ${
+            assistantOuvert
+              ? "bg-primary/12 text-primary"
+              : "text-on-surface-variant hover:bg-surface-container-low"
+          }`}
+          title="Assistant (⌘J)"
+          aria-label="Assistant"
+        >
+          <AutoAwesomeOutlined style={{ fontSize: 18 }} />
+        </button>
+      )}
+
       <div className="relative">
         <button
           onClick={() => setAppSelectorOpen((v) => !v)}

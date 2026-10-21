@@ -7,6 +7,7 @@ import { AppShell } from "@repo/ui/shell/AppShell";
 import { Sidebar } from "@repo/ui/shell/Sidebar";
 import { TopBar } from "@repo/ui/shell/TopBar";
 import { NotificationBell } from "@repo/notifications/NotificationBell";
+import { PanneauAssistant } from "@repo/agent-chat/PanneauAssistant";
 import { UserFooter } from "@repo/ui/shell/UserFooter";
 import { WorkspaceSwitcher } from "@repo/ui/WorkspaceSwitcher";
 import { appsAutorisees, WORKSPACE_SHELL } from "@repo/ui/shell/platform";
@@ -64,6 +65,17 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
   const visibleApps = appsAutorisees(can, activeWorkspace?.apps_actifs);
 
+  // Sans la permission, pas de bouton : une porte verrouillée dans la barre du
+  // haut se clique vingt fois par jour avant qu'on comprenne qu'elle n'est pas
+  // pour nous.
+  const assistant = can("agent.access") ? (
+    <PanneauAssistant
+      application="workspace"
+      membre={user?.username}
+      parametresUrl="/settings/assistant"
+    />
+  ) : undefined;
+
   // Pas de rôle stocké côté auth : on l'affiche d'après la propriété du
   // workspace et les droits d'administration détenus.
   const roleLabel = activeWorkspace?.is_owner
@@ -95,6 +107,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           {...WORKSPACE_SHELL}
         />
       }
+      assistant={assistant}
     >
       {children}
     </AppShell>

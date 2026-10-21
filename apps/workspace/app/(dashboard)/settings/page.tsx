@@ -1,8 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import Link from "next/link";
 import {
+  AutoAwesomeOutlined,
   ChatOutlined,
+  ChevronRightOutlined,
   DescriptionOutlined,
   EditOutlined,
   ExpandMoreOutlined,
@@ -328,6 +331,24 @@ export default function SettingsPage() {
               })}
             </div>
             </div>
+
+            {/* Hors registre : brancher un abonnement Claude n'est pas un
+                réglage à valeur, c'est un secret à déposer. Il a son écran, et
+                cette entrée est le seul chemin qui y mène. */}
+            {can("agent.manage") && (
+              <Link
+                href="/settings/assistant"
+                className="mt-2.5 flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl border border-outline-soft bg-surface-container-lowest hover:bg-surface-container-low transition-colors"
+              >
+                <span className="w-[18px] h-[18px] flex-none inline-flex items-center justify-center text-outline">
+                  <AutoAwesomeOutlined style={{ fontSize: 18 }} />
+                </span>
+                <span className="flex-1 min-w-0 truncate text-body-sm font-medium text-on-surface">
+                  Assistant
+                </span>
+                <ChevronRightOutlined style={{ fontSize: 16 }} className="text-outline" />
+              </Link>
+            )}
           </div>
 
           <div className="relative rounded-2xl border border-outline-soft bg-surface-container-lowest p-4 md:p-5">

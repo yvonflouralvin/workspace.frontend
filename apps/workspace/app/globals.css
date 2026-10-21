@@ -2,3 +2,4 @@
 @import "../../../packages/design-system/src/tokens.css";
 @source "../../../packages/ui/src";
 @source "../../../packages/notifications/src";
+@source "../../../packages/agent-chat/src";

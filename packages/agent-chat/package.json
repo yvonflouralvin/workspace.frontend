@@ -1,0 +1,29 @@
+{
+  "name": "@repo/agent-chat",
+  "version": "0.0.0",
+  "private": true,
+  "exports": {
+    "./types": "./src/types.ts",
+    "./api/client": "./src/api/client.ts",
+    "./hooks/useAssistant": "./src/hooks/useAssistant.ts",
+    "./*": "./src/components/*.tsx"
+  },
+  "scripts": {
+    "check-types": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@repo/typescript-config": "*",
+    "@types/react": "19.2.2",
+    "typescript": "5.9.2",
+    "vitest": "^3.2.6",
+    "react-dom": "^19.2.0",
+    "@types/react-dom": "19.2.2"
+  },
+  "dependencies": {
+    "@mui/icons-material": "^9.1.1",
+    "@repo/network": "*",
+    "@repo/ui": "*",
+    "react": "^19.2.0"
+  }
+}

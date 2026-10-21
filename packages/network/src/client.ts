@@ -58,3 +58,29 @@ export async function apiFetch(path: string, init: ApiFetchInit = {}): Promise<R
 
   return new Response(JSON.stringify(resolved), { status: response.status });
 }
+
+/** Même chiffrement que `apiFetch`, mais la réponse est rendue TELLE QUELLE.
+ *
+ *  `apiFetch` lit la réponse entière (`response.json()`) avant de la rendre :
+ *  sur un flux d'évènements, il attendrait la dernière ligne pour livrer la
+ *  première. L'assistant écrirait sa réponse d'un bloc après vingt secondes de
+ *  page vide — ce qui marche, et qu'on ne distingue pas d'une panne.
+ *
+ *  Le CORPS ENVOYÉ reste chiffré comme partout ailleurs ; c'est la réponse qui
+ *  ne peut pas l'être : une enveloppe ne se scelle qu'une fois close, et un
+ *  flux ne l'est jamais avant la fin. */
+export async function apiStream(path: string, init: ApiFetchInit = {}): Promise<Response> {
+  const headers = new Headers(init.headers);
+  headers.set("Content-Type", "application/json");
+
+  let body: string | undefined;
+  if (init.body !== undefined) {
+    body = isClientEncrypted()
+      ? JSON.stringify(await encrypt(getWebCrypto(), getClientKey(), init.body))
+      : JSON.stringify(init.body);
+  }
+
+  const response = await fetch(path, { ...init, headers, body });
+  if (response.status === 401) ecouteurSessionExpiree?.();
+  return response;
+}

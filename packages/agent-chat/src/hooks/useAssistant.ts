@@ -43,6 +43,14 @@ export function useAssistant(application: string, base = BASE_PAR_DEFAUT): EtatA
   const [erreur, setErreur] = useState<string | null>(null);
   const [abonnementManquant, setAbonnementManquant] = useState(false);
   const avorteur = useRef<AbortController | null>(null);
+  // La conversation affichée AU MOMENT où le flux se termine. Sans elle, une
+  // réponse qui finit d'arriver après un changement de fil s'afficherait sous
+  // le mauvais : elle est enregistrée du bon côté, mais lue du mauvais.
+  const couranteRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    couranteRef.current = courante;
+  }, [courante]);
 
   const rafraichirListe = useCallback(async () => {
     try {
@@ -80,15 +88,23 @@ export function useAssistant(application: string, base = BASE_PAR_DEFAUT): EtatA
   // Un flux laissé ouvert continue d'écrire dans un composant démonté.
   useEffect(() => () => avorteur.current?.abort(), []);
 
+  const interrompre = useCallback(() => {
+    avorteur.current?.abort();
+    avorteur.current = null;
+    setEnCours(null);
+  }, []);
+
   const nouvelle = useCallback(async () => {
+    interrompre();
     setErreur(null);
     setAbonnementManquant(false);
     setMessages([]);
     setCourante(null);
-  }, []);
+  }, [interrompre]);
 
   const choisir = useCallback(
     async (id: number) => {
+      interrompre();
       setErreur(null);
       setAbonnementManquant(false);
       try {
@@ -99,7 +115,7 @@ export function useAssistant(application: string, base = BASE_PAR_DEFAUT): EtatA
         setErreur(e instanceof Error ? e.message : "Conversation illisible");
       }
     },
-    [base]
+    [base, interrompre]
   );
 
   const archiver = useCallback(
@@ -113,12 +129,6 @@ export function useAssistant(application: string, base = BASE_PAR_DEFAUT): EtatA
     },
     [base, courante]
   );
-
-  const interrompre = useCallback(() => {
-    avorteur.current?.abort();
-    avorteur.current = null;
-    setEnCours(null);
-  }, []);
 
   const envoyer = useCallback(
     async (texte: string) => {
@@ -184,7 +194,8 @@ export function useAssistant(application: string, base = BASE_PAR_DEFAUT): EtatA
       }
 
       setEnCours(null);
-      if (accumule || echec) {
+      const memeFil = couranteRef.current === id;
+      if (memeFil && (accumule || echec)) {
         setMessages((liste) => [
           ...liste,
           {
@@ -196,7 +207,7 @@ export function useAssistant(application: string, base = BASE_PAR_DEFAUT): EtatA
           },
         ]);
       }
-      if (echec) setErreur(echec);
+      if (memeFil && echec) setErreur(echec);
       void rafraichirListe();
     },
     [application, base, courante, enCours, rafraichirListe]

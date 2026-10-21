@@ -6,12 +6,24 @@ import {
   ErreurAssistant,
   archiverConversation,
   envoyerMessage,
+  joindrePiece,
   lireConversation,
   lireFlux,
   listerConversations,
   ouvrirConversation,
 } from "../api/client";
-import type { Conversation, MessageAssistant } from "../types";
+import type {
+  Conversation,
+  MessageAssistant,
+  PieceEnAttente,
+  PieceJointe,
+} from "../types";
+
+/** Le plafond du service (10 Mo). Vérifié ici pour le dire TOUT DE SUITE : le
+ *  téléversement n'a lieu qu'à l'envoi, et laisser filer un fichier trop gros
+ *  ferait échouer le message entier après que la question soit partie. */
+export const PIECE_MAX_OCTETS = 10 * 1024 * 1024;
+export const PIECES_MAX = 5;
 
 export interface EtatAssistant {
   conversations: Conversation[];
@@ -23,6 +35,10 @@ export interface EtatAssistant {
   erreur: string | null;
   /** Vrai quand l'échec vient de l'abonnement et non de la demande. */
   abonnementManquant: boolean;
+  /** Fichiers choisis, pas encore téléversés — ils le seront à l'envoi. */
+  enAttente: PieceEnAttente[];
+  joindre: (fichiers: FileList | File[]) => void;
+  retirer: (cle: string) => void;
   envoyer: (texte: string) => Promise<void>;
   interrompre: () => void;
   nouvelle: () => Promise<void>;
@@ -42,6 +58,7 @@ export function useAssistant(application: string, base = BASE_PAR_DEFAUT): EtatA
   const [chargement, setChargement] = useState(true);
   const [erreur, setErreur] = useState<string | null>(null);
   const [abonnementManquant, setAbonnementManquant] = useState(false);
+  const [enAttente, setEnAttente] = useState<PieceEnAttente[]>([]);
   const avorteur = useRef<AbortController | null>(null);
   // La conversation affichée AU MOMENT où le flux se termine. Sans elle, une
   // réponse qui finit d'arriver après un changement de fil s'afficherait sous
@@ -94,8 +111,37 @@ export function useAssistant(application: string, base = BASE_PAR_DEFAUT): EtatA
     setEnCours(null);
   }, []);
 
+  const joindre = useCallback((fichiers: FileList | File[]) => {
+    const choisis = Array.from(fichiers);
+    setErreur(null);
+    setEnAttente((liste) => {
+      const retenus = [...liste];
+      for (const fichier of choisis) {
+        if (retenus.length >= PIECES_MAX) {
+          setErreur(`Au plus ${PIECES_MAX} fichiers par message.`);
+          break;
+        }
+        if (fichier.size === 0) {
+          setErreur(`« ${fichier.name} » est vide.`);
+          continue;
+        }
+        if (fichier.size > PIECE_MAX_OCTETS) {
+          setErreur(`« ${fichier.name} » dépasse 10 Mo.`);
+          continue;
+        }
+        retenus.push({ cle: `${fichier.name}-${fichier.size}-${++provisoire}`, fichier });
+      }
+      return retenus;
+    });
+  }, []);
+
+  const retirer = useCallback((cle: string) => {
+    setEnAttente((liste) => liste.filter((p) => p.cle !== cle));
+  }, []);
+
   const nouvelle = useCallback(async () => {
     interrompre();
+    setEnAttente([]);
     setErreur(null);
     setAbonnementManquant(false);
     setMessages([]);
@@ -107,6 +153,7 @@ export function useAssistant(application: string, base = BASE_PAR_DEFAUT): EtatA
       interrompre();
       setErreur(null);
       setAbonnementManquant(false);
+      setEnAttente([]);
       try {
         const detail = await lireConversation(id, base);
         setCourante(detail.id);
@@ -152,6 +199,27 @@ export function useAssistant(application: string, base = BASE_PAR_DEFAUT): EtatA
         return;
       }
 
+      // Téléversement MAINTENANT, et pas au moment du choix : il faut un
+      // identifiant de conversation, et la conversation n'est créée qu'ici.
+      // Si une pièce échoue, rien ne part — une question qui porte sur un
+      // fichier absent reçoit une réponse inventée.
+      let jointes: PieceJointe[] = [];
+      if (enAttente.length > 0) {
+        setEnCours("");
+        try {
+          jointes = [];
+          for (const attente of enAttente) {
+            jointes.push(await joindrePiece(id, attente.fichier, base));
+          }
+        } catch (e) {
+          setEnCours(null);
+          setErreur(e instanceof Error ? e.message : "Le fichier n'a pas pu être joint");
+          if (e instanceof ErreurAssistant) setAbonnementManquant(e.abonnementManquant);
+          return;
+        }
+      }
+      setEnAttente([]);
+
       setMessages((liste) => [
         ...liste,
         {
@@ -160,6 +228,7 @@ export function useAssistant(application: string, base = BASE_PAR_DEFAUT): EtatA
           contenu,
           erreur: null,
           cree_le: new Date().toISOString(),
+          pieces: jointes,
         },
       ]);
       setEnCours("");
@@ -168,13 +237,29 @@ export function useAssistant(application: string, base = BASE_PAR_DEFAUT): EtatA
       avorteur.current = controleur;
       let accumule = "";
       let echec: string | null = null;
+      const rendues: PieceJointe[] = [];
 
       try {
-        const reponse = await envoyerMessage(id, contenu, application, controleur.signal, base);
+        const reponse = await envoyerMessage(
+          id,
+          contenu,
+          application,
+          jointes.map((p) => p.document_id),
+          controleur.signal,
+          base
+        );
         for await (const evenement of lireFlux(reponse)) {
           if (evenement.nom === "texte" && evenement.charge.delta) {
             accumule += evenement.charge.delta;
             setEnCours(accumule);
+          } else if (evenement.nom === "piece" && evenement.charge.document_id) {
+            rendues.push({
+              document_id: evenement.charge.document_id,
+              nom: evenement.charge.nom ?? "fichier",
+              type_mime: evenement.charge.type_mime ?? "application/octet-stream",
+              taille: evenement.charge.taille ?? 0,
+              origine: "AGENT",
+            });
           } else if (evenement.nom === "erreur") {
             echec = evenement.charge.message ?? "L'assistant n'a pas pu répondre";
             if (evenement.charge.abonnement) setAbonnementManquant(true);
@@ -195,7 +280,7 @@ export function useAssistant(application: string, base = BASE_PAR_DEFAUT): EtatA
 
       setEnCours(null);
       const memeFil = couranteRef.current === id;
-      if (memeFil && (accumule || echec)) {
+      if (memeFil && (accumule || echec || rendues.length > 0)) {
         setMessages((liste) => [
           ...liste,
           {
@@ -204,13 +289,14 @@ export function useAssistant(application: string, base = BASE_PAR_DEFAUT): EtatA
             contenu: accumule,
             erreur: echec,
             cree_le: new Date().toISOString(),
+            pieces: rendues,
           },
         ]);
       }
       if (memeFil && echec) setErreur(echec);
       void rafraichirListe();
     },
-    [application, base, courante, enCours, rafraichirListe]
+    [application, base, courante, enAttente, enCours, rafraichirListe]
   );
 
   return {
@@ -221,6 +307,9 @@ export function useAssistant(application: string, base = BASE_PAR_DEFAUT): EtatA
     chargement,
     erreur,
     abonnementManquant,
+    enAttente,
+    joindre,
+    retirer,
     envoyer,
     interrompre,
     nouvelle,

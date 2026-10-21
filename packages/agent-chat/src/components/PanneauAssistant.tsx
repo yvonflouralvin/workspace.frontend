@@ -10,10 +10,15 @@ import {
   StopCircleOutlined,
   DeleteOutlineOutlined,
   LockOutlined,
+  AttachFileOutlined,
+  DescriptionOutlined,
+  DownloadOutlined,
 } from "@mui/icons-material";
 import { useShell } from "@repo/ui/shell/AppShell";
+import { urlPiece } from "../api/client";
 import { useAssistant } from "../hooks/useAssistant";
 import { Markdown } from "../lib/markdown";
+import type { PieceJointe } from "../types";
 
 export interface PanneauAssistantProps {
   /** Clé de l'app d'où l'on écrit — l'assistant s'en sert pour situer la question. */
@@ -22,6 +27,10 @@ export interface PanneauAssistantProps {
   membre?: string | null;
   /** Où l'administrateur branche l'abonnement Claude de l'organisation. */
   parametresUrl?: string;
+  /** Le membre a-t-il le droit de joindre des fichiers (`agent.fichiers`) ?
+   *  Sans lui, le trombone n'apparaît pas : un bouton qui rend 403 se clique
+   *  vingt fois avant qu'on comprenne qu'il n'est pas pour nous. */
+  fichiersAutorises?: boolean;
   base?: string;
   /** Par défaut, referme le panneau de la coquille qui l'héberge. */
   onClose?: () => void;
@@ -37,6 +46,7 @@ export function PanneauAssistant({
   application,
   membre,
   parametresUrl,
+  fichiersAutorises = false,
   base,
   onClose,
 }: PanneauAssistantProps) {
@@ -47,6 +57,7 @@ export function PanneauAssistant({
   const [historiqueOuvert, setHistoriqueOuvert] = useState(false);
   const filRef = useRef<HTMLDivElement>(null);
   const saisieRef = useRef<HTMLTextAreaElement>(null);
+  const fichierRef = useRef<HTMLInputElement>(null);
 
   const vide = etat.messages.length === 0 && etat.enCours === null;
 
@@ -146,10 +157,25 @@ export function PanneauAssistant({
         ) : (
           <div className="space-y-4">
             {etat.messages.map((m) => (
-              <Bulle key={m.id} role={m.role} contenu={m.contenu} erreur={m.erreur} />
+              <Bulle
+                key={m.id}
+                role={m.role}
+                contenu={m.contenu}
+                erreur={m.erreur}
+                pieces={m.pieces}
+                conversationId={etat.courante}
+                base={base}
+              />
             ))}
             {etat.enCours !== null && (
-              <Bulle role="AGENT" contenu={etat.enCours} erreur={null} enCours />
+              <Bulle
+                role="AGENT"
+                contenu={etat.enCours}
+                erreur={null}
+                conversationId={etat.courante}
+                base={base}
+                enCours
+              />
             )}
           </div>
         )}
@@ -160,7 +186,60 @@ export function PanneauAssistant({
       </div>
 
       <div className="flex-shrink-0 border-t border-outline-variant p-3">
+        {etat.enAttente.length > 0 && (
+          <div className="mb-2 flex flex-wrap gap-1.5">
+            {etat.enAttente.map((attente) => (
+              <span
+                key={attente.cle}
+                className="inline-flex items-center gap-1.5 max-w-full pl-2 pr-1 py-1 rounded-lg bg-surface-container text-body-sm text-on-surface"
+              >
+                <DescriptionOutlined style={{ fontSize: 14 }} className="flex-none text-on-surface-variant" />
+                <span className="truncate max-w-[12rem]">{attente.fichier.name}</span>
+                <span className="flex-none text-label-sm text-on-surface-variant">
+                  {poidsLisible(attente.fichier.size)}
+                </span>
+                <button
+                  onClick={() => etat.retirer(attente.cle)}
+                  className="flex-none w-5 h-5 flex items-center justify-center rounded-md text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors"
+                  aria-label={`Retirer « ${attente.fichier.name} »`}
+                >
+                  <CloseOutlined style={{ fontSize: 13 }} />
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+
+        {etat.erreur && etat.enCours === null && !etat.abonnementManquant && (
+          <p className="mb-2 px-1 text-body-sm text-error">{etat.erreur}</p>
+        )}
+
         <div className="flex items-end gap-2 rounded-2xl border border-outline-soft bg-background px-3 py-2 focus-within:border-primary/40 transition-colors">
+          {fichiersAutorises && (
+            <>
+              <input
+                ref={fichierRef}
+                type="file"
+                multiple
+                className="hidden"
+                onChange={(e) => {
+                  if (e.target.files) etat.joindre(e.target.files);
+                  // Remis à zéro : sans ça, rechoisir le MÊME fichier après
+                  // l'avoir retiré ne déclenche aucun évènement.
+                  e.target.value = "";
+                }}
+              />
+              <button
+                onClick={() => fichierRef.current?.click()}
+                disabled={etat.enCours !== null}
+                className="w-8 h-8 flex-none flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container disabled:opacity-40 transition-colors"
+                title="Joindre un fichier"
+                aria-label="Joindre un fichier"
+              >
+                <AttachFileOutlined style={{ fontSize: 18 }} />
+              </button>
+            </>
+          )}
           <textarea
             ref={saisieRef}
             rows={1}
@@ -238,15 +317,64 @@ function Accueil({
   );
 }
 
+export function poidsLisible(octets: number): string {
+  if (octets < 1024) return `${octets} o`;
+  if (octets < 1024 * 1024) return `${Math.round(octets / 1024)} ko`;
+  return `${(octets / (1024 * 1024)).toFixed(1)} Mo`;
+}
+
+function Pieces({
+  pieces,
+  conversationId,
+  base,
+  sombre = false,
+}: {
+  pieces: PieceJointe[];
+  conversationId: number | null;
+  base?: string;
+  sombre?: boolean;
+}) {
+  if (pieces.length === 0 || conversationId === null) return null;
+  return (
+    <div className={`flex flex-wrap gap-1.5 ${sombre ? "mt-2" : "mt-2"}`}>
+      {pieces.map((piece) => (
+        <a
+          key={piece.document_id}
+          href={urlPiece(conversationId, piece.document_id, base)}
+          download={piece.nom}
+          className={
+            sombre
+              ? "inline-flex items-center gap-1.5 max-w-full px-2 py-1 rounded-lg bg-white/15 text-on-primary text-body-sm hover:bg-white/25 transition-colors"
+              : "inline-flex items-center gap-1.5 max-w-full px-2 py-1 rounded-lg border border-outline-soft bg-surface-container-lowest text-on-surface text-body-sm hover:border-primary/40 transition-colors"
+          }
+        >
+          <DescriptionOutlined style={{ fontSize: 14 }} className="flex-none" />
+          <span className="truncate max-w-[12rem]">{piece.nom}</span>
+          <span className={`flex-none text-label-sm ${sombre ? "opacity-70" : "text-on-surface-variant"}`}>
+            {poidsLisible(piece.taille)}
+          </span>
+          <DownloadOutlined style={{ fontSize: 13 }} className="flex-none opacity-60" />
+        </a>
+      ))}
+    </div>
+  );
+}
+
 function Bulle({
   role,
   contenu,
   erreur,
+  pieces,
+  conversationId,
+  base,
   enCours = false,
 }: {
   role: string;
   contenu: string;
   erreur: string | null;
+  pieces?: PieceJointe[];
+  conversationId?: number | null;
+  base?: string;
   enCours?: boolean;
 }) {
   if (role === "MEMBRE") {
@@ -254,6 +382,12 @@ function Bulle({
       <div className="flex justify-end">
         <div className="max-w-[85%] rounded-2xl rounded-br-md bg-primary text-on-primary px-3.5 py-2 text-body-sm whitespace-pre-wrap break-words">
           {contenu}
+          <Pieces
+            pieces={pieces ?? []}
+            conversationId={conversationId ?? null}
+            base={base}
+            sombre
+          />
         </div>
       </div>
     );
@@ -262,6 +396,7 @@ function Bulle({
   return (
     <div className="text-body-sm text-on-surface-variant break-words">
       {contenu && <Markdown texte={contenu} />}
+      <Pieces pieces={pieces ?? []} conversationId={conversationId ?? null} base={base} />
       {enCours && (
         <span className="inline-block w-1.5 h-4 ml-0.5 align-text-bottom bg-primary animate-pulse rounded-sm" />
       )}

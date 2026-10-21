@@ -7,6 +7,19 @@ import { Fragment, type ReactNode } from "react";
  *  trois styles coûterait plus de poids que le flux lui-même. Ce qui dépasse ce
  *  vocabulaire s'affiche tel quel : du texte lisible, jamais une balise crue. */
 
+/** Les seuls schémas qu'on rend cliquables. Un chemin relatif passe aussi :
+ *  il reste dans l'application. */
+export function schemaSur(cible: string): boolean {
+  const nettoye = cible.trim();
+  if (nettoye.startsWith("/") || nettoye.startsWith("#")) return true;
+  // `:` avant le premier `/` ou `?` signifie qu'un schéma est déclaré.
+  const fin = nettoye.search(/[/?#]/);
+  const tete = fin === -1 ? nettoye : nettoye.slice(0, fin);
+  if (!tete.includes(":")) return true;
+  return /^(https?|mailto|tel):/i.test(nettoye);
+}
+
+
 function enLigne(texte: string, cle: string): ReactNode {
   // Un seul passage, une seule expression : des remplacements successifs
   // réécriraient le contenu déjà produit — « **`a`** » perdait son gras.
@@ -39,16 +52,30 @@ function enLigne(texte: string, cle: string): ReactNode {
       morceaux.push(<em key={k}>{brut.slice(1, -1)}</em>);
     } else {
       const coupure = brut.indexOf("](");
+      const cible = brut.slice(coupure + 2, -1);
+      const libelle = brut.slice(1, coupure);
+      // Le texte vient d'un MODÈLE : il peut écrire ce qu'il veut, y compris
+      // `javascript:` ou `data:text/html`. React bloque aujourd'hui le premier,
+      // mais c'est un filet du framework, annoncé comme amovible — et il ne
+      // couvre pas `data:`. On décide ici, sur une liste blanche de schémas.
+      // Un lien refusé s'affiche en texte : on ne masque pas ce que le modèle
+      // a écrit, on refuse seulement de le rendre cliquable.
       morceaux.push(
-        <a
-          key={k}
-          href={brut.slice(coupure + 2, -1)}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-primary underline underline-offset-2"
-        >
-          {brut.slice(1, coupure)}
-        </a>
+        schemaSur(cible) ? (
+          <a
+            key={k}
+            href={cible}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary underline underline-offset-2"
+          >
+            {libelle}
+          </a>
+        ) : (
+          <span key={k}>
+            {libelle} ({cible})
+          </span>
+        )
       );
     }
     curseur = trouve.index + brut.length;

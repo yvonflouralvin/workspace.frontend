@@ -73,6 +73,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       application="workspace"
       membre={user?.username}
       parametresUrl="/settings/assistant"
+      fichiersAutorises={can("agent.fichiers")}
     />
   ) : undefined;
 

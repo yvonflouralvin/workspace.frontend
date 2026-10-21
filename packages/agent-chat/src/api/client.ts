@@ -1,5 +1,5 @@
 import { apiFetch, apiStream } from "@repo/network/client";
-import type { Conversation, ConversationDetail, EtatConnexion } from "../types";
+import type { Conversation, ConversationDetail, EtatConnexion, PieceJointe } from "../types";
 
 /** Préfixe des routes BFF de l'app consommatrice — jamais le backend en direct.
  *  Chaque app garde son propre relais, comme pour les notifications. */
@@ -54,8 +54,18 @@ export async function archiverConversation(id: number, base = BASE_PAR_DEFAUT): 
 }
 
 export interface EvenementFlux {
-  nom: "texte" | "erreur" | "fin";
-  charge: { delta?: string; message?: string; abonnement?: boolean; erreur?: string | null };
+  nom: "texte" | "erreur" | "fin" | "piece";
+  charge: {
+    delta?: string;
+    message?: string;
+    abonnement?: boolean;
+    erreur?: string | null;
+    // Évènement « piece » : un fichier que l'agent vient d'écrire.
+    document_id?: number;
+    nom?: string;
+    type_mime?: string;
+    taille?: number;
+  };
 }
 
 /** Découpe un flux SSE en évènements.
@@ -97,16 +107,49 @@ export async function* lireFlux(reponse: Response): AsyncGenerator<EvenementFlux
   }
 }
 
+/** Téléverse une pièce. **Pas de chiffrement** : `@repo/network` emballe un
+ *  objet JSON, pas des octets, et y faire passer un fichier le corromprait.
+ *  Le relais de l'app relaie le multipart tel quel, comme pour `hr`. */
+export async function joindrePiece(
+  conversationId: number,
+  fichier: File,
+  base = BASE_PAR_DEFAUT
+): Promise<PieceJointe> {
+  const corps = new FormData();
+  corps.append("fichier", fichier);
+  const reponse = await fetch(`${base}/conversations/${conversationId}/pieces`, {
+    method: "POST",
+    body: corps,
+  });
+  const charge = await reponse.json().catch(() => null);
+  if (!reponse.ok) {
+    throw new ErreurAssistant(
+      (charge as { detail?: string } | null)?.detail ?? `« ${fichier.name} » n'a pas pu être joint`,
+      reponse.status
+    );
+  }
+  return charge as PieceJointe;
+}
+
+export function urlPiece(
+  conversationId: number,
+  documentId: number,
+  base = BASE_PAR_DEFAUT
+): string {
+  return `${base}/conversations/${conversationId}/pieces/${documentId}`;
+}
+
 export async function envoyerMessage(
   conversationId: number,
   contenu: string,
   application: string,
+  documents: number[],
   signal: AbortSignal,
   base = BASE_PAR_DEFAUT
 ): Promise<Response> {
   const reponse = await apiStream(`${base}/conversations/${conversationId}/messages`, {
     method: "POST",
-    body: { contenu, application },
+    body: { contenu, application, documents },
     signal,
   });
   if (!reponse.ok) {

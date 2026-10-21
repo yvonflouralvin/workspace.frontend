@@ -337,10 +337,32 @@ conversation et un flux ouvert.
 
 L'app consommatrice fournit ses routes BFF sous `/api/agent/*`
 (`conversations`, `conversations/[id]`, `conversations/[id]/messages`,
+`conversations/[id]/pieces`, `conversations/[id]/pieces/[documentId]`,
 `connexion`) relayant vers `AGENT_API_URL`, et monte le panneau derrière
-`agent.access`. La route des messages est la seule du monorepo à relayer un
-FLUX : elle appelle `forwardStreamToBackend` et non `forwardToBackend`, qui
-lirait la réponse en entier avant de la rendre.
+`agent.access`.
+
+**Trois de ces routes échappent au chiffrement `@repo/network`**, et pour trois
+raisons différentes :
+
+| Route | Pourquoi |
+|---|---|
+| `messages` (POST) | Relaie un **flux** : `forwardStreamToBackend`, pas `forwardToBackend`, qui lirait la réponse en entier avant de la rendre. |
+| `pieces` (POST) | Corps **multipart** : `@repo/network` chiffre un objet JSON, pas des octets. Même exception que l'upload de documents de `hr`. |
+| `pieces/[documentId]` (GET) | Réponse **binaire** : l'emballer en enveloppe JSON ferait télécharger du base64. |
+
+**Les pièces jointes** demandent `agent.fichiers`, passé au panneau via
+`fichiersAutorises` — sans lui le trombone n'apparaît pas. Le téléversement a
+lieu **à l'envoi**, pas au choix du fichier : il lui faut un identifiant de
+conversation, et la conversation n'est créée qu'au premier message. La taille
+est donc vérifiée côté client (`PIECE_MAX_OCTETS`, 10 Mo, la valeur du service)
+pour le dire tout de suite plutôt qu'après le départ de la question.
+
+`Markdown` (`lib/markdown.tsx`) **filtre les schémas de lien** sur une liste
+blanche (`http`, `https`, `mailto`, `tel`, chemins relatifs). Le texte vient
+d'un modèle : React bloque `javascript:` aujourd'hui, mais c'est un filet du
+framework annoncé comme amovible, et il ne couvre pas `data:`. Un lien refusé
+s'affiche **en texte** — on ne masque pas ce que le modèle a écrit, on refuse
+seulement de le rendre cliquable.
 
 `ConnexionAssistant` est l'écran d'administration (permission `agent.manage`) —
 le jeton produit par `claude setup-token` sur la machine de l'administrateur, à

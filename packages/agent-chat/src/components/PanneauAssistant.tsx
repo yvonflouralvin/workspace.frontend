@@ -1,0 +1,354 @@
+"use client";
+
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  AutoAwesomeOutlined,
+  CloseOutlined,
+  HistoryOutlined,
+  AddCommentOutlined,
+  ArrowUpwardOutlined,
+  StopCircleOutlined,
+  DeleteOutlineOutlined,
+  LockOutlined,
+} from "@mui/icons-material";
+import { useShell } from "@repo/ui/shell/AppShell";
+import { useAssistant } from "../hooks/useAssistant";
+import { Markdown } from "../lib/markdown";
+
+export interface PanneauAssistantProps {
+  /** Clé de l'app d'où l'on écrit — l'assistant s'en sert pour situer la question. */
+  application: string;
+  /** Prénom ou nom affiché dans l'accueil. Absent : accueil impersonnel. */
+  membre?: string | null;
+  /** Où l'administrateur branche l'abonnement Claude de l'organisation. */
+  parametresUrl?: string;
+  base?: string;
+  /** Par défaut, referme le panneau de la coquille qui l'héberge. */
+  onClose?: () => void;
+}
+
+const SUGGESTIONS = [
+  "Résume-moi ce que je dois faire aujourd'hui",
+  "Explique-moi comment fonctionne cet écran",
+  "Aide-moi à rédiger un message à un client",
+];
+
+export function PanneauAssistant({
+  application,
+  membre,
+  parametresUrl,
+  base,
+  onClose,
+}: PanneauAssistantProps) {
+  const shell = useShell();
+  const fermer = onClose ?? (() => shell.setAssistantOuvert(false));
+  const etat = useAssistant(application, base);
+  const [brouillon, setBrouillon] = useState("");
+  const [historiqueOuvert, setHistoriqueOuvert] = useState(false);
+  const filRef = useRef<HTMLDivElement>(null);
+  const saisieRef = useRef<HTMLTextAreaElement>(null);
+
+  const vide = etat.messages.length === 0 && etat.enCours === null;
+
+  // Le fil colle au bas tant que l'utilisateur n'a pas remonté lui-même :
+  // forcer le défilement pendant qu'il relit une réponse précédente le
+  // ramènerait en bas à chaque mot qui arrive.
+  useLayoutEffect(() => {
+    const fil = filRef.current;
+    if (!fil) return;
+    const proche = fil.scrollHeight - fil.scrollTop - fil.clientHeight < 120;
+    if (proche) fil.scrollTop = fil.scrollHeight;
+  }, [etat.messages, etat.enCours]);
+
+  useEffect(() => {
+    saisieRef.current?.focus();
+  }, []);
+
+  // La saisie grandit avec le texte, jusqu'à six lignes — au-delà elle
+  // mangerait le fil, qui est ce qu'on est venu lire.
+  useLayoutEffect(() => {
+    const zone = saisieRef.current;
+    if (!zone) return;
+    zone.style.height = "auto";
+    zone.style.height = `${Math.min(zone.scrollHeight, 150)}px`;
+  }, [brouillon]);
+
+  async function soumettre() {
+    const texte = brouillon;
+    if (!texte.trim() || etat.enCours !== null) return;
+    setBrouillon("");
+    await etat.envoyer(texte);
+    saisieRef.current?.focus();
+  }
+
+  return (
+    <div className="flex flex-col h-full min-h-0 bg-surface-container-lowest">
+      <header className="flex-shrink-0 flex items-center gap-2 h-[52px] md:h-14 px-3 border-b border-outline-variant">
+        <span className="w-7 h-7 flex items-center justify-center rounded-lg bg-primary/10 text-primary">
+          <AutoAwesomeOutlined style={{ fontSize: 17 }} />
+        </span>
+        <span className="flex-1 min-w-0 truncate font-display text-[15px] font-semibold text-on-surface">
+          Assistant
+        </span>
+
+        <div className="relative">
+          <button
+            onClick={() => setHistoriqueOuvert((v) => !v)}
+            className="w-8 h-8 flex items-center justify-center rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors"
+            title="Conversations précédentes"
+            aria-label="Conversations précédentes"
+          >
+            <HistoryOutlined style={{ fontSize: 18 }} />
+          </button>
+          {historiqueOuvert && (
+            <Historique
+              etat={etat}
+              onClose={() => setHistoriqueOuvert(false)}
+            />
+          )}
+        </div>
+
+        <button
+          onClick={() => {
+            setHistoriqueOuvert(false);
+            void etat.nouvelle();
+          }}
+          className="w-8 h-8 flex items-center justify-center rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors"
+          title="Nouvelle conversation"
+          aria-label="Nouvelle conversation"
+        >
+          <AddCommentOutlined style={{ fontSize: 18 }} />
+        </button>
+        <button
+          onClick={fermer}
+          className="w-8 h-8 flex items-center justify-center rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors"
+          title="Fermer l'assistant"
+          aria-label="Fermer l'assistant"
+        >
+          <CloseOutlined style={{ fontSize: 18 }} />
+        </button>
+      </header>
+
+      <div ref={filRef} className="flex-1 min-h-0 overflow-y-auto px-3 py-4">
+        {etat.chargement ? (
+          <div className="space-y-3 animate-pulse">
+            <div className="h-3 w-2/3 rounded-full bg-surface-container" />
+            <div className="h-3 w-1/2 rounded-full bg-surface-container" />
+          </div>
+        ) : vide ? (
+          <Accueil
+            membre={membre}
+            onChoisir={(texte) => {
+              setBrouillon(texte);
+              saisieRef.current?.focus();
+            }}
+          />
+        ) : (
+          <div className="space-y-4">
+            {etat.messages.map((m) => (
+              <Bulle key={m.id} role={m.role} contenu={m.contenu} erreur={m.erreur} />
+            ))}
+            {etat.enCours !== null && (
+              <Bulle role="AGENT" contenu={etat.enCours} erreur={null} enCours />
+            )}
+          </div>
+        )}
+
+        {etat.abonnementManquant && (
+          <AbonnementAbsent parametresUrl={parametresUrl} />
+        )}
+      </div>
+
+      <div className="flex-shrink-0 border-t border-outline-variant p-3">
+        <div className="flex items-end gap-2 rounded-2xl border border-outline-soft bg-background px-3 py-2 focus-within:border-primary/40 transition-colors">
+          <textarea
+            ref={saisieRef}
+            rows={1}
+            value={brouillon}
+            onChange={(e) => setBrouillon(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                void soumettre();
+              }
+            }}
+            placeholder="Posez votre question…"
+            className="flex-1 resize-none bg-transparent text-body-md text-on-surface placeholder:text-on-surface-variant outline-none leading-relaxed max-h-[150px]"
+          />
+          {etat.enCours !== null ? (
+            <button
+              onClick={etat.interrompre}
+              className="w-8 h-8 flex-none flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container transition-colors"
+              title="Arrêter"
+              aria-label="Arrêter la réponse"
+            >
+              <StopCircleOutlined style={{ fontSize: 20 }} />
+            </button>
+          ) : (
+            <button
+              onClick={() => void soumettre()}
+              disabled={!brouillon.trim()}
+              className="w-8 h-8 flex-none flex items-center justify-center rounded-full bg-primary text-on-primary disabled:bg-track disabled:text-outline transition-colors"
+              title="Envoyer"
+              aria-label="Envoyer"
+            >
+              <ArrowUpwardOutlined style={{ fontSize: 18 }} />
+            </button>
+          )}
+        </div>
+        <p className="mt-1.5 px-1 text-label-sm text-on-surface-variant">
+          Entrée pour envoyer · Maj+Entrée pour aller à la ligne
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function Accueil({
+  membre,
+  onChoisir,
+}: {
+  membre?: string | null;
+  onChoisir: (texte: string) => void;
+}) {
+  const prenom = membre?.trim().split(/\s+/)[0];
+  return (
+    <div className="pt-6">
+      <span className="w-10 h-10 flex items-center justify-center rounded-2xl bg-primary/10 text-primary">
+        <AutoAwesomeOutlined style={{ fontSize: 22 }} />
+      </span>
+      <p className="mt-3 font-display text-headline-sm text-on-surface">
+        {prenom ? `Bonjour ${prenom}` : "Bonjour"}
+      </p>
+      <p className="mt-1 text-body-sm text-on-surface-variant">
+        Posez votre question, je connais l'espace de travail où vous êtes.
+      </p>
+      <div className="mt-5 space-y-2">
+        {SUGGESTIONS.map((s) => (
+          <button
+            key={s}
+            onClick={() => onChoisir(s)}
+            className="w-full text-left px-3 py-2.5 rounded-xl border border-outline-soft bg-background text-body-sm text-on-surface hover:border-primary/40 hover:bg-surface-container-low transition-colors"
+          >
+            {s}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function Bulle({
+  role,
+  contenu,
+  erreur,
+  enCours = false,
+}: {
+  role: string;
+  contenu: string;
+  erreur: string | null;
+  enCours?: boolean;
+}) {
+  if (role === "MEMBRE") {
+    return (
+      <div className="flex justify-end">
+        <div className="max-w-[85%] rounded-2xl rounded-br-md bg-primary text-on-primary px-3.5 py-2 text-body-sm whitespace-pre-wrap break-words">
+          {contenu}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="text-body-sm text-on-surface-variant break-words">
+      {contenu && <Markdown texte={contenu} />}
+      {enCours && (
+        <span className="inline-block w-1.5 h-4 ml-0.5 align-text-bottom bg-primary animate-pulse rounded-sm" />
+      )}
+      {erreur && (
+        <p className="mt-2 px-3 py-2 rounded-xl bg-error-container/40 text-error text-body-sm">
+          {erreur}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function AbonnementAbsent({ parametresUrl }: { parametresUrl?: string }) {
+  return (
+    <div className="mt-4 p-3 rounded-2xl border border-outline-soft bg-surface-container-low">
+      <p className="flex items-center gap-2 text-body-sm font-semibold text-on-surface">
+        <LockOutlined style={{ fontSize: 16 }} className="text-on-surface-variant" />
+        Aucun abonnement Claude connecté
+      </p>
+      <p className="mt-1 text-body-sm text-on-surface-variant">
+        L'assistant s'appuie sur l'abonnement Claude de votre organisation. Un
+        administrateur doit le brancher avant la première question.
+      </p>
+      {parametresUrl && (
+        <a
+          href={parametresUrl}
+          className="inline-block mt-2 text-body-sm text-primary underline underline-offset-2"
+        >
+          Ouvrir les paramètres de l'assistant
+        </a>
+      )}
+    </div>
+  );
+}
+
+function Historique({
+  etat,
+  onClose,
+}: {
+  etat: ReturnType<typeof useAssistant>;
+  onClose: () => void;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function onDown(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
+    }
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [onClose]);
+
+  return (
+    <div
+      ref={ref}
+      className="absolute right-0 top-9 z-50 w-72 max-h-80 overflow-y-auto bg-surface-container-lowest border border-outline-variant rounded-2xl shadow-lg py-1.5"
+    >
+      {etat.conversations.length === 0 ? (
+        <p className="px-3 py-4 text-body-sm text-on-surface-variant text-center">
+          Aucune conversation pour l'instant.
+        </p>
+      ) : (
+        etat.conversations.map((c) => (
+          <div
+            key={c.id}
+            className={`group flex items-center gap-1 px-1.5 ${c.id === etat.courante ? "bg-surface-container-low" : ""}`}
+          >
+            <button
+              onClick={() => {
+                void etat.choisir(c.id);
+                onClose();
+              }}
+              className="flex-1 min-w-0 text-left px-2 py-2 rounded-lg text-body-sm text-on-surface hover:bg-surface-container transition-colors truncate"
+            >
+              {c.titre || "Sans titre"}
+            </button>
+            <button
+              onClick={() => void etat.archiver(c.id)}
+              className="w-7 h-7 flex-none flex items-center justify-center rounded-lg text-on-surface-variant opacity-0 group-hover:opacity-100 hover:bg-surface-container transition-all"
+              title="Archiver"
+              aria-label={`Archiver « ${c.titre || "Sans titre"} »`}
+            >
+              <DeleteOutlineOutlined style={{ fontSize: 16 }} />
+            </button>
+          </div>
+        ))
+      )}
+    </div>
+  );
+}

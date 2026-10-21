@@ -164,3 +164,64 @@ function relayerCookies(amont: Response, reponse: NextResponse): NextResponse {
   }
   return reponse;
 }
+
+/** Relais d'un flux d'évènements (SSE) du backend vers le navigateur.
+ *
+ *  `forwardToBackend` ne convient pas : il lit la réponse entière avant de la
+ *  rendre (`res.text()` hors JSON). Le flux arriverait d'un bloc à la fin —
+ *  aucune erreur nulle part, et l'effet « machine à écrire » simplement absent.
+ *
+ *  Le corps REÇU est déchiffré comme partout ailleurs. La réponse, elle, repart
+ *  en clair : une enveloppe se scelle sur un contenu complet, et un flux n'en a
+ *  pas avant sa dernière ligne. Ce qui transite est le texte que l'utilisateur
+ *  vient d'écrire et celui qu'il va lire — pas un identifiant, pas une clé.
+ *
+ *  `X-Accel-Buffering: no` est répété ici bien que le backend le pose déjà :
+ *  nginx voit CETTE réponse-là, pas la sienne. */
+export async function forwardStreamToBackend(
+  request: Request,
+  backendUrl: string,
+  path: string
+): Promise<Response> {
+  const init: RequestInit = {
+    method: request.method,
+    headers: { cookie: request.headers.get("cookie") ?? "" },
+  };
+
+  if (request.method !== "GET" && request.method !== "DELETE") {
+    let body: unknown;
+    try {
+      body = await decryptRequestBody(request);
+    } catch (error) {
+      return toBadRequestResponse(error);
+    }
+    init.headers = { ...init.headers, "Content-Type": "application/json" };
+    init.body = JSON.stringify(body);
+  }
+
+  const amont = await fetch(`${backendUrl}${path}${new URL(request.url).search}`, {
+    ...init,
+    // Node bufferise la réponse d'un `fetch` sans ce drapeau sur certaines
+    // versions ; le demander explicitement ne coûte rien là où il est déjà vrai.
+    // @ts-expect-error — propre à undici, absent du type RequestInit du DOM.
+    duplex: "half",
+  });
+
+  // Une erreur arrive en JSON, pas en flux : la rendre telle quelle, chiffrée
+  // comme toute autre réponse d'erreur, sinon l'écran reçoit un flux vide et
+  // ne sait pas dire pourquoi.
+  if (!amont.ok || !amont.body) {
+    const data = await amont.json().catch(() => ({ detail: "Le service n'a pas répondu" }));
+    return encryptResponseBody(data, { status: amont.status });
+  }
+
+  return new Response(amont.body, {
+    status: amont.status,
+    headers: {
+      "Content-Type": amont.headers.get("content-type") ?? "text/event-stream",
+      "Cache-Control": "no-cache, no-transform",
+      Connection: "keep-alive",
+      "X-Accel-Buffering": "no",
+    },
+  });
+}

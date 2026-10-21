@@ -223,21 +223,11 @@ export function TopBar({
   const [searchOpen, setSearchOpen] = useState(false);
   const [appSelectorOpen, setAppSelectorOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
-  // L'écouteur clavier n'est posé qu'une fois ; passer la bascule par une
-  // référence évite de le reposer à chaque ouverture du panneau.
-  const basculerAssistant = useRef<(() => void) | null>(null);
-
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
         setSearchOpen(true);
-      }
-      // ⌘J plutôt qu'une seconde lettre près de K : le raccourci de l'assistant
-      // ne doit pas se déclencher sur une faute de frappe de la recherche.
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "j") {
-        e.preventDefault();
-        basculerAssistant.current?.();
       }
       if (e.key === "Escape") {
         setSearchOpen(false);
@@ -251,6 +241,23 @@ export function TopBar({
 
   const searchFirst = variant === "search-first";
   const { setMobileNavOpen, assistantDisponible, assistantOuvert, setAssistantOuvert } = useShell();
+
+  // ⌘J plutôt qu'une lettre voisine de K : le raccourci de l'assistant ne doit
+  // pas se déclencher sur une faute de frappe de la recherche. Écouteur à
+  // part, et posé SEULEMENT quand l'assistant existe — sinon on confisquerait
+  // ⌘J (les téléchargements, sous Firefox) aux apps qui n'en ont pas.
+  useEffect(() => {
+    if (!assistantDisponible) return;
+    function onKey(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "j") {
+        e.preventDefault();
+        setAssistantOuvert(!assistantOuvert);
+      }
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [assistantDisponible, assistantOuvert, setAssistantOuvert]);
+
   const pathname = usePathname();
   // Sur mobile la barre se réduit à : hamburger + titre de page + cloche.
   // On remonte le chemin jusqu'au libellé connu le plus proche : /projects/12/board
@@ -284,10 +291,6 @@ export function TopBar({
       </kbd>
     </button>
   );
-
-  basculerAssistant.current = assistantDisponible
-    ? () => setAssistantOuvert(!assistantOuvert)
-    : null;
 
   const actions = (
     <div className="flex items-center gap-0.5 md:gap-1.5 shrink-0">

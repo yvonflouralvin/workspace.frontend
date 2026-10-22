@@ -13,12 +13,13 @@ import {
   AttachFileOutlined,
   DescriptionOutlined,
   DownloadOutlined,
+  EditNoteOutlined,
 } from "@mui/icons-material";
 import { useShell } from "@repo/ui/shell/AppShell";
 import { urlPiece } from "../api/client";
 import { useAssistant } from "../hooks/useAssistant";
 import { Markdown } from "../lib/markdown";
-import type { PieceJointe } from "../types";
+import type { DemandeConfirmation, PieceJointe } from "../types";
 
 export interface PanneauAssistantProps {
   /** Clé de l'app d'où l'on écrit — l'assistant s'en sert pour situer la question. */
@@ -178,6 +179,10 @@ export function PanneauAssistant({
               />
             )}
           </div>
+        )}
+
+        {etat.confirmation && (
+          <Confirmation demande={etat.confirmation} onTrancher={etat.trancher} />
         )}
 
         {etat.abonnementManquant && (
@@ -484,6 +489,78 @@ function Historique({
           </div>
         ))
       )}
+    </div>
+  );
+}
+
+
+/** La carte qui demande l'autorisation d'une écriture.
+ *
+ *  LE TOUR EST SUSPENDU tant qu'elle attend : côté serveur, l'appel de l'outil
+ *  est bloqué. D'où deux partis pris. Les ARGUMENTS SONT MONTRÉS, tous, tels
+ *  qu'ils partiront — c'est sur eux qu'on s'engage, pas sur le nom de l'outil.
+ *  Et « Refuser » est le bouton neutre, « Autoriser » le bouton marqué : on ne
+ *  clique pas une écriture par réflexe.
+ */
+export function Confirmation({
+  demande,
+  onTrancher,
+}: {
+  demande: DemandeConfirmation;
+  onTrancher: (autorise: boolean) => Promise<void>;
+}) {
+  const [envoi, setEnvoi] = useState(false);
+
+  async function trancher(autorise: boolean) {
+    setEnvoi(true);
+    await onTrancher(autorise);
+  }
+
+  const lignes = Object.entries(demande.arguments ?? {});
+
+  return (
+    <div className="mt-4 p-3 rounded-2xl border border-primary/30 bg-primary/5">
+      <p className="flex items-center gap-2 text-body-sm font-semibold text-on-surface">
+        <EditNoteOutlined style={{ fontSize: 17 }} className="text-primary" />
+        L&apos;assistant veut écrire
+      </p>
+      <p className="mt-1 text-body-sm text-on-surface">{demande.libelle}</p>
+
+      {lignes.length > 0 && (
+        <dl className="mt-2 space-y-0.5 rounded-xl bg-surface-container-lowest border border-outline-soft px-2.5 py-2">
+          {lignes.map(([cle, valeur]) => (
+            <div key={cle} className="flex gap-2 text-body-sm">
+              <dt className="flex-none text-on-surface-variant">{cle}</dt>
+              <dd className="flex-1 min-w-0 break-words text-on-surface font-medium">
+                {typeof valeur === "object" && valeur !== null
+                  ? JSON.stringify(valeur)
+                  : String(valeur)}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      )}
+
+      <p className="mt-2 text-label-sm text-on-surface-variant">
+        Sans réponse, l&apos;action ne se fera pas.
+      </p>
+
+      <div className="mt-2.5 flex gap-2">
+        <button
+          onClick={() => void trancher(true)}
+          disabled={envoi}
+          className="h-8 px-3 rounded-lg bg-primary text-on-primary text-body-sm font-medium disabled:bg-track disabled:text-outline transition-colors"
+        >
+          Autoriser
+        </button>
+        <button
+          onClick={() => void trancher(false)}
+          disabled={envoi}
+          className="h-8 px-3 rounded-lg border border-outline-soft bg-surface-container-lowest text-body-sm text-on-surface hover:bg-surface-container disabled:opacity-50 transition-colors"
+        >
+          Refuser
+        </button>
+      </div>
     </div>
   );
 }

@@ -8,12 +8,14 @@ import {
   envoyerMessage,
   joindrePiece,
   lireConversation,
+  repondreConfirmation,
   lireFlux,
   listerConversations,
   ouvrirConversation,
 } from "../api/client";
 import type {
   Conversation,
+  DemandeConfirmation,
   MessageAssistant,
   PieceEnAttente,
   PieceJointe,
@@ -39,6 +41,9 @@ export interface EtatAssistant {
   enAttente: PieceEnAttente[];
   joindre: (fichiers: FileList | File[]) => void;
   retirer: (cle: string) => void;
+  /** Une écriture qui attend une décision. Le tour est suspendu en attendant. */
+  confirmation: DemandeConfirmation | null;
+  trancher: (autorise: boolean) => Promise<void>;
   envoyer: (texte: string) => Promise<void>;
   interrompre: () => void;
   nouvelle: () => Promise<void>;
@@ -59,6 +64,7 @@ export function useAssistant(application: string, base = BASE_PAR_DEFAUT): EtatA
   const [erreur, setErreur] = useState<string | null>(null);
   const [abonnementManquant, setAbonnementManquant] = useState(false);
   const [enAttente, setEnAttente] = useState<PieceEnAttente[]>([]);
+  const [confirmation, setConfirmation] = useState<DemandeConfirmation | null>(null);
   const avorteur = useRef<AbortController | null>(null);
   // La conversation affichée AU MOMENT où le flux se termine. Sans elle, une
   // réponse qui finit d'arriver après un changement de fil s'afficherait sous
@@ -109,7 +115,26 @@ export function useAssistant(application: string, base = BASE_PAR_DEFAUT): EtatA
     avorteur.current?.abort();
     avorteur.current = null;
     setEnCours(null);
+    setConfirmation(null);
   }, []);
+
+  const trancher = useCallback(
+    async (autorise: boolean) => {
+      const demande = confirmation;
+      const id = couranteRef.current;
+      if (!demande || id === null) return;
+      // Retirée TOUT DE SUITE : le tour reprend côté serveur dès la réponse,
+      // et laisser la carte affichée donnerait l'impression qu'on n'a pas
+      // cliqué — on cliquerait deux fois.
+      setConfirmation(null);
+      try {
+        await repondreConfirmation(id, demande.demande_id, autorise, base);
+      } catch (e) {
+        setErreur(e instanceof Error ? e.message : "La décision n'a pas pu être transmise");
+      }
+    },
+    [base, confirmation]
+  );
 
   const joindre = useCallback((fichiers: FileList | File[]) => {
     const choisis = Array.from(fichiers);
@@ -260,6 +285,13 @@ export function useAssistant(application: string, base = BASE_PAR_DEFAUT): EtatA
               taille: evenement.charge.taille ?? 0,
               origine: "AGENT",
             });
+          } else if (evenement.nom === "confirmation" && evenement.charge.demande_id) {
+            setConfirmation({
+              demande_id: evenement.charge.demande_id,
+              outil: evenement.charge.outil ?? "",
+              libelle: evenement.charge.libelle ?? evenement.charge.outil ?? "",
+              arguments: evenement.charge.arguments ?? {},
+            });
           } else if (evenement.nom === "erreur") {
             echec = evenement.charge.message ?? "L'assistant n'a pas pu répondre";
             if (evenement.charge.abonnement) setAbonnementManquant(true);
@@ -279,6 +311,7 @@ export function useAssistant(application: string, base = BASE_PAR_DEFAUT): EtatA
       }
 
       setEnCours(null);
+      setConfirmation(null);
       const memeFil = couranteRef.current === id;
       if (memeFil && (accumule || echec || rendues.length > 0)) {
         setMessages((liste) => [
@@ -310,6 +343,8 @@ export function useAssistant(application: string, base = BASE_PAR_DEFAUT): EtatA
     enAttente,
     joindre,
     retirer,
+    confirmation,
+    trancher,
     envoyer,
     interrompre,
     nouvelle,

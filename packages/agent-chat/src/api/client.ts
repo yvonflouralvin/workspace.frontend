@@ -54,7 +54,7 @@ export async function archiverConversation(id: number, base = BASE_PAR_DEFAUT): 
 }
 
 export interface EvenementFlux {
-  nom: "texte" | "erreur" | "fin" | "piece";
+  nom: "texte" | "erreur" | "fin" | "piece" | "confirmation";
   charge: {
     delta?: string;
     message?: string;
@@ -65,6 +65,11 @@ export interface EvenementFlux {
     nom?: string;
     type_mime?: string;
     taille?: number;
+    // Évènement « confirmation » : une écriture attend une décision.
+    demande_id?: string;
+    outil?: string;
+    libelle?: string;
+    arguments?: Record<string, unknown>;
   };
 }
 
@@ -160,6 +165,24 @@ export async function envoyerMessage(
     );
   }
   return reponse;
+}
+
+/** Autorise ou refuse une écriture. Requête À PART du flux, et il ne peut pas
+ *  en être autrement : le tour est suspendu dans un autre appel, à attendre
+ *  précisément celle-ci. */
+export async function repondreConfirmation(
+  conversationId: number,
+  demandeId: string,
+  autorise: boolean,
+  base = BASE_PAR_DEFAUT
+): Promise<void> {
+  const reponse = await apiFetch(
+    `${base}/conversations/${conversationId}/confirmations/${demandeId}`,
+    { method: "POST", body: { autorise } }
+  );
+  if (!reponse.ok && reponse.status !== 204) {
+    throw new ErreurAssistant("La décision n'a pas pu être transmise", reponse.status);
+  }
 }
 
 export async function lireConnexion(base = BASE_PAR_DEFAUT): Promise<EtatConnexion> {

@@ -18,6 +18,7 @@ import {
 import { useShell } from "@repo/ui/shell/AppShell";
 import { urlPiece } from "../api/client";
 import { useAssistant } from "../hooks/useAssistant";
+import { creerColleur } from "../lib/defilement";
 import { Markdown } from "../lib/markdown";
 import type { DemandeConfirmation, PieceJointe } from "../types";
 
@@ -59,18 +60,21 @@ export function PanneauAssistant({
   const filRef = useRef<HTMLDivElement>(null);
   const saisieRef = useRef<HTMLTextAreaElement>(null);
   const fichierRef = useRef<HTMLInputElement>(null);
+  const colleur = useRef(creerColleur()).current;
 
   const vide = etat.messages.length === 0 && etat.enCours === null;
 
-  // Le fil colle au bas tant que l'utilisateur n'a pas remonté lui-même :
-  // forcer le défilement pendant qu'il relit une réponse précédente le
-  // ramènerait en bas à chaque mot qui arrive.
   useLayoutEffect(() => {
-    const fil = filRef.current;
-    if (!fil) return;
-    const proche = fil.scrollHeight - fil.scrollTop - fil.clientHeight < 120;
-    if (proche) fil.scrollTop = fil.scrollHeight;
-  }, [etat.messages, etat.enCours]);
+    if (filRef.current) colleur.suivre(filRef.current);
+  }, [colleur, etat.messages, etat.enCours, etat.confirmation]);
+
+  // Un fil qu'on ouvre s'ouvre sur son DERNIER message : c'est celui qu'on
+  // vient relire. `chargement` compte autant que la conversation — au premier
+  // rendu le fil ne porte qu'un squelette, et sa hauteur d'alors n'a rien à
+  // voir avec celle du contenu.
+  useLayoutEffect(() => {
+    if (filRef.current) colleur.recoller(filRef.current);
+  }, [colleur, etat.courante, etat.chargement]);
 
   useEffect(() => {
     saisieRef.current?.focus();
@@ -88,6 +92,8 @@ export function PanneauAssistant({
   async function soumettre() {
     const texte = brouillon;
     if (!texte.trim() || etat.enCours !== null) return;
+    // On écrit : on veut voir la réponse arriver, où qu'on en soit de la relecture.
+    if (filRef.current) colleur.recoller(filRef.current);
     setBrouillon("");
     await etat.envoyer(texte);
     saisieRef.current?.focus();
@@ -141,7 +147,11 @@ export function PanneauAssistant({
         </button>
       </header>
 
-      <div ref={filRef} className="flex-1 min-h-0 overflow-y-auto px-3 py-4">
+      <div
+        ref={filRef}
+        onScroll={() => filRef.current && colleur.defile(filRef.current)}
+        className="flex-1 min-h-0 overflow-y-auto px-3 py-4"
+      >
         {etat.chargement ? (
           <div className="space-y-3 animate-pulse">
             <div className="h-3 w-2/3 rounded-full bg-surface-container" />

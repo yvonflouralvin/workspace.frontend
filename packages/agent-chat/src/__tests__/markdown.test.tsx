@@ -38,6 +38,51 @@ describe("Markdown", () => {
     expect(html).toContain('rel="noopener noreferrer"');
   });
 
+  it("rend un tableau, pas une colonne de barres verticales", () => {
+    // Le modèle en produit dès qu'on lui demande un comparatif.
+    const html = rendu("| Nom | Ville |\n| --- | --- |\n| Kin Services | Kinshasa |");
+    expect(html).toContain("<table");
+    expect(html).toContain("<th");
+    expect(html).toContain("Kin Services");
+    expect(html).not.toContain("| Nom |");
+  });
+
+  it("suit l'alignement déclaré dans la ligne de séparation", () => {
+    const html = rendu("| G | C | D |\n| :-- | :-: | --: |\n| 1 | 2 | 3 |");
+    expect(html).toContain("text-left");
+    expect(html).toContain("text-center");
+    expect(html).toContain("text-right");
+  });
+
+  it("accepte un tableau écrit sans barres de bord", () => {
+    const html = rendu("Nom | Ville\n--- | ---\nKin Services | Kinshasa");
+    expect(html).toContain("<table");
+    expect(html).toContain("Kinshasa");
+  });
+
+  it("rend le markdown à l'intérieur d'une cellule", () => {
+    const html = rendu("| Outil |\n| --- |\n| `tiers_creer` |");
+    expect(html).toContain("<code");
+  });
+
+  it("garde toutes les colonnes de l'en-tête quand une rangée est courte", () => {
+    // Une rangée tronquée ne doit pas décaler les suivantes d'une colonne.
+    const html = rendu("| A | B |\n| --- | --- |\n| seul |\n| x | y |");
+    expect((html.match(/<td/g) ?? []).length).toBe(4);
+  });
+
+  it("ne prend pas une ligne de tirets pour un tableau", () => {
+    // Trois tirets seuls, ou une liste à puces, ne commencent pas un tableau.
+    expect(rendu("---")).not.toContain("<table");
+    expect(rendu("- un\n- deux")).not.toContain("<table");
+  });
+
+  it("laisse le texte reprendre après le tableau", () => {
+    const html = rendu("| A |\n| --- |\n| 1 |\n\nEt voilà.");
+    expect(html).toContain("<table");
+    expect(html).toContain("Et voil");
+  });
+
   it("n'émet jamais de balise venue du texte", () => {
     // Le texte vient d'un modèle : ce qu'il écrit s'AFFICHE, ne s'exécute pas.
     expect(rendu("<script>alert(1)</script>")).not.toContain("<script>");

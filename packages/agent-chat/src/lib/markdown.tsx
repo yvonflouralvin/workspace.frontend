@@ -1,6 +1,6 @@
 import { Fragment, type ReactNode } from "react";
 
-/** Rendu Markdown MINIMAL — titres, listes, gras, italique, code, liens.
+/** Rendu Markdown MINIMAL — titres, listes, tableaux, gras, italique, code, liens.
  *
  *  Pourquoi pas une bibliothèque : l'app porte déjà BlockNote (éditeur), et
  *  ajouter un second analyseur Markdown à toutes les coquilles pour afficher
@@ -18,6 +18,40 @@ export function schemaSur(cible: string): boolean {
   if (!tete.includes(":")) return true;
   return /^(https?|mailto|tel):/i.test(nettoye);
 }
+
+
+/** Les cellules d'une ligne de tableau, sans les barres de bord.
+ *  `| a | b |` et `a | b` donnent le même résultat : un modèle écrit les deux. */
+function cellules(ligne: string): string[] {
+  let t = ligne.trim();
+  if (t.startsWith("|")) t = t.slice(1);
+  if (t.endsWith("|")) t = t.slice(0, -1);
+  return t.split("|").map((c) => c.trim());
+}
+
+type Alignement = "left" | "center" | "right";
+
+/** La ligne de séparation d'un tableau — et, si c'en est une, l'alignement
+ *  que chaque colonne y déclare (`:--`, `--:`, `:-:`). */
+function separateur(ligne: string): Alignement[] | null {
+  if (!ligne.includes("-")) return null;
+  const parts = cellules(ligne);
+  if (parts.length === 0) return null;
+  const aligns: Alignement[] = [];
+  for (const part of parts) {
+    if (!/^:?-{1,}:?$/.test(part)) return null;
+    const gauche = part.startsWith(":");
+    const droite = part.endsWith(":");
+    aligns.push(gauche && droite ? "center" : droite ? "right" : "left");
+  }
+  return aligns;
+}
+
+const CLASSE_ALIGNEMENT: Record<Alignement, string> = {
+  left: "text-left",
+  center: "text-center",
+  right: "text-right",
+};
 
 
 function enLigne(texte: string, cle: string): ReactNode {
@@ -119,6 +153,59 @@ export function Markdown({ texte }: { texte: string }) {
       continue;
     }
 
+    // Tableau : une ligne de cellules SUIVIE d'une ligne de séparation. Le
+    // modèle en produit dès qu'on lui demande un comparatif, et sans ce bloc
+    // il s'affichait en barres verticales — illisible, et pris pour un bug.
+    const aligns = ligne.includes("|") ? separateur(lignes[i + 1] ?? "") : null;
+    if (aligns) {
+      const entetes = cellules(ligne);
+      i += 2;
+      const corps: string[][] = [];
+      while (i < lignes.length) {
+        const brut = lignes[i] ?? "";
+        if (brut.trim() === "" || !brut.includes("|")) break;
+        corps.push(cellules(brut));
+        i++;
+      }
+      const classe = (j: number) => CLASSE_ALIGNEMENT[aligns[j] ?? "left"];
+      blocs.push(
+        <div key={`tb${i}`} className="my-2 overflow-x-auto">
+          <table className="min-w-full border-collapse text-body-sm">
+            <thead>
+              <tr>
+                {entetes.map((cellule, j) => (
+                  <th
+                    key={j}
+                    className={`px-2 py-1.5 border border-outline-soft bg-surface-row-alt font-semibold text-on-surface whitespace-nowrap ${classe(j)}`}
+                  >
+                    {enLigne(cellule, `th${i}-${j}`)}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {corps.map((rangee, r) => (
+                <tr key={r}>
+                  {/* Les colonnes viennent de l'en-tête, jamais de la rangée :
+                      une rangée courte laisse une cellule vide, une rangée trop
+                      longue ne décale pas tout le tableau. */}
+                  {entetes.map((_, j) => (
+                    <td
+                      key={j}
+                      className={`px-2 py-1.5 border border-outline-soft align-top ${classe(j)}`}
+                    >
+                      {enLigne(rangee[j] ?? "", `td${i}-${r}-${j}`)}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+      continue;
+    }
+
     const titre = /^(#{1,3})\s+(.*)$/.exec(ligne);
     if (titre) {
       const taille = titre[1]!.length === 1 ? "text-body-lg" : "text-body-md";
@@ -163,7 +250,8 @@ export function Markdown({ texte }: { texte: string }) {
       (lignes[i] ?? "").trim() !== "" &&
       !(lignes[i] ?? "").startsWith("```") &&
       !/^#{1,3}\s/.test(lignes[i] ?? "") &&
-      !/^\s*([-*]|\d+\.)\s+/.test(lignes[i] ?? "")
+      !/^\s*([-*]|\d+\.)\s+/.test(lignes[i] ?? "") &&
+      !((lignes[i] ?? "").includes("|") && separateur(lignes[i + 1] ?? "") !== null)
     ) {
       paragraphe.push(lignes[i] ?? "");
       i++;

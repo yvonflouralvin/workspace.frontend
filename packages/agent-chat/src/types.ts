@@ -56,3 +56,46 @@ export interface EtatConnexion {
   connecte_le?: string | null;
   dernier_echec?: string | null;
 }
+
+/** Un COLLABORATEUR VIRTUEL : un agent qui travaille quand personne ne lui parle.
+ *
+ *  Son compte vit dans `auth` (`user_id`), rangé dans des groupes comme
+ *  n'importe quel membre — c'est de là que viennent ses droits, et c'est là
+ *  qu'on le suspend pour de bon. */
+export interface Collaborateur {
+  id: number;
+  cle: string;
+  nom: string;
+  role: string;
+  user_id: number;
+  consigne: string;
+  cadence: "MANUELLE" | "QUOTIDIENNE" | "HEBDOMADAIRE";
+  heure: number;
+  jour: number | null;
+  fuseau: string;
+  actif: boolean;
+  dernier_passage: string | null;
+}
+
+/** Un métier qu'on sait confier à un collaborateur. Servi par le backend
+ *  depuis le code : l'écran doit proposer exactement ce que le moteur sait
+ *  résoudre. */
+export interface RoleCollaborateur {
+  cle: string;
+  libelle: string;
+  apps: string[];
+}
+
+export interface Mission {
+  id: number;
+  collaborateur_id: number;
+  declencheur: "PLANIFIE" | "MANUEL";
+  statut: "EN_ATTENTE" | "EN_COURS" | "REUSSIE" | "ECHOUEE";
+  compte_rendu: string;
+  erreur: string | null;
+  outils_offerts: string[];
+  outils_appeles: string[];
+  demarree_le: string | null;
+  terminee_le: string | null;
+  cree_le: string;
+}

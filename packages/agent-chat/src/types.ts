@@ -68,11 +68,27 @@ export interface Collaborateur {
   nom: string;
   role: string;
   user_id: number;
+  /** QUI IL EST : son invite système. Distincte de ce qu'il a à faire —
+   *  ça, ce sont ses tâches. */
+  profil: string;
+  fuseau: string;
+  actif: boolean;
+  taches: TacheRecurrente[];
+}
+
+/** UN TRAVAIL QUI REVIENT, et son horaire.
+ *
+ *  Un collaborateur en porte autant qu'on veut : un comptable virtuel relève
+ *  les écritures en brouillon le soir et sort un état le matin. Chacune a son
+ *  dernier passage — partagé, celui du soir empêcherait celui du matin. */
+export interface TacheRecurrente {
+  id: number;
+  collaborateur_id: number;
+  nom: string;
   consigne: string;
   cadence: "MANUELLE" | "QUOTIDIENNE" | "HEBDOMADAIRE";
   heure: number;
   jour: number | null;
-  fuseau: string;
   actif: boolean;
   dernier_passage: string | null;
 }
@@ -89,8 +105,10 @@ export interface RoleCollaborateur {
 export interface Mission {
   id: number;
   collaborateur_id: number;
-  declencheur: "PLANIFIE" | "MANUEL";
+  tache_id: number | null;
+  declencheur: "PLANIFIE" | "MANUEL" | "INBOX";
   statut: "EN_ATTENTE" | "EN_COURS" | "REUSSIE" | "ECHOUEE";
+  invite: string;
   compte_rendu: string;
   erreur: string | null;
   outils_offerts: string[];

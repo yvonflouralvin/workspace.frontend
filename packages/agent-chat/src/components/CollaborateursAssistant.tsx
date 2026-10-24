@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   AddOutlined,
+  DeleteOutlineOutlined,
+  EditOutlined,
   ErrorOutlineOutlined,
   HistoryOutlined,
   PlayArrowOutlined,
@@ -11,18 +13,22 @@ import {
 import { FORM_CONTROL, FormField } from "@repo/ui/FormField";
 import { FormDrawer } from "@repo/ui/FormDrawer";
 import { Switch } from "@repo/ui/Switch";
+import { useConfirmSuppression } from "@repo/ui/hooks/useConfirmSuppression";
 import {
   creerCollaborateur,
+  creerTache,
   lancerMission,
   listerCollaborateurs,
   listerMissions,
   listerRoles,
   lireMission,
   modifierCollaborateur,
+  modifierTache,
+  supprimerTache,
 } from "../api/collaborateurs";
-import { CONSIGNES } from "../lib/consignes";
+import { PROFILS, TACHES_SUGGEREES } from "../lib/metiers";
 import { Markdown } from "../lib/markdown";
-import type { Collaborateur, Mission, RoleCollaborateur } from "../types";
+import type { Collaborateur, Mission, RoleCollaborateur, TacheRecurrente } from "../types";
 
 const JOURS = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"];
 
@@ -32,7 +38,7 @@ const JOURS = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dim
 export function enCle(nom: string): string {
   return nom
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[̀-ͯ]/g, "")
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
@@ -44,13 +50,21 @@ export function enCle(nom: string): string {
  *  que le bouton n'a rien fait. */
 const RYTHME_SUIVI_MS = 3000;
 
-export function quand(c: Collaborateur): string {
-  if (c.cadence === "MANUELLE") return "À la demande";
-  const heure = `${String(c.heure).padStart(2, "0")} h`;
-  if (c.cadence === "HEBDOMADAIRE") {
-    return `Chaque ${JOURS[c.jour ?? 0]} à ${heure}`;
-  }
+export function quand(t: Pick<TacheRecurrente, "cadence" | "heure" | "jour">): string {
+  if (t.cadence === "MANUELLE") return "À la demande";
+  const heure = `${String(t.heure).padStart(2, "0")} h`;
+  if (t.cadence === "HEBDOMADAIRE") return `Chaque ${JOURS[t.jour ?? 0]} à ${heure}`;
   return `Tous les jours à ${heure}`;
+}
+
+/** Ce qu'on affiche sous le nom d'un collaborateur. Les tâches ACTIVES
+ *  seulement : une tâche en pause ne dit rien de ce qu'il fera. */
+export function resumeDesTaches(taches: TacheRecurrente[]): string {
+  const actives = taches.filter((t) => t.actif && t.cadence !== "MANUELLE");
+  if (taches.length === 0) return "aucune tâche — il ne se réveillera jamais";
+  if (actives.length === 0) return "aucune tâche active";
+  if (actives.length === 1) return quand(actives[0]!).toLowerCase();
+  return `${actives.length} tâches récurrentes`;
 }
 
 function dateCourte(valeur: string | null): string {
@@ -71,6 +85,12 @@ const LIBELLE_STATUT: Record<Mission["statut"], string> = {
   EN_COURS: "En cours…",
   REUSSIE: "Terminée",
   ECHOUEE: "Échec",
+};
+
+const ORIGINE: Record<Mission["declencheur"], string> = {
+  PLANIFIE: "",
+  MANUEL: " · lancé à la main",
+  INBOX: " · demandé depuis la boîte",
 };
 
 export function CollaborateursAssistant({
@@ -96,7 +116,9 @@ export function CollaborateursAssistant({
 
   useEffect(() => {
     void recharger();
-    listerRoles(base).then(setRoles).catch(() => setRoles([]));
+    listerRoles(base)
+      .then(setRoles)
+      .catch(() => setRoles([]));
   }, [recharger, base]);
 
   const libelleRole = (cle: string) => roles.find((r) => r.cle === cle)?.libelle ?? cle;
@@ -105,10 +127,12 @@ export function CollaborateursAssistant({
     <div>
       <div className="flex items-start justify-between gap-4 mb-5">
         <p className="text-body-md text-on-surface-variant max-w-[62ch]">
-          Un collaborateur travaille <strong className="text-on-surface">quand personne
-          ne lui parle</strong> : à l&apos;heure dite, il fait ce que dit sa consigne et
-          dépose son compte rendu dans vos notifications. Il a un compte, des groupes et
-          des droits comme n&apos;importe quel membre — et il ne fait que lire.
+          Un collaborateur a un <strong className="text-on-surface">profil</strong> — qui
+          il est, comment il travaille — et autant de{" "}
+          <strong className="text-on-surface">tâches récurrentes</strong> qu&apos;on veut :
+          un relevé le matin, une clôture le soir. On peut aussi lui confier un travail
+          ponctuel depuis la boîte de réception. Il a un compte, des groupes et des droits
+          comme n&apos;importe quel membre — et il ne fait que lire.
         </p>
         {peutGerer && (
           <button
@@ -209,6 +233,10 @@ function CarteCollaborateur({
   const [missions, setMissions] = useState<Mission[] | null>(null);
   const [enVol, setEnVol] = useState<number | null>(null);
   const [souci, setSouci] = useState<string | null>(null);
+  const [tacheEditee, setTacheEditee] = useState<TacheRecurrente | "nouvelle" | null>(null);
+  const [profilEdite, setProfilEdite] = useState(false);
+  const [ponctuelle, setPonctuelle] = useState(false);
+  const { confirmer, dialogue } = useConfirmSuppression();
 
   const charger = useCallback(async () => {
     setMissions(await listerMissions(collaborateur.id, base));
@@ -237,10 +265,10 @@ function CarteCollaborateur({
     return () => clearInterval(minuteur);
   }, [enVol, base, charger, onChange]);
 
-  async function faireAgir() {
+  async function faireAgir(corps: { tache_id?: number; invite?: string }) {
     setSouci(null);
     try {
-      const mission = await lancerMission(collaborateur.id, base);
+      const mission = await lancerMission(collaborateur.id, corps, base);
       setEnVol(mission.id);
       if (!ouvert) onBasculer();
       else await charger();
@@ -258,6 +286,24 @@ function CarteCollaborateur({
       setSouci(err instanceof Error ? err.message : "Modification impossible");
     }
   }
+
+  function retirerTache(tache: TacheRecurrente) {
+    confirmer({
+      title: `Supprimer « ${tache.nom} » ?`,
+      message:
+        "Les comptes rendus qu'elle a déjà produits sont conservés — seul le travail à venir disparaît.",
+      action: async () => {
+        try {
+          await supprimerTache(collaborateur.id, tache.id, base);
+          await onChange();
+        } catch (err) {
+          setSouci(err instanceof Error ? err.message : "Suppression impossible");
+        }
+      },
+    });
+  }
+
+  const sansTache = collaborateur.taches.length === 0;
 
   return (
     <li className="rounded-2xl border border-outline-soft bg-surface-container-lowest">
@@ -280,8 +326,7 @@ function CarteCollaborateur({
             {collaborateur.nom}
           </span>
           <span className="block text-body-sm text-on-surface-variant truncate">
-            {role} · {quand(collaborateur)} · dernier passage&nbsp;:{" "}
-            {dateCourte(collaborateur.dernier_passage)}
+            {role} · {resumeDesTaches(collaborateur.taches)}
           </span>
         </button>
 
@@ -293,12 +338,12 @@ function CarteCollaborateur({
           <>
             <button
               type="button"
-              onClick={faireAgir}
+              onClick={() => setPonctuelle(true)}
               disabled={!collaborateur.actif || enVol !== null}
               className="flex-none inline-flex items-center gap-1 rounded-lg border border-outline-soft px-2.5 py-1.5 text-label-md text-on-surface hover:bg-surface-container disabled:opacity-40 transition-colors"
             >
               <PlayArrowOutlined style={{ fontSize: 16 }} />
-              Faire passer
+              Lui demander
             </button>
             <Switch
               checked={collaborateur.actif}
@@ -313,10 +358,61 @@ function CarteCollaborateur({
 
       {ouvert && (
         <div className="border-t border-hairline px-4 py-4">
-          <p className="text-label-sm uppercase text-outline mb-1.5">Sa consigne</p>
-          <p className="text-body-sm text-on-surface-variant whitespace-pre-wrap mb-4">
-            {collaborateur.consigne || "— aucune consigne, il ne fera rien."}
+          <div className="flex items-center justify-between gap-2 mb-1.5">
+            <p className="text-label-sm uppercase text-outline">Son profil</p>
+            {peutGerer && (
+              <button
+                type="button"
+                onClick={() => setProfilEdite(true)}
+                className="inline-flex items-center gap-1 text-label-md text-primary hover:opacity-70 transition-opacity"
+              >
+                <EditOutlined style={{ fontSize: 14 }} />
+                Modifier
+              </button>
+            )}
+          </div>
+          <p className="text-body-sm text-on-surface-variant whitespace-pre-wrap mb-5">
+            {collaborateur.profil || "— aucun profil : il travaillera comme un assistant quelconque."}
           </p>
+
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <p className="text-label-sm uppercase text-outline">Ses tâches récurrentes</p>
+            {peutGerer && (
+              <button
+                type="button"
+                onClick={() => setTacheEditee("nouvelle")}
+                className="inline-flex items-center gap-1 text-label-md text-primary hover:opacity-70 transition-opacity"
+              >
+                <AddOutlined style={{ fontSize: 14 }} />
+                Ajouter
+              </button>
+            )}
+          </div>
+          {sansTache ? (
+            <p className="mb-5 rounded-xl bg-surface-container-low p-3 text-body-sm text-on-surface-variant">
+              Aucune tâche : <strong className="text-on-surface">il ne se réveillera
+              jamais tout seul</strong>. Vous pouvez quand même lui demander quelque chose
+              ponctuellement, ici ou depuis la boîte de réception.
+            </p>
+          ) : (
+            <ul className="mb-5 flex flex-col gap-2">
+              {collaborateur.taches.map((t) => (
+                <LigneTache
+                  key={t.id}
+                  tache={t}
+                  peutGerer={peutGerer}
+                  occupe={!collaborateur.actif || enVol !== null}
+                  onLancer={() => faireAgir({ tache_id: t.id })}
+                  onEditer={() => setTacheEditee(t)}
+                  onSupprimer={() => retirerTache(t)}
+                  onBasculer={async (actif) => {
+                    await modifierTache(collaborateur.id, t.id, { actif }, base);
+                    await onChange();
+                  }}
+                />
+              ))}
+            </ul>
+          )}
 
           <p className="flex items-center gap-1.5 text-label-sm uppercase text-outline mb-2">
             <HistoryOutlined style={{ fontSize: 14 }} />
@@ -331,26 +427,147 @@ function CarteCollaborateur({
           ) : (
             <ul className="flex flex-col gap-2">
               {missions.map((m) => (
-                <LigneMission key={m.id} mission={m} />
+                <LigneMission
+                  key={m.id}
+                  mission={m}
+                  nomDeLaTache={
+                    collaborateur.taches.find((t) => t.id === m.tache_id)?.nom ?? null
+                  }
+                />
               ))}
             </ul>
           )}
         </div>
       )}
+
+      {profilEdite && (
+        <FormulaireProfil
+          collaborateur={collaborateur}
+          base={base}
+          onClose={() => setProfilEdite(false)}
+          onEnregistre={async () => {
+            setProfilEdite(false);
+            await onChange();
+          }}
+        />
+      )}
+
+      {tacheEditee !== null && (
+        <FormulaireTache
+          collaborateurId={collaborateur.id}
+          tache={tacheEditee === "nouvelle" ? null : tacheEditee}
+          base={base}
+          onClose={() => setTacheEditee(null)}
+          onEnregistre={async () => {
+            setTacheEditee(null);
+            await onChange();
+          }}
+        />
+      )}
+
+      {dialogue}
+
+      {ponctuelle && (
+        <FormulairePonctuel
+          nom={collaborateur.nom}
+          taches={collaborateur.taches}
+          onClose={() => setPonctuelle(false)}
+          onLancer={async (corps) => {
+            setPonctuelle(false);
+            await faireAgir(corps);
+          }}
+        />
+      )}
     </li>
   );
 }
 
-function LigneMission({ mission }: { mission: Mission }) {
+function LigneTache({
+  tache,
+  peutGerer,
+  occupe,
+  onLancer,
+  onEditer,
+  onSupprimer,
+  onBasculer,
+}: {
+  tache: TacheRecurrente;
+  peutGerer: boolean;
+  occupe: boolean;
+  onLancer: () => void;
+  onEditer: () => void;
+  onSupprimer: () => void;
+  onBasculer: (actif: boolean) => Promise<void>;
+}) {
+  return (
+    <li className="flex items-center gap-2 rounded-xl bg-surface-container-low px-3 py-2.5">
+      <div className="min-w-0 flex-1">
+        <p className={`truncate text-body-sm ${tache.actif ? "text-on-surface" : "text-outline"}`}>
+          {tache.nom}
+        </p>
+        <p className="truncate text-label-sm text-on-surface-variant">
+          {quand(tache)} · dernier passage&nbsp;: {dateCourte(tache.dernier_passage)}
+        </p>
+      </div>
+      {peutGerer && (
+        <>
+          <button
+            type="button"
+            onClick={onLancer}
+            disabled={occupe}
+            title="Faire passer maintenant"
+            className="flex-none rounded-lg border border-outline-soft p-1.5 text-on-surface hover:bg-surface-container disabled:opacity-40 transition-colors"
+          >
+            <PlayArrowOutlined style={{ fontSize: 16 }} />
+          </button>
+          <button
+            type="button"
+            onClick={onEditer}
+            title="Modifier"
+            className="flex-none rounded-lg border border-outline-soft p-1.5 text-on-surface hover:bg-surface-container transition-colors"
+          >
+            <EditOutlined style={{ fontSize: 16 }} />
+          </button>
+          <button
+            type="button"
+            onClick={onSupprimer}
+            title="Supprimer"
+            className="flex-none rounded-lg border border-outline-soft p-1.5 text-on-surface-variant hover:bg-error-container hover:text-error transition-colors"
+          >
+            <DeleteOutlineOutlined style={{ fontSize: 16 }} />
+          </button>
+          <Switch
+            checked={tache.actif}
+            onChange={(v) => void onBasculer(v)}
+            label={`Activer ${tache.nom}`}
+          />
+        </>
+      )}
+    </li>
+  );
+}
+
+function LigneMission({
+  mission,
+  nomDeLaTache,
+}: {
+  mission: Mission;
+  nomDeLaTache: string | null;
+}) {
   return (
     <li className="rounded-xl bg-surface-container-low p-3">
-      <div className="flex items-center gap-2 mb-1.5">
+      <div className="flex flex-wrap items-center gap-2 mb-1.5">
         <span className={`rounded-full px-2 py-0.5 text-label-sm ${TEINTE_STATUT[mission.statut]}`}>
           {LIBELLE_STATUT[mission.statut]}
         </span>
+        {nomDeLaTache && (
+          <span className="rounded-full bg-surface-container px-2 py-0.5 text-label-sm text-on-surface-variant">
+            {nomDeLaTache}
+          </span>
+        )}
         <span className="text-label-sm text-on-surface-variant">
           {dateCourte(mission.terminee_le ?? mission.cree_le)}
-          {mission.declencheur === "MANUEL" && " · lancé à la main"}
+          {ORIGINE[mission.declencheur]}
         </span>
       </div>
       {mission.erreur ? (
@@ -371,6 +588,8 @@ function LigneMission({ mission }: { mission: Mission }) {
   );
 }
 
+// ─── les formulaires ─────────────────────────────────────────────────────────
+
 function FormulaireCollaborateur({
   roles,
   base,
@@ -385,18 +604,18 @@ function FormulaireCollaborateur({
   const [nom, setNom] = useState("");
   const [cle, setCle] = useState("");
   const [role, setRole] = useState(roles[0]?.cle ?? "controleur");
-  const [consigne, setConsigne] = useState(CONSIGNES["controleur"] ?? "");
+  const [profil, setProfil] = useState(PROFILS["controleur"] ?? "");
   // Vrai dès que la personne a écrit : on ne remplace jamais son texte en
   // changeant de métier, même si le gabarit d'origine n'a pas été touché.
-  const [consigneTouchee, setConsigneTouchee] = useState(false);
+  const [profilTouche, setProfilTouche] = useState(false);
   const [cleTouchee, setCleTouchee] = useState(false);
-  const [cadence, setCadence] = useState("HEBDOMADAIRE");
-  const [heure, setHeure] = useState(7);
-  const [jour, setJour] = useState(0);
+  const [avecTaches, setAvecTaches] = useState(true);
+
+  const suggerees = TACHES_SUGGEREES[role] ?? [];
 
   function choisirRole(nouveau: string) {
     setRole(nouveau);
-    if (!consigneTouchee) setConsigne(CONSIGNES[nouveau] ?? "");
+    if (!profilTouche) setProfil(PROFILS[nouveau] ?? "");
   }
 
   // La clé suit le nom tant qu'on n'y a pas touché : elle ne change plus
@@ -413,19 +632,34 @@ function FormulaireCollaborateur({
       submitLabel="Créer"
       onClose={onClose}
       onSubmit={async () => {
-        await creerCollaborateur(
+        const cree = await creerCollaborateur(
           {
             cle: cle.trim().toLowerCase(),
             nom: nom.trim(),
             role,
-            consigne,
-            cadence,
-            heure,
-            jour: cadence === "HEBDOMADAIRE" ? jour : null,
+            profil,
             group_ids: [],
           },
           base
         );
+        // Les tâches APRÈS le compte : si l'une d'elles échoue, le
+        // collaborateur existe quand même et se complète à l'écran. L'inverse
+        // — des tâches sans collaborateur — n'a aucun rattrapage.
+        if (avecTaches) {
+          for (const t of suggerees) {
+            await creerTache(
+              cree.id,
+              {
+                nom: t.nom,
+                consigne: t.consigne,
+                cadence: t.cadence,
+                heure: t.heure,
+                jour: t.jour ?? null,
+              },
+              base
+            ).catch(() => undefined);
+          }
+        }
         await onCree();
       }}
     >
@@ -459,7 +693,11 @@ function FormulaireCollaborateur({
         </FormField>
 
         <FormField label="Métier">
-          <select className={FORM_CONTROL} value={role} onChange={(e) => choisirRole(e.target.value)}>
+          <select
+            className={FORM_CONTROL}
+            value={role}
+            onChange={(e) => choisirRole(e.target.value)}
+          >
             {roles.map((r) => (
               <option key={r.cle} value={r.cle}>
                 {r.libelle}
@@ -467,23 +705,165 @@ function FormulaireCollaborateur({
             ))}
           </select>
           <p className="mt-1 text-label-sm text-outline">
-            Le métier borne ce qu&apos;il peut regarder, et c&apos;est une mesure de
-            sûreté : il travaille seul, personne ne relit ses appels un par un.
+            Le métier borne les applications qu&apos;il peut regarder, et c&apos;est une
+            mesure de sûreté — pas une description. Le profil ci-dessous dit comment il
+            travaille ; il ne peut pas lui ouvrir une porte que le métier ferme.
           </p>
         </FormField>
 
-        <FormField label="Sa consigne">
+        <FormField label="Son profil">
           <textarea
-            className={`${FORM_CONTROL} min-h-[220px] font-body-md`}
-            value={consigne}
+            className={`${FORM_CONTROL} min-h-[240px] font-body-md`}
+            value={profil}
             onChange={(e) => {
-              setConsigne(e.target.value);
-              setConsigneTouchee(true);
+              setProfil(e.target.value);
+              setProfilTouche(true);
             }}
           />
           <p className="mt-1 text-label-sm text-outline">
-            Dites ce qu&apos;il regarde et ce qu&apos;il rapporte. Il relit ce texte à
-            chaque passage.
+            Qui il est et comment il travaille. Il le relit chaque fois qu&apos;il
+            travaille — à l&apos;heure dite comme quand on lui écrit.
+          </p>
+        </FormField>
+
+        {suggerees.length > 0 && (
+          <label className="flex items-start gap-2.5 rounded-xl bg-surface-container-low p-3">
+            <input
+              type="checkbox"
+              checked={avecTaches}
+              onChange={(e) => setAvecTaches(e.target.checked)}
+              className="mt-0.5"
+            />
+            <span className="text-body-sm text-on-surface-variant">
+              Créer aussi{" "}
+              {suggerees.length === 1 ? "sa tâche de départ" : `ses ${suggerees.length} tâches de départ`}{" "}
+              : {suggerees.map((t) => `${t.nom} (${quand({ ...t, jour: t.jour ?? null }).toLowerCase()})`).join(", ")}.
+              Elles se modifient ensuite une par une.
+            </span>
+          </label>
+        )}
+
+        <p className="rounded-xl bg-surface-container-low p-3 text-body-sm text-on-surface-variant">
+          Il naît <strong className="text-on-surface">sans aucun droit</strong>. Pour
+          qu&apos;il voie quelque chose, ajoutez-le à un groupe depuis Membres — il y
+          apparaît comme n&apos;importe quel membre.
+        </p>
+      </div>
+    </FormDrawer>
+  );
+}
+
+function FormulaireProfil({
+  collaborateur,
+  base,
+  onClose,
+  onEnregistre,
+}: {
+  collaborateur: Collaborateur;
+  base?: string;
+  onClose: () => void;
+  onEnregistre: () => Promise<void>;
+}) {
+  const [nom, setNom] = useState(collaborateur.nom);
+  const [profil, setProfil] = useState(collaborateur.profil);
+
+  return (
+    <FormDrawer
+      title={`Profil de ${collaborateur.nom}`}
+      submitLabel="Enregistrer"
+      onClose={onClose}
+      onSubmit={async () => {
+        await modifierCollaborateur(collaborateur.id, { nom: nom.trim(), profil }, base);
+        await onEnregistre();
+      }}
+    >
+      <div className="flex flex-col gap-4">
+        <FormField label="Nom">
+          <input
+            className={FORM_CONTROL}
+            value={nom}
+            onChange={(e) => setNom(e.target.value)}
+            required
+          />
+        </FormField>
+        <FormField label="Son profil">
+          <textarea
+            className={`${FORM_CONTROL} min-h-[280px] font-body-md`}
+            value={profil}
+            onChange={(e) => setProfil(e.target.value)}
+          />
+          <p className="mt-1 text-label-sm text-outline">
+            Le profil ne peut pas lever les règles du moteur : il travaille seul, en
+            lecture seule, et doit dire ce qu&apos;il n&apos;a pas pu vérifier.
+          </p>
+        </FormField>
+      </div>
+    </FormDrawer>
+  );
+}
+
+function FormulaireTache({
+  collaborateurId,
+  tache,
+  base,
+  onClose,
+  onEnregistre,
+}: {
+  collaborateurId: number;
+  tache: TacheRecurrente | null;
+  base?: string;
+  onClose: () => void;
+  onEnregistre: () => Promise<void>;
+}) {
+  const [nom, setNom] = useState(tache?.nom ?? "");
+  const [consigne, setConsigne] = useState(tache?.consigne ?? "");
+  const [cadence, setCadence] = useState(tache?.cadence ?? "QUOTIDIENNE");
+  const [heure, setHeure] = useState(tache?.heure ?? 7);
+  const [jour, setJour] = useState(tache?.jour ?? 0);
+
+  return (
+    <FormDrawer
+      title={tache ? `Modifier « ${tache.nom} »` : "Nouvelle tâche"}
+      submitLabel={tache ? "Enregistrer" : "Ajouter"}
+      onClose={onClose}
+      onSubmit={async () => {
+        const corps = {
+          nom: nom.trim(),
+          consigne,
+          cadence,
+          heure,
+          jour: cadence === "HEBDOMADAIRE" ? jour : null,
+        };
+        if (tache) await modifierTache(collaborateurId, tache.id, corps, base);
+        else await creerTache(collaborateurId, corps, base);
+        await onEnregistre();
+      }}
+    >
+      <div className="flex flex-col gap-4">
+        <FormField label="Nom de la tâche">
+          <input
+            className={FORM_CONTROL}
+            value={nom}
+            onChange={(e) => setNom(e.target.value)}
+            placeholder="Clôture du soir"
+            maxLength={120}
+          />
+          <p className="mt-1 text-label-sm text-outline">
+            Pour vous repérer dans la liste. Il ne le lit pas. Laissé vide, la première
+            ligne de la consigne fera l&apos;affaire.
+          </p>
+        </FormField>
+
+        <FormField label="Ce qu'il doit faire">
+          <textarea
+            className={`${FORM_CONTROL} min-h-[220px] font-body-md`}
+            value={consigne}
+            onChange={(e) => setConsigne(e.target.value)}
+            required
+          />
+          <p className="mt-1 text-label-sm text-outline">
+            Dites ce qu&apos;il regarde et ce qu&apos;il rapporte. C&apos;est ce texte
+            qui part, tel quel, à chaque passage.
           </p>
         </FormField>
 
@@ -492,7 +872,7 @@ function FormulaireCollaborateur({
             <select
               className={FORM_CONTROL}
               value={cadence}
-              onChange={(e) => setCadence(e.target.value)}
+              onChange={(e) => setCadence(e.target.value as TacheRecurrente["cadence"])}
             >
               <option value="MANUELLE">À la demande</option>
               <option value="QUOTIDIENNE">Tous les jours</option>
@@ -524,20 +904,77 @@ function FormulaireCollaborateur({
               value={jour}
               onChange={(e) => setJour(Number(e.target.value))}
             >
-              {JOURS.map((nom, index) => (
-                <option key={nom} value={index}>
-                  {nom.charAt(0).toUpperCase() + nom.slice(1)}
+              {JOURS.map((libelle, index) => (
+                <option key={libelle} value={index}>
+                  {libelle.charAt(0).toUpperCase() + libelle.slice(1)}
                 </option>
               ))}
             </select>
           </FormField>
         )}
+      </div>
+    </FormDrawer>
+  );
+}
 
-        <p className="rounded-xl bg-surface-container-low p-3 text-body-sm text-on-surface-variant">
-          Il naît <strong className="text-on-surface">sans aucun droit</strong>. Pour
-          qu&apos;il voie quelque chose, ajoutez-le à un groupe depuis Membres —
-          il y apparaît comme n&apos;importe quel membre.
-        </p>
+function FormulairePonctuel({
+  nom,
+  taches,
+  onClose,
+  onLancer,
+}: {
+  nom: string;
+  taches: TacheRecurrente[];
+  onClose: () => void;
+  onLancer: (corps: { tache_id?: number; invite?: string }) => Promise<void>;
+}) {
+  const [choix, setChoix] = useState<string>(taches[0] ? String(taches[0].id) : "libre");
+  const [invite, setInvite] = useState("");
+
+  return (
+    <FormDrawer
+      title={`Demander à ${nom}`}
+      submitLabel="Lancer"
+      onClose={onClose}
+      onSubmit={async () => {
+        if (choix === "libre") {
+          if (!invite.trim()) throw new Error("Écrivez ce qu'il doit faire.");
+          await onLancer({ invite: invite.trim() });
+        } else {
+          await onLancer({ tache_id: Number(choix) });
+        }
+      }}
+    >
+      <div className="flex flex-col gap-4">
+        <FormField label="Quoi">
+          <select
+            className={FORM_CONTROL}
+            value={choix}
+            onChange={(e) => setChoix(e.target.value)}
+          >
+            {taches.map((t) => (
+              <option key={t.id} value={String(t.id)}>
+                {t.nom}
+              </option>
+            ))}
+            <option value="libre">Autre chose…</option>
+          </select>
+        </FormField>
+
+        {choix === "libre" && (
+          <FormField label="Ce qu'il doit faire">
+            <textarea
+              className={`${FORM_CONTROL} min-h-[180px] font-body-md`}
+              value={invite}
+              onChange={(e) => setInvite(e.target.value)}
+              placeholder="Vérifie les écritures du mois de septembre et dis-moi lesquelles ne sont pas lettrées."
+            />
+            <p className="mt-1 text-label-sm text-outline">
+              Une fois, maintenant. Rien n&apos;est enregistré : pour un travail qui
+              revient, créez une tâche.
+            </p>
+          </FormField>
+        )}
       </div>
     </FormDrawer>
   );

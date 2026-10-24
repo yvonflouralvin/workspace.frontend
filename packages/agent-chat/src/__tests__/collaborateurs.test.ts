@@ -1,20 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { enCle, quand } from "../components/CollaborateursAssistant";
-import { CONSIGNES } from "../lib/consignes";
-import type { Collaborateur } from "../types";
+import { enCle, quand, resumeDesTaches } from "../components/CollaborateursAssistant";
+import { PROFILS, TACHES_SUGGEREES } from "../lib/metiers";
+import type { TacheRecurrente } from "../types";
 
-function collaborateur(partiel: Partial<Collaborateur> = {}): Collaborateur {
+function tache(partiel: Partial<TacheRecurrente> = {}): TacheRecurrente {
   return {
     id: 1,
-    cle: "controleur",
-    nom: "Contrôleur",
-    role: "controleur",
-    user_id: 7,
-    consigne: "",
+    collaborateur_id: 1,
+    nom: "Relevé",
+    consigne: "Relève les incohérences.",
     cadence: "QUOTIDIENNE",
     heure: 7,
     jour: null,
-    fuseau: "UTC",
     actif: true,
     dernier_passage: null,
     ...partiel,
@@ -37,32 +34,95 @@ describe("la clé déduite du nom", () => {
   });
 });
 
-describe("quand il passe", () => {
+describe("quand une tâche passe", () => {
   it("nomme le jour d'une cadence hebdomadaire", () => {
-    expect(quand(collaborateur({ cadence: "HEBDOMADAIRE", jour: 4, heure: 7 }))).toBe(
+    expect(quand(tache({ cadence: "HEBDOMADAIRE", jour: 4, heure: 7 }))).toBe(
       "Chaque vendredi à 07 h"
     );
   });
 
   it("dit l'heure d'une cadence quotidienne", () => {
-    expect(quand(collaborateur({ heure: 18 }))).toBe("Tous les jours à 18 h");
+    expect(quand(tache({ heure: 18 }))).toBe("Tous les jours à 18 h");
   });
 
   it("ne promet rien pour une cadence manuelle", () => {
-    expect(quand(collaborateur({ cadence: "MANUELLE" }))).toBe("À la demande");
+    expect(quand(tache({ cadence: "MANUELLE" }))).toBe("À la demande");
   });
 });
 
-describe("les consignes de départ", () => {
-  it("le contrôleur en a une, sinon la page blanche gagne", () => {
-    expect(CONSIGNES["controleur"]).toContain("incohérences");
+describe("le résumé sous le nom d'un collaborateur", () => {
+  it("dit franchement qu'un agent sans tâche ne se réveillera jamais", () => {
+    // C'est l'état dans lequel un collaborateur NAÎT : le taire laisserait
+    // quelqu'un attendre un passage qui ne viendra pas.
+    expect(resumeDesTaches([])).toContain("jamais");
   });
 
-  it("chacune demande de signaler ce qui n'a pas pu être vérifié, ou reste factuelle", () => {
-    // La pente d'un modèle à qui l'on demande un relevé est de combler les
-    // blancs. Chaque gabarit doit pousser dans l'autre sens.
-    for (const [role, texte] of Object.entries(CONSIGNES)) {
+  it("ne compte pas les tâches en pause", () => {
+    expect(resumeDesTaches([tache({ actif: false })])).toBe("aucune tâche active");
+  });
+
+  it("décrit l'horaire quand il n'y en a qu'une", () => {
+    expect(resumeDesTaches([tache({ heure: 6 })])).toBe("tous les jours à 06 h");
+  });
+
+  it("compte au-delà de deux", () => {
+    expect(resumeDesTaches([tache({ id: 1 }), tache({ id: 2 })])).toBe(
+      "2 tâches récurrentes"
+    );
+  });
+
+  it("ignore les tâches à la demande, qui ne disent rien d'un horaire", () => {
+    expect(resumeDesTaches([tache({ cadence: "MANUELLE" })])).toBe("aucune tâche active");
+  });
+});
+
+describe("les profils de départ", () => {
+  it("le comptable sait de quoi il parle, sinon la page blanche gagne", () => {
+    expect(PROFILS["comptable"]).toContain("comptab");
+  });
+
+  it("chacun dit QUI est l'agent, au présent, à la deuxième personne", () => {
+    for (const [role, texte] of Object.entries(PROFILS)) {
+      expect(texte.startsWith("Tu es "), role).toBe(true);
       expect(texte.length, role).toBeGreaterThan(120);
     }
+  });
+});
+
+describe("les tâches de départ", () => {
+  it("chaque métier en propose au moins une", () => {
+    // Un collaborateur créé sans aucune tâche ne se réveille jamais, et rien
+    // à l'écran ne le dirait au moment de la création.
+    for (const role of Object.keys(PROFILS)) {
+      expect(TACHES_SUGGEREES[role]?.length ?? 0, role).toBeGreaterThan(0);
+    }
+  });
+
+  it("une tâche hebdomadaire porte toujours son jour", () => {
+    // Sans jour, le service la refuse : la proposer ainsi ferait échouer la
+    // création juste après avoir créé le compte.
+    for (const [role, taches] of Object.entries(TACHES_SUGGEREES)) {
+      for (const t of taches) {
+        if (t.cadence === "HEBDOMADAIRE") {
+          expect(t.jour, `${role}/${t.nom}`).not.toBeUndefined();
+        }
+      }
+    }
+  });
+
+  it("chacune a un nom et une consigne non vides", () => {
+    for (const [role, taches] of Object.entries(TACHES_SUGGEREES)) {
+      for (const t of taches) {
+        expect(t.nom.trim().length, role).toBeGreaterThan(0);
+        expect(t.consigne.trim().length, role).toBeGreaterThan(40);
+      }
+    }
+  });
+
+  it("le comptable en a deux : le matin et le soir", () => {
+    // C'est l'exemple qui a motivé la bascule vers plusieurs tâches.
+    const heures = (TACHES_SUGGEREES["comptable"] ?? []).map((t) => t.heure);
+    expect(heures.length).toBe(2);
+    expect(Math.max(...heures) - Math.min(...heures)).toBeGreaterThan(6);
   });
 });

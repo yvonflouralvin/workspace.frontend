@@ -16,6 +16,7 @@
     "@repo/agent-chat": "*",
     "@repo/approval-flows": "*",
     "@repo/auth": "*",
+    "@repo/inbox": "*",
     "@repo/network": "*",
     "@repo/notifications": "*",
     "@repo/ui": "*",

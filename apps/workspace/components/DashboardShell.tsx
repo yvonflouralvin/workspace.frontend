@@ -8,6 +8,7 @@ import { Sidebar } from "@repo/ui/shell/Sidebar";
 import { TopBar } from "@repo/ui/shell/TopBar";
 import { NotificationBell } from "@repo/notifications/NotificationBell";
 import { PanneauAssistant } from "@repo/agent-chat/PanneauAssistant";
+import { useResumeBoite } from "@repo/inbox/hooks/useResumeBoite";
 import { UserFooter } from "@repo/ui/shell/UserFooter";
 import { WorkspaceSwitcher } from "@repo/ui/WorkspaceSwitcher";
 import { appsAutorisees, WORKSPACE_SHELL } from "@repo/ui/shell/platform";
@@ -50,6 +51,11 @@ const SECONDARY_ITEMS: NavItem[] = [
   { label: "Aide",       href: "/help",     icon: <HelpOutlineOutlined style={{ fontSize: 20 }} /> },
 ];
 
+function avecPastilleBoite(items: NavItem[], total: number): NavItem[] {
+  if (total <= 0) return items;
+  return items.map((i) => (i.href === "/inbox" ? { ...i, badge: total } : i));
+}
+
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const { user, activeWorkspace } = useSessionStore();
   const { can } = usePermissions();
@@ -58,6 +64,9 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const landingAppKey = useSessionStore((s) => s.accueil?.landing_app_key);
   const handleLogout = useLogout();
   const handleSearch = useSearch();
+  // La pastille de la boîte : messages non lus ET alertes non lues. Les
+  // deux comptent, puisque les deux vivent au même endroit maintenant.
+  const boite = useResumeBoite();
 
   const userSummary = user
     ? { id: user.id, username: user.username, email: user.email }
@@ -90,7 +99,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       sidebar={
         <Sidebar
           topSlot={<WorkspaceSwitcher />}
-          navItems={menuDeSession(NAV_ITEMS, can, landingAppKey)}
+          navItems={menuDeSession(avecPastilleBoite(NAV_ITEMS, boite?.total ?? 0), can, landingAppKey)}
           secondaryItems={menuDeSession(SECONDARY_ITEMS, can, landingAppKey)}
           bottomSlot={<UserFooter user={userSummary} onLogout={handleLogout} subtitle={roleLabel} />}
         />

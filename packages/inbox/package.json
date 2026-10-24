@@ -1,0 +1,31 @@
+{
+  "name": "@repo/inbox",
+  "version": "0.0.0",
+  "private": true,
+  "exports": {
+    "./types": "./src/types.ts",
+    "./api/client": "./src/api/client.ts",
+    "./hooks/*": "./src/hooks/*.ts",
+    "./*": "./src/components/*.tsx"
+  },
+  "scripts": {
+    "check-types": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@repo/typescript-config": "*",
+    "@types/react": "19.2.2",
+    "@types/react-dom": "19.2.2",
+    "react-dom": "^19.2.0",
+    "typescript": "5.9.2",
+    "vitest": "^3.2.6"
+  },
+  "dependencies": {
+    "@mui/icons-material": "^9.1.1",
+    "@repo/agent-chat": "*",
+    "@repo/network": "*",
+    "@repo/notifications": "*",
+    "@repo/ui": "*",
+    "react": "^19.2.0"
+  }
+}

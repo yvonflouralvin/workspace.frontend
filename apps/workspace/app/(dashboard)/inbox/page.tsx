@@ -1,8 +1,27 @@
-export default function InboxPage() {
+"use client";
+
+import { Suspense } from "react";
+import { useSearchParams } from "next/navigation";
+import { usePermissions } from "@repo/auth/hooks/usePermissions";
+import { BoiteDeReception } from "@repo/inbox/BoiteDeReception";
+
+export default function PageInbox() {
   return (
-    <div className="p-8 max-w-5xl mx-auto">
-      <h1 className="text-2xl font-bold text-on-surface">Inbox</h1>
-      <p className="text-sm text-on-surface-variant mt-1">Aucun message pour le moment.</p>
-    </div>
+    <Suspense fallback={null}>
+      <Boite />
+    </Suspense>
+  );
+}
+
+function Boite() {
+  const { can } = usePermissions();
+  const params = useSearchParams();
+  const fil = Number(params.get("fil"));
+
+  return (
+    <BoiteDeReception
+      peutSaisirUnCollaborateur={can("agent.collaborateurs.saisir")}
+      filInitial={Number.isFinite(fil) && fil > 0 ? fil : undefined}
+    />
   );
 }

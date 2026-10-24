@@ -11,7 +11,7 @@ if (process.env.WORKSPACE_APP_URL) {
 
 const nextConfig: NextConfig = {
   allowedDevOrigins,
-  transpilePackages: ["@repo/ui", "@repo/network", "@repo/auth", "@repo/notifications", "@repo/approval-flows", "@repo/agent-chat"],
+  transpilePackages: ["@repo/ui", "@repo/network", "@repo/auth", "@repo/notifications", "@repo/approval-flows", "@repo/agent-chat", "@repo/inbox"],
   // Pas de `output: "standalone"` : les conteneurs montent déjà `node_modules`
   // depuis l'hôte et démarrent avec `next start`. Le mode standalone fabrique
   // un serveur autonome que personne ne lance — et si on le lançait tel quel,

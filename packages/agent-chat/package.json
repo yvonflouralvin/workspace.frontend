@@ -6,6 +6,7 @@
     "./types": "./src/types.ts",
     "./api/client": "./src/api/client.ts",
     "./hooks/useAssistant": "./src/hooks/useAssistant.ts",
+    "./lib/markdown": "./src/lib/markdown.tsx",
     "./*": "./src/components/*.tsx"
   },
   "scripts": {

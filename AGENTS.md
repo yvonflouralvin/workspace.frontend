@@ -34,6 +34,7 @@ frontends/
     reporting-widgets/         (@repo/reporting-widgets — KpiCard, ReportWidget, TableWidget…)
     site-widgets/              (@repo/site-widgets — catalogue de widgets + rendu partagé builder/public)
     agent-chat/                (@repo/agent-chat — assistant conversationnel, panneau + écran d'abonnement)
+    inbox/                     (@repo/inbox — boîte de réception : messages, collaborateurs, notifications)
     auth/                      (@repo/auth)
     network/                   (@repo/network)
     design-system/             (@repo/design-system)
@@ -379,6 +380,45 @@ se fait pas — le silence ne vaut pas accord.
 `ConnexionAssistant` est l'écran d'administration (permission `agent.manage`) —
 le jeton produit par `claude setup-token` sur la machine de l'administrateur, à
 coller une fois. Dans `workspace` : Paramètres › Assistant.
+
+### `@repo/inbox`
+
+La **boîte de réception** du workspace, branchée sur le hub `backends/notifications`
+(qui porte aussi les fils, pas seulement les notifications — voir l'`AGENTS.md` racine).
+
+```ts
+import { BoiteDeReception } from '@repo/inbox/BoiteDeReception'
+import { useResumeBoite } from '@repo/inbox/hooks/useResumeBoite'
+```
+
+`BoiteDeReception` (`{ peutSaisirUnCollaborateur?, filInitial? }`) est l'écran entier :
+quatre rayons — **Tout**, **Membres**, **Collaborateurs**, **Notifications** —, liste à
+gauche, lecture à droite, recherche sur les deux sources.
+
+**« Tout » mêle les fils et les notifications par date**, et c'est la raison d'être de
+l'écran : la question de tous les matins n'est pas « qu'est-ce qu'on m'a écrit » mais
+« qu'est-ce qui m'attend ». La fusion vit dans `lib/entrees.ts`, hors du composant, parce
+que l'ordre EST la fonctionnalité — un fil se classe à son DERNIER message, sinon un vieux
+fil qui vient de recevoir une réponse reste au fond de la liste.
+
+**Écrire à un collaborateur demande `agent.collaborateurs.saisir`** : il agit avec SES
+droits, pas ceux de qui le sollicite. Sans la permission, le composeur le dit et le serveur
+refuse de toute façon.
+
+Un fil de collaborateur se **recharge toutes les 4 s tant qu'il attend** (`en_cours`) : la
+réponse arrive par un autre chemin que le nôtre — le service `agent` la repose quand sa
+mission est finie — et sans cette boucle elle n'apparaîtrait qu'au prochain clic.
+
+L'app consommatrice fournit ses routes BFF sous `/api/inbox/*` (`fils`, `fils/[id]`,
+`fils/[id]/messages`, `resume`, `annuaire`) plus `/api/notifications/applications`, toutes
+en `forwardToBackend` vers `NOTIFICATIONS_API_URL`. La pastille de la barre latérale se
+branche avec `useResumeBoite()` (sondage à la minute : la cloche a son WebSocket, les fils
+n'en ont pas, et on n'ouvre pas une seconde socket pour un nombre).
+
+Le rendu Markdown vient de `@repo/agent-chat/lib/markdown` — un compte rendu de
+collaborateur est écrit par un modèle, comme une réponse de chat. Le composant gagnerait à
+vivre dans `@repo/ui`, mais ses tests y sont et `@repo/ui` n'a pas de harnais : déplacement
+remis à plus tard, assumé.
 
 ### `@repo/approval-flows`
 

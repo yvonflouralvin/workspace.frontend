@@ -12,6 +12,9 @@ export interface InAppNotification {
 export interface NotificationList {
   items: InAppNotification[];
   unread_count: number;
+  /** Le nombre de lignes QUI CORRESPONDENT aux filtres, distinct du
+   *  compteur de la cloche. Absent quand on ne filtre pas. */
+  total?: number;
 }
 
 // ─── Configuration (Paramètres) ──────────────────────────────────────────────

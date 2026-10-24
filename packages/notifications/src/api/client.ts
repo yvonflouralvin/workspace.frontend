@@ -30,8 +30,26 @@ async function parseResponse(response: Response) {
 
 const DEFAULT_BASE_PATH = "/api/notifications";
 
-export async function listNotifications(basePath = DEFAULT_BASE_PATH): Promise<NotificationList> {
-  return parseResponse(await apiFetch(`${basePath}`));
+export async function listNotifications(
+  basePath = DEFAULT_BASE_PATH,
+  // Chercher dans ses notifications : le hub les garde toutes depuis toujours,
+  // mais la cloche n'en montre que les dernières. Optionnel, pour que les
+  // appels existants (la cloche, justement) ne changent pas d'un caractère.
+  params?: { q?: string; app?: string; non_lues?: boolean; limit?: number },
+): Promise<NotificationList> {
+  const query = new URLSearchParams();
+  if (params?.q) query.set("q", params.q);
+  if (params?.app) query.set("app", params.app);
+  if (params?.non_lues) query.set("non_lues", "true");
+  if (params?.limit) query.set("limit", String(params.limit));
+  const suffixe = query.toString() ? `?${query}` : "";
+  return parseResponse(await apiFetch(`${basePath}${suffixe}`));
+}
+
+export async function listApplications(
+  basePath = DEFAULT_BASE_PATH,
+): Promise<{ app_key: string }[]> {
+  return parseResponse(await apiFetch(`${basePath}/applications`));
 }
 
 export async function getUnreadCount(basePath = DEFAULT_BASE_PATH): Promise<number> {

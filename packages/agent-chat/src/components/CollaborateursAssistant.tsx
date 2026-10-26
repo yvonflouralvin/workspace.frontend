@@ -6,7 +6,9 @@ import {
   DeleteOutlineOutlined,
   EditOutlined,
   ErrorOutlineOutlined,
+  GroupOutlined,
   HistoryOutlined,
+  LockOutlined,
   PlayArrowOutlined,
   SmartToyOutlined,
 } from "@mui/icons-material";
@@ -19,16 +21,25 @@ import {
   creerTache,
   lancerMission,
   listerCollaborateurs,
+  listerGroupesAutorises,
   listerMissions,
   listerRoles,
   lireMission,
   modifierCollaborateur,
   modifierTache,
+  reglerGroupesAutorises,
   supprimerTache,
 } from "../api/collaborateurs";
 import { PROFILS, TACHES_SUGGEREES } from "../lib/metiers";
 import { Markdown } from "../lib/markdown";
-import type { Collaborateur, Mission, RoleCollaborateur, TacheRecurrente } from "../types";
+import type {
+  Collaborateur,
+  GroupeAutorise,
+  Mission,
+  NiveauAcces,
+  RoleCollaborateur,
+  TacheRecurrente,
+} from "../types";
 
 const JOURS = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"];
 
@@ -49,6 +60,26 @@ export function enCle(nom: string): string {
  *  secondes : un écran qui ne bouge pas pendant ce temps donne l'impression
  *  que le bouton n'a rien fait. */
 const RYTHME_SUIVI_MS = 3000;
+
+type Onglet = "profil" | "taches" | "groupes" | "passages";
+
+const ONGLETS: { cle: Onglet; libelle: string; Icone: typeof EditOutlined }[] = [
+  { cle: "profil", libelle: "Profil", Icone: EditOutlined },
+  { cle: "taches", libelle: "Tâches", Icone: HistoryOutlined },
+  { cle: "groupes", libelle: "Groupes autorisés", Icone: GroupOutlined },
+  { cle: "passages", libelle: "Passages", Icone: PlayArrowOutlined },
+];
+
+/** Les trois états d'une ligne de l'onglet « Groupes autorisés ».
+ *
+ *  « Aucun » est un état à part entière, pas l'absence de choix : c'est lui
+ *  qui ferme la porte, et le cacher derrière une case décochée laisserait
+ *  croire qu'on n'a pas encore réglé. */
+const NIVEAUX: { valeur: NiveauAcces | null; libelle: string; aide: string }[] = [
+  { valeur: null, libelle: "Aucun", aide: "ne peut pas le solliciter" },
+  { valeur: "LECTURE", libelle: "Lecture", aide: "peut lui demander de regarder et de rendre compte" },
+  { valeur: "ECRITURE", libelle: "Écriture", aide: "peut lui faire modifier des données" },
+];
 
 export function quand(t: Pick<TacheRecurrente, "cadence" | "heure" | "jour">): string {
   if (t.cadence === "MANUELLE") return "À la demande";
@@ -236,6 +267,7 @@ function CarteCollaborateur({
   const [tacheEditee, setTacheEditee] = useState<TacheRecurrente | "nouvelle" | null>(null);
   const [profilEdite, setProfilEdite] = useState(false);
   const [ponctuelle, setPonctuelle] = useState(false);
+  const [onglet, setOnglet] = useState<Onglet>("profil");
   const { confirmer, dialogue } = useConfirmSuppression();
 
   const charger = useCallback(async () => {
@@ -357,86 +389,131 @@ function CarteCollaborateur({
       {souci && <p className="px-4 pb-3 text-body-sm text-error">{souci}</p>}
 
       {ouvert && (
-        <div className="border-t border-hairline px-4 py-4">
-          <div className="flex items-center justify-between gap-2 mb-1.5">
-            <p className="text-label-sm uppercase text-outline">Son profil</p>
-            {peutGerer && (
+        <div className="border-t border-hairline">
+          <div
+            role="tablist"
+            aria-label={`Réglages de ${collaborateur.nom}`}
+            className="flex gap-1 overflow-x-auto border-b border-hairline px-3 pt-2"
+          >
+            {ONGLETS.map(({ cle, libelle, Icone }) => (
               <button
+                key={cle}
                 type="button"
-                onClick={() => setProfilEdite(true)}
-                className="inline-flex items-center gap-1 text-label-md text-primary hover:opacity-70 transition-opacity"
+                role="tab"
+                aria-selected={onglet === cle}
+                onClick={() => setOnglet(cle)}
+                className={`flex-none inline-flex items-center gap-1.5 rounded-t-lg px-3 py-2 text-label-md transition-colors ${
+                  onglet === cle
+                    ? "border-b-2 border-primary text-primary"
+                    : "border-b-2 border-transparent text-on-surface-variant hover:text-on-surface"
+                }`}
               >
-                <EditOutlined style={{ fontSize: 14 }} />
-                Modifier
+                <Icone style={{ fontSize: 16 }} />
+                {libelle}
               </button>
+            ))}
+          </div>
+
+          <div className="px-4 py-4">
+            {onglet === "profil" && (
+              <>
+                <div className="flex items-center justify-between gap-2 mb-1.5">
+                  <p className="text-label-sm uppercase text-outline">Son profil</p>
+                  {peutGerer && (
+                    <button
+                      type="button"
+                      onClick={() => setProfilEdite(true)}
+                      className="inline-flex items-center gap-1 text-label-md text-primary hover:opacity-70 transition-opacity"
+                    >
+                      <EditOutlined style={{ fontSize: 14 }} />
+                      Modifier
+                    </button>
+                  )}
+                </div>
+                <p className="text-body-sm text-on-surface-variant whitespace-pre-wrap">
+                  {collaborateur.profil ||
+                    "— aucun profil : il travaillera comme un assistant quelconque."}
+                </p>
+              </>
+            )}
+
+            {onglet === "taches" && (
+              <>
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <p className="text-label-sm uppercase text-outline">
+                    Ses tâches récurrentes
+                  </p>
+                  {peutGerer && (
+                    <button
+                      type="button"
+                      onClick={() => setTacheEditee("nouvelle")}
+                      className="inline-flex items-center gap-1 text-label-md text-primary hover:opacity-70 transition-opacity"
+                    >
+                      <AddOutlined style={{ fontSize: 14 }} />
+                      Ajouter
+                    </button>
+                  )}
+                </div>
+                {sansTache ? (
+                  <p className="rounded-xl bg-surface-container-low p-3 text-body-sm text-on-surface-variant">
+                    Aucune tâche : <strong className="text-on-surface">il ne se réveillera
+                    jamais tout seul</strong>. Vous pouvez quand même lui demander quelque
+                    chose ponctuellement, ici ou depuis la boîte de réception.
+                  </p>
+                ) : (
+                  <ul className="flex flex-col gap-2">
+                    {collaborateur.taches.map((t) => (
+                      <LigneTache
+                        key={t.id}
+                        tache={t}
+                        peutGerer={peutGerer}
+                        occupe={!collaborateur.actif || enVol !== null}
+                        onLancer={() => faireAgir({ tache_id: t.id })}
+                        onEditer={() => setTacheEditee(t)}
+                        onSupprimer={() => retirerTache(t)}
+                        onBasculer={async (actif) => {
+                          await modifierTache(collaborateur.id, t.id, { actif }, base);
+                          await onChange();
+                        }}
+                      />
+                    ))}
+                  </ul>
+                )}
+              </>
+            )}
+
+            {onglet === "groupes" && (
+              <PanneauGroupes
+                collaborateur={collaborateur}
+                peutGerer={peutGerer}
+                base={base}
+              />
+            )}
+
+            {onglet === "passages" && (
+              <>
+                {missions === null ? (
+                  <p className="text-body-sm text-on-surface-variant">Chargement…</p>
+                ) : missions.length === 0 ? (
+                  <p className="text-body-sm text-on-surface-variant">
+                    Il n&apos;est encore jamais passé.
+                  </p>
+                ) : (
+                  <ul className="flex flex-col gap-2">
+                    {missions.map((m) => (
+                      <LigneMission
+                        key={m.id}
+                        mission={m}
+                        nomDeLaTache={
+                          collaborateur.taches.find((t) => t.id === m.tache_id)?.nom ?? null
+                        }
+                      />
+                    ))}
+                  </ul>
+                )}
+              </>
             )}
           </div>
-          <p className="text-body-sm text-on-surface-variant whitespace-pre-wrap mb-5">
-            {collaborateur.profil || "— aucun profil : il travaillera comme un assistant quelconque."}
-          </p>
-
-          <div className="flex items-center justify-between gap-2 mb-2">
-            <p className="text-label-sm uppercase text-outline">Ses tâches récurrentes</p>
-            {peutGerer && (
-              <button
-                type="button"
-                onClick={() => setTacheEditee("nouvelle")}
-                className="inline-flex items-center gap-1 text-label-md text-primary hover:opacity-70 transition-opacity"
-              >
-                <AddOutlined style={{ fontSize: 14 }} />
-                Ajouter
-              </button>
-            )}
-          </div>
-          {sansTache ? (
-            <p className="mb-5 rounded-xl bg-surface-container-low p-3 text-body-sm text-on-surface-variant">
-              Aucune tâche : <strong className="text-on-surface">il ne se réveillera
-              jamais tout seul</strong>. Vous pouvez quand même lui demander quelque chose
-              ponctuellement, ici ou depuis la boîte de réception.
-            </p>
-          ) : (
-            <ul className="mb-5 flex flex-col gap-2">
-              {collaborateur.taches.map((t) => (
-                <LigneTache
-                  key={t.id}
-                  tache={t}
-                  peutGerer={peutGerer}
-                  occupe={!collaborateur.actif || enVol !== null}
-                  onLancer={() => faireAgir({ tache_id: t.id })}
-                  onEditer={() => setTacheEditee(t)}
-                  onSupprimer={() => retirerTache(t)}
-                  onBasculer={async (actif) => {
-                    await modifierTache(collaborateur.id, t.id, { actif }, base);
-                    await onChange();
-                  }}
-                />
-              ))}
-            </ul>
-          )}
-
-          <p className="flex items-center gap-1.5 text-label-sm uppercase text-outline mb-2">
-            <HistoryOutlined style={{ fontSize: 14 }} />
-            Ses passages
-          </p>
-          {missions === null ? (
-            <p className="text-body-sm text-on-surface-variant">Chargement…</p>
-          ) : missions.length === 0 ? (
-            <p className="text-body-sm text-on-surface-variant">
-              Il n&apos;est encore jamais passé.
-            </p>
-          ) : (
-            <ul className="flex flex-col gap-2">
-              {missions.map((m) => (
-                <LigneMission
-                  key={m.id}
-                  mission={m}
-                  nomDeLaTache={
-                    collaborateur.taches.find((t) => t.id === m.tache_id)?.nom ?? null
-                  }
-                />
-              ))}
-            </ul>
-          )}
         </div>
       )}
 
@@ -479,6 +556,132 @@ function CarteCollaborateur({
         />
       )}
     </li>
+  );
+}
+
+function PanneauGroupes({
+  collaborateur,
+  peutGerer,
+  base,
+}: {
+  collaborateur: Collaborateur;
+  peutGerer: boolean;
+  base?: string;
+}) {
+  const [groupes, setGroupes] = useState<GroupeAutorise[] | null>(null);
+  const [ouvertATous, setOuvertATous] = useState(false);
+  const [souci, setSouci] = useState<string | null>(null);
+  const [enCours, setEnCours] = useState<number | null>(null);
+
+  useEffect(() => {
+    let vivant = true;
+    listerGroupesAutorises(collaborateur.id, base)
+      .then((etat) => {
+        if (!vivant) return;
+        setGroupes(etat.groupes);
+        setOuvertATous(etat.ouvert_a_tous);
+      })
+      .catch(() => vivant && setSouci("Les groupes n'ont pas pu être chargés."));
+    return () => {
+      vivant = false;
+    };
+  }, [collaborateur.id, base]);
+
+  async function changer(groupId: number, niveau: NiveauAcces | null) {
+    if (groupes === null) return;
+    // L'écran envoie sa liste ENTIÈRE : le serveur n'a pas à deviner ce qui
+    // a été décoché entre deux appels.
+    const voulus = groupes.map((g) => (g.group_id === groupId ? { ...g, niveau } : g));
+    setSouci(null);
+    setEnCours(groupId);
+    try {
+      const etat = await reglerGroupesAutorises(
+        collaborateur.id,
+        voulus.map((g) => ({ group_id: g.group_id, niveau: g.niveau })),
+        base
+      );
+      setGroupes(etat.groupes);
+      setOuvertATous(etat.ouvert_a_tous);
+    } catch (err) {
+      setSouci(err instanceof Error ? err.message : "Le réglage n'a pas pu être enregistré.");
+    } finally {
+      setEnCours(null);
+    }
+  }
+
+  if (groupes === null) {
+    return <p className="text-body-sm text-on-surface-variant">{souci ?? "Chargement…"}</p>;
+  }
+
+  return (
+    <>
+      <p className="text-label-sm uppercase text-outline mb-2">
+        Qui peut le faire travailler
+      </p>
+      <p className="mb-3 text-body-sm text-on-surface-variant">
+        {collaborateur.nom} agit avec <strong className="text-on-surface">ses</strong>{" "}
+        droits à lui, pas ceux de qui le sollicite. Ouvrir un groupe en écriture ne lui
+        donne rien de plus — ça autorise ce groupe à se servir de ce qu&apos;il a déjà.
+      </p>
+
+      {ouvertATous && (
+        <p className="mb-3 flex items-start gap-2 rounded-xl bg-surface-container-low p-3 text-body-sm text-on-surface-variant">
+          <LockOutlined style={{ fontSize: 16 }} className="mt-0.5 flex-none text-outline" />
+          <span>
+            Aucun groupe n&apos;est réglé : <strong className="text-on-surface">tout le
+            monde peut lui parler, en lecture</strong>. C&apos;est l&apos;état par défaut.
+            Dès que vous réglez un groupe, les autres sont fermés.
+          </span>
+        </p>
+      )}
+
+      {groupes.length === 0 ? (
+        <p className="text-body-sm text-on-surface-variant">
+          Cet espace de travail n&apos;a aucun groupe. Créez-en un depuis Membres.
+        </p>
+      ) : (
+        <ul className="flex flex-col divide-y divide-hairline">
+          {groupes.map((g) => (
+            <li key={g.group_id} className="flex items-center gap-3 py-2.5">
+              <span className="flex-1 min-w-0 truncate text-body-sm text-on-surface">
+                {g.nom}
+              </span>
+              <div
+                role="radiogroup"
+                aria-label={`Accès du groupe ${g.nom}`}
+                className="flex-none inline-flex rounded-lg border border-outline-soft overflow-hidden"
+              >
+                {NIVEAUX.map((n) => (
+                  <button
+                    key={n.libelle}
+                    type="button"
+                    role="radio"
+                    aria-checked={g.niveau === n.valeur}
+                    title={`${g.nom} ${n.aide}`}
+                    disabled={!peutGerer || enCours === g.group_id}
+                    onClick={() => changer(g.group_id, n.valeur)}
+                    className={`px-2.5 py-1 text-label-md transition-colors disabled:opacity-40 ${
+                      g.niveau === n.valeur
+                        ? "bg-primary text-on-primary"
+                        : "text-on-surface-variant hover:bg-surface-container"
+                    }`}
+                  >
+                    {n.libelle}
+                  </button>
+                ))}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <p className="mt-3 text-label-sm text-outline">
+        Un collaborateur n&apos;écrit jamais sur un premier message : il propose
+        d&apos;abord, et n&apos;agit qu&apos;une fois qu&apos;on lui a répondu.
+      </p>
+
+      {souci && <p className="mt-2 text-body-sm text-error">{souci}</p>}
+    </>
   );
 }
 
@@ -793,8 +996,12 @@ function FormulaireProfil({
             onChange={(e) => setProfil(e.target.value)}
           />
           <p className="mt-1 text-label-sm text-outline">
-            Le profil ne peut pas lever les règles du moteur : il travaille seul, en
-            lecture seule, et doit dire ce qu&apos;il n&apos;a pas pu vérifier.
+            Le profil dit QUI il est, pas ce qu&apos;il a le droit de faire. Promettre
+            ici qu&apos;il « crée » ou « modifie » ne lui en donne pas le moyen : ce sont
+            les <strong className="text-on-surface-variant">groupes autorisés</strong> qui
+            décident, et il n&apos;écrit jamais sans qu&apos;on le lui ait demandé. Le
+            profil ne lève aucune règle du moteur — il travaille seul, et doit dire ce
+            qu&apos;il n&apos;a pas pu vérifier.
           </p>
         </FormField>
       </div>

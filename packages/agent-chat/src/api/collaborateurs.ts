@@ -1,5 +1,12 @@
 import { apiFetch } from "@repo/network/client";
-import type { Collaborateur, Mission, RoleCollaborateur, TacheRecurrente } from "../types";
+import type {
+  Collaborateur,
+  GroupesAutorises,
+  Mission,
+  NiveauAcces,
+  RoleCollaborateur,
+  TacheRecurrente,
+} from "../types";
 import { BASE_PAR_DEFAUT, ErreurAssistant } from "./client";
 
 async function json<T>(reponse: Response): Promise<T> {
@@ -133,4 +140,29 @@ export async function lancerMission(
 
 export async function lireMission(id: number, base = BASE_PAR_DEFAUT): Promise<Mission> {
   return json(await apiFetch(`${base}/collaborateurs/missions/${id}`));
+}
+
+// ─── qui a le droit de le faire travailler ───────────────────────────────────
+
+export async function listerGroupesAutorises(
+  collaborateurId: number,
+  base = BASE_PAR_DEFAUT
+): Promise<GroupesAutorises> {
+  return json(await apiFetch(`${base}/collaborateurs/${collaborateurId}/groupes`));
+}
+
+/** Remplace la liste ENTIÈRE. L'écran envoie son état complet : traiter
+ *  l'appel comme un ajout obligerait le serveur à deviner ce qui a été
+ *  décoché. */
+export async function reglerGroupesAutorises(
+  collaborateurId: number,
+  groupes: { group_id: number; niveau: NiveauAcces | null }[],
+  base = BASE_PAR_DEFAUT
+): Promise<GroupesAutorises> {
+  return json(
+    await apiFetch(`${base}/collaborateurs/${collaborateurId}/groupes`, {
+      method: "PUT",
+      body: { groupes },
+    })
+  );
 }

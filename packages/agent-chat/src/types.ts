@@ -93,6 +93,29 @@ export interface TacheRecurrente {
   dernier_passage: string | null;
 }
 
+/** Ce qu'un groupe d'humains a le droit de DEMANDER à un collaborateur.
+ *
+ *  À ne pas confondre avec les droits DU collaborateur, qui sont ses propres
+ *  groupes dans `auth` et qui bornent tout : ouvrir un groupe en écriture ne
+ *  fait pas dépasser le collaborateur de ses droits, ça l'autorise seulement
+ *  à s'en servir pour ce demandeur-là. */
+export type NiveauAcces = "LECTURE" | "ECRITURE";
+
+export interface GroupeAutorise {
+  group_id: number;
+  nom: string;
+  /** `null` : ce groupe ne peut pas le solliciter. */
+  niveau: NiveauAcces | null;
+}
+
+export interface GroupesAutorises {
+  /** Aucune règle posée : il répond à tout le monde en lecture. C'est l'état
+   *  d'avant ce réglage, et l'écran doit pouvoir le dire — une liste vide
+   *  laisserait croire que personne ne peut lui parler. */
+  ouvert_a_tous: boolean;
+  groupes: GroupeAutorise[];
+}
+
 /** Un métier qu'on sait confier à un collaborateur. Servi par le backend
  *  depuis le code : l'écran doit proposer exactement ce que le moteur sait
  *  résoudre. */
@@ -111,6 +134,7 @@ export interface Mission {
   invite: string;
   compte_rendu: string;
   erreur: string | null;
+  niveau: NiveauAcces;
   outils_offerts: string[];
   outils_appeles: string[];
   demarree_le: string | null;

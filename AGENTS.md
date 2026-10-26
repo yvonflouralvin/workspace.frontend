@@ -377,6 +377,16 @@ et il ne peut pas en être autrement : côté serveur le tour est **suspendu**
 dans un autre appel, à attendre précisément celle-ci. Sans réponse, l'action ne
 se fait pas — le silence ne vaut pas accord.
 
+**Un collaborateur peut ÉCRIRE, et c'est réglé par groupe.** Sa fiche a quatre
+onglets — Profil, Tâches, Groupes autorisés, Passages. Le troisième dit quels groupes
+d'humains peuvent le solliciter et jusqu'où : rien, lecture, ou écriture. Aucune règle
+posée vaut **lecture pour tout le monde**, l'état d'avant ce réglage ; dès qu'une règle
+existe, la liste fait foi. À ne pas confondre avec les droits DU collaborateur, qui
+sont ses propres groupes dans `auth` et se gèrent depuis Membres — ouvrir un groupe en
+écriture ne lui donne rien de plus, ça autorise ce groupe à se servir de ce qu'il a
+déjà. Le champ profil le dit : promettre « tu crées, tu modifies » n'en donne pas le
+moyen.
+
 `ConnexionAssistant` est l'écran d'administration (permission `agent.manage`) —
 le jeton produit par `claude setup-token` sur la machine de l'administrateur, à
 coller une fois. Dans `workspace` : Paramètres › Assistant.
@@ -765,6 +775,13 @@ Résumé :
 ---
 
 ## Tests — Règle minimale
+
+**`apps/workspace` a un harnais** (`app/__tests__`, vitest) dont le premier test garde
+une couture que `tsc` ne voit pas : les fonctions d'appel vivent dans les paquets
+partagés, les routes BFF qui les servent vivent dans l'app, et rien ne reliait les
+deux. La 2026.11.24 est partie avec le CRUD des tâches récurrentes côté paquet et
+aucune route pour le servir — l'écran rendait un 404 que seul un essai à la main
+révélait. Toute nouvelle fonction d'appel ajoute sa ligne à `ATTENDUS`.
 
 Avant tout commit touchant une app : **`tsc --noEmit` doit passer à zéro**.
 Avant toute PR : **`next build` doit réussir** + smoke test de la route modifiée.

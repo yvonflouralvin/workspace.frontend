@@ -51,3 +51,16 @@ export function depuis(iso: string, maintenant: number = Date.now()): string {
   if (j < 7) return `${j} j`;
   return new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
 }
+
+/** Ce qui s'affiche en gras sur une ligne de la liste.
+ *
+ *  POUR UNE CONVERSATION, C'EST LE NOM DES GENS. Elle n'a pas d'objet : on
+ *  n'en ouvre qu'une par correspondant, et c'est lui qu'on cherche des yeux
+ *  dans la liste. Le repli n'arrive qu'à une conversation dont tous les
+ *  autres participants ont quitté l'espace — rare, mais une ligne vide se
+ *  lirait comme un défaut d'affichage. */
+export function titreDe(entree: Entree): string {
+  if (entree.sorte !== "fil") return entree.notification.title;
+  const noms = entree.fil.correspondants.map((p) => p.nom).filter(Boolean);
+  return noms.length > 0 ? noms.join(", ") : "Conversation";
+}

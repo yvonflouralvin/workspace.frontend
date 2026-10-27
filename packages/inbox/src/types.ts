@@ -22,14 +22,21 @@ export interface MessageFil {
 
 export type GenreFil = "MEMBRE" | "COLLABORATEUR";
 
+/** UNE CONVERSATION, et une seule par correspondant.
+ *
+ *  Pas de sujet : on n'ouvre pas deux conversations avec un collègue parce
+ *  qu'on a deux questions. Une conversation se nomme par les gens qui y
+ *  sont, et réécrire à la même personne rouvre la même. */
 export interface Fil {
   id: number;
-  sujet: string;
   genre: GenreFil;
   cree_par: number;
   cree_le: string;
   dernier_message_le: string;
-  participants: Personne[];
+  /** Qui est en face, et jamais soi-même : résolu par le serveur, qui sait
+   *  qui demande. « Alice, Bob » affiché à Alice lui dirait qu'elle se parle
+   *  à elle-même. */
+  correspondants: Personne[];
   apercu: string;
   non_lu: boolean;
   /** Un collaborateur travaille : l'écran dit « réfléchit… » plutôt que de

@@ -39,7 +39,7 @@ export async function lireFil(id: number, base = BASE): Promise<FilDetail> {
 }
 
 export async function creerFil(
-  corps: { sujet: string; destinataires: number[]; contenu: string },
+  corps: { destinataires: number[]; contenu: string },
   base = BASE,
 ): Promise<FilDetail> {
   return lire(await apiFetch(`${base}/fils`, { method: "POST", body: corps }));

@@ -405,6 +405,12 @@ import { useResumeBoite } from '@repo/inbox/hooks/useResumeBoite'
 quatre rayons — **Tout**, **Membres**, **Collaborateurs**, **Notifications** —, liste à
 gauche, lecture à droite, recherche sur les deux sources.
 
+**Une conversation par correspondant, sans objet.** On n'en ouvre pas deux avec le
+même collègue : « Nouveau » → choisir quelqu'un rouvre la conversation qu'on a déjà
+avec lui. La liste porte donc le **nom des gens** (`titreDe`, dans `lib/entrees.ts`),
+pas un sujet. Le serveur rend `correspondants` — tout le monde sauf soi — parce qu'il
+sait qui demande là où le paquet ne tient pas de session.
+
 **« Tout » mêle les fils et les notifications par date**, et c'est la raison d'être de
 l'écran : la question de tous les matins n'est pas « qu'est-ce qu'on m'a écrit » mais
 « qu'est-ce qui m'attend ». La fusion vit dans `lib/entrees.ts`, hors du composant, parce

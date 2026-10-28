@@ -86,16 +86,15 @@ export function VueFil({
       </p>
     );
 
-  const agent = fil.participants.find((p) => p.collaborateur);
+  const agent = fil.correspondants.find((p) => p.collaborateur);
 
   return (
     <div className="flex h-full flex-col">
       <header className="shrink-0 border-b border-outline-variant bg-surface-container-lowest px-6 py-3.5">
-        <h2 className="truncate font-display text-headline-sm text-on-surface">{fil.sujet}</h2>
-        <p className="mt-0.5 flex items-center gap-1.5 text-body-sm text-on-surface-variant">
-          {agent && <SmartToyOutlined style={{ fontSize: 15 }} />}
-          {fil.participants.map((p) => p.nom).join(", ")}
-        </p>
+        <h2 className="flex items-center gap-1.5 truncate font-display text-headline-sm text-on-surface">
+          {agent && <SmartToyOutlined style={{ fontSize: 18 }} />}
+          {fil.correspondants.map((p) => p.nom).join(", ")}
+        </h2>
       </header>
 
       <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5">

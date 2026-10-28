@@ -42,6 +42,8 @@ const ATTENDUS: string[] = [
   "inbox/resume",
   "inbox/annuaire",
   "notifications/applications",
+  // l'organigramme : titre et attributions d'un membre
+  "workspaces/[workspaceId]/members/[membershipId]/profil",
 ];
 
 describe("les routes BFF que les paquets partagés appellent", () => {

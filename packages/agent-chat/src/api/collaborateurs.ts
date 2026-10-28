@@ -1,6 +1,7 @@
 import { apiFetch } from "@repo/network/client";
 import type {
   Collaborateur,
+  EchangeEntreAgents,
   GroupesAutorises,
   Mission,
   NiveauAcces,
@@ -165,4 +166,17 @@ export async function reglerGroupesAutorises(
       body: { groupes },
     })
   );
+}
+
+
+// ─── ce qu'il dit aux autres collaborateurs ──────────────────────────────────
+
+export async function listerEchanges(
+  collaborateurId: number,
+  base = BASE_PAR_DEFAUT
+): Promise<EchangeEntreAgents[]> {
+  const charge = await json<{ conversations: EchangeEntreAgents[] }>(
+    await apiFetch(`${base}/collaborateurs/${collaborateurId}/echanges`)
+  );
+  return charge.conversations ?? [];
 }

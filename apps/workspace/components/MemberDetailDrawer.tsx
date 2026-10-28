@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import {
   CheckOutlined,
   CloseOutlined,
+  BadgeOutlined,
   LockOutlined,
   LockResetOutlined,
   VisibilityOffOutlined,
@@ -25,6 +26,7 @@ import {
   ApiError,
   resetMemberPassword,
   setMemberGroups,
+  setMemberProfil,
   setMemberPermissions,
 } from "@/app/lib/api";
 import {
@@ -55,7 +57,7 @@ export function MemberDetailDrawer({
   onUpdated: (member: Member) => void;
   onRemove: () => void;
 }) {
-  const [panel, setPanel] = useState<"none" | "permissions" | "password">("none");
+  const [panel, setPanel] = useState<"none" | "profil" | "permissions" | "password">("none");
 
   const role = memberRole(member);
   const effective = useMemo(
@@ -73,6 +75,13 @@ export function MemberDetailDrawer({
           <>
             {canManage && (
               <>
+                <SecondaryButton
+                  active={panel === "profil"}
+                  onClick={() => setPanel(panel === "profil" ? "none" : "profil")}
+                >
+                  <BadgeOutlined style={{ fontSize: 13 }} />
+                  Titre et attributions
+                </SecondaryButton>
                 <SecondaryButton
                   active={panel === "permissions"}
                   onClick={() => setPanel(panel === "permissions" ? "none" : "permissions")}
@@ -133,6 +142,25 @@ export function MemberDetailDrawer({
         </div>
       </div>
 
+      <p className={`${SECTION_LABEL} mb-1.5`}>Ce qu&apos;il ou elle fait ici</p>
+      {member.titre || member.attributions ? (
+        <div className="mb-5">
+          {member.titre && (
+            <p className="text-body-md font-medium text-on-surface">{member.titre}</p>
+          )}
+          {member.attributions && (
+            <p className="mt-0.5 whitespace-pre-wrap text-body-sm text-on-surface-variant">
+              {member.attributions}
+            </p>
+          )}
+        </div>
+      ) : (
+        <p className="mb-5 text-body-sm text-outline">
+          Rien d&apos;indiqué — personne ne peut deviner à quoi s&apos;adresser à
+          cette personne, et les collaborateurs virtuels pas davantage.
+        </p>
+      )}
+
       <p className={`${SECTION_LABEL} mb-2`}>Groupes</p>
       <div className="flex flex-wrap gap-1.5 mb-5">
         {member.groups.length === 0 ? (
@@ -151,6 +179,15 @@ export function MemberDetailDrawer({
         <PermissionSourceLegend />
       </div>
       <EffectivePermissionsList apps={effective} />
+
+      {panel === "profil" && (
+        <ProfilPanel
+          member={member}
+          workspaceId={workspaceId}
+          onClose={() => setPanel("none")}
+          onUpdated={onUpdated}
+        />
+      )}
 
       {panel === "permissions" && (
         <PermissionsPanel
@@ -194,6 +231,104 @@ function SecondaryButton({
     >
       {children}
     </button>
+  );
+}
+
+function ProfilPanel({
+  member,
+  workspaceId,
+  onClose,
+  onUpdated,
+}: {
+  member: Member;
+  workspaceId: number;
+  onClose: () => void;
+  onUpdated: (member: Member) => void;
+}) {
+  const [titre, setTitre] = useState(member.titre ?? "");
+  const [attributions, setAttributions] = useState(member.attributions ?? "");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function save() {
+    setError(null);
+    setSaving(true);
+    try {
+      onUpdated(await setMemberProfil(workspaceId, member.id, { titre, attributions }));
+      onClose();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Une erreur est survenue");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <PanelShell title="Titre et attributions" onClose={onClose}>
+      <div className="px-3.5 py-3.5 space-y-4">
+        {error && <p className="text-body-sm text-error">{error}</p>}
+
+        <p className="text-body-sm text-on-surface-variant">
+          Ce n&apos;est pas un droit, c&apos;est un repère : à quoi sert cette personne
+          dans l&apos;organisation. Les collègues s&apos;en servent pour savoir à qui
+          s&apos;adresser — et les collaborateurs virtuels aussi, quand ils butent sur
+          ce qu&apos;ils ne savent pas faire.
+        </p>
+
+        <div className="space-y-1.5">
+          <label className="block text-body-sm font-medium text-on-surface" htmlFor="titre-membre">
+            Titre
+          </label>
+          <input
+            id="titre-membre"
+            type="text"
+            value={titre}
+            maxLength={120}
+            onChange={(e) => setTitre(e.target.value)}
+            placeholder="Responsable commercial"
+            className="w-full rounded-lg border border-outline-soft bg-surface-container-lowest px-3 py-2 text-body-md text-on-surface placeholder:text-outline focus:border-primary focus:outline-none"
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <label
+            className="block text-body-sm font-medium text-on-surface"
+            htmlFor="attributions-membre"
+          >
+            Attributions
+          </label>
+          <textarea
+            id="attributions-membre"
+            value={attributions}
+            rows={4}
+            onChange={(e) => setAttributions(e.target.value)}
+            placeholder="Clients et prospects, devis, factures, suivi des paiements et relances."
+            className="w-full resize-y rounded-lg border border-outline-soft bg-surface-container-lowest px-3 py-2 text-body-md text-on-surface placeholder:text-outline focus:border-primary focus:outline-none"
+          />
+          <p className="text-label-sm text-outline">
+            Une ou deux phrases concrètes. « Gère les paiements fournisseurs » oriente ;
+            « Participe à la vie de l&apos;entreprise » n&apos;oriente personne.
+          </p>
+        </div>
+      </div>
+
+      <div className="flex justify-end gap-2 px-3.5 py-3 bg-surface-container-lowest border-t border-outline-soft">
+        <button
+          onClick={onClose}
+          disabled={saving}
+          className="h-8 px-3.5 rounded-lg border border-outline-soft text-label-md font-semibold text-on-surface-variant hover:bg-surface-container-low transition-colors"
+        >
+          Annuler
+        </button>
+        <button
+          onClick={save}
+          disabled={saving}
+          className="h-8 px-4 rounded-lg bg-primary text-on-primary text-label-md font-semibold shadow-button hover:bg-primary-container disabled:opacity-50 transition-colors"
+        >
+          {saving ? "Enregistrement…" : "Enregistrer"}
+        </button>
+      </div>
+    </PanelShell>
   );
 }
 

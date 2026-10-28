@@ -33,6 +33,11 @@ export interface Member {
   direct_permissions: GroupRef[];
   permissions: string[];
   is_owner: boolean;
+  /** CE QUE CETTE PERSONNE FAIT ICI, en clair. Pas du RBAC : les droits
+   *  disent ce qu'elle peut ouvrir, pas à quoi elle sert — et c'est à quoi
+   *  elle sert qui permet de savoir à qui s'adresser. */
+  titre?: string;
+  attributions?: string;
   // Non encore exposés par le service auth — la colonne affiche « — » / « Actif »
   // tant qu'ils sont absents.
   is_active?: boolean;

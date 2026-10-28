@@ -5,6 +5,11 @@
  *  L'ANNUAIRE MÊLE LES DEUX, et c'est voulu : au moment d'écrire, on cherche
  *  un nom, pas une catégorie. Les collaborateurs sont simplement groupés et
  *  marqués, pour qu'on sache à qui on s'adresse.
+ *
+ *  PAS D'OBJET À REMPLIR. Choisir quelqu'un ouvre la conversation qu'on a
+ *  avec lui — la même que la dernière fois. Demander un objet obligeait à
+ *  nommer sa question avant de l'avoir écrite, et fabriquait une deuxième
+ *  entrée dans la liste pour une seule relation.
  */
 import { useEffect, useMemo, useState } from "react";
 import { PersonOutlineOutlined, SmartToyOutlined } from "@mui/icons-material";
@@ -25,7 +30,6 @@ export function NouveauMessage({
 }) {
   const [gens, setGens] = useState<Personne[]>([]);
   const [destinataire, setDestinataire] = useState<number | null>(null);
-  const [sujet, setSujet] = useState("");
   const [contenu, setContenu] = useState("");
   const [filtre, setFiltre] = useState("");
 
@@ -54,7 +58,7 @@ export function NouveauMessage({
       throw new Error(
         "Confier du travail à un collaborateur demande le droit « confier du travail à un collaborateur virtuel ».",
       );
-    onCree(await creerFil({ sujet, destinataires: [destinataire], contenu }));
+    onCree(await creerFil({ destinataires: [destinataire], contenu }));
   }
 
   return (
@@ -95,17 +99,6 @@ export function NouveauMessage({
           virtuel&nbsp;» — à demander à un administrateur de cet espace.
         </p>
       )}
-
-      <FormField label="Objet">
-        <input
-          type="text"
-          value={sujet}
-          onChange={(e) => setSujet(e.target.value)}
-          placeholder="Facultatif — la première ligne fera l'affaire"
-          maxLength={200}
-          className="w-full rounded-lg border border-outline-soft bg-surface-container-lowest px-3 py-2 text-body-md text-on-surface placeholder:text-outline focus:border-primary focus:outline-none"
-        />
-      </FormField>
 
       <FormField label="Message">
         <textarea

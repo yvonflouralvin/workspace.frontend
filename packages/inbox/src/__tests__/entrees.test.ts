@@ -1,19 +1,18 @@
 import { describe, expect, it } from "vitest";
 import type { InAppNotification } from "@repo/notifications/types/notification";
 
-import { cleDe, depuis, estNonLue, melanger } from "../lib/entrees";
+import { cleDe, depuis, estNonLue, melanger, titreDe } from "../lib/entrees";
 import { nomDeLApp } from "../components/VueNotification";
 import type { Fil } from "../types";
 
 function fil(partiel: Partial<Fil> = {}): Fil {
   return {
     id: 1,
-    sujet: "Le budget",
     genre: "MEMBRE",
     cree_par: 1,
     cree_le: "2026-10-20T08:00:00",
     dernier_message_le: "2026-10-20T08:00:00",
-    participants: [],
+    correspondants: [],
     apercu: "",
     non_lu: false,
     en_cours: false,
@@ -126,5 +125,52 @@ describe("le nom de l'application d'une notification", () => {
 
   it("supporte un type vide", () => {
     expect(nomDeLApp("")).toBe("");
+  });
+});
+
+describe("le titre d'une ligne de la liste", () => {
+  it("nomme les gens, pas un objet", () => {
+    // Une conversation n'a plus d'objet : c'est le correspondant qu'on
+    // cherche des yeux dans la liste.
+    expect(
+      titreDe({
+        sorte: "fil",
+        date: "2026-10-20T08:00:00",
+        fil: fil({ correspondants: [{ user_id: 2, nom: "Bob", collaborateur: false }] }),
+      })
+    ).toBe("Bob");
+  });
+
+  it("énumère une conversation à plusieurs", () => {
+    expect(
+      titreDe({
+        sorte: "fil",
+        date: "2026-10-20T08:00:00",
+        fil: fil({
+          correspondants: [
+            { user_id: 2, nom: "Bob", collaborateur: false },
+            { user_id: 3, nom: "Chloé", collaborateur: false },
+          ],
+        }),
+      })
+    ).toBe("Bob, Chloé");
+  });
+
+  it("ne rend jamais une ligne vide", () => {
+    // Tous les autres ont quitté l'espace : rare, mais un blanc se lirait
+    // comme un défaut d'affichage.
+    expect(
+      titreDe({ sorte: "fil", date: "2026-10-20T08:00:00", fil: fil({ correspondants: [] }) })
+    ).toBe("Conversation");
+  });
+
+  it("laisse son titre à une notification", () => {
+    expect(
+      titreDe({
+        sorte: "notification",
+        date: "2026-10-20T08:00:00",
+        notification: notification({ title: "Une tâche vous est assignée" }),
+      })
+    ).toBe("Une tâche vous est assignée");
   });
 });

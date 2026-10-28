@@ -33,7 +33,7 @@ import {
 import type { InAppNotification } from "@repo/notifications/types/notification";
 
 import { listerFils, resume as lireResume } from "../api/client";
-import { cleDe, depuis, estNonLue, melanger } from "../lib/entrees";
+import { cleDe, depuis, estNonLue, melanger, titreDe } from "../lib/entrees";
 import type { Entree } from "../lib/entrees";
 import type { Fil, Resume } from "../types";
 import { NouveauMessage } from "./NouveauMessage";
@@ -301,7 +301,7 @@ function LigneEntree({
   onClick: () => void;
 }) {
   const nonLu = estNonLue(entree);
-  const titre = entree.sorte === "fil" ? entree.fil.sujet : entree.notification.title;
+  const titre = titreDe(entree);
   const corps =
     entree.sorte === "fil" ? entree.fil.apercu : (entree.notification.body ?? "");
 

@@ -387,6 +387,13 @@ sont ses propres groupes dans `auth` et se gèrent depuis Membres — ouvrir un 
 déjà. Le champ profil le dit : promettre « tu crées, tu modifies » n'en donne pas le
 moyen.
 
+**L'onglet « Échanges » montre ce que ce collaborateur dit aux AUTRES
+collaborateurs** — et rien d'autre. Le hub borne le périmètre aux conversations
+dont tous les participants sont des comptes de service : les échanges d'un
+humain avec cet agent, y compris les vôtres, n'y entrent pas. L'écran surveille
+des agents, il ne lit pas la messagerie des gens, et le dire à l'écran évite
+qu'on s'y trompe dans un sens comme dans l'autre.
+
 `ConnexionAssistant` est l'écran d'administration (permission `agent.manage`) —
 le jeton produit par `claude setup-token` sur la machine de l'administrateur, à
 coller une fois. Dans `workspace` : Paramètres › Assistant.

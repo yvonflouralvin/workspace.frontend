@@ -141,3 +141,28 @@ export interface Mission {
   terminee_le: string | null;
   cree_le: string;
 }
+
+
+/** Ce que deux collaborateurs se sont dit.
+ *
+ *  Le hub borne le périmètre : seules les conversations dont TOUS les
+ *  participants sont des comptes de service. Rien de ce qu'un humain a
+ *  écrit n'arrive ici — l'écran surveille des agents, il ne lit pas la
+ *  messagerie des gens. */
+export interface MessageEntreAgents {
+  id: number;
+  auteur_user_id: number;
+  auteur_nom: string;
+  de_lui: boolean;
+  contenu: string;
+  erreur: string | null;
+  mission_id: number | null;
+  cree_le: string;
+}
+
+export interface EchangeEntreAgents {
+  id: number;
+  correspondants: { user_id: number; nom: string }[];
+  dernier_message_le: string | null;
+  messages: MessageEntreAgents[];
+}

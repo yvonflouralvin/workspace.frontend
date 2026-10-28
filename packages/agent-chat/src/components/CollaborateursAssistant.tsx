@@ -6,6 +6,7 @@ import {
   DeleteOutlineOutlined,
   EditOutlined,
   ErrorOutlineOutlined,
+  ForumOutlined,
   GroupOutlined,
   HistoryOutlined,
   LockOutlined,
@@ -21,6 +22,7 @@ import {
   creerTache,
   lancerMission,
   listerCollaborateurs,
+  listerEchanges,
   listerGroupesAutorises,
   listerMissions,
   listerRoles,
@@ -34,6 +36,7 @@ import { PROFILS, TACHES_SUGGEREES } from "../lib/metiers";
 import { Markdown } from "../lib/markdown";
 import type {
   Collaborateur,
+  EchangeEntreAgents,
   GroupeAutorise,
   Mission,
   NiveauAcces,
@@ -61,12 +64,13 @@ export function enCle(nom: string): string {
  *  que le bouton n'a rien fait. */
 const RYTHME_SUIVI_MS = 3000;
 
-type Onglet = "profil" | "taches" | "groupes" | "passages";
+type Onglet = "profil" | "taches" | "groupes" | "echanges" | "passages";
 
 const ONGLETS: { cle: Onglet; libelle: string; Icone: typeof EditOutlined }[] = [
   { cle: "profil", libelle: "Profil", Icone: EditOutlined },
   { cle: "taches", libelle: "Tâches", Icone: HistoryOutlined },
   { cle: "groupes", libelle: "Groupes autorisés", Icone: GroupOutlined },
+  { cle: "echanges", libelle: "Échanges", Icone: ForumOutlined },
   { cle: "passages", libelle: "Passages", Icone: PlayArrowOutlined },
 ];
 
@@ -490,6 +494,10 @@ function CarteCollaborateur({
               />
             )}
 
+            {onglet === "echanges" && (
+              <PanneauEchanges collaborateur={collaborateur} base={base} />
+            )}
+
             {onglet === "passages" && (
               <>
                 {missions === null ? (
@@ -556,6 +564,89 @@ function CarteCollaborateur({
         />
       )}
     </li>
+  );
+}
+
+function PanneauEchanges({
+  collaborateur,
+  base,
+}: {
+  collaborateur: Collaborateur;
+  base?: string;
+}) {
+  const [echanges, setEchanges] = useState<EchangeEntreAgents[] | null>(null);
+  const [souci, setSouci] = useState<string | null>(null);
+
+  useEffect(() => {
+    let vivant = true;
+    listerEchanges(collaborateur.id, base)
+      .then((x) => vivant && setEchanges(x))
+      .catch(() => vivant && setSouci("Les échanges n'ont pas pu être chargés."));
+    return () => {
+      vivant = false;
+    };
+  }, [collaborateur.id, base]);
+
+  if (echanges === null) {
+    return <p className="text-body-sm text-on-surface-variant">{souci ?? "Chargement…"}</p>;
+  }
+
+  return (
+    <>
+      <p className="text-label-sm uppercase text-outline mb-1.5">
+        Ce qu&apos;il dit aux autres collaborateurs
+      </p>
+      <p className="mb-3 text-body-sm text-on-surface-variant">
+        Seulement les conversations entre collaborateurs. Vos échanges avec{" "}
+        {collaborateur.nom}, et ceux de vos collègues, n&apos;apparaissent pas ici —
+        cet écran surveille des agents, il ne lit pas la messagerie des gens.
+      </p>
+
+      {echanges.length === 0 ? (
+        <p className="rounded-xl bg-surface-container-low p-3 text-body-sm text-on-surface-variant">
+          {collaborateur.nom} n&apos;a encore rien échangé avec un autre collaborateur.
+        </p>
+      ) : (
+        <ul className="flex flex-col gap-3">
+          {echanges.map((e) => (
+            <li
+              key={e.id}
+              className="rounded-xl border border-outline-soft bg-surface-container-lowest p-3"
+            >
+              <p className="mb-2 flex items-center gap-1.5 text-body-sm font-medium text-on-surface">
+                <SmartToyOutlined style={{ fontSize: 15 }} />
+                {e.correspondants.map((c) => c.nom).join(", ") || "Conversation"}
+              </p>
+              {e.messages.length === 0 ? (
+                <p className="text-body-sm text-outline">Rien encore.</p>
+              ) : (
+                <ul className="flex flex-col gap-2">
+                  {e.messages.map((m) => (
+                    <li key={m.id} className="text-body-sm">
+                      <span
+                        className={`text-label-sm ${
+                          m.de_lui ? "text-primary" : "text-on-surface-variant"
+                        }`}
+                      >
+                        {m.auteur_nom} · {dateCourte(m.cree_le)}
+                      </span>
+                      {m.erreur ? (
+                        <p className="flex items-start gap-1.5 text-error">
+                          <ErrorOutlineOutlined style={{ fontSize: 14 }} className="mt-0.5" />
+                          {m.erreur}
+                        </p>
+                      ) : (
+                        <p className="whitespace-pre-wrap text-on-surface">{m.contenu}</p>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </>
   );
 }
 

@@ -33,6 +33,7 @@ const ATTENDUS: string[] = [
   "agent/collaborateurs/[id]/taches",
   "agent/collaborateurs/[id]/taches/[tacheId]",
   "agent/collaborateurs/[id]/groupes",
+  "agent/collaborateurs/[id]/echanges",
   "agent/collaborateurs/missions/[missionId]",
   // @repo/inbox
   "inbox/fils",

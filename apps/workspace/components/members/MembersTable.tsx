@@ -72,7 +72,10 @@ export function MembersTable({
                     )}
                   </span>
                   <span className="block text-label-md text-outline truncate">
-                    {member.user.email}
+                    {/* Le titre AVANT l'adresse : dans une liste de membres,
+                        « Responsable commercial » situe la personne, son
+                        adresse ne situe que sa boîte. */}
+                    {member.titre ? `${member.titre} · ${member.user.email}` : member.user.email}
                   </span>
                 </span>
               </span>

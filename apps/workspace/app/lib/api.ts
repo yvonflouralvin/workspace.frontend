@@ -117,6 +117,18 @@ export async function setMemberGroups(
   return parseResponse(response);
 }
 
+export async function setMemberProfil(
+  workspaceId: number,
+  membershipId: number,
+  profil: { titre: string; attributions: string }
+): Promise<Member> {
+  const response = await apiFetch(
+    `/api/workspaces/${workspaceId}/members/${membershipId}/profil`,
+    jsonRequest("PUT", profil)
+  );
+  return parseResponse(response);
+}
+
 export async function listGroups(workspaceId: number): Promise<{ groups: Group[] }> {
   const response = await apiFetch(`/api/workspaces/${workspaceId}/groups`);
   return parseResponse(response);

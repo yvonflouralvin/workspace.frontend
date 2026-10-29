@@ -105,7 +105,7 @@ export function VueFil({
           {fil.en_cours && agent && (
             <p className="flex items-center gap-2 text-body-sm text-primary">
               <SmartToyOutlined style={{ fontSize: 16 }} />
-              {agent.nom} travaille…
+              {agent.nom} travaille… vous pouvez lui écrire, il le prendra ensuite.
             </p>
           )}
           <div ref={bas} />
@@ -129,16 +129,24 @@ export function VueFil({
                   }
                 }}
                 rows={2}
-                disabled={fil.en_cours}
+                // ON N'EMPÊCHE PLUS D'ÉCRIRE PENDANT QU'IL TRAVAILLE. Le
+                // champ était figé parce que le serveur refusait le second
+                // message ; il le met maintenant en file et le traite en
+                // terminant. Geler la saisie obligeait à guetter la fin
+                // d'un travail pour pouvoir poser sa question — et une
+                // conversation dont on doit surveiller l'état n'en est pas
+                // une.
                 placeholder={
-                  fil.en_cours ? "Attendez sa réponse…" : "Écrire un message… (Maj+Entrée : nouvelle ligne)"
+                  fil.en_cours
+                    ? "Écrire — il le traitera après ce qu'il fait…"
+                    : "Écrire un message… (Maj+Entrée : nouvelle ligne)"
                 }
                 className="flex-1 resize-none rounded-lg border border-outline-soft bg-surface-container-lowest px-3 py-2 text-body-md text-on-surface placeholder:text-outline focus:border-primary focus:outline-none disabled:opacity-60"
               />
               <button
                 type="button"
                 onClick={() => void envoyer()}
-                disabled={envoi || fil.en_cours || !brouillon.trim()}
+                disabled={envoi || !brouillon.trim()}
                 className="mb-0.5 inline-flex h-[38px] items-center gap-1.5 rounded-lg bg-primary px-3.5 text-label-md text-on-primary shadow-button transition-opacity hover:opacity-90 disabled:opacity-40"
               >
                 <SendOutlined style={{ fontSize: 16 }} />

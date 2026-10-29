@@ -1,28 +1,31 @@
 "use client";
 
-/** LA BOÎTE DE RÉCEPTION : un seul endroit pour tout ce qui m'est adressé.
+/** LA BOÎTE DE RÉCEPTION : mes échanges d'un côté, les alertes de l'autre.
  *
- *  Trois rayons, et chacun répond à une question différente :
+ *  DEUX RAYONS, et on arrive sur le premier :
  *
- *    - MEMBRES — ce qu'un collègue m'écrit.
- *    - COLLABORATEURS — ce que je confie à un agent, et ce qu'il me rend.
- *      C'est ici qu'on lui donne du travail, plus dans un écran de réglages :
- *      confier un dossier n'est pas configurer un compte.
- *    - NOTIFICATIONS — tout ce que les applications signalent. Elles étaient
+ *    - ÉCHANGES — ce qu'on m'écrit et ce que j'écris, collègues et
+ *      collaborateurs virtuels MÊLÉS. On ne trie pas ses conversations par
+ *      nature d'interlocuteur : on cherche un nom. Séparer les agents des
+ *      humains obligeait à savoir, avant de chercher, à qui on avait parlé.
+ *    - NOTIFICATIONS — ce que les applications signalent. Elles étaient
  *      déjà gardées pour toujours, mais seule la cloche les montrait : passé
  *      quelques jours, une alerte existait et restait introuvable.
  *
- *  « TOUT » les mêle par date, parce que la question de tous les matins n'est
- *  pas « qu'est-ce qu'on m'a écrit » mais « qu'est-ce qui m'attend ».
+ *  IL Y AVAIT QUATRE ONGLETS, dont un « Tout » qui mêlait les deux rayons.
+ *  Mêler une conversation et une alerte dans la même liste suppose qu'on les
+ *  traite pareil — or on RÉPOND à l'une et on PREND ACTE de l'autre. Quatre
+ *  entrées pour deux gestes, c'était trois de trop.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  ArrowBackOutlined,
   DoneAllOutlined,
   EditOutlined,
-  InboxOutlined,
-  SmartToyOutlined,
-  PersonOutlineOutlined,
+  ForumOutlined,
   NotificationsNoneOutlined,
+  PersonOutlineOutlined,
+  SmartToyOutlined,
 } from "@mui/icons-material";
 import { SearchField } from "@repo/ui/SearchField";
 import {
@@ -44,16 +47,10 @@ import { VueNotification } from "./VueNotification";
  *  attend, on redemande — sinon la réponse n'arrive qu'au prochain clic. */
 const RYTHME_MS = 4000;
 
-type Rayon = "tout" | "membres" | "collaborateurs" | "notifications";
+type Rayon = "echanges" | "notifications";
 
 const RAYONS: { cle: Rayon; libelle: string; icone: React.ReactNode }[] = [
-  { cle: "tout", libelle: "Tout", icone: <InboxOutlined style={{ fontSize: 16 }} /> },
-  { cle: "membres", libelle: "Membres", icone: <PersonOutlineOutlined style={{ fontSize: 16 }} /> },
-  {
-    cle: "collaborateurs",
-    libelle: "Collaborateurs",
-    icone: <SmartToyOutlined style={{ fontSize: 16 }} />,
-  },
+  { cle: "echanges", libelle: "Échanges", icone: <ForumOutlined style={{ fontSize: 16 }} /> },
   {
     cle: "notifications",
     libelle: "Notifications",
@@ -72,7 +69,9 @@ export function BoiteDeReception({
    *  notification de message. */
   filInitial?: number;
 }) {
-  const [rayon, setRayon] = useState<Rayon>("tout");
+  // ON ARRIVE SUR LES ÉCHANGES. C'est ce qu'on vient chercher : une
+  // conversation en attente de réponse, pas une alerte prise en compte.
+  const [rayon, setRayon] = useState<Rayon>("echanges");
   const [recherche, setRecherche] = useState("");
   const [fils, setFils] = useState<Fil[]>([]);
   const [notifications, setNotifications] = useState<InAppNotification[]>([]);
@@ -82,9 +81,8 @@ export function BoiteDeReception({
   const [composer, setComposer] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
 
-  const genre = rayon === "membres" ? "MEMBRE" : rayon === "collaborateurs" ? "COLLABORATEUR" : "";
   const sansFils = rayon === "notifications";
-  const sansNotifications = rayon === "membres" || rayon === "collaborateurs";
+  const sansNotifications = rayon === "echanges";
 
   const recharger = useCallback(
     async (silencieux = false) => {
@@ -93,7 +91,7 @@ export function BoiteDeReception({
         const [listeFils, listeNotifs, r] = await Promise.all([
           sansFils
             ? Promise.resolve({ items: [], total: 0 })
-            : listerFils({ genre: genre || undefined, q: recherche || undefined }),
+            : listerFils({ q: recherche || undefined }),
           sansNotifications
             ? Promise.resolve({ items: [], unread_count: 0 })
             : listNotifications("/api/notifications", { q: recherche || undefined, limit: 50 }),
@@ -109,7 +107,7 @@ export function BoiteDeReception({
         setChargement(false);
       }
     },
-    [genre, recherche, sansFils, sansNotifications],
+    [recherche, sansFils, sansNotifications],
   );
 
   useEffect(() => {
@@ -157,17 +155,25 @@ export function BoiteDeReception({
     void recharger(true);
   }
 
-  const pastille = (cle: Rayon) => {
-    if (!compte) return 0;
-    if (cle === "tout") return compte.total;
-    if (cle === "membres") return compte.membres;
-    if (cle === "collaborateurs") return compte.collaborateurs;
-    return compte.notifications;
-  };
+  const pastille = (cle: Rayon) =>
+    !compte
+      ? 0
+      : cle === "echanges"
+        ? compte.membres + compte.collaborateurs
+        : compte.notifications;
 
   return (
     <div className="h-full flex">
-      <aside className="w-full md:w-[380px] shrink-0 flex flex-col border-r border-outline-variant bg-surface-container-lowest">
+      {/* SUR TÉLÉPHONE, UN SEUL PANNEAU À LA FOIS. Le détail était en
+          `hidden md:flex` : on choisissait une conversation et il ne se
+          passait rien — le clic sélectionnait dans le vide. Il n'y a pas la
+          place des deux sous 768 px, donc la liste cède la place et un
+          bouton ramène en arrière. */}
+      <aside
+        className={`w-full md:w-[380px] shrink-0 flex-col border-r border-outline-variant bg-surface-container-lowest ${
+          choisi === null ? "flex" : "hidden md:flex"
+        }`}
+      >
         <div className="shrink-0 px-4 pt-4 pb-3">
           <div className="flex items-center justify-between gap-2">
             <h1 className="font-display text-headline-sm text-on-surface">Boîte de réception</h1>
@@ -241,7 +247,7 @@ export function BoiteDeReception({
           )}
         </div>
 
-        {compte !== null && compte.notifications > 0 && rayon !== "membres" && (
+        {compte !== null && compte.notifications > 0 && rayon === "notifications" && (
           <button
             type="button"
             onClick={() => void toutMarquerLu()}
@@ -253,7 +259,21 @@ export function BoiteDeReception({
         )}
       </aside>
 
-      <section className="hidden md:flex flex-1 min-w-0 flex-col bg-background">
+      <section
+        className={`flex-1 min-w-0 flex-col bg-background ${
+          choisi === null ? "hidden md:flex" : "flex"
+        }`}
+      >
+        {choisi !== null && (
+          <button
+            type="button"
+            onClick={() => setChoisi(null)}
+            className="md:hidden shrink-0 flex items-center gap-1.5 border-b border-outline-variant bg-surface-container-lowest px-4 py-2.5 text-label-md text-primary"
+          >
+            <ArrowBackOutlined style={{ fontSize: 18 }} />
+            Toutes les conversations
+          </button>
+        )}
         {choisi === null ? (
           <RienDeChoisi />
         ) : choisi.sorte === "fil" ? (
@@ -362,10 +382,8 @@ function Vide({ rayon, recherche }: { rayon: Rayon; recherche: string }) {
       </p>
     );
   const phrases: Record<Rayon, string> = {
-    tout: "Rien ne vous attend.",
-    membres: "Aucun message d'un collègue.",
-    collaborateurs:
-      "Aucun échange avec un collaborateur. « Nouveau » pour lui confier un premier travail.",
+    echanges:
+      "Aucune conversation. « Nouveau » pour écrire à un collègue ou confier un travail à un collaborateur.",
     notifications: "Aucune alerte des applications.",
   };
   return (
@@ -376,8 +394,8 @@ function Vide({ rayon, recherche }: { rayon: Rayon; recherche: string }) {
 function RienDeChoisi() {
   return (
     <div className="flex h-full flex-col items-center justify-center gap-2 text-on-surface-variant">
-      <InboxOutlined style={{ fontSize: 32 }} />
-      <p className="text-body-sm">Choisissez un élément pour le lire.</p>
+      <ForumOutlined style={{ fontSize: 32 }} />
+      <p className="text-body-sm">Choisissez une conversation pour la lire.</p>
     </div>
   );
 }

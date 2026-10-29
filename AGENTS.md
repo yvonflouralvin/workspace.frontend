@@ -409,8 +409,17 @@ import { useResumeBoite } from '@repo/inbox/hooks/useResumeBoite'
 ```
 
 `BoiteDeReception` (`{ peutSaisirUnCollaborateur?, filInitial? }`) est l'écran entier :
-quatre rayons — **Tout**, **Membres**, **Collaborateurs**, **Notifications** —, liste à
-gauche, lecture à droite, recherche sur les deux sources.
+**deux rayons** — **Échanges** (collègues et collaborateurs mêlés) et **Notifications** —,
+liste à gauche, lecture à droite, recherche sur les deux sources. On arrive sur les
+échanges : c'est ce qu'on vient chercher.
+
+Il y en avait quatre, dont un « Tout » qui mêlait conversations et alertes. Les mêler
+suppose qu'on les traite pareil — or on RÉPOND à l'une et on PREND ACTE de l'autre. Et
+séparer les agents des humains obligeait à savoir, avant de chercher, à qui on avait parlé.
+
+**Sous 768 px, un seul panneau à la fois.** Le détail était en `hidden md:flex` : on
+choisissait une conversation et il ne se passait rien, le clic sélectionnait dans le vide.
+La liste cède maintenant la place, et un bouton ramène en arrière.
 
 **Une conversation par correspondant, sans objet.** On n'en ouvre pas deux avec le
 même collègue : « Nouveau » → choisir quelqu'un rouvre la conversation qu'on a déjà

@@ -796,6 +796,26 @@ Résumé :
 
 ---
 
+## Se déconnecter — une seule implémentation, et un garde-fou
+
+`useLogout` (`@repo/auth`) appelle `POST /api/logout` sur le domaine de l'app
+courante. **Toute app qui propose le bouton doit donc avoir la route**, et cette
+route ne fait qu'une chose : `forwardToBackend(request, AUTH_API_URL,
+"/auth/logout")`.
+
+**Ne jamais effacer le cookie soi-même.** `response.cookies.delete(nom)` écrit un
+`Set-Cookie` SANS domaine, alors que la connexion le pose AVEC (`COOKIE_DOMAIN`,
+`.saas.cd` sur une instance client) : le navigateur y voit deux cookies
+différents et n'efface rien. `forwardToBackend` rend les `Set-Cookie` du service,
+qui efface avec les attributs dont il s'est servi pour poser — une seule vérité,
+celle de qui a posé le cookie.
+
+Le défaut livré : dix-sept apps affichaient le bouton, **quatre** avaient la
+route, et deux d'entre elles effaçaient sans le domaine. Se déconnecter était
+impossible sur toute instance client, et impeccable en local, où `COOKIE_DOMAIN`
+est vide. `packages/auth/src/__tests__/deconnexion.test.ts` garde les deux
+propriétés, app par app.
+
 ## Tests — Règle minimale
 
 **`apps/workspace` a un harnais** (`app/__tests__`, vitest) dont le premier test garde

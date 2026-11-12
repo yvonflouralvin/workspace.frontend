@@ -2,20 +2,32 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useSessionStore } from "@repo/auth/store/session.store";
 import { DataList, type DataListColumn } from "@repo/ui/DataList";
 import { DashboardShell } from "@/components/DashboardShell";
+import { DroitManquant } from "@/components/DroitManquant";
+import { TIERS_CREER, TIERS_VOIR } from "@/lib/permissions";
 import { listTiers, TYPE_LABELS, type TiersSummary } from "@/lib/tiers-api";
 import { AddOutlined } from "@mui/icons-material";
 
 export default function ClientsPage() {
   const [clients, setClients] = useState<TiersSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const chargement = useSessionStore((s) => s.loading);
+  const permissions = useSessionStore((s) => s.permissions);
+  // Les clients vivent dans le service `tiers`, qui refuse en 403 et dont le
+  // message est « Forbidden ». On préfère le dire avant d'appeler, et le dire
+  // en français : on attend donc la session plutôt que de montrer un refus
+  // pendant qu'elle charge.
+  const peutVoir = chargement || (permissions ?? []).includes(TIERS_VOIR);
+  const peutCreer = (permissions ?? []).includes(TIERS_CREER);
 
   useEffect(() => {
+    if (!peutVoir) return;
     listTiers({ page_size: 100 })
       .then((p) => setClients(p.items))
       .catch((err) => setError(err instanceof Error ? err.message : "Erreur inattendue"));
-  }, []);
+  }, [peutVoir]);
 
   const columns = useMemo<DataListColumn<TiersSummary>[]>(
     () => [
@@ -47,16 +59,20 @@ export default function ClientsPage() {
               Recherche par nom, code, e-mail, téléphone, secteur d&rsquo;activité ou numéro d&rsquo;identification.
             </p>
           </div>
-          <Link
-            href="/clients/nouveau"
-            className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg bg-primary text-on-primary text-body-sm font-semibold shadow-button hover:bg-primary-container transition-colors"
-          >
-            <AddOutlined style={{ fontSize: 16 }} />
-            Nouveau client
-          </Link>
+          {peutCreer && (
+            <Link
+              href="/clients/nouveau"
+              className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg bg-primary text-on-primary text-body-sm font-semibold shadow-button hover:bg-primary-container transition-colors"
+            >
+              <AddOutlined style={{ fontSize: 16 }} />
+              Nouveau client
+            </Link>
+          )}
         </div>
 
-        {error ? (
+        {!peutVoir ? (
+          <DroitManquant droit={TIERS_VOIR} quoi="Vous ne pouvez pas consulter les clients." />
+        ) : error ? (
           <p className="text-body-md text-error">{error}</p>
         ) : clients === null ? (
           <p className="text-body-md text-on-surface-variant">Chargement…</p>

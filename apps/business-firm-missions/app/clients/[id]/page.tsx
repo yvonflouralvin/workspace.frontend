@@ -3,8 +3,11 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { useSessionStore } from "@repo/auth/store/session.store";
 import { Tabs, type TabItem } from "@repo/ui/Tabs";
 import { DashboardShell } from "@/components/DashboardShell";
+import { DroitManquant } from "@/components/DroitManquant";
+import { TIERS_MODIFIER } from "@/lib/permissions";
 import {
   getTiers,
   updateTiers,
@@ -43,6 +46,15 @@ export default function ClientDetailPage() {
   const [form, setForm] = useState<TiersUpdateInput>({});
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  // Séparé de `error`, qui remplace la page entière : un échec d'enregistrement
+  // ne doit pas emporter ce que la personne vient de saisir.
+  const [echec, setEchec] = useState<string | null>(null);
+  const chargement = useSessionStore((s) => s.loading);
+  const permissions = useSessionStore((s) => s.permissions);
+  // La Direction LIT les dossiers sans tenir le registre. Sans ce garde elle
+  // voyait « Enregistrer » et le clic ne faisait rien du tout : `enregistrer`
+  // n'attrapait pas l'échec, la promesse partait en rejet non traité.
+  const peutModifier = chargement || (permissions ?? []).includes(TIERS_MODIFIER);
 
   useEffect(() => {
     getTiers(Number(id))
@@ -61,11 +73,14 @@ export default function ClientDetailPage() {
     e.preventDefault();
     setSaving(true);
     setSaved(false);
+    setEchec(null);
     try {
       const updated = await updateTiers(Number(id), form);
       setTiers(updated);
       logActivite(Number(id), "Informations générales mises à jour");
       setSaved(true);
+    } catch (err) {
+      setEchec(err instanceof Error ? err.message : "Enregistrement impossible.");
     } finally {
       setSaving(false);
     }
@@ -109,12 +124,17 @@ export default function ClientDetailPage() {
           <input className={FIELD} value={form.numero_contribuable ?? ""} onChange={(e) => setForm({ ...form, numero_contribuable: e.target.value })} />
         </Field>
       </div>
-      <div className="flex items-center gap-3">
-        <button type="submit" disabled={saving} className="h-9 px-4 rounded-lg bg-primary text-on-primary text-body-sm font-semibold shadow-button hover:bg-primary-container disabled:opacity-50 transition-colors">
-          {saving ? "Enregistrement…" : "Enregistrer"}
-        </button>
-        {saved && <span className="text-body-sm text-member-active">Enregistré.</span>}
-      </div>
+      {peutModifier ? (
+        <div className="flex items-center gap-3">
+          <button type="submit" disabled={saving} className="h-9 px-4 rounded-lg bg-primary text-on-primary text-body-sm font-semibold shadow-button hover:bg-primary-container disabled:opacity-50 transition-colors">
+            {saving ? "Enregistrement…" : "Enregistrer"}
+          </button>
+          {saved && <span className="text-body-sm text-member-active">Enregistré.</span>}
+          {echec && <span className="text-body-sm text-error">{echec}</span>}
+        </div>
+      ) : (
+        <DroitManquant droit={TIERS_MODIFIER} quoi="Vous ne pouvez pas modifier cette fiche." />
+      )}
     </form>
   );
 

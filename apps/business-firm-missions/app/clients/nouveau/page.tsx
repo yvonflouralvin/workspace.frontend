@@ -2,7 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useSessionStore } from "@repo/auth/store/session.store";
 import { DashboardShell } from "@/components/DashboardShell";
+import { DroitManquant } from "@/components/DroitManquant";
+import { TIERS_CREER } from "@/lib/permissions";
 import { createTiers, type TypeTiers, type CategorieTiers } from "@/lib/tiers-api";
 
 const FIELD =
@@ -21,6 +24,12 @@ export default function NouveauClientPage() {
   const [adresseVille, setAdresseVille] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const chargement = useSessionStore((s) => s.loading);
+  const permissions = useSessionStore((s) => s.permissions);
+  // Le lien vers cette page est caché sans le droit, mais une URL se tape et se
+  // met en favori. Le refus arriverait sinon après la saisie, et sous la forme
+  // du « Forbidden » du service — un formulaire rempli pour rien.
+  const peutCreer = chargement || (permissions ?? []).includes(TIERS_CREER);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -56,6 +65,9 @@ export default function NouveauClientPage() {
           </p>
         </div>
 
+        {!peutCreer ? (
+          <DroitManquant droit={TIERS_CREER} quoi="Vous ne pouvez pas créer de client." />
+        ) : (
         <form onSubmit={handleSubmit} className="rounded-2xl border border-outline-soft bg-surface-container-lowest p-6 space-y-4">
           {error && <p className="text-body-sm text-error">{error}</p>}
           <div>
@@ -112,6 +124,7 @@ export default function NouveauClientPage() {
             </button>
           </div>
         </form>
+        )}
       </div>
     </DashboardShell>
   );

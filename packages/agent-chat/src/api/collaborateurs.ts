@@ -3,6 +3,7 @@ import type {
   Collaborateur,
   EchangeEntreAgents,
   GroupesAutorises,
+  GroupesDelegables,
   Mission,
   NiveauAcces,
   RoleCollaborateur,
@@ -168,6 +169,31 @@ export async function reglerGroupesAutorises(
   );
 }
 
+
+// ─── ce qu'il a le droit d'accorder ──────────────────────────────────────────
+
+export async function listerDelegables(
+  collaborateurId: number,
+  base = BASE_PAR_DEFAUT
+): Promise<GroupesDelegables> {
+  return json(await apiFetch(`${base}/collaborateurs/${collaborateurId}/delegables`));
+}
+
+/** Remplace la liste ENTIÈRE, comme les groupes autorisés : l'écran envoie son
+ *  état complet plutôt que de laisser le serveur deviner ce qui a été
+ *  décoché. */
+export async function reglerDelegables(
+  collaborateurId: number,
+  groupIds: number[],
+  base = BASE_PAR_DEFAUT
+): Promise<GroupesDelegables> {
+  return json(
+    await apiFetch(`${base}/collaborateurs/${collaborateurId}/delegables`, {
+      method: "PUT",
+      body: { group_ids: groupIds },
+    })
+  );
+}
 
 // ─── ce qu'il dit aux autres collaborateurs ──────────────────────────────────
 

@@ -89,6 +89,41 @@ describe("les profils de départ", () => {
   });
 });
 
+describe("les deux métiers de direction", () => {
+  // Ils étaient servis par le service sans aucun gabarit ici : le formulaire
+  // ouvrait une page blanche sur les deux métiers les plus récents.
+  it("chacun a un profil et au moins une tâche", () => {
+    for (const role of ["directeur", "rh_direction"]) {
+      expect(PROFILS[role], role).toBeTruthy();
+      expect(TACHES_SUGGEREES[role]?.length ?? 0, role).toBeGreaterThan(0);
+    }
+  });
+
+  it("la direction envoie chercher qui sait faire, au lieu de faire", () => {
+    // Son périmètre est vide, donc elle voit tout ce que ses droits ouvrent.
+    // Sans cette consigne, elle traiterait elle-même ce qui relève d'un
+    // métier — et c'est justement ce que l'entraide existe pour éviter.
+    const consignes = (TACHES_SUGGEREES["directeur"] ?? []).map((t) => t.consigne).join(" ");
+    expect(PROFILS["directeur"]).toContain("qui peut la faire");
+    expect(consignes).toContain("écris à celui dont c'est le métier");
+  });
+
+  it("le RH de direction ne crée pas de compte diminué", () => {
+    // « On refuse plutôt que de rogner en silence » : un agent à qui l'on
+    // retire la moitié de sa demande croirait avoir réussi.
+    expect(PROFILS["rh_direction"]).toContain("délégation");
+    expect(PROFILS["rh_direction"]).toContain("au lieu de créer un compte diminué");
+  });
+
+  it("le RH de direction reste discret, y compris en écrivant à un collègue", () => {
+    // Les retours à la ligne des gabarits ne sont pas du sens : une phrase
+    // coupée au milieu ne doit pas faire échouer la lecture qu'on en fait.
+    const discretion = (PROFILS["rh_direction"] ?? "").replace(/\s+/g, " ");
+    expect(discretion).toContain("jamais un motif");
+    expect(discretion).toContain("message à un collègue");
+  });
+});
+
 describe("les tâches de départ", () => {
   it("chaque métier en propose au moins une", () => {
     // Un collaborateur créé sans aucune tâche ne se réveille jamais, et rien

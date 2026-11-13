@@ -8,9 +8,11 @@
     "./*": "./src/*.tsx"
   },
   "scripts": {
-    "lint": "eslint . --max-warnings 0",
+    "check-types": "tsc --noEmit",
     "generate:component": "turbo gen react-component",
-    "check-types": "tsc --noEmit"
+    "lint": "eslint . --max-warnings 0",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "devDependencies": {
     "@repo/eslint-config": "*",
@@ -25,7 +27,8 @@
     "postcss": "^8.4.31",
     "tailwind-config": "^0.1.2",
     "tailwindcss": "^4.3.0",
-    "typescript": "5.9.2"
+    "typescript": "5.9.2",
+    "vitest": "^3.2.6"
   },
   "dependencies": {
     "@blocknote/core": "^0.52.1",

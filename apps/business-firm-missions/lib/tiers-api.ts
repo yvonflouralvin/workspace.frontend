@@ -330,3 +330,41 @@ export async function listFacturesDuClient(tiersId: number): Promise<FactureBrie
   const data = await res.json();
   return data.items ?? [];
 }
+
+// ───────────────────────── Partage de la fiche ─────────────────────────
+//
+// Une fiche client n'est visible que de son créateur et de qui on l'a
+// partagée : avoir le droit sur le module n'ouvre pas chaque fiche. Le
+// mécanisme vit dans le service `tiers` (table `tiers_acces`) et c'est lui
+// qui l'applique — on ne fait que le régler depuis ici.
+
+export interface SectionPartage {
+  key: string;
+  label: string;
+}
+
+export interface GrantPartage {
+  user_id: number | null;
+  groupe_id: number | null;
+  sections: string[];
+}
+
+export interface Partage {
+  created_by: number | null;
+  /** Rendue par le SERVEUR : c'est lui qui applique les sections, et une liste
+   *  écrite côté écran se périmerait à la section suivante. */
+  available_sections: SectionPartage[];
+  grants: GrantPartage[];
+}
+
+export async function getPartage(tiersId: number): Promise<Partage> {
+  const res = await apiFetch(`/api/tiers/${tiersId}/acces`);
+  if (!res.ok) throw new Error("Impossible de charger le partage de cette fiche");
+  return res.json();
+}
+
+export async function setPartage(tiersId: number, grants: GrantPartage[]): Promise<Partage> {
+  const res = await apiFetch(`/api/tiers/${tiersId}/acces`, { method: "PUT", body: { grants } });
+  if (!res.ok) throw new Error("Impossible d'enregistrer le partage de cette fiche");
+  return res.json();
+}

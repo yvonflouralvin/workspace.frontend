@@ -254,6 +254,40 @@ que des valeurs de paramètre `single_choice`/`multi_choice` (ex. `"fr"`, `"list
 />
 ```
 
+### `PartageFiche` (`src/PartageFiche.tsx`)
+
+Éditeur du partage d'une fiche : qui y a accès en dehors de son créateur, et à quelles
+sections. **Présentationnel** — aucun appel réseau, tout par props, comme les widgets de
+reporting. Deux applications montrent la même fiche client (le module **Tiers** et
+**Business Firm Mission**) et le partage doit se régler depuis les deux : seul le chemin
+des appels diffère, pas l'écran. L'hôte charge et enregistre, parce que l'un est une page
+avec ses boutons et l'autre un onglet.
+
+`sections` vient du **serveur**, jamais d'une liste écrite dans l'écran : c'est lui qui
+les applique, et une copie se périmerait à la section suivante. Une liste de sections
+**vide** sur une ligne vaut accès complet — y compris aux sections qui n'existaient pas
+quand on l'a posée.
+
+Les règles vivent à part, dans `src/partage-grants.ts`, sans JSX : ce qu'elles décident,
+c'est qui voit les données d'un client, et une erreur ouvre une fiche ou la ferme sans que
+rien ne se voie à l'écran. Elles sont tenues par `src/__tests__/partage-grants.test.ts`
+(10 tests, `npm test` dans le paquet — **le premier harnais de `@repo/ui`**). Deux pièges
+qu'elles gardent : une personne et un groupe peuvent porter le **même id** côté auth, donc
+la clé d'une ligne porte son type ; et décocher une section depuis « accès complet » part
+de la liste **entière**, sinon il n'en resterait qu'une.
+
+```tsx
+<PartageFiche
+  grants={grants}
+  onChange={setGrants}
+  personnes={membres.map((m) => ({ id: m.id, label: m.name }))}
+  groupes={groupes.map((g) => ({ id: g.id, label: g.name }))}
+  sections={partage.available_sections}
+  createurId={partage.created_by}
+  createurLabel="Grace"
+/>
+```
+
 ### `PasswordInput` (`src/PasswordInput.tsx`)
 
 Champ mot de passe avec icône afficher/masquer, et un bouton optionnel de génération

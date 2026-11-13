@@ -8,6 +8,7 @@ import { Tabs, type TabItem } from "@repo/ui/Tabs";
 import { DashboardShell } from "@/components/DashboardShell";
 import { DroitManquant } from "@/components/DroitManquant";
 import { TIERS_MODIFIER } from "@/lib/permissions";
+import { PartagePanel } from "./PartagePanel";
 import {
   getTiers,
   updateTiers,
@@ -55,6 +56,11 @@ export default function ClientDetailPage() {
   // voyait « Enregistrer » et le clic ne faisait rien du tout : `enregistrer`
   // n'attrapait pas l'échec, la promesse partait en rejet non traité.
   const peutModifier = chargement || (permissions ?? []).includes(TIERS_MODIFIER);
+  // L'onglet, lui, se décide SANS optimisme. Les deux gardes ne vont pas dans
+  // le même sens : « Enregistrer » optimiste évite d'afficher un refus pendant
+  // le chargement de la session, alors qu'un onglet optimiste apparaîtrait puis
+  // DISPARAÎTRAIT — et si la personne l'a ouvert entre-temps, sous elle.
+  const partageReglable = (permissions ?? []).includes(TIERS_MODIFIER);
 
   useEffect(() => {
     getTiers(Number(id))
@@ -145,6 +151,13 @@ export default function ClientDetailPage() {
     { key: "missions", label: "Missions", content: <MissionsPanel tiersId={tiers.id} /> },
     { key: "factures", label: "Factures", content: <FacturesPanel tiersId={tiers.id} /> },
   ];
+
+  // Réglé par qui tient le registre, pas par qui le lit : le service garde les
+  // deux bouts du partage derrière `tiers.tiers.manage`. Offrir l'onglet sans
+  // le droit montrerait un écran qui ne répond que « Forbidden ».
+  if (partageReglable) {
+    tabs.push({ key: "partage", label: "Partage", content: <PartagePanel tiersId={tiers.id} /> });
+  }
 
   return (
     <DashboardShell>

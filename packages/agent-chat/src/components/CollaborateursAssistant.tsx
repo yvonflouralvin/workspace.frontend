@@ -90,6 +90,20 @@ const NIVEAUX: { valeur: NiveauAcces | null; libelle: string; aide: string }[] =
   { valeur: "ECRITURE", libelle: "Écriture", aide: "peut lui faire modifier des données" },
 ];
 
+/** Le métier proposé d'emblée — le premier que le service sert.
+ *
+ *  ET C'EST LUI QUI DOIT DONNER LE PROFIL. Les deux sortaient d'endroits
+ *  différents : le métier du premier rôle servi (classés par clé, donc
+ *  « Assistant médical »), le profil de `controleur` écrit en dur juste à
+ *  côté. Le formulaire s'ouvrait donc sur un métier et le texte d'un AUTRE,
+ *  et qui ne relisait pas le champ créait un assistant médical avec le profil
+ *  d'un contrôleur interne. Une fonction pour que les deux ne puissent plus
+ *  se séparer.
+ */
+export function metierDeDepart(roles: RoleCollaborateur[]): string {
+  return roles[0]?.cle ?? "controleur";
+}
+
 export function quand(t: Pick<TacheRecurrente, "cadence" | "heure" | "jour">): string {
   if (t.cadence === "MANUELLE") return "À la demande";
   const heure = `${String(t.heure).padStart(2, "0")} h`;
@@ -1014,8 +1028,8 @@ function FormulaireCollaborateur({
 }) {
   const [nom, setNom] = useState("");
   const [cle, setCle] = useState("");
-  const [role, setRole] = useState(roles[0]?.cle ?? "controleur");
-  const [profil, setProfil] = useState(PROFILS["controleur"] ?? "");
+  const [role, setRole] = useState(metierDeDepart(roles));
+  const [profil, setProfil] = useState(PROFILS[metierDeDepart(roles)] ?? "");
   // Vrai dès que la personne a écrit : on ne remplace jamais son texte en
   // changeant de métier, même si le gabarit d'origine n'a pas été touché.
   const [profilTouche, setProfilTouche] = useState(false);

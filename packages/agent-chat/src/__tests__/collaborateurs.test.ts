@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { enCle, quand, resumeDesTaches } from "../components/CollaborateursAssistant";
+import {
+  enCle,
+  metierDeDepart,
+  quand,
+  resumeDesTaches,
+} from "../components/CollaborateursAssistant";
 import { PROFILS, TACHES_SUGGEREES } from "../lib/metiers";
 import type { TacheRecurrente } from "../types";
 
@@ -73,6 +78,32 @@ describe("le résumé sous le nom d'un collaborateur", () => {
 
   it("ignore les tâches à la demande, qui ne disent rien d'un horaire", () => {
     expect(resumeDesTaches([tache({ cadence: "MANUELLE" })])).toBe("aucune tâche active");
+  });
+});
+
+describe("le métier proposé d'emblée", () => {
+  it("est le premier que le service sert, et pas un métier écrit en dur", () => {
+    // Le service les classe par clé : « Assistant médical » passe devant.
+    const roles = [
+      { cle: "assistant_medical", libelle: "Assistant médical", apps: ["hosto"] },
+      { cle: "comptable", libelle: "Comptable", apps: [] },
+    ];
+    expect(metierDeDepart(roles)).toBe("assistant_medical");
+  });
+
+  it("donne le profil DU métier proposé, pas celui d'un autre", () => {
+    // Le défaut que ce test garde : le métier venait du service, le profil
+    // de `controleur` écrit en dur à côté. Qui ne relisait pas le champ
+    // créait un assistant médical avec le profil d'un contrôleur interne.
+    const roles = [{ cle: "assistant_medical", libelle: "Assistant médical", apps: [] }];
+    expect(PROFILS[metierDeDepart(roles)]).toBe(PROFILS["assistant_medical"]);
+    expect(PROFILS[metierDeDepart(roles)]).not.toBe(PROFILS["controleur"]);
+  });
+
+  it("se replie sur un métier qui existe quand le service n'a rien servi", () => {
+    // Liste vide : le service est injoignable. Un profil vide ouvrirait sur
+    // une page blanche, et une clé inconnue aussi.
+    expect(PROFILS[metierDeDepart([])]).toBeTruthy();
   });
 });
 

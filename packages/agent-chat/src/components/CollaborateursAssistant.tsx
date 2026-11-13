@@ -9,6 +9,7 @@ import {
   ForumOutlined,
   GroupOutlined,
   HistoryOutlined,
+  KeyOutlined,
   LockOutlined,
   PlayArrowOutlined,
   SmartToyOutlined,
@@ -22,6 +23,7 @@ import {
   creerTache,
   lancerMission,
   listerCollaborateurs,
+  listerDelegables,
   listerEchanges,
   listerGroupesAutorises,
   listerMissions,
@@ -29,6 +31,7 @@ import {
   lireMission,
   modifierCollaborateur,
   modifierTache,
+  reglerDelegables,
   reglerGroupesAutorises,
   supprimerTache,
 } from "../api/collaborateurs";
@@ -38,6 +41,7 @@ import type {
   Collaborateur,
   EchangeEntreAgents,
   GroupeAutorise,
+  GroupeDelegable,
   Mission,
   NiveauAcces,
   RoleCollaborateur,
@@ -64,12 +68,13 @@ export function enCle(nom: string): string {
  *  que le bouton n'a rien fait. */
 const RYTHME_SUIVI_MS = 3000;
 
-type Onglet = "profil" | "taches" | "groupes" | "echanges" | "passages";
+type Onglet = "profil" | "taches" | "groupes" | "delegables" | "echanges" | "passages";
 
 const ONGLETS: { cle: Onglet; libelle: string; Icone: typeof EditOutlined }[] = [
   { cle: "profil", libelle: "Profil", Icone: EditOutlined },
   { cle: "taches", libelle: "Tâches", Icone: HistoryOutlined },
   { cle: "groupes", libelle: "Groupes autorisés", Icone: GroupOutlined },
+  { cle: "delegables", libelle: "Droits délégables", Icone: KeyOutlined },
   { cle: "echanges", libelle: "Échanges", Icone: ForumOutlined },
   { cle: "passages", libelle: "Passages", Icone: PlayArrowOutlined },
 ];
@@ -84,6 +89,20 @@ const NIVEAUX: { valeur: NiveauAcces | null; libelle: string; aide: string }[] =
   { valeur: "LECTURE", libelle: "Lecture", aide: "peut lui demander de regarder et de rendre compte" },
   { valeur: "ECRITURE", libelle: "Écriture", aide: "peut lui faire modifier des données" },
 ];
+
+/** Le métier proposé d'emblée — le premier que le service sert.
+ *
+ *  ET C'EST LUI QUI DOIT DONNER LE PROFIL. Les deux sortaient d'endroits
+ *  différents : le métier du premier rôle servi (classés par clé, donc
+ *  « Assistant médical »), le profil de `controleur` écrit en dur juste à
+ *  côté. Le formulaire s'ouvrait donc sur un métier et le texte d'un AUTRE,
+ *  et qui ne relisait pas le champ créait un assistant médical avec le profil
+ *  d'un contrôleur interne. Une fonction pour que les deux ne puissent plus
+ *  se séparer.
+ */
+export function metierDeDepart(roles: RoleCollaborateur[]): string {
+  return roles[0]?.cle ?? "controleur";
+}
 
 export function quand(t: Pick<TacheRecurrente, "cadence" | "heure" | "jour">): string {
   if (t.cadence === "MANUELLE") return "À la demande";
@@ -494,6 +513,14 @@ function CarteCollaborateur({
               />
             )}
 
+            {onglet === "delegables" && (
+              <PanneauDelegables
+                collaborateur={collaborateur}
+                peutGerer={peutGerer}
+                base={base}
+              />
+            )}
+
             {onglet === "echanges" && (
               <PanneauEchanges collaborateur={collaborateur} base={base} />
             )}
@@ -776,6 +803,110 @@ function PanneauGroupes({
   );
 }
 
+function PanneauDelegables({
+  collaborateur,
+  peutGerer,
+  base,
+}: {
+  collaborateur: Collaborateur;
+  peutGerer: boolean;
+  base?: string;
+}) {
+  const [groupes, setGroupes] = useState<GroupeDelegable[] | null>(null);
+  const [souci, setSouci] = useState<string | null>(null);
+  const [enCours, setEnCours] = useState<number | null>(null);
+
+  useEffect(() => {
+    let vivant = true;
+    listerDelegables(collaborateur.id, base)
+      .then((etat) => vivant && setGroupes(etat.groupes))
+      .catch(() => vivant && setSouci("Les groupes n'ont pas pu être chargés."));
+    return () => {
+      vivant = false;
+    };
+  }, [collaborateur.id, base]);
+
+  async function basculer(groupId: number, delegable: boolean) {
+    if (groupes === null) return;
+    const voulus = groupes.map((g) => (g.group_id === groupId ? { ...g, delegable } : g));
+    setSouci(null);
+    setEnCours(groupId);
+    try {
+      const etat = await reglerDelegables(
+        collaborateur.id,
+        voulus.filter((g) => g.delegable).map((g) => g.group_id),
+        base
+      );
+      setGroupes(etat.groupes);
+    } catch (err) {
+      setSouci(err instanceof Error ? err.message : "Le réglage n'a pas pu être enregistré.");
+    } finally {
+      setEnCours(null);
+    }
+  }
+
+  if (groupes === null) {
+    return <p className="text-body-sm text-on-surface-variant">{souci ?? "Chargement…"}</p>;
+  }
+
+  const ouverts = groupes.filter((g) => g.delegable).length;
+
+  return (
+    <>
+      <p className="text-label-sm uppercase text-outline mb-2">
+        Ce qu&apos;il peut accorder à un agent qu&apos;il crée
+      </p>
+      <p className="mb-3 text-body-sm text-on-surface-variant">
+        Un collaborateur qui en crée un autre choisit ses groupes, donc ses droits.{" "}
+        <strong className="text-on-surface">Il n&apos;a pas à les détenir lui-même</strong> :
+        exiger qu&apos;il les cumule ferait du compte le plus sensible de l&apos;espace celui
+        qui voit tout pour n&apos;avoir le droit de rien faire seul.
+      </p>
+
+      {ouverts === 0 && (
+        <p className="mb-3 flex items-start gap-2 rounded-xl bg-surface-container-low p-3 text-body-sm text-on-surface-variant">
+          <LockOutlined style={{ fontSize: 16 }} className="mt-0.5 flex-none text-outline" />
+          <span>
+            Rien d&apos;ouvert : il ne peut créer qu&apos;un agent{" "}
+            <strong className="text-on-surface">sans aucun groupe</strong>, donc sans
+            aucun droit. Utile pour préparer la coquille — inoffensif par construction.
+          </span>
+        </p>
+      )}
+
+      {groupes.length === 0 ? (
+        <p className="text-body-sm text-on-surface-variant">
+          Cet espace de travail n&apos;a aucun groupe. Créez-en un depuis Membres.
+        </p>
+      ) : (
+        <ul className="flex flex-col divide-y divide-hairline">
+          {groupes.map((g) => (
+            <li key={g.group_id} className="flex items-center gap-3 py-2.5">
+              <span className="flex-1 min-w-0 truncate text-body-sm text-on-surface">
+                {g.nom}
+              </span>
+              <Switch
+                checked={g.delegable}
+                disabled={!peutGerer || enCours === g.group_id}
+                onChange={(valeur) => basculer(g.group_id, valeur)}
+                label={`${collaborateur.nom} peut accorder le groupe ${g.nom}`}
+              />
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <p className="mt-3 text-label-sm text-outline">
+        Ne sert qu&apos;aux collaborateurs qui ont le droit de recruter. Un groupe qu&apos;on
+        ne lui a pas ouvert est REFUSÉ, pas rogné en silence : un agent à qui l&apos;on
+        retire la moitié de sa demande croirait avoir réussi.
+      </p>
+
+      {souci && <p className="mt-2 text-body-sm text-error">{souci}</p>}
+    </>
+  );
+}
+
 function LigneTache({
   tache,
   peutGerer,
@@ -897,8 +1028,8 @@ function FormulaireCollaborateur({
 }) {
   const [nom, setNom] = useState("");
   const [cle, setCle] = useState("");
-  const [role, setRole] = useState(roles[0]?.cle ?? "controleur");
-  const [profil, setProfil] = useState(PROFILS["controleur"] ?? "");
+  const [role, setRole] = useState(metierDeDepart(roles));
+  const [profil, setProfil] = useState(PROFILS[metierDeDepart(roles)] ?? "");
   // Vrai dès que la personne a écrit : on ne remplace jamais son texte en
   // changeant de métier, même si le gabarit d'origine n'a pas été touché.
   const [profilTouche, setProfilTouche] = useState(false);
@@ -906,6 +1037,10 @@ function FormulaireCollaborateur({
   const [avecTaches, setAvecTaches] = useState(true);
 
   const suggerees = TACHES_SUGGEREES[role] ?? [];
+  // Les métiers viennent du service, les gabarits vivent ici : rien ne relie
+  // les deux listes. Le dire vaut mieux que de rendre un champ vide, qu'on
+  // prendrait pour un écran qui n'a pas fini de charger.
+  const sansGabarit = !PROFILS[role];
 
   function choisirRole(nouveau: string) {
     setRole(nouveau);
@@ -1018,6 +1153,12 @@ function FormulaireCollaborateur({
             Qui il est et comment il travaille. Il le relit chaque fois qu&apos;il
             travaille — à l&apos;heure dite comme quand on lui écrit.
           </p>
+          {sansGabarit && (
+            <p className="mt-1 text-label-sm text-error">
+              Aucun texte de départ pour ce métier : écrivez le sien. Un profil vide
+              part quand même, et le collaborateur travaillera sans savoir qui il est.
+            </p>
+          )}
         </FormField>
 
         {suggerees.length > 0 && (

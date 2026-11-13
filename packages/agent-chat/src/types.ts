@@ -116,6 +116,25 @@ export interface GroupesAutorises {
   groupes: GroupeAutorise[];
 }
 
+/** Ce que ce collaborateur a le droit d'ACCORDER à un agent qu'il crée.
+ *
+ *  L'inverse du sens de `GroupeAutorise`, qui dit qui peut le faire
+ *  travailler. Ici : ce qu'il peut donner, à quelqu'un qui n'existe pas
+ *  encore. Et il n'a pas à le détenir — déléguer n'est pas posséder, sinon un
+ *  agent RH devrait cumuler l'union de tout ce qu'il peut distribuer. */
+export interface GroupeDelegable {
+  group_id: number;
+  nom: string;
+  delegable: boolean;
+}
+
+export interface GroupesDelegables {
+  /** Pas de « ouvert à tous » ici, contrairement aux groupes autorisés : vide
+   *  vaut RIEN. Distribuer des droits ne prend jamais sa valeur par défaut
+   *  dans le sens ouvert. */
+  groupes: GroupeDelegable[];
+}
+
 /** Un métier qu'on sait confier à un collaborateur. Servi par le backend
  *  depuis le code : l'écran doit proposer exactement ce que le moteur sait
  *  résoudre. */

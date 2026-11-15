@@ -377,8 +377,9 @@ et il ne peut pas en être autrement : côté serveur le tour est **suspendu**
 dans un autre appel, à attendre précisément celle-ci. Sans réponse, l'action ne
 se fait pas — le silence ne vaut pas accord.
 
-**Un collaborateur peut ÉCRIRE, et c'est réglé par groupe.** Sa fiche a quatre
-onglets — Profil, Tâches, Groupes autorisés, Passages. Le troisième dit quels groupes
+**Un collaborateur peut ÉCRIRE, et c'est réglé par groupe.** Sa fiche a six
+onglets — Profil, Tâches, Groupes autorisés, Droits délégables, Échanges,
+Passages. Le troisième dit quels groupes
 d'humains peuvent le solliciter et jusqu'où : rien, lecture, ou écriture. Aucune règle
 posée vaut **lecture pour tout le monde**, l'état d'avant ce réglage ; dès qu'une règle
 existe, la liste fait foi. À ne pas confondre avec les droits DU collaborateur, qui
@@ -386,6 +387,18 @@ sont ses propres groupes dans `auth` et se gèrent depuis Membres — ouvrir un 
 écriture ne lui donne rien de plus, ça autorise ce groupe à se servir de ce qu'il a
 déjà. Le champ profil le dit : promettre « tu crées, tu modifies » n'en donne pas le
 moyen.
+
+**L'onglet « Droits délégables » dit ce qu'il peut ACCORDER à un agent qu'il
+crée** — l'inverse du sens des groupes autorisés. Il n'a pas à les détenir :
+lire ses propres groupes obligerait un agent RH à cumuler l'union de tout ce
+qu'il distribue, c'est-à-dire à tout voir pour avoir le droit de ne rien faire
+seul. **Vide vaut RIEN**, à l'inverse des groupes autorisés où vide vaut
+« ouvert en lecture à tous » : distribuer des droits ne prend jamais sa valeur
+par défaut dans le sens ouvert. Un groupe hors de cette liste est **refusé**,
+pas rogné en silence — un agent à qui l'on retire la moitié de sa demande
+croirait avoir réussi et le dirait dans son compte rendu. L'onglet ne sert
+qu'aux collaborateurs qui ont le droit de recruter ; pour les autres il reste
+vide sans rien casser.
 
 **L'onglet « Échanges » montre ce que ce collaborateur dit aux AUTRES
 collaborateurs** — et rien d'autre. Le hub borne le périmètre aux conversations

@@ -5,11 +5,47 @@ import type { Conversation, ConversationDetail, EtatConnexion, PieceJointe } fro
  *  Chaque app garde son propre relais, comme pour les notifications. */
 export const BASE_PAR_DEFAUT = "/api/agent";
 
+/** Le message à montrer quand le service refuse.
+ *
+ *  `detail` n'est PAS toujours une phrase. Pour un 422, FastAPI rend un
+ *  TABLEAU — un objet par champ refusé, avec son chemin (`loc`) et sa raison
+ *  (`msg`). Passé tel quel à `Error`, il s'affichait « [object Object] » sous
+ *  les champs : l'écran disait qu'il y avait un problème sans dire lequel, et
+ *  la seule information utile restait dans une enveloppe chiffrée que l'onglet
+ *  Réseau ne sait pas lire davantage. Une clé de deux caractères a coûté une
+ *  demi-heure pour cette raison. */
+export function messageDErreur(charge: unknown, repli: string): string {
+  const detail = (charge as { detail?: unknown } | null)?.detail;
+  if (typeof detail === "string" && detail) return detail;
+  if (Array.isArray(detail)) {
+    const lignes = detail.map(ligneDeValidation).filter((l) => l !== "");
+    if (lignes.length > 0) return lignes.join(" ; ");
+  }
+  return repli;
+}
+
+/** Une entrée du tableau de FastAPI, rendue lisible : « cle : String should
+ *  have at least 3 characters ». On NOMME le champ — le message seul ne dit
+ *  pas lequel des six il concerne. `body` est retiré du chemin : c'est une
+ *  notion du serveur, pas un champ du formulaire. */
+function ligneDeValidation(entree: unknown): string {
+  if (typeof entree === "string") return entree;
+  const { loc, msg } = (entree ?? {}) as { loc?: unknown; msg?: unknown };
+  if (typeof msg !== "string" || !msg) return "";
+  const champ = Array.isArray(loc)
+    ? loc
+        .filter((part) => part !== "body")
+        .map(String)
+        .join(".")
+    : "";
+  return champ ? `${champ} : ${msg}` : msg;
+}
+
 async function json<T>(reponse: Response): Promise<T> {
   const charge = await reponse.json().catch(() => null);
   if (!reponse.ok) {
     throw new ErreurAssistant(
-      (charge as { detail?: string } | null)?.detail ?? "Le service assistant n'a pas répondu",
+      messageDErreur(charge, "Le service assistant n'a pas répondu"),
       reponse.status
     );
   }
@@ -129,7 +165,7 @@ export async function joindrePiece(
   const charge = await reponse.json().catch(() => null);
   if (!reponse.ok) {
     throw new ErreurAssistant(
-      (charge as { detail?: string } | null)?.detail ?? `« ${fichier.name} » n'a pas pu être joint`,
+      messageDErreur(charge, `« ${fichier.name} » n'a pas pu être joint`),
       reponse.status
     );
   }
@@ -160,7 +196,7 @@ export async function envoyerMessage(
   if (!reponse.ok) {
     const charge = await reponse.json().catch(() => null);
     throw new ErreurAssistant(
-      (charge as { detail?: string } | null)?.detail ?? "L'assistant n'a pas pu répondre",
+      messageDErreur(charge, "L'assistant n'a pas pu répondre"),
       reponse.status
     );
   }

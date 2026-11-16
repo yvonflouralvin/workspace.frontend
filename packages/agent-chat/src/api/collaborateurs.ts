@@ -9,13 +9,13 @@ import type {
   RoleCollaborateur,
   TacheRecurrente,
 } from "../types";
-import { BASE_PAR_DEFAUT, ErreurAssistant } from "./client";
+import { BASE_PAR_DEFAUT, ErreurAssistant, messageDErreur } from "./client";
 
 async function json<T>(reponse: Response): Promise<T> {
   const charge = await reponse.json().catch(() => null);
   if (!reponse.ok) {
     throw new ErreurAssistant(
-      (charge as { detail?: string } | null)?.detail ?? "Le service assistant n'a pas répondu",
+      messageDErreur(charge, "Le service assistant n'a pas répondu"),
       reponse.status
     );
   }

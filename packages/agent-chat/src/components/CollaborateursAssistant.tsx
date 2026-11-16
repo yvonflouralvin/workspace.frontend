@@ -63,6 +63,34 @@ export function enCle(nom: string): string {
     .slice(0, 40);
 }
 
+/** Les bornes de la clé, telles que le service les impose
+ *  (`CreationCollaborateur`, `min_length=3`, `max_length=40`). Recopiées parce
+ *  que rien ne les transporte : le service ne les publie pas, et un formulaire
+ *  qui les devine se périme en silence. */
+export const CLE_MIN = 3;
+export const CLE_MAX = 40;
+
+/** Ce qui cloche dans une clé, ou `null` si elle passe.
+ *
+ *  Le `pattern` du champ l'exige déjà — et ne l'a pas empêché au moins une
+ *  fois : une clé de deux caractères est partie, le service l'a refusée en
+ *  422, et l'écran n'a pas su le dire. On ne confie donc pas la règle à la
+ *  seule validation du navigateur, qui s'applique quand elle veut et dont le
+ *  message ne nomme pas la contrainte. */
+export function souciDeLaCle(cle: string): string | null {
+  const nette = cle.trim().toLowerCase();
+  if (nette.length < CLE_MIN) {
+    return `La clé fait au moins ${CLE_MIN} caractères.`;
+  }
+  if (nette.length > CLE_MAX) {
+    return `La clé ne dépasse pas ${CLE_MAX} caractères.`;
+  }
+  if (!/^[a-z][a-z0-9-]*[a-z0-9]$/.test(nette)) {
+    return "La clé commence par une lettre, se termine par une lettre ou un chiffre, et ne contient que des lettres, des chiffres et des tirets.";
+  }
+  return null;
+}
+
 /** Tant qu'une mission tourne, on redemande. Elle dure des dizaines de
  *  secondes : un écran qui ne bouge pas pendant ce temps donne l'impression
  *  que le bouton n'a rien fait. */
@@ -1061,6 +1089,11 @@ function FormulaireCollaborateur({
       submitLabel="Créer"
       onClose={onClose}
       onSubmit={async () => {
+        // AVANT l'appel : le service refuserait en 422, et un 422 ne dit rien
+        // à qui remplit le formulaire.
+        const souci = souciDeLaCle(cle);
+        if (souci) throw new Error(souci);
+
         const cree = await creerCollaborateur(
           {
             cle: cle.trim().toLowerCase(),
@@ -1113,11 +1146,13 @@ function FormulaireCollaborateur({
             }}
             placeholder="controleur"
             pattern="[a-zA-Z][a-zA-Z0-9-]{1,38}[a-zA-Z0-9]"
+            minLength={CLE_MIN}
+            maxLength={CLE_MAX}
             required
           />
           <p className="mt-1 text-label-sm text-outline">
-            Elle devient son adresse interne et ne change plus. Lettres, chiffres et
-            tirets.
+            Elle devient son adresse interne et ne change plus. Trois caractères au
+            moins — « dg » est refusé, « dg-ia » passe. Lettres, chiffres et tirets.
           </p>
         </FormField>
 

@@ -1,10 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
+  CLE_MAX,
+  CLE_MIN,
   enCle,
   metierDeDepart,
   quand,
   resumeDesTaches,
+  souciDeLaCle,
 } from "../components/CollaborateursAssistant";
+import { messageDErreur } from "../api/client";
 import { PROFILS, TACHES_SUGGEREES } from "../lib/metiers";
 import type { TacheRecurrente } from "../types";
 
@@ -190,5 +194,117 @@ describe("les tâches de départ", () => {
     const heures = (TACHES_SUGGEREES["comptable"] ?? []).map((t) => t.heure);
     expect(heures.length).toBe(2);
     expect(Math.max(...heures) - Math.min(...heures)).toBeGreaterThan(6);
+  });
+});
+
+// ── la clé, et le 422 qu'elle provoquait sans le dire ────────────────────────
+//
+// Vécu le 16 novembre 2026 sur la recette : « dg » et « rh » ont été refusés
+// en 422 par le service (`min_length=3`) alors que le `pattern` du champ aurait
+// dû les arrêter dans le navigateur. L'écran n'a rien montré d'exploitable, et
+// le corps de la réponse est chiffré — donc illisible dans l'onglet Réseau.
+
+describe("la clé d'un collaborateur", () => {
+  it("refuse deux caractères, qui est le cas qui a échoué pour de vrai", () => {
+    expect(souciDeLaCle("dg")).toContain("au moins 3");
+    expect(souciDeLaCle("rh")).toContain("au moins 3");
+  });
+
+  it("accepte la forme qu'on a finalement employée", () => {
+    expect(souciDeLaCle("dg-ia")).toBeNull();
+    expect(souciDeLaCle("rh-ia")).toBeNull();
+  });
+
+  it("tolère les espaces et les majuscules, comme le fait l'envoi", () => {
+    // Le formulaire envoie `cle.trim().toLowerCase()` : contrôler la saisie
+    // brute refuserait une clé que le service accepterait.
+    expect(souciDeLaCle("  DG-IA  ")).toBeNull();
+  });
+
+  it("refuse un tiret en tête ou en queue", () => {
+    expect(souciDeLaCle("-dgia")).not.toBeNull();
+    expect(souciDeLaCle("dgia-")).not.toBeNull();
+  });
+
+  it("refuse un accent, que le service n'accepte pas", () => {
+    expect(souciDeLaCle("contrôleur")).not.toBeNull();
+  });
+
+  it("refuse au-delà du maximum du service", () => {
+    expect(souciDeLaCle("a".repeat(CLE_MAX))).toBeNull();
+    expect(souciDeLaCle("a".repeat(CLE_MAX + 1))).not.toBeNull();
+  });
+
+  it("laisse passer ce qu'`enCle` fabrique à partir d'un nom complet", () => {
+    // Les deux doivent s'accorder : la clé suit le nom tant qu'on n'y touche
+    // pas, et une clé engendrée refusée serait un cul-de-sac.
+    for (const nom of ["Contrôleur interne", "DG-ia", "Assistant médical"]) {
+      expect(souciDeLaCle(enCle(nom)), nom).toBeNull();
+    }
+  });
+
+  it("borne le minimum sur ce que le service impose", () => {
+    expect(CLE_MIN).toBe(3);
+  });
+});
+
+describe("le message d'une réponse en échec", () => {
+  it("rend une phrase telle quelle", () => {
+    expect(messageDErreur({ detail: "Rôle inconnu : « dg »" }, "repli")).toBe(
+      "Rôle inconnu : « dg »"
+    );
+  });
+
+  it("nomme le champ quand FastAPI rend un tableau", () => {
+    // La charge exacte relevée sur la recette.
+    const charge = {
+      detail: [
+        {
+          type: "string_too_short",
+          loc: ["body", "cle"],
+          msg: "String should have at least 3 characters",
+        },
+      ],
+    };
+    const message = messageDErreur(charge, "repli");
+    expect(message).toContain("cle");
+    expect(message).toContain("at least 3 characters");
+    expect(message).not.toContain("object");
+  });
+
+  it("réunit plusieurs champs refusés", () => {
+    const charge = {
+      detail: [
+        { loc: ["body", "cle"], msg: "Field required" },
+        { loc: ["body", "nom"], msg: "Field required" },
+      ],
+    };
+    const message = messageDErreur(charge, "repli");
+    expect(message).toContain("cle");
+    expect(message).toContain("nom");
+  });
+
+  it("retire « body » du chemin, qui ne veut rien dire à l'écran", () => {
+    const charge = { detail: [{ loc: ["body", "cle"], msg: "trop court" }] };
+    expect(messageDErreur(charge, "repli")).toBe("cle : trop court");
+  });
+
+  it("garde le chemin d'un champ imbriqué", () => {
+    const charge = { detail: [{ loc: ["body", "lignes", 0, "debit"], msg: "requis" }] };
+    expect(messageDErreur(charge, "repli")).toBe("lignes.0.debit : requis");
+  });
+
+  it("retombe sur le repli quand la charge ne dit rien", () => {
+    expect(messageDErreur(null, "repli")).toBe("repli");
+    expect(messageDErreur({}, "repli")).toBe("repli");
+    expect(messageDErreur({ detail: [] }, "repli")).toBe("repli");
+    expect(messageDErreur({ detail: "" }, "repli")).toBe("repli");
+  });
+
+  it("ne rend jamais « [object Object] », qui est le défaut corrigé", () => {
+    const charge = { detail: [{ loc: ["body", "cle"], msg: "trop court" }] };
+    expect(messageDErreur(charge, "repli")).not.toContain("[object");
+    // Et le repli lui-même reste une phrase, pas un tableau rendu de force.
+    expect(messageDErreur({ detail: [{ sans: "msg" }] }, "repli")).toBe("repli");
   });
 });

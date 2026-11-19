@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   AddOutlined,
@@ -45,6 +45,18 @@ function fmt(iso: string | null): string {
 }
 
 export default function TasksPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="p-4 md:p-8 text-body-md text-on-surface-variant">Chargement…</div>
+      }
+    >
+      <TasksInner />
+    </Suspense>
+  );
+}
+
+function TasksInner() {
   const user = useSessionStore((s) => s.user);
   // ON ARRIVE ICI DEPUIS UN PASSAGE DE COLLABORATEUR (« Voir la tâche »), et
   // sa tâche est assignée à l'agent, terminée, et rangée dans le bac : les

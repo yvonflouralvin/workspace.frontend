@@ -130,6 +130,7 @@ function dateCourte(valeur: string | null): string {
 const TEINTE_STATUT: Record<Mission["statut"], string> = {
   EN_ATTENTE: "bg-surface-container text-on-surface-variant",
   EN_COURS: "bg-tertiary/10 text-tertiary",
+  SUSPENDUE: "bg-status-review-container text-status-review",
   REUSSIE: "bg-secondary/10 text-secondary",
   ECHOUEE: "bg-error-container text-error",
 };
@@ -137,22 +138,40 @@ const TEINTE_STATUT: Record<Mission["statut"], string> = {
 const LIBELLE_STATUT: Record<Mission["statut"], string> = {
   EN_ATTENTE: "En attente",
   EN_COURS: "En cours…",
+  SUSPENDUE: "Attend une réponse",
   REUSSIE: "Terminée",
   ECHOUEE: "Échec",
 };
+
+/** LE TOUR EST FINI — à ne pas confondre avec « le travail est fait ».
+ *
+ *  `SUSPENDUE` est une fin de tour : le collaborateur a posé ce qu'il
+ *  attend et dort jusqu'à la réponse. L'oublier faisait tourner le suivi
+ *  indéfiniment, et le bouton « faire passer » paraissait sans effet alors
+ *  que tout s'était bien passé. */
+export function tourFini(statut: Mission["statut"]): boolean {
+  return statut === "REUSSIE" || statut === "ECHOUEE" || statut === "SUSPENDUE";
+}
 
 const ORIGINE: Record<Mission["declencheur"], string> = {
   PLANIFIE: "",
   MANUEL: " · lancé à la main",
   INBOX: " · demandé depuis la boîte",
+  TACHE: " · tâche assignée",
 };
 
 export function CollaborateursAssistant({
   peutGerer,
   base,
+  lienTache,
 }: {
   peutGerer: boolean;
   base?: string;
+  /** L'adresse de la tâche d'un passage, dans l'app qui monte ce composant.
+   *  Elle vient d'elle et non d'ici : un paquet partagé ne connaît pas les
+   *  routes de ses consommateurs. Sans elle, rien n'est cliquable — et le
+   *  reste s'affiche quand même. */
+  lienTache?: (taskId: number) => string;
 }) {
   const [collaborateurs, setCollaborateurs] = useState<Collaborateur[] | null>(null);
   const [roles, setRoles] = useState<RoleCollaborateur[]>([]);
@@ -223,6 +242,7 @@ export function CollaborateursAssistant({
               onBasculer={() => setOuvert(ouvert === c.id ? null : c.id)}
               onChange={recharger}
               base={base}
+              lienTache={lienTache}
             />
           ))}
         </ul>
@@ -275,6 +295,7 @@ function CarteCollaborateur({
   onBasculer,
   onChange,
   base,
+  lienTache,
 }: {
   collaborateur: Collaborateur;
   role: string;
@@ -283,6 +304,7 @@ function CarteCollaborateur({
   onBasculer: () => void;
   onChange: () => Promise<void>;
   base?: string;
+  lienTache?: (taskId: number) => string;
 }) {
   const [missions, setMissions] = useState<Mission[] | null>(null);
   const [enVol, setEnVol] = useState<number | null>(null);
@@ -308,7 +330,7 @@ function CarteCollaborateur({
     const minuteur = setInterval(async () => {
       try {
         const mission = await lireMission(enVol, base);
-        if (mission.statut === "REUSSIE" || mission.statut === "ECHOUEE") {
+        if (tourFini(mission.statut)) {
           setEnVol(null);
           await charger();
           await onChange();
@@ -542,6 +564,7 @@ function CarteCollaborateur({
                         nomDeLaTache={
                           collaborateur.taches.find((t) => t.id === m.tache_id)?.nom ?? null
                         }
+                        lienTache={lienTache}
                       />
                     ))}
                   </ul>
@@ -975,9 +998,11 @@ function LigneTache({
 function LigneMission({
   mission,
   nomDeLaTache,
+  lienTache,
 }: {
   mission: Mission;
   nomDeLaTache: string | null;
+  lienTache?: (taskId: number) => string;
 }) {
   return (
     <li className="rounded-xl bg-surface-container-low p-3">
@@ -993,7 +1018,19 @@ function LigneMission({
         <span className="text-label-sm text-on-surface-variant">
           {dateCourte(mission.terminee_le ?? mission.cree_le)}
           {ORIGINE[mission.declencheur]}
+          {mission.continue_la_mission_id !== null && " · reprise après attente"}
         </span>
+        {/* LE CHEMIN VERS LE TRAVAIL LAISSÉ DERRIÈRE. Ces tâches tombent
+            dans le bac du workspace, absent de la liste des projets : sans
+            ce lien, on ne les trouvait qu'en fouillant tout l'espace. */}
+        {mission.suivi_task_id !== null && lienTache && (
+          <a
+            href={lienTache(mission.suivi_task_id)}
+            className="rounded-full bg-surface-container px-2 py-0.5 text-label-sm text-primary hover:bg-surface-container-low"
+          >
+            Voir la tâche
+          </a>
+        )}
       </div>
       {mission.erreur ? (
         <p className="text-body-sm text-error">{mission.erreur}</p>

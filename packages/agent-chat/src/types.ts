@@ -148,8 +148,15 @@ export interface Mission {
   id: number;
   collaborateur_id: number;
   tache_id: number | null;
-  declencheur: "PLANIFIE" | "MANUEL" | "INBOX";
-  statut: "EN_ATTENTE" | "EN_COURS" | "REUSSIE" | "ECHOUEE";
+  /** La tâche du SUIVI, celle que le collaborateur s'est ouverte dans le
+   *  module des tâches — pas `tache_id`, qui est sa tâche récurrente. */
+  suivi_task_id: number | null;
+  continue_la_mission_id: number | null;
+  declencheur: "PLANIFIE" | "MANUEL" | "INBOX" | "TACHE";
+  /** `SUSPENDUE` manquait : il attend une réponse. Son absence rendait la
+   *  pastille VIDE et sans couleur, et le suivi d'un passage lancé à la main
+   *  ne s'arrêtait jamais — les deux tables sont indexées sur cette union. */
+  statut: "EN_ATTENTE" | "EN_COURS" | "SUSPENDUE" | "REUSSIE" | "ECHOUEE";
   invite: string;
   compte_rendu: string;
   erreur: string | null;

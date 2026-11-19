@@ -51,7 +51,10 @@ export default function PageAssistant() {
               label: "Collaborateurs",
               content: (
                 <div className="pt-5">
-                  <CollaborateursAssistant peutGerer={can("agent.collaborateurs.manage")} />
+                  <CollaborateursAssistant
+                    peutGerer={can("agent.collaborateurs.manage")}
+                    lienTache={(id) => `/tasks?tache=${id}`}
+                  />
                 </div>
               ),
             },

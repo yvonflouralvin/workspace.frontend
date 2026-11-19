@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   AddOutlined,
@@ -25,7 +25,7 @@ import { FilCommentaires } from "@/components/projects/FilCommentaires";
 import { KanbanBoard } from "@/components/projects/KanbanBoard";
 import { useSessionStore } from "@repo/auth/store/session.store";
 import { TachesAilleurs } from "@/components/TachesAilleurs";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 type Vue = "liste" | "kanban";
 
@@ -45,10 +45,29 @@ function fmt(iso: string | null): string {
 }
 
 export default function TasksPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="p-4 md:p-8 text-body-md text-on-surface-variant">Chargement…</div>
+      }
+    >
+      <TasksInner />
+    </Suspense>
+  );
+}
+
+function TasksInner() {
   const user = useSessionStore((s) => s.user);
+  // ON ARRIVE ICI DEPUIS UN PASSAGE DE COLLABORATEUR (« Voir la tâche »), et
+  // sa tâche est assignée à l'agent, terminée, et rangée dans le bac : les
+  // deux défauts de cet écran la cachent tous les deux. Les bascules partent
+  // donc ouvertes quand on est appelé sur une tâche précise — sinon le lien
+  // mènerait à une liste où elle n'est pas.
+  const cible = Number(useSearchParams().get("tache")) || null;
   const [taches, setTaches] = useState<Task[] | null>(null);
-  const [miennes, setMiennes] = useState(true);
-  const [avecTerminees, setAvecTerminees] = useState(false);
+  const [miennes, setMiennes] = useState(cible === null);
+  const [avecTerminees, setAvecTerminees] = useState(cible !== null);
+  const [assigne, setAssigne] = useState<string>("");
   const [titre, setTitre] = useState("");
   const [erreur, setErreur] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -82,6 +101,16 @@ export default function TasksPage() {
     void charger();
   }, [charger]);
 
+  // UNE SEULE FOIS : sans ce garde, refermer le tiroir le rouvrirait au
+  // chargement suivant, et la tâche serait impossible à quitter.
+  const [cibleOuverte, setCibleOuverte] = useState(false);
+  useEffect(() => {
+    if (cible === null || cibleOuverte || taches === null) return;
+    const trouvee = taches.find((t) => t.id === cible);
+    if (trouvee) setOuverte(trouvee);
+    setCibleOuverte(true);
+  }, [cible, cibleOuverte, taches]);
+
   // Les états du bac : ils viennent de SON jeu, comme pour n'importe quel projet.
   // On les lit via une tâche du bac, jamais en ouvrant le projet caché.
   useEffect(() => {
@@ -96,10 +125,25 @@ export default function TasksPage() {
     () =>
       (taches ?? []).filter(
         (t) =>
-          (!categorie || t.categorie === categorie) && (!priorite || t.priority === priorite)
+          (!categorie || t.categorie === categorie) &&
+          (!priorite || t.priority === priorite) &&
+          (!assigne || String(t.assignee_user_id ?? "") === assigne)
       ),
-    [taches, categorie, priorite]
+    [taches, categorie, priorite, assigne]
   );
+
+  // LES PERSONNES PRÉSENTES DANS LA LISTE, pas l'annuaire : un filtre qui
+  // propose quelqu'un sans tâche ne rend qu'une liste vide. C'est aussi ce
+  // qui fait apparaître les collaborateurs virtuels sans rien de spécial —
+  // ils ont un compte comme les autres.
+  const assignes = useMemo(() => {
+    const vus = new Map<string, string>();
+    for (const t of taches ?? []) {
+      if (t.assignee_user_id === null) continue;
+      vus.set(String(t.assignee_user_id), t.assignee_name ?? `Membre ${t.assignee_user_id}`);
+    }
+    return [...vus.entries()].sort((a, b) => a[1].localeCompare(b[1], "fr"));
+  }, [taches]);
 
   // Regroupées par provenance : le projet, ou l'absence de projet. C'est la
   // question qu'on se pose en parcourant une liste transverse.
@@ -220,6 +264,21 @@ export default function TasksPage() {
             </option>
           ))}
         </select>
+        {assignes.length > 1 && (
+          <select
+            aria-label="Filtrer par personne"
+            className={FIELD}
+            value={assigne}
+            onChange={(e) => setAssigne(e.target.value)}
+          >
+            <option value="">Tout le monde</option>
+            {assignes.map(([id, nom]) => (
+              <option key={id} value={id}>
+                {nom}
+              </option>
+            ))}
+          </select>
+        )}
         <select
           aria-label="Filtrer par priorité"
           className={FIELD}

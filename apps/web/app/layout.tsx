@@ -23,7 +23,7 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "Solution As A Service (SAAS)",
   description:
-    "Solution As A Service — une seule plateforme, tous les modules dont votre entreprise a besoin : facturation, comptabilité, RH, missions, site web et boutique en ligne.",
+    "Solution As A Service — une seule plateforme, tous les modules dont votre entreprise a besoin : facturation, comptabilité, RH, missions, site web et boutique en ligne, et des collaborateurs virtuels qui s'en servent pour vous.",
 };
 
 // Rendu à la REQUÊTE : prérendue, la page exécuterait ce layout au build, où

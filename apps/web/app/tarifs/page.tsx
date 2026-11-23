@@ -16,6 +16,7 @@ const formules = [
     avantages: [
       "Instance mutualisée, mise en service immédiate",
       "Modules activables à la demande",
+      "Assistant conversationnel sur chaque écran",
       "Mises à jour incluses",
       "Assistance par e-mail",
     ],
@@ -29,6 +30,7 @@ const formules = [
       "Tout ce qui est inclus dans Essentiel",
       "Utilisateurs et modules illimités",
       "Circuits d'approbation et tableaux de bord avancés",
+      "Collaborateurs virtuels : un poste, des horaires, des comptes rendus",
       "Assistance prioritaire",
     ],
     mise_en_avant: true,

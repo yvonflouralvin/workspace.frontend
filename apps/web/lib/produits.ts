@@ -19,6 +19,25 @@ export const categories = [
 
 export const produits: Produit[] = [
   {
+    slug: "collaborateurs-virtuels",
+    nom: "Collaborateurs virtuels",
+    categorie: "Cœur de plateforme",
+    icone: "SmartToy",
+    accroche: "Des collègues qui travaillent quand personne ne leur parle",
+    resume:
+      "Confiez un poste à un collaborateur virtuel : il a un métier, des horaires, des droits, et il rend compte de ce qu'il a fait.",
+    description:
+      "Un collaborateur virtuel n'est pas un assistant à qui l'on pose des questions : c'est un poste. On lui écrit son métier et sa façon de travailler, on lui confie des travaux qui reviennent — le point du matin, la relève des écritures du soir, le pointage du lundi — et il les fait à l'heure dite, sans qu'on le relance. On peut aussi lui écrire comme à un collègue : il distingue alors ce qui est une question de ce qui est un travail, s'ouvre une tâche à son nom quand c'en est un, et répond quand il a fini — pas avant. S'il lui manque une information, il la demande à la personne ou au collaborateur qui l'a, attend la réponse, et revient avec le compte rendu complet au lieu d'un « j'ai demandé à untel ». Chaque passage laisse sa trace : ce qu'on lui a demandé, ce qu'il a consulté, ce qu'il a conclu.",
+    points: [
+      "Un profil, des travaux récurrents et leurs horaires, dans le fuseau de votre entreprise",
+      "Ses droits sont ceux de ses groupes — chaque module refait son contrôle, comme pour un humain",
+      "Vous réglez qui peut le solliciter, et jusqu'où : rien, lecture seule, ou écriture",
+      "Il délègue à un collègue, attend sa réponse, et c'est lui qui conclut",
+      "Chaque passage est consultable : la demande, les outils appelés, le compte rendu",
+      "Un assistant conversationnel sur chaque écran, qui travaille sur ce que vous avez sous les yeux",
+    ],
+  },
+  {
     slug: "workspace",
     nom: "Espace de travail",
     categorie: "Cœur de plateforme",

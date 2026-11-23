@@ -1,5 +1,6 @@
 import {
   Hub,
+  SmartToy,
   AccountTree,
   Insights,
   Description,
@@ -18,6 +19,7 @@ import {
 
 const icons: Record<string, SvgIconComponent> = {
   Hub,
+  SmartToy,
   AccountTree,
   Insights,
   Description,

@@ -254,7 +254,7 @@ export default function HomePage() {
           titre={
             <>
               Trois écrans, pris sur un espace de travail qui tourne.{" "}
-              <span className="titre-degrade">Aucune maquette.</span>
+              <span className="titre-degrade-clair">Aucune maquette.</span>
             </>
           }
           chapeau="Une entreprise de distribution de Kinshasa, douze mois d'activité : six cent vingt-trois commandes, deux cent quatre-vingt-dix-sept écritures comptables, cinq collaborateurs virtuels qui travaillent chaque matin."

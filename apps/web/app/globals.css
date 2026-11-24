@@ -122,8 +122,26 @@
 /* ── Le dégradé de texte des titres ──
    Réservé à UN mot ou UNE ligne par page. Partout ailleurs il abîme la
    lisibilité, et le gris d'un texte dégradé ne passe plus le contraste. */
+/* LE DÉGRADÉ DE TITRE EXISTE EN DEUX VERSIONS, et ce n'est pas un confort.
+   Celui du registre sombre part du BLANC : posé sur une section claire, son
+   premier tiers tombe à 1,1:1 de contraste — le mot disparaît, purement et
+   simplement. C'est arrivé le 24 novembre 2026 sur « Aucune maquette. », en
+   ligne, et ça ne se voit dans aucun diff : la classe est la même, c'est la
+   SECTION qui a changé.
+   Le test `lib/__tests__/pages.test.ts` refuse maintenant `titre-degrade`
+   ailleurs que sur le registre sombre. */
 .titre-degrade {
   background-image: linear-gradient(100deg, #ffffff 20%, #c3c0ff 55%, #6ffbbe 95%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* La version du registre CLAIR : trois teintes de la marque, toutes assez
+   foncées pour rester lisibles sur un fond clair (primaire 9,9:1, tertiaire
+   10,2:1, secondaire 6,2:1 sur `--color-surface-container-low`). */
+.titre-degrade-clair {
+  background-image: linear-gradient(100deg, #3525cd 10%, #004598 50%, #006c49 95%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;

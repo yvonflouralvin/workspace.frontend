@@ -26,12 +26,13 @@
     "@repo/tailwind-config": "^0.0.0",
     "@repo/typescript-config": "*",
     "@repo/ui": "^0.0.0",
+    "@tailwindcss/postcss": "^4",
     "@types/node": "^22.15.3",
     "@types/react": "19.2.2",
     "@types/react-dom": "19.2.2",
     "eslint": "^9.39.1",
     "postcss": "^8.4.31",
-    "tailwind-config": "^0.1.2",
+    "tailwindcss": "^4",
     "typescript": "5.9.2",
     "vitest": "^3.2.6"
   }

@@ -2,6 +2,8 @@
 
 import { useRef, useState } from "react";
 
+import { margeAxeY } from "./margeAxeY";
+
 // Courbe temporelle SVG native (aucune dépendance de charting). Générique : extraite
 // des constantes vitales de l'EMR hosto, réutilisable par tout widget de reporting.
 // `t` est une date ISO ; `v` la valeur numérique.
@@ -42,9 +44,6 @@ export function LineChart({
 }: LineChartProps) {
   const W = 400;
   const H = 120;
-  const PAD = { top: 6, right: 12, bottom: 28, left: 36 };
-  const cw = W - PAD.left - PAD.right;
-  const ch = H - PAD.top - PAD.bottom;
 
   const [tooltip, setTooltip] = useState<{ x: number; y: number; lines: string[] } | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -62,6 +61,17 @@ export function LineChart({
   const pad = (maxV - minV) * 0.15 || 1;
   const yMin = minV - pad;
   const yMax = maxV + pad;
+
+  // Même règle que l'histogramme : c'est la plus longue graduation qui fixe
+  // la marge gauche, sinon elle se fait rogner sans que rien ne le signale.
+  const FRACTIONS = [0, 0.25, 0.5, 0.75, 1];
+  const graduations = FRACTIONS.map((f) => {
+    const val = yMin + (yMax - yMin) * f;
+    return Number.isInteger(val) ? String(val) : val.toFixed(1);
+  });
+  const PAD = { top: 6, right: 12, bottom: 28, left: margeAxeY(graduations, 26) };
+  const cw = W - PAD.left - PAD.right;
+  const ch = H - PAD.top - PAD.bottom;
 
   const tMin = Math.min(...allTs);
   const tMax = Math.max(...allTs);
@@ -97,9 +107,8 @@ export function LineChart({
           />
         )}
 
-        {[0, 0.25, 0.5, 0.75, 1].map((f) => {
+        {FRACTIONS.map((f, iTick) => {
           const y = PAD.top + ch * (1 - f);
-          const val = yMin + (yMax - yMin) * f;
           return (
             <g key={f}>
               <line
@@ -107,7 +116,7 @@ export function LineChart({
                 stroke="var(--color-outline-variant)" strokeOpacity={0.4} strokeDasharray="3 3"
               />
               <text x={PAD.left - 4} y={y + 3} textAnchor="end" fontSize={9} fill="var(--color-on-surface-variant)">
-                {Number.isInteger(val) ? val : val.toFixed(1)}
+                {graduations[iTick]}
               </text>
             </g>
           );

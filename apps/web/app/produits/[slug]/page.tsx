@@ -7,7 +7,9 @@ import { ProduitIcon } from "../../../components/icon-map";
 import { ProductCard } from "../../../components/ProductCard";
 import { lienAuth } from "../../../components/nav-links";
 import { Bouton, Fleche } from "../../../components/Bouton";
-import { Section } from "../../../components/Section";
+import { Section, Entete } from "../../../components/Section";
+import { Captures } from "../../../components/Captures";
+import { capturesDe } from "../../../lib/captures";
 import { Reveal } from "../../../components/Reveal";
 import { BoucleAgent } from "../../../components/visuels/BoucleAgent";
 
@@ -43,6 +45,11 @@ export default async function ProduitPage({
   // partout en ferait une décoration ; ici il explique le module dont la
   // page parle.
   const montreBoucle = produit.slug === "collaborateurs-virtuels";
+  // LES CAPTURES SONT DE VRAIS ÉCRANS, pris sur un espace de démonstration
+  // peuplé pour l'occasion. Un module qui n'en a pas encore n'affiche
+  // simplement pas la section — plutôt qu'un cadre vide qui ferait croire à
+  // un écran manquant.
+  const vues = capturesDe(produit.slug);
 
   return (
     <>
@@ -57,7 +64,7 @@ export default async function ProduitPage({
               "radial-gradient(circle, color-mix(in srgb, var(--halo-indigo) 50%, transparent), transparent 65%)",
           }}
         />
-        <div className="relative mx-auto max-w-6xl px-gutter pb-xl pt-16 md:pb-20 md:pt-20">
+        <div className="ouverture relative mx-auto max-w-6xl px-gutter pb-xl md:pb-20">
           <Reveal>
             <Link
               href="/produits"
@@ -133,6 +140,24 @@ export default async function ProduitPage({
           </Reveal>
         </div>
       </Section>
+
+      {vues.length > 0 && (
+        <Section registre="nuit" motif>
+          <Entete
+            sombre
+            surtitre="En conditions réelles"
+            titre={
+              <>
+                Voici l&apos;écran. <span className="titre-degrade">Pas une maquette.</span>
+              </>
+            }
+            chapeau="Ces captures viennent d'un espace de travail réel, peuplé de douze mois d'activité d'une entreprise de distribution. Rien n'a été dessiné pour la circonstance."
+          />
+          <div className="mt-xl md:mt-20">
+            <Captures captures={vues} sombre />
+          </div>
+        </Section>
+      )}
 
       <Section registre="creux">
         <Reveal>

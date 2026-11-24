@@ -2,6 +2,8 @@
 
 import { useRef, useState } from "react";
 
+import { margeAxeY } from "./margeAxeY";
+
 // Histogramme catégoriel SVG natif (aucune dépendance). Marques fines, extrémité
 // haute arrondie ancrée à la ligne de base, survol par barre, axes discrets.
 // Série unique → pas de légende (le titre nomme la mesure).
@@ -20,9 +22,6 @@ const nf = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 2 });
 export function BarChart({ data, unit, height = 200, color = "var(--color-primary)" }: BarChartProps) {
   const W = 480;
   const H = 200;
-  const PAD = { top: 16, right: 8, bottom: 44, left: 40 };
-  const cw = W - PAD.left - PAD.right;
-  const ch = H - PAD.top - PAD.bottom;
 
   const [hover, setHover] = useState<{ x: number; y: number; label: string; value: number } | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -31,6 +30,13 @@ export function BarChart({ data, unit, height = 200, color = "var(--color-primar
 
   const maxV = Math.max(...data.map((d) => d.value), 0);
   const yMax = maxV * 1.15 || 1;
+
+  // Les graduations d'abord : c'est leur largeur qui fixe la marge gauche.
+  const FRACTIONS = [0, 0.25, 0.5, 0.75, 1];
+  const graduations = FRACTIONS.map((f) => nf.format(yMax * f));
+  const PAD = { top: 16, right: 8, bottom: 44, left: margeAxeY(graduations) };
+  const cw = W - PAD.left - PAD.right;
+  const ch = H - PAD.top - PAD.bottom;
   const yOf = (v: number) => PAD.top + ch - (v / yMax) * ch;
 
   const slot = cw / data.length;
@@ -64,7 +70,7 @@ export function BarChart({ data, unit, height = 200, color = "var(--color-primar
         onMouseLeave={() => setHover(null)}
       >
         {/* Grille + ticks Y (discrets) */}
-        {[0, 0.25, 0.5, 0.75, 1].map((f) => {
+        {FRACTIONS.map((f, iTick) => {
           const y = PAD.top + ch * (1 - f);
           return (
             <g key={f}>
@@ -73,7 +79,7 @@ export function BarChart({ data, unit, height = 200, color = "var(--color-primar
                 stroke="var(--color-outline-variant)" strokeOpacity={0.35} strokeDasharray="3 3"
               />
               <text x={PAD.left - 6} y={y + 3} textAnchor="end" fontSize={9} fill="var(--color-on-surface-variant)">
-                {nf.format(yMax * f)}
+                {graduations[iTick]}
               </text>
             </g>
           );

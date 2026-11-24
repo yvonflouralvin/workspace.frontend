@@ -32,6 +32,31 @@
   --halo-indigo: #3525cd;
   --halo-vert:   #006c49;
   --halo-bleu:   #004598;
+
+  /* LA HAUTEUR DE LA BARRE DU HAUT. Elle est `fixed` : elle ne prend aucune
+     place dans le flux, et toute section d'ouverture doit dégager sa hauteur
+     elle-même. Une seule valeur, ici, parce qu'un nombre magique recopié
+     dans trois hero finit par diverger — et la divergence se verrait sous la
+     forme d'un titre passé sous la barre, pas sous la forme d'une erreur. */
+  --barre-hauteur: 4.25rem;
+}
+
+/* L'OUVERTURE D'UNE PAGE, sous la barre flottante.
+   Avant, la barre était `sticky` : elle occupait réellement les 69 premiers
+   pixels, la section sombre commençait DESSOUS, et ces 69 pixels montraient
+   le fond clair du `body`. Les liens de la barre, eux, sont colorés pour le
+   sombre — ils tombaient donc à 2:1 de contraste sur toutes les pages,
+   jusqu'au premier défilement. `tsc`, `next build` et les tests passaient :
+   la page ouvrait bien sur le registre sombre, c'est la barre qui ne la
+   recouvrait pas. */
+.ouverture {
+  padding-top: calc(var(--barre-hauteur) + 3rem);
+}
+
+@media (min-width: 768px) {
+  .ouverture {
+    padding-top: calc(var(--barre-hauteur) + 4.5rem);
+  }
 }
 
 /* ── Le motif signature : grille fine + halos + grain ──

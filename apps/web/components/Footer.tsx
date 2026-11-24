@@ -1,86 +1,96 @@
 import Link from "next/link";
 import { produits } from "../lib/produits";
+import { Marque } from "./Marque";
+import { lienAuth } from "./nav-links";
 
+/** LE PIED, dans le registre sombre.
+ *
+ *  Il prolonge l'appel final au lieu de le contredire : la page descend vers
+ *  le noir et s'y arrête. Un pied clair après une bande sombre fait un
+ *  sandwich, et l'œil croit qu'il reste du contenu.
+ */
 export function Footer() {
   const annee = new Date().getFullYear();
-  const vitrine = produits.slice(0, 6);
+  const colonnes = [
+    {
+      titre: "Modules",
+      liens: [
+        ...produits.slice(0, 6).map((p) => ({ l: p.nom, h: `/produits/${p.slug}` })),
+        { l: "Voir les quinze", h: "/produits" },
+      ],
+    },
+    {
+      titre: "Entreprise",
+      liens: [
+        { l: "À propos", h: "/a-propos" },
+        { l: "Tarifs", h: "/tarifs" },
+        { l: "Contact", h: "/contact" },
+      ],
+    },
+  ];
 
   return (
-    <footer className="border-t border-outline-soft bg-surface-container-low">
-      <div className="mx-auto grid max-w-6xl gap-xl px-gutter py-xl md:grid-cols-4">
-        <div>
-          <div className="flex items-center gap-sm">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-on-primary font-display text-body-md font-bold">
-              S
-            </span>
-            <span className="font-display text-body-md font-bold text-on-surface">
-              Solution As A Service
-            </span>
+    <footer className="nuit nuit-grille relative overflow-hidden border-t border-[color:var(--nuit-filet)]">
+      <div className="relative mx-auto max-w-6xl px-gutter py-xl">
+        <div className="grid gap-xl md:grid-cols-[1.4fr_1fr_1fr_1fr]">
+          <div>
+            <div className="flex items-center gap-sm">
+              <Marque className="h-9 w-9" sombre />
+              <span className="font-display text-body-md font-bold text-[color:var(--nuit-texte)]">
+                Solution As A Service
+              </span>
+            </div>
+            <p className="mt-md max-w-sm text-body-sm leading-relaxed text-[color:var(--nuit-texte-doux)]">
+              Une seule plateforme pour toute l&apos;entreprise — et des collaborateurs virtuels
+              qui s&apos;en servent. Conçue et opérée en République démocratique du Congo.
+            </p>
+            <a
+              href={lienAuth("/register")}
+              className="mt-lg inline-flex items-center gap-sm rounded-xl border border-[color:var(--nuit-filet)] bg-[color:var(--nuit-elevee)] px-md py-sm text-body-sm font-semibold text-[color:var(--nuit-texte)] transition-colors hover:border-[color:var(--halo-indigo)]"
+            >
+              Créer mon espace
+            </a>
           </div>
-          <p className="mt-sm text-body-sm text-on-surface-variant">
-            Une entreprise de solutions digitales : une seule plateforme, tous les modules
-            dont votre activité a besoin pour grandir.
-          </p>
-        </div>
 
-        <div>
-          <h3 className="text-label-md font-medium uppercase tracking-wide text-on-surface-variant">
-            Produits
-          </h3>
-          <ul className="mt-sm flex flex-col gap-xs">
-            {vitrine.map((p) => (
-              <li key={p.slug}>
-                <Link
-                  href={`/produits/${p.slug}`}
-                  className="text-body-sm text-on-surface-variant hover:text-primary"
+          {colonnes.map((col) => (
+            <div key={col.titre}>
+              <h3 className="text-label-sm uppercase text-[color:var(--nuit-texte-doux)]">
+                {col.titre}
+              </h3>
+              <ul className="mt-md flex flex-col gap-sm">
+                {col.liens.map((lien) => (
+                  <li key={lien.h}>
+                    <Link
+                      href={lien.h}
+                      className="text-body-sm text-[color:var(--nuit-texte-doux)] transition-colors hover:text-[color:var(--nuit-texte)]"
+                    >
+                      {lien.l}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+
+          <div>
+            <h3 className="text-label-sm uppercase text-[color:var(--nuit-texte-doux)]">Contact</h3>
+            <ul className="mt-md flex flex-col gap-sm text-body-sm text-[color:var(--nuit-texte-doux)]">
+              <li>
+                <a
+                  href="mailto:contact@solutionaas.com"
+                  className="transition-colors hover:text-[color:var(--nuit-texte)]"
                 >
-                  {p.nom}
-                </Link>
+                  contact@solutionaas.com
+                </a>
               </li>
-            ))}
-            <li>
-              <Link href="/produits" className="text-body-sm font-medium text-primary">
-                Voir tous les produits →
-              </Link>
-            </li>
-          </ul>
-        </div>
-
-        <div>
-          <h3 className="text-label-md font-medium uppercase tracking-wide text-on-surface-variant">
-            Entreprise
-          </h3>
-          <ul className="mt-sm flex flex-col gap-xs">
-            <li>
-              <Link href="/a-propos" className="text-body-sm text-on-surface-variant hover:text-primary">
-                À propos
-              </Link>
-            </li>
-            <li>
-              <Link href="/tarifs" className="text-body-sm text-on-surface-variant hover:text-primary">
-                Tarifs
-              </Link>
-            </li>
-            <li>
-              <Link href="/contact" className="text-body-sm text-on-surface-variant hover:text-primary">
-                Contact
-              </Link>
-            </li>
-          </ul>
-        </div>
-
-        <div>
-          <h3 className="text-label-md font-medium uppercase tracking-wide text-on-surface-variant">
-            Contact
-          </h3>
-          <ul className="mt-sm flex flex-col gap-xs text-body-sm text-on-surface-variant">
-            <li>contact@solutionaas.com</li>
-          </ul>
+              <li>Kinshasa, RDC</li>
+            </ul>
+          </div>
         </div>
       </div>
 
-      <div className="border-t border-outline-soft px-gutter py-md">
-        <p className="mx-auto max-w-6xl text-body-sm text-on-surface-variant">
+      <div className="relative border-t border-[color:var(--nuit-filet)] px-gutter py-md">
+        <p className="mx-auto max-w-6xl text-body-sm text-[color:var(--nuit-texte-doux)]">
           © {annee} Solution As A Service. Tous droits réservés.
         </p>
       </div>

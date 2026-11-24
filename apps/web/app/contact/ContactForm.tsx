@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { Fleche } from "../../components/Bouton";
 
 export function ContactForm() {
   const [nom, setNom] = useState("");
@@ -25,7 +26,7 @@ export function ContactForm() {
           required
           value={nom}
           onChange={(e) => setNom(e.target.value)}
-          className="mt-xs w-full rounded-lg border border-outline-soft bg-surface-container-lowest px-md py-sm text-body-md text-on-surface outline-none focus:border-primary"
+          className="mt-xs w-full rounded-xl border border-outline-soft bg-surface-container-low px-md py-[0.7rem] text-body-md text-on-surface transition-colors outline-none placeholder:text-on-surface-variant/60 focus:border-primary focus:bg-surface-container-lowest focus:ring-4 focus:ring-primary/10"
         />
       </div>
 
@@ -39,7 +40,7 @@ export function ContactForm() {
           required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="mt-xs w-full rounded-lg border border-outline-soft bg-surface-container-lowest px-md py-sm text-body-md text-on-surface outline-none focus:border-primary"
+          className="mt-xs w-full rounded-xl border border-outline-soft bg-surface-container-low px-md py-[0.7rem] text-body-md text-on-surface transition-colors outline-none placeholder:text-on-surface-variant/60 focus:border-primary focus:bg-surface-container-lowest focus:ring-4 focus:ring-primary/10"
         />
       </div>
 
@@ -50,18 +51,20 @@ export function ContactForm() {
         <textarea
           id="message"
           required
-          rows={5}
+          rows={6}
+          placeholder="Ce que vous faites, combien vous êtes, et ce qui vous prend le plus de temps aujourd'hui."
           value={message}
           onChange={(e) => setMessage(e.target.value)}
-          className="mt-xs w-full rounded-lg border border-outline-soft bg-surface-container-lowest px-md py-sm text-body-md text-on-surface outline-none focus:border-primary"
+          className="mt-xs w-full rounded-xl border border-outline-soft bg-surface-container-low px-md py-[0.7rem] text-body-md text-on-surface transition-colors outline-none placeholder:text-on-surface-variant/60 focus:border-primary focus:bg-surface-container-lowest focus:ring-4 focus:ring-primary/10"
         />
       </div>
 
       <button
         type="submit"
-        className="rounded-lg bg-primary px-md py-sm text-body-md font-medium text-on-primary shadow-button transition-opacity hover:opacity-90"
+        className="group inline-flex items-center justify-center gap-sm rounded-xl bg-primary px-lg py-[0.8rem] text-body-md font-semibold text-on-primary shadow-[0_1px_0_0_rgb(255_255_255_/_0.25)_inset,0_10px_30px_-10px_rgb(53_37_205_/_0.7)] transition-all duration-200 hover:-translate-y-0.5"
       >
         Envoyer le message
+        <Fleche />
       </button>
       <p className="text-body-sm text-on-surface-variant">
         Ouvre votre messagerie avec le message déjà prêt à envoyer.

@@ -1,0 +1,81 @@
+name: Publier le site vitrine seul
+
+# UNE VOIE RAPIDE POUR LE SITE, ET POURQUOI ELLE EXISTE.
+#
+# Le site vitrine est construit par `publier-images.yml` comme les dix-neuf
+# applications, sur une étiquette de plateforme `v*.*.*`. C'est juste pour une
+# application vendue, et absurde pour une page de tarifs : mesuré le 23
+# novembre 2026, la v2026.11.40 a demandé d'étiqueter VINGT-TROIS dépôts et a
+# coûté DIX MINUTES VINGT de construction — pour un paragraphe de texte.
+#
+# Ce workflow-ci ne construit qu'une image, en deux à trois minutes, sur une
+# étiquette qui n'appartient qu'au site. Aucune version de plateforme, aucun
+# autre dépôt touché.
+#
+#   git tag site-2026.11.23.1 && git push --tags
+#   ssh public 'cd …/infra && ./scripts/livrer-vitrine.sh site-2026.11.23.1'
+#
+# LE SITE RESTE DANS LA MATRICE DE PLATEFORME, et ce n'est pas un oubli : les
+# deux voies coexistent. Il en est sorti une fois, le 9 octobre 2026, et il est
+# resté SIX SEMAINES sans aucun moyen d'être publié. Une livraison de
+# plateforme continue donc de produire son image ; celle-ci en produit une de
+# plus, quand on ne veut toucher que le site.
+on:
+  push:
+    tags:
+      - "site-*"
+  # Éprouver la chaîne sans poser d'étiquette : l'image est construite et RIEN
+  # n'est publié (voir la condition `push:` plus bas).
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  vitrine:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Se connecter au registre
+        if: github.event_name == 'push'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/wd-ft-web
+          # L'étiquette TELLE QUELLE : `site-2026.11.23.1` donne
+          # `wd-ft-web:site-2026.11.23.1`. Le préfixe est gardé à dessein —
+          # il dit d'où vient l'image, et il ne peut jamais entrer en
+          # collision avec la numérotation de plateforme.
+          #
+          # PAS DE `latest` ICI. `publier-images.yml` le pose déjà sur cette
+          # image ; deux workflows qui écrivent la même étiquette mobile
+          # rendraient `wd-ft-web:latest` indéchiffrable.
+          tags: |
+            type=ref,event=tag
+
+      - uses: docker/build-push-action@v6
+        with:
+          # Contexte = racine du monorepo : `turbo prune` a besoin de tout
+          # l'arbre pour résoudre les paquets partagés.
+          context: .
+          file: Dockerfile
+          build-args: APP=web
+          push: ${{ github.event_name == 'push' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          # MÊME PORTÉE DE CACHE que la voie de plateforme : les deux
+          # construisent la même application, et séparer leurs caches ferait
+          # payer une réinstallation complète à chaque changement de voie.
+          cache-from: type=gha,scope=ft-web
+          cache-to: type=gha,mode=max,scope=ft-web

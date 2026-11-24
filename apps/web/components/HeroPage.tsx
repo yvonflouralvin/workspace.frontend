@@ -37,7 +37,7 @@ export function HeroPage({
       />
       <div
         className={`relative mx-auto max-w-6xl px-gutter ${
-          compact ? "pb-xl pt-16 md:pb-20 md:pt-20" : "pb-20 pt-16 md:pb-24 md:pt-24"
+          compact ? "ouverture pb-xl md:pb-20" : "ouverture pb-20 md:pb-24"
         }`}
       >
         <Reveal className="max-w-3xl">

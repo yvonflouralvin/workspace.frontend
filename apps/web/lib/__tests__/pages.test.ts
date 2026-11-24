@@ -76,6 +76,41 @@ describe("les pages du site", () => {
 });
 
 describe("le décor du site", () => {
+  // LA BARRE DU HAUT DOIT RECOUVRIR LE HERO, PAS S'EMPILER AVANT LUI.
+  //
+  // Elle a été `sticky` pendant une version : elle occupait alors réellement
+  // les 69 premiers pixels du flux, la section sombre commençait DESSOUS, et
+  // ces 69 pixels montraient le fond clair du `body`. Les liens, colorés pour
+  // le sombre, tombaient à 2:1 de contraste sur les six pages — jusqu'au
+  // premier défilement.
+  //
+  // Rien ne le signalait : la page ouvrait bien sur le registre sombre (le
+  // test ci-dessus passait), `tsc` était muet, `next build` réussissait. Le
+  // défaut était dans la RELATION entre la barre et la page, que seul un
+  // rendu montre. Ces deux assertions tiennent les deux bouts de cette
+  // relation : la barre hors du flux, et chaque ouverture qui dégage sa
+  // hauteur.
+  it("sort la barre du flux et fait dégager sa hauteur par chaque ouverture", () => {
+    const entete = readFileSync(join(APP, "..", "components", "Header.tsx"), "utf8");
+    expect(entete).toContain("fixed inset-x-0 top-0");
+    expect(entete).not.toContain("sticky top-0");
+
+    // Les trois hero du site : l'accueil, le gabarit des pages intérieures,
+    // et la fiche produit. Chacun doit porter `ouverture`.
+    const ouvertures = [
+      join(APP, "page.tsx"),
+      join(APP, "..", "components", "HeroPage.tsx"),
+      join(APP, "produits", "[slug]", "page.tsx"),
+    ];
+    const sans = ouvertures.filter((f) => !readFileSync(f, "utf8").includes("ouverture"));
+    expect(sans).toEqual([]);
+
+    // Et la classe doit exister, avec la hauteur de la barre pour origine.
+    expect(CSS).toContain("--barre-hauteur");
+    expect(CSS).toMatch(/\.ouverture\s*\{[^}]*calc\(var\(--barre-hauteur\)/);
+  });
+
+
   // Propriété 3 : chaque animation déclarée doit être coupée par le réglage
   // système. Le test lit les classes d'animation dans la feuille et vérifie
   // qu'elles figurent toutes dans le bloc `prefers-reduced-motion`.

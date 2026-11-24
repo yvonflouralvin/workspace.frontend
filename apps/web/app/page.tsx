@@ -17,6 +17,23 @@ import { Bandeau } from "../components/Bandeau";
 import { Console } from "../components/visuels/Console";
 import { Socle } from "../components/visuels/Socle";
 import { BoucleAgent } from "../components/visuels/BoucleAgent";
+import { Captures } from "../components/Captures";
+import { capturesDe, type Capture } from "../lib/captures";
+
+/** LES TROIS ÉCRANS DE L'ACCUEIL.
+ *
+ *  Un de chaque registre : ce que le produit a de singulier (un collaborateur
+ *  qui rend compte), ce que tout le monde comprend sans explication (une liste
+ *  de factures), et ce qui dit que le socle est sérieux (une comptabilité
+ *  OHADA). Trois suffisent : au-delà, on ne les regarde plus.
+ *
+ *  Ils sont PRIS dans `lib/captures.ts`, jamais recopiés : une légende
+ *  réécrite ici divergerait de la fiche produit sans que rien ne le dise. */
+const ECRANS_ACCUEIL = [
+  capturesDe("collaborateurs-virtuels")[1],
+  capturesDe("facturation")[0],
+  capturesDe("comptabilite")[0],
+].filter((c): c is Capture => Boolean(c));
 
 /** CE QUE LE COLLABORATEUR VIRTUEL FAIT, en trois moments — et non la liste
  *  de ce qu'il « peut » faire. C'est la différence avec un agent
@@ -120,7 +137,7 @@ export default function HomePage() {
           }}
         />
 
-        <div className="relative mx-auto max-w-6xl px-gutter pb-20 pt-20 md:pb-28 md:pt-28">
+        <div className="ouverture relative mx-auto max-w-6xl px-gutter pb-20 md:pb-28">
           <Reveal className="mx-auto max-w-4xl text-center">
             <Puce sombre>
               <span className="anim-pulse h-[6px] w-[6px] rounded-full bg-[color:var(--color-secondary-fixed-dim)]" />
@@ -222,6 +239,32 @@ export default function HomePage() {
         <Reveal delai={120} className="mt-xl">
           <Bouton href="/produits/collaborateurs-virtuels" variante="nuit">
             Comment ça marche, en détail
+            <Fleche />
+          </Bouton>
+        </Reveal>
+      </Section>
+
+      {/* ══ LA PREUVE PAR L'ÉCRAN ════════════════════════════════════════
+          Un site de logiciel qui ne montre pas le logiciel demande qu'on le
+          croie sur parole. Trois écrans, pris sur un espace réel, et le
+          visiteur n'a plus à nous croire. ═══════════════════════════════ */}
+      <Section registre="creux" id="ecrans">
+        <Entete
+          surtitre="En conditions réelles"
+          titre={
+            <>
+              Trois écrans, pris sur un espace de travail qui tourne.{" "}
+              <span className="titre-degrade">Aucune maquette.</span>
+            </>
+          }
+          chapeau="Une entreprise de distribution de Kinshasa, douze mois d'activité : six cent vingt-trois commandes, deux cent quatre-vingt-dix-sept écritures comptables, cinq collaborateurs virtuels qui travaillent chaque matin."
+        />
+        <div className="mt-xl md:mt-20">
+          <Captures captures={ECRANS_ACCUEIL} />
+        </div>
+        <Reveal className="mt-xl">
+          <Bouton href="/produits" variante="secondaire">
+            Voir les écrans de chaque module
             <Fleche />
           </Bouton>
         </Reveal>

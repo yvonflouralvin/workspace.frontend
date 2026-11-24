@@ -47,7 +47,7 @@ export function Header() {
 
   return (
     <header
-      className={`sticky top-0 z-50 transition-all duration-300 ${
+      className={`fixed inset-x-0 top-0 z-50 transition-all duration-300 ${
         detachee || open
           ? "border-b border-outline-soft bg-surface-container-lowest/85 backdrop-blur-xl"
           : "border-b border-transparent"

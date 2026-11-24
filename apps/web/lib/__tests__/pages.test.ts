@@ -76,6 +76,46 @@ describe("les pages du site", () => {
 });
 
 describe("le décor du site", () => {
+  // LE DÉGRADÉ DE TITRE DU REGISTRE SOMBRE PART DU BLANC.
+  //
+  // Posé sur une section claire, son premier tiers tombe à 1,1:1 de
+  // contraste : le mot disparaît. C'est arrivé en ligne le 24 novembre 2026
+  // sur « Aucune maquette. », et c'est le genre de défaut qu'un diff ne
+  // montre JAMAIS — la classe n'a pas changé, c'est la section autour qui a
+  // changé. Il faut donc lire les deux ensemble.
+  //
+  // La règle : `titre-degrade` ne vaut que sous un contexte sombre (une
+  // `<Section registre="nuit">`, une `<section className="nuit…">`, ou un
+  // `<HeroPage>`, qui est sombre par construction). Pour le registre clair,
+  // il y a `titre-degrade-clair`.
+  it("ne pose le dégradé sombre que sur un fond sombre", () => {
+    const fautifs: string[] = [];
+    for (const p of TOUTES) {
+      const lignes = readFileSync(join(APP, p), "utf8").split("\n");
+      let sombre = false;
+      lignes.forEach((ligne, i) => {
+        if (/<Section\s+registre="(clair|creux)"/.test(ligne)) sombre = false;
+        else if (/<Section\s+registre="nuit"/.test(ligne)) sombre = true;
+        else if (/<section className="nuit/.test(ligne)) sombre = true;
+        else if (/<HeroPage/.test(ligne)) sombre = true;
+        // `titre-degrade` tout court, jamais `titre-degrade-clair`.
+        if (/titre-degrade(?!-clair)/.test(ligne) && !sombre) {
+          fautifs.push(`${p}:${i + 1}`);
+        }
+      });
+    }
+    expect(fautifs).toEqual([]);
+  });
+
+  // Et la variante claire doit exister, sans partir du blanc.
+  it("offre une variante claire qui ne part pas du blanc", () => {
+    expect(CSS).toContain(".titre-degrade-clair");
+    const regle = CSS.slice(CSS.indexOf(".titre-degrade-clair"));
+    const degrade = regle.slice(0, regle.indexOf("}"));
+    expect(degrade).not.toMatch(/#fff(fff)?\b/i);
+  });
+
+
   // LA BARRE DU HAUT DOIT RECOUVRIR LE HERO, PAS S'EMPILER AVANT LUI.
   //
   // Elle a été `sticky` pendant une version : elle occupait alors réellement

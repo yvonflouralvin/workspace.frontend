@@ -20,10 +20,34 @@ const inter = Inter({
   subsets: ["latin"],
 });
 
+const DESCRIPTION =
+  "Une seule plateforme pour toute l'entreprise : facturation, comptabilité, ressources humaines, projets, site web — et des collaborateurs virtuels qui s'en servent pour vous. Conçue et opérée en République démocratique du Congo.";
+
 export const metadata: Metadata = {
-  title: "Solution As A Service (SAAS)",
-  description:
-    "Solution As A Service — une seule plateforme, tous les modules dont votre entreprise a besoin : facturation, comptabilité, RH, missions, site web et boutique en ligne, et des collaborateurs virtuels qui s'en servent pour vous.",
+  // LE GABARIT ÉVITE LA RÉPÉTITION DANS L'ONGLET. Chaque page donne son
+  // propre titre court, et le nom de l'éditeur est ajouté ici — une fois.
+  title: {
+    default: "Solution As A Service — un logiciel pour toute l'entreprise",
+    template: "%s",
+  },
+  description: DESCRIPTION,
+  applicationName: "Solution As A Service",
+  // L'APERÇU D'UN LIEN PARTAGÉ. Sans ces champs, un lien collé dans une
+  // conversation n'affiche qu'une adresse : c'est la première impression du
+  // site pour qui le reçoit, et elle se joue hors du site.
+  openGraph: {
+    type: "website",
+    locale: "fr_CD",
+    siteName: "Solution As A Service",
+    title: "Un logiciel pour toute l'entreprise. Et des collaborateurs qui s'en servent.",
+    description: DESCRIPTION,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Un logiciel pour toute l'entreprise. Et des collaborateurs qui s'en servent.",
+    description: DESCRIPTION,
+  },
+  robots: { index: true, follow: true },
 };
 
 // Rendu à la REQUÊTE : prérendue, la page exécuterait ce layout au build, où

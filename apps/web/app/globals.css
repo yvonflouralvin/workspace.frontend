@@ -1,3 +1,209 @@
 @import "tailwindcss";
 @import "../../../packages/design-system/src/tokens.css";
 @source "../../../packages/ui/src";
+
+/* ──────────────────────────────────────────────────────────────────────────
+   LA COUCHE DÉCORATIVE DU SITE VITRINE — et pourquoi elle est ICI.
+
+   La règle de la maison interdit de redéclarer un bloc `@theme` dans une
+   app : les huit apps en portaient une copie qui divergeait dès qu'on en
+   modifiait une. Cette règle n'est pas contournée ici — il n'y a aucun
+   `@theme` ci-dessous, et aucun token partagé n'est redéfini.
+
+   Ce sont des propriétés DÉCORATIVES, et elles n'existent que pour ce site :
+   un registre sombre, des halos, un grain. Les pousser dans `tokens.css`
+   les livrerait aux dix-neuf applications, qui n'ont rien à en faire — et
+   un token que personne n'utilise finit par être modifié sans qu'on sache
+   qui le lit.
+
+   Le registre sombre est DÉRIVÉ de la marque, pas inventé : `--nuit` est
+   l'assombrissement de `--color-on-surface` (#0b1c30), et les halos sont
+   `--color-primary` et `--color-secondary`. Le site ne peut donc pas se
+   désaccorder de la plateforme.
+   ────────────────────────────────────────────────────────────────────────── */
+:root {
+  --nuit:            #060d18;
+  --nuit-elevee:     #0d1726;
+  --nuit-carte:      #111c2e;
+  --nuit-filet:      #1e2c42;
+  --nuit-texte:      #eaf1ff;
+  --nuit-texte-doux: #9fb2cd;
+
+  --halo-indigo: #3525cd;
+  --halo-vert:   #006c49;
+  --halo-bleu:   #004598;
+}
+
+/* ── Le motif signature : grille fine + halos + grain ──
+   Trois couches qui reviennent sur chaque section sombre. Elles sont en CSS
+   et non en image : rien à télécharger, et elles suivent la largeur de
+   l'écran sans jamais pixeliser. */
+.nuit {
+  background-color: var(--nuit);
+  color: var(--nuit-texte);
+  position: relative;
+  isolation: isolate;
+}
+
+.nuit-grille::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background-image:
+    linear-gradient(to right, color-mix(in srgb, var(--nuit-filet) 55%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--nuit-filet) 55%, transparent) 1px, transparent 1px);
+  background-size: 64px 64px;
+  /* La grille s'efface vers le bas : nette là où l'œil arrive, absente là où
+     le texte commence — sinon elle concurrence la lecture. */
+  mask-image: radial-gradient(120% 90% at 50% 0%, #000 20%, transparent 75%);
+}
+
+/* LES HALOS ET LE GRAIN SUR LA MÊME COUCHE, et ce n'est pas un raccourci :
+   un élément n'a QU'UN `::before` et QU'UN `::after`. La grille occupe déjà
+   le premier. Déclarer le grain dans un `.grain::before` séparé le mettait en
+   concurrence directe avec `.nuit-grille::before` — même spécificité, déclaré
+   plus loin, donc il GAGNAIT et la grille disparaissait. Le défaut était
+   invisible à la relecture et visible sur quatre des cinq sections sombres.
+
+   Le grain empêche les dégradés de « bander » sur un grand écran, et son
+   opacité est cuite dans le SVG (`opacity='0.04'` sur le rectangle) puisque
+   des couches de fond ne peuvent pas avoir chacune la leur. `feTurbulence`
+   en ligne : une image de bruit coûterait un téléchargement pour un effet
+   que le navigateur sait calculer. */
+.nuit-halo::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E"),
+    radial-gradient(60% 50% at 15% 10%, color-mix(in srgb, var(--halo-indigo) 38%, transparent), transparent 70%),
+    radial-gradient(50% 45% at 85% 20%, color-mix(in srgb, var(--halo-bleu) 30%, transparent), transparent 70%),
+    radial-gradient(45% 40% at 70% 95%, color-mix(in srgb, var(--halo-vert) 22%, transparent), transparent 70%);
+}
+
+/* ── Le filet lumineux d'une carte sombre ──
+   Un bord clair en haut et un dégradé très léger : c'est ce qui donne à une
+   carte posée sur du noir l'air d'être ÉCLAIRÉE plutôt que découpée. */
+.carte-nuit {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, #ffffff 6%, transparent), transparent 40%),
+    var(--nuit-carte);
+  border: 1px solid var(--nuit-filet);
+}
+
+/* ── Le dégradé de texte des titres ──
+   Réservé à UN mot ou UNE ligne par page. Partout ailleurs il abîme la
+   lisibilité, et le gris d'un texte dégradé ne passe plus le contraste. */
+.titre-degrade {
+  background-image: linear-gradient(100deg, #ffffff 20%, #c3c0ff 55%, #6ffbbe 95%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* ── Les apparitions au défilement ──
+   La classe de départ est posée par le composant `Reveal`, qui retire
+   `[data-cache]` quand la section entre dans l'écran. */
+[data-cache="oui"] {
+  opacity: 0;
+  transform: translateY(18px);
+}
+[data-revele="oui"] {
+  opacity: 1;
+  transform: none;
+  transition: opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+              transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ── Animations du site ── */
+@keyframes derive-halo {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50%      { transform: translate3d(2%, -2%, 0) scale(1.06); }
+}
+@keyframes pulse-doux {
+  0%, 100% { opacity: 0.35; transform: scale(1); }
+  50%      { opacity: 1;    transform: scale(1.12); }
+}
+@keyframes parcours {
+  0%   { offset-distance: 0%;   opacity: 0; }
+  8%   { opacity: 1; }
+  92%  { opacity: 1; }
+  100% { offset-distance: 100%; opacity: 0; }
+}
+/* Le SIGNAL qui court le long d'un fil.
+   `stroke-dashoffset` et non `offset-path` : l'animation d'un tiret le long
+   d'un tracé est comprise par tous les navigateurs depuis toujours, alors
+   qu'`offset-path` est encore inégal — et un diagramme qui ne bouge pas
+   chez un visiteur sur dix ne vaut pas le risque. */
+@keyframes signal {
+  from { stroke-dashoffset: 1200; }
+  to   { stroke-dashoffset: 0; }
+}
+
+/* L'étape d'une séquence qui s'allume à son tour, puis s'éteint.
+   Un seul cycle partagé, décalé par `animation-delay` : c'est ce qui fait
+   lire une SUITE plutôt que trois choses qui clignotent ensemble. */
+@keyframes etape {
+  0%, 8%    { opacity: 0.45; }
+  16%, 40%  { opacity: 1; }
+  50%, 100% { opacity: 0.45; }
+}
+
+/* Le compteur d'un chiffre-clé : il monte d'un cran visuel à l'apparition.
+   La valeur, elle, est dans le HTML — on n'anime pas une donnée. */
+@keyframes monte {
+  from { opacity: 0; transform: translateY(0.4em); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes defile-gauche {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+@keyframes curseur {
+  0%, 49%  { opacity: 1; }
+  50%, 100%{ opacity: 0; }
+}
+
+.anim-halo    { animation: derive-halo 18s ease-in-out infinite; }
+.anim-signal  { stroke-dasharray: 26 1174; animation: signal 4.5s linear infinite; }
+.anim-etape   { animation: etape 9s ease-in-out infinite; }
+.anim-monte   { animation: monte 0.8s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.anim-pulse   { animation: pulse-doux 2.6s ease-in-out infinite; }
+.anim-defile  { animation: defile-gauche 38s linear infinite; }
+.anim-curseur { animation: curseur 1.1s step-end infinite; }
+
+/* ── LE RESPECT DU RÉGLAGE SYSTÈME, non négociable ──
+   Une animation de décor n'a aucune raison de donner la nausée à quelqu'un.
+   Tout s'arrête, et les contenus révélés au défilement restent VISIBLES —
+   les masquer sans animation pour les dévoiler serait les cacher pour de
+   bon. */
+@media (prefers-reduced-motion: reduce) {
+  .anim-halo, .anim-pulse, .anim-defile, .anim-curseur,
+  .anim-signal, .anim-etape, .anim-monte {
+    animation: none !important;
+  }
+  /* Une étape dont l'animation est coupée doit rester LISIBLE : sans cette
+     règle, les trois resteraient à l'opacité de départ, c'est-à-dire
+     presque invisibles. */
+  .anim-etape { opacity: 1 !important; }
+  .anim-signal { stroke-dasharray: none !important; }
+  [data-cache="oui"], [data-revele="oui"] {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+}
+
+/* La barre de défilement ne doit pas trancher avec le registre sombre du
+   hero sur les navigateurs qui la colorent. */
+html {
+  scroll-behavior: smooth;
+  color-scheme: light;
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+}

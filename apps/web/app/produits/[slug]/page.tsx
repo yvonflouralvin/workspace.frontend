@@ -1,11 +1,15 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { CheckCircle, ArrowForward } from "@mui/icons-material";
+import { CheckCircle } from "@mui/icons-material";
 import { produits, getProduit } from "../../../lib/produits";
 import { ProduitIcon } from "../../../components/icon-map";
 import { ProductCard } from "../../../components/ProductCard";
 import { lienAuth } from "../../../components/nav-links";
+import { Bouton, Fleche } from "../../../components/Bouton";
+import { Section } from "../../../components/Section";
+import { Reveal } from "../../../components/Reveal";
+import { BoucleAgent } from "../../../components/visuels/BoucleAgent";
 
 export function generateStaticParams() {
   return produits.map((p) => ({ slug: p.slug }));
@@ -35,71 +39,115 @@ export default async function ProduitPage({
   if (!produit) notFound();
 
   const autres = produits.filter((p) => p.slug !== produit.slug).slice(0, 3);
+  // LE SCHÉMA DE LA DÉLÉGATION N'A DE SENS QUE SUR UNE FICHE. L'afficher
+  // partout en ferait une décoration ; ici il explique le module dont la
+  // page parle.
+  const montreBoucle = produit.slug === "collaborateurs-virtuels";
 
   return (
-    <div>
-      <section className="border-b border-outline-soft bg-surface-container-low">
-        <div className="mx-auto max-w-6xl px-gutter py-16">
-          <Link href="/produits" className="text-body-sm font-medium text-primary">
-            ← Tous les produits
-          </Link>
-          <div className="mt-md flex items-start gap-md">
-            <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-primary text-on-primary">
-              <ProduitIcon nom={produit.icone} className="!text-[28px]" />
-            </span>
-            <div>
-              <p className="text-label-md font-medium uppercase tracking-wide text-primary">
-                {produit.categorie}
-              </p>
-              <h1 className="mt-xs font-display text-headline-lg font-bold text-on-surface">
-                {produit.nom}
-              </h1>
-              <p className="mt-sm max-w-2xl text-body-lg text-on-surface-variant">
-                {produit.accroche}
+    <>
+      {/* Le haut de page est sombre, comme toutes les pages du site : la
+          barre du haut en dépend (voir le commentaire de `Header`). */}
+      <section className="nuit nuit-grille nuit-halo relative overflow-hidden">
+        <span
+          aria-hidden="true"
+          className="anim-halo pointer-events-none absolute left-1/4 top-[-12rem] h-[30rem] w-[30rem] rounded-full opacity-50 blur-3xl"
+          style={{
+            background:
+              "radial-gradient(circle, color-mix(in srgb, var(--halo-indigo) 50%, transparent), transparent 65%)",
+          }}
+        />
+        <div className="relative mx-auto max-w-6xl px-gutter pb-xl pt-16 md:pb-20 md:pt-20">
+          <Reveal>
+            <Link
+              href="/produits"
+              className="text-body-sm font-medium text-[color:var(--nuit-texte-doux)] transition-colors hover:text-[color:var(--nuit-texte)]"
+            >
+              ← Tous les modules
+            </Link>
+
+            <div className="mt-lg flex flex-col gap-lg sm:flex-row sm:items-start">
+              <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border border-[color:var(--nuit-filet)] bg-[color:var(--nuit-carte)] text-[color:var(--color-primary-fixed-dim)]">
+                <ProduitIcon nom={produit.icone} className="!text-[32px]" />
+              </span>
+              <div className="min-w-0">
+                <p className="text-label-sm uppercase text-[color:var(--nuit-texte-doux)]">
+                  {produit.categorie}
+                </p>
+                <h1 className="mt-sm font-display text-[2.25rem] leading-[1.08] font-bold tracking-[-0.03em] text-[color:var(--nuit-texte)] md:text-[3rem]">
+                  {produit.nom}
+                </h1>
+                <p className="mt-md max-w-2xl text-body-lg leading-relaxed text-[color:var(--nuit-texte-doux)] md:text-[1.0625rem]">
+                  {produit.accroche}
+                </p>
+              </div>
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
+      {montreBoucle && (
+        <Section registre="nuit" motif taille="sm">
+          <Reveal>
+            <div className="carte-nuit rounded-2xl p-lg md:p-xl">
+              <BoucleAgent />
+            </div>
+          </Reveal>
+        </Section>
+      )}
+
+      <Section registre="clair">
+        <div className="grid gap-xl lg:grid-cols-[1.6fr_1fr]">
+          <Reveal>
+            <h2 className="text-label-sm uppercase text-primary">Présentation</h2>
+            <p className="mt-md text-body-lg leading-relaxed text-on-surface-variant md:text-[1.0625rem]">
+              {produit.description}
+            </p>
+          </Reveal>
+
+          <Reveal delai={120}>
+            <div className="sticky top-24 rounded-2xl border border-outline-soft bg-surface-container-low p-lg shadow-card">
+              <h2 className="font-display text-headline-sm text-on-surface">Ce module inclut</h2>
+              <ul className="mt-md flex flex-col gap-md">
+                {produit.points.map((point) => (
+                  <li key={point} className="flex items-start gap-sm">
+                    <CheckCircle className="!text-[18px] shrink-0 text-secondary" />
+                    <span className="text-body-md leading-relaxed text-on-surface-variant">
+                      {point}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <Bouton
+                href={lienAuth("/register")}
+                externe
+                className="mt-lg w-full"
+              >
+                Essayer gratuitement
+                <Fleche />
+              </Bouton>
+              <p className="mt-sm text-center text-body-sm text-on-surface-variant">
+                Sans engagement, et activable seul.
               </p>
             </div>
-          </div>
+          </Reveal>
         </div>
-      </section>
+      </Section>
 
-      <section className="mx-auto grid max-w-6xl gap-xl px-gutter py-16 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <h2 className="text-headline-sm font-display text-on-surface">Présentation</h2>
-          <p className="mt-sm text-body-lg text-on-surface-variant">{produit.description}</p>
-        </div>
-
-        <div className="rounded-2xl border border-outline-soft bg-surface-container-lowest p-lg shadow-card">
-          <h2 className="text-headline-sm font-display text-on-surface">Ce module inclut</h2>
-          <ul className="mt-md flex flex-col gap-sm">
-            {produit.points.map((point) => (
-              <li key={point} className="flex items-start gap-sm">
-                <CheckCircle className="!text-[18px] shrink-0 text-secondary" />
-                <span className="text-body-md text-on-surface-variant">{point}</span>
-              </li>
-            ))}
-          </ul>
-          <a
-            href={lienAuth("/register")}
-            className="mt-lg flex items-center justify-center gap-xs rounded-lg bg-primary px-md py-sm text-body-md font-medium text-on-primary shadow-button transition-opacity hover:opacity-90"
-          >
-            Essayer gratuitement
-            <ArrowForward className="!text-[16px]" />
-          </a>
-        </div>
-      </section>
-
-      <section className="border-t border-outline-soft bg-surface-container-low">
-        <div className="mx-auto max-w-6xl px-gutter py-16">
-          <h2 className="text-headline-sm font-display text-on-surface">
-            D&apos;autres modules à découvrir
+      <Section registre="creux">
+        <Reveal>
+          <h2 className="font-display text-[1.75rem] leading-tight font-bold tracking-[-0.02em] text-on-surface md:text-[2rem]">
+            D&apos;autres modules, sur le même socle
           </h2>
-          <div className="mt-md grid gap-lg sm:grid-cols-3">
-            {autres.map((p) => (
-              <ProductCard key={p.slug} produit={p} />
-            ))}
-          </div>
+        </Reveal>
+        <div className="mt-xl grid gap-lg sm:grid-cols-3">
+          {autres.map((p, i) => (
+            <Reveal key={p.slug} delai={i * 80}>
+              <ProductCard produit={p} />
+            </Reveal>
+          ))}
         </div>
-      </section>
-    </div>
+      </Section>
+    </>
   );
 }

@@ -81,6 +81,11 @@ export const captures: Record<string, Capture[]> = {
   ],
   facturation: [
     {
+      fichier: "facturation-4",
+      legende:
+        "Le tableau de bord ouvre le module : chiffre d'affaires du mois, encaissé, impayés, répartition des commandes et prochaines échéances — sans ouvrir une seule facture.",
+    },
+    {
       fichier: "facturation-1",
       legende:
         "Les échéances dépassées ressortent en rouge, et un règlement partiel s'affiche sous le montant dû. On voit ce qui manque sans ouvrir une seule facture.",

@@ -154,6 +154,11 @@ export function domainesDepuisEnv(): Record<string, string | undefined> {
     hr: process.env.HR_APP_URL,
     approval_flows: process.env.APPROVAL_FLOWS_APP_URL,
     hosto: process.env.HOSTO_APP_URL,
+    // L'interface Flutter du module hospitalier, sur son propre domaine. Elle
+    // n'est PAS dans `PLATFORM_APPS` — un pilote n'a pas sa place dans le
+    // sélecteur d'applications de tout le monde —, mais l'écran de connexion a
+    // besoin de reconnaître son origine pour y renvoyer après coup.
+    hosto_flutter: process.env.HOSTO_FLUTTER_APP_URL,
     isp: process.env.ISP_APP_URL,
     academique: process.env.ACADEMIQUE_APP_URL,
     sgr: process.env.SGR_APP_URL,

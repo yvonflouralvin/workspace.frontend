@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   configReseauDepuisEnv,
   domaineDepose,
+  domainesDepuisEnv,
   configurerReseauClient,
   getClientKey,
   getServerKey,
@@ -183,6 +184,21 @@ describe("domaineDepose — le domaine public d'une application", () => {
     G.__WD_CONFIG__ = { domaines: { hosto: "https://global.test" } };
     configurerReseauClient({ domaines: { hosto: "https://rendu.test" } });
     expect(domaineDepose("hosto")).toBe("https://rendu.test");
+  });
+
+  // L'interface Flutter du module hospitalier a son propre domaine et n'est
+  // PAS dans `PLATFORM_APPS` : un pilote n'a pas sa place dans le sélecteur
+  // d'applications. L'écran de connexion a pourtant besoin de reconnaître son
+  // origine pour y renvoyer après coup, et il lit cette clé — sans elle, la
+  // personne se connecte, réussit, et atterrit sur une autre application.
+  it("connaît l'interface Flutter de hosto, absente du sélecteur d'apps", () => {
+    process.env.HOSTO_FLUTTER_APP_URL = "https://hosto-app.essai";
+    try {
+      expect(domainesDepuisEnv().hosto_flutter).toBe("https://hosto-app.essai");
+      expect(domaineDepose("hosto_flutter")).toBe("https://hosto-app.essai");
+    } finally {
+      delete process.env.HOSTO_FLUTTER_APP_URL;
+    }
   });
 
   it("rend undefined pour une app inconnue — l'appelant garde son repli", () => {

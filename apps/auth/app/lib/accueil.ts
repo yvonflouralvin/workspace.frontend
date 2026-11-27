@@ -2,6 +2,23 @@ import { apiFetch } from "@repo/network/client";
 import { PLATFORM_APPS } from "@repo/ui/shell/platform";
 import { domaineDepose } from "@repo/network/config";
 
+/** Les origines légitimes qui n'ont pas d'entrée dans `PLATFORM_APPS`.
+ *
+ *  Lues par `domaineDepose` et non par `process.env.NEXT_PUBLIC_*` :
+ *  `retourDeConfiance` tourne des DEUX côtés — sur le serveur depuis
+ *  `page.tsx`, dans le navigateur depuis `destinationApresConnexion` — et une
+ *  variable `NEXT_PUBLIC_*` est figée dans le bundle à la compilation. Une
+ *  image construite une fois pour tous les clients porterait le domaine du
+ *  premier.
+ *
+ *  Une FONCTION et non une constante de module : lue à l'appel, elle ne
+ *  dépend pas de l'ordre entre l'évaluation de ce module et le dépôt de la
+ *  configuration. `WORKSPACE_DOMAIN` ci-dessous prend ce risque pour des
+ *  raisons historiques ; ce n'est pas une raison de le reprendre. */
+function autresSurfaces(): (string | undefined)[] {
+  return [domaineDepose("hosto_flutter")];
+}
+
 const WORKSPACE_DOMAIN =
   process.env.WORKSPACE_APP_URL ??
   domaineDepose("workspace") ?? process.env.NEXT_PUBLIC_WORKSPACE_DOMAIN ??
@@ -50,7 +67,18 @@ export function retourDeConfiance(brut: string | null): string | null {
   if (!brut) return null;
   try {
     const cible = new URL(brut);
-    const connues = [WORKSPACE_DOMAIN, ...PLATFORM_APPS.map((a) => a.url)];
+    const connues = [
+      WORKSPACE_DOMAIN,
+      ...PLATFORM_APPS.map((a) => a.url),
+      // Les surfaces de la plateforme qui ne sont pas dans le sélecteur
+      // d'applications. `PLATFORM_APPS` répond à « où peut-on aller », cette
+      // liste à « d'où peut-on revenir » : ce n'est pas la même question, et
+      // l'interface Flutter du module hospitalier est le premier cas — un
+      // pilote qu'on ne montre à personne mais vers lequel il faut savoir
+      // revenir après une connexion. Sans cette ligne, la personne se
+      // connecte, réussit, et atterrit sur une autre application.
+      ...autresSurfaces(),
+    ].filter((u): u is string => Boolean(u));
     return connues.some((connue) => {
       try {
         return new URL(connue).origin === cible.origin;
